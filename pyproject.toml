@@ -1,0 +1,12 @@
+[project]
+name = "florent-code-league"
+version = "0.1.0"
+description = "Bot for the Florent Code League 2026"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fcode==2.2.0",
+]
+
+[tool.uv]
+package = false
