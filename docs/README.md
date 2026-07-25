@@ -32,3 +32,6 @@ Scraped from https://game.code.florent.vc/docs/ — 20 pages, mirrored as Markdo
 
 ## Agents
 - [AGENTS.md](agents/agents-md.md)
+
+## Maps (local, not mirrored)
+- [Map Atlas](maps/map-atlas.md) — all pool maps rendered in isometric + replay top-down views
