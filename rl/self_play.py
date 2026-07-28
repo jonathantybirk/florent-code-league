@@ -188,6 +188,9 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--checkpoint", default=str(CHECKPOINTS_DIR / "policy.pt"))
     parser.add_argument("--save-every", type=int, default=10)
+    parser.add_argument("--wandb", action="store_true", help="log metrics to Weights & Biases")
+    parser.add_argument("--wandb-project", default="florent-code-league-rl")
+    parser.add_argument("--wandb-run-name", default=None)
     args = parser.parse_args()
 
     checkpoint_path = Path(args.checkpoint)
@@ -200,6 +203,12 @@ def main() -> None:
 
     optimizer = torch.optim.Adam(policy.parameters(), lr=args.lr)
     opponent_main = RL_BOT_MAIN if args.opponent == "self" else OPPONENT_MAIN
+
+    run = None
+    if args.wandb:
+        import wandb
+
+        run = wandb.init(project=args.wandb_project, name=args.wandb_run_name, config=vars(args))
 
     RUNS_DIR.mkdir(exist_ok=True)
     save_checkpoint(policy, checkpoint_path)
@@ -219,8 +228,7 @@ def main() -> None:
         else:
             draws += 1
 
-        if trajectories:
-            ppo_update(policy, optimizer, trajectories)
+        ppo_stats = ppo_update(policy, optimizer, trajectories) if trajectories else {}
 
         dt = time.time() - t0
         print(
@@ -230,11 +238,34 @@ def main() -> None:
             f"record(W/L/D)={wins}/{losses}/{draws} ({dt:.1f}s)"
         )
 
+        if run is not None:
+            log = {
+                "match/winner_is_a": {"A": 1, "B": 0}.get(result["winner"], 0.5),
+                "match/turns": result["turns"],
+                "match/a_titanium": result["a_titanium"],
+                "match/b_titanium": result["b_titanium"],
+                "match/a_titanium_collected": result["a_titanium_collected"],
+                "match/a_units": result["a_units"],
+                "match/b_units": result["b_units"],
+                "match/a_buildings": result["a_buildings"],
+                "match/seconds_per_iteration": dt,
+                "record/wins": wins,
+                "record/losses": losses,
+                "record/draws": draws,
+                "record/win_rate": wins / i,
+            }
+            for etype_value, s in ppo_stats.items():
+                for k, v in s.items():
+                    log[f"ppo/{etype_value}/{k}"] = v
+            wandb.log(log, step=i)
+
         if i % args.save_every == 0:
             archive_path = CHECKPOINTS_DIR / f"policy_iter{i}.pt"
             save_checkpoint(policy, archive_path)
 
     save_checkpoint(policy, checkpoint_path)
+    if run is not None:
+        run.finish()
 
 
 if __name__ == "__main__":

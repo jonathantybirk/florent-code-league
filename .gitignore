@@ -6,3 +6,5 @@ replay.replay26
 runs/
 checkpoints/
 *.replay26
+wandb/
+bots/rl_deploy/

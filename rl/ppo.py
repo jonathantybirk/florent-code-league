@@ -71,6 +71,7 @@ def ppo_update(policy: PolicyNet, optimizer: torch.optim.Optimizer, trajectories
         returns = torch.tensor([s[2] for s in samples], dtype=torch.float32)
 
         n = obs.shape[0]
+        policy_losses, value_losses, entropies = [], [], []
         for _ in range(EPOCHS_PER_UPDATE):
             perm = torch.randperm(n)
             for start in range(0, n, MINIBATCH_SIZE):
@@ -93,5 +94,15 @@ def ppo_update(policy: PolicyNet, optimizer: torch.optim.Optimizer, trajectories
                 torch.nn.utils.clip_grad_norm_(policy.parameters(), 0.5)
                 optimizer.step()
 
-        stats[etype.value] = {"n_samples": n}
+                policy_losses.append(policy_loss.item())
+                value_losses.append(value_loss.item())
+                entropies.append(entropy.item())
+
+        stats[etype.value] = {
+            "n_samples": n,
+            "policy_loss": sum(policy_losses) / len(policy_losses),
+            "value_loss": sum(value_losses) / len(value_losses),
+            "entropy": sum(entropies) / len(entropies),
+            "mean_return": returns.mean().item(),
+        }
     return stats
