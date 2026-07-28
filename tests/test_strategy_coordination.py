@@ -10,7 +10,12 @@ from types import SimpleNamespace
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "bots" / "1"))
 
-from entities.builder import BuilderMixin, ConveyorEndpoint, ConveyorPlan
+from entities.builder import (
+    BuilderMixin,
+    ConveyorEndpoint,
+    ConveyorPlan,
+    EnemySupplyChain,
+)
 from entities.core import CoreMixin
 from entities.launcher import LauncherMixin
 from fcode import Direction, EntityType, Environment, Position, Team
@@ -810,6 +815,43 @@ class EnemySupplyTakeoverTests(unittest.TestCase):
 
         self.assertTrue(acted)
         self.assertEqual(ct.fired_at, target)
+
+    def test_guard_on_final_conveyor_skips_to_penultimate_takeover(self) -> None:
+        final = Position(5, 4)
+        chain = EnemySupplyChain(
+            Position(2, 4),
+            (Position(3, 4), Position(4, 4), final),
+        )
+
+        class GuardedTakeoverBuilder(BuilderMixin):
+            @staticmethod
+            def _gunner_facing_toward_core(*_args) -> Direction:
+                return Direction.EAST
+
+            @staticmethod
+            def _visible_building_id(*_args) -> int:
+                return 71
+
+        class GuardedController:
+            @staticmethod
+            def get_tile_builder_bot_id(position: Position) -> int | None:
+                return 99 if position == final else None
+
+            @staticmethod
+            def get_team(entity_id: int | None = None) -> Team:
+                return Team.B if entity_id == 99 else Team.A
+
+        builder = GuardedTakeoverBuilder()
+
+        acted = builder._replace_final_conveyor_with_gunner(  # type: ignore[arg-type]
+            GuardedController(),
+            load_known_maps()["twins"],
+            chain,
+            Position(2, 17),
+        )
+
+        self.assertTrue(acted)
+        self.assertEqual(builder.supply_takeover_stage, 1)
 
     def test_harvester_feed_propagates_through_directed_conveyors(self) -> None:
         builder = BuilderMixin()

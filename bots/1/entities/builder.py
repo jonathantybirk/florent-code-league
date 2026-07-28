@@ -521,6 +521,19 @@ class BuilderMixin:
                 lambda: ct.build_gunner(target, facing),
             )
 
+        # A defender can deny sabotage simply by parking a Builder Bot on the
+        # walkable final Conveyor. Do not deadlock trying to enter that tile:
+        # cut the penultimate Conveyor instead, replace it with the Splitter,
+        # and feed the same core-facing battery one tile farther upstream.
+        occupying_bot = ct.get_tile_builder_bot_id(target)
+        if (
+            occupying_bot is not None
+            and ct.get_team(occupying_bot) != ct.get_team()
+            and len(chain.conveyors) >= 2
+        ):
+            self.supply_takeover_stage = 1
+            return True
+
         if (
             ct.get_team(building_id) == ct.get_team()
             and ct.get_entity_type(building_id) == EntityType.GUNNER
