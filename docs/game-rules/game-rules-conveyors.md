@@ -1,0 +1,59 @@
+# Game Rules — Conveyors
+
+Source: https://game.code.florent.vc/docs/game-rules-conveyors
+
+## Overview
+
+Conveyors are infrastructure buildings that automatically move resources from one tile to the next each round, without consuming CPU time. They allow you to build supply chains from ore tiles to your Core.
+
+Resources travel along a conveyor chain in stacks of 10 titanium per step per round.
+
+## Conveyor types
+
+### Basic Conveyor
+
+Moves resources one tile in a fixed direction. Accepts a stack from any of its three non-output (cardinal) sides and sends it onward in the direction it's pointing.
+
+| Property | Value |
+|---|---|
+| Base cost | 3 Ti (scales +1% per conveyor built) |
+| Direction | Set at build time |
+| Holds | 1 stack (10 Ti) at a time |
+
+```python
+ct.build_conveyor(pos, Direction.EAST)
+```
+
+### Splitter
+
+A splitter has three possible output directions — the direction it's facing plus the two directions adjacent to it (i.e. every cardinal direction except the one directly behind it). It only accepts input from the back (the tile opposite its facing direction).
+
+It does not split a stack in half: each round it sends its entire held stack (10 Ti) to whichever of its three outputs was used least recently, rotating through all three over time.
+
+| Property | Value |
+|---|---|
+| Base cost | 6 Ti (scales +1% per splitter built) |
+| Accepts from | Back only |
+| Outputs to | 3 directions (facing + two adjacent), least-recently-used first |
+| Holds | 1 stack (10 Ti) at a time |
+
+Splitters are useful for routing a single harvester chain along multiple paths back to your Core.
+
+## Building conveyors
+
+```python
+# Check and build a conveyor at pos pointing East
+if ct.can_build_conveyor(pos, Direction.EAST):
+    ct.build_conveyor(pos, Direction.EAST)
+```
+
+## Destroying conveyors
+
+Use `ct.destroy()` to remove a conveyor you no longer need:
+
+```python
+if ct.can_destroy(pos):
+    ct.destroy(pos)
+```
+
+This returns any resources currently in transit on that tile to your team's balance.
