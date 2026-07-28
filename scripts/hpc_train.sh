@@ -11,9 +11,9 @@
 ### plain CPU queue; don't reintroduce a GPU queue unless the code is changed to use one.
 #BSUB -q hpc
 #BSUB -J llm-rl-selfplay
-#BSUB -n 8
+#BSUB -n 50
 #BSUB -W 24:00
-#BSUB -R "rusage[mem=8GB]"
+#BSUB -R "span[hosts=1] rusage[mem=32GB]"
 #BSUB -o llm_rl_%J.out
 #BSUB -e llm_rl_%J.err
 
