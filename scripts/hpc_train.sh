@@ -18,7 +18,7 @@
 #BSUB -o llm_rl_%J.out
 #BSUB -e llm_rl_%J.err
 
-module load python3/3.13.14
+module load python3/3.13.11
 module load cuda/12.6
 
 ### bsub runs this script's body piped through stdin, so $0 isn't a real path --
