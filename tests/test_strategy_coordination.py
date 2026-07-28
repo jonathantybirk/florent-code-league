@@ -9,6 +9,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "bots" / "1"))
 
+from entities.builder import BuilderMixin
 from entities.launcher import LauncherMixin
 from fcode import Direction, Position, Team
 from utils.common import (
@@ -96,6 +97,26 @@ class LauncherRoleTests(unittest.TestCase):
         )
 
         self.assertEqual(selected, attacker_position)
+
+
+class ConveyorRoutingTests(unittest.TestCase):
+    def test_existing_friendly_conveyors_replace_core_as_sinks(self) -> None:
+        core_tiles = {Position(1, 1), Position(2, 1)}
+        friendly_conveyors = {Position(7, 5), Position(8, 5)}
+
+        sinks = BuilderMixin._preferred_connection_sinks(
+            core_tiles, friendly_conveyors
+        )
+
+        self.assertEqual(sinks, friendly_conveyors)
+        self.assertTrue(sinks.isdisjoint(core_tiles))
+
+    def test_core_is_used_when_no_friendly_conveyor_exists(self) -> None:
+        core_tiles = {Position(1, 1), Position(2, 1)}
+
+        sinks = BuilderMixin._preferred_connection_sinks(core_tiles, set())
+
+        self.assertEqual(sinks, core_tiles)
 
 
 if __name__ == "__main__":
