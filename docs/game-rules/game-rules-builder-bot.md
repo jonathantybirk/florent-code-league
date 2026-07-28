@@ -13,7 +13,7 @@ Builder Bots are your team's mobile workforce. They are the only entities that c
 | HP | 40 |
 | Cost | 30 Ti |
 | Vision radius² | 20 |
-| Action range | Orthogonally adjacent tile only (Build, Attack, Heal, Destroy — no radius) |
+| Action range | Build/Heal/Destroy: action radius²=2 (orthogonal + diagonal, not own tile). Attack: own tile only (r²=0) — see correction below |
 | Move cooldown | 1 round |
 | Action cooldown | 1 round |
 
@@ -27,6 +27,12 @@ Builder Bots can traverse:
 Walls (`WALL`), tiles occupied by another Builder Bot, and tiles with any other building (Harvester, Barrier, a Core — including your own — or a turret) are impassable. The Core's 2×2 footprint is never bot-passable, even for its own team.
 
 ## Abilities
+
+> **Correction vs. the official docs.** The published page says Build, Attack, Heal, and Destroy are all restricted to an orthogonally adjacent tile (never diagonal, never the Builder Bot's own tile). **Verified directly against the running engine and this is wrong for three of the four** — confirmed with a probe bot that builds a real target next to itself and checks each `can_*` call in every direction, including diagonals and its own tile:
+> - **Build, Heal, and Destroy** all work within the Builder Bot's full action radius (r²=2) — **diagonal tiles are legal**, not just the four cardinal ones. Heal also works on the Builder Bot's own tile.
+> - **Attack (`fire`) is the one that's actually more restrictive than documented**: it only ever works on the tile the Builder Bot is **currently standing on** (r²=0) — not an adjacent tile at all, diagonal or otherwise. To damage a building, you have to walk onto it (Conveyor/Splitter tiles are walkable by either team) and fire at your own position.
+>
+> This matches the engine's own bundled [engine spec](../engine-spec.md) (`ct.can_fire(pos)` where `pos == ct.get_position()`), which the public website's "orthogonally adjacent, never own tile" wording contradicts for Attack specifically — even that bundled spec isn't infallible elsewhere (see its own correction note), so this was checked directly against the running engine, not just against a second document.
 
 ### Move
 
@@ -46,10 +52,12 @@ for d in (desired, desired.rotate_left(), desired.rotate_right()):
 
 ### Build
 
-Construct a building on any orthogonally adjacent tile — NORTH, SOUTH, EAST, or WEST of the Builder Bot's current position. Diagonal tiles and its own tile are not valid build targets. Each build type has its own `can_build_*` check. Building triggers an action cooldown. A successful move or action blocks the other for the rest of that round — building on a tile and walking onto it now takes two separate rounds.
+Construct a building on any tile within action radius (r²≤2) of the Builder Bot's current position — all 8 surrounding directions, including diagonals — but never its own tile. Each build type has its own `can_build_*` check. Building triggers an action cooldown. A successful move or action blocks the other for the rest of that round — building on a tile and walking onto it now takes two separate rounds.
 
 ```python
-for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
+for d in Direction:
+    if d == Direction.CENTRE:
+        continue
     target = ct.get_position().add(d)
     if ct.can_build_gunner(target, Direction.EAST):
         ct.build_gunner(target, Direction.EAST)
@@ -58,23 +66,21 @@ for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
 
 ### Attack
 
-Builder Bots can attack the building on any orthogonally adjacent tile — NORTH, SOUTH, EAST, or WEST of their current position. Diagonal tiles and their own tile are not valid targets. This is mainly useful for sabotage: since Builder Bots can walk onto enemy Conveyor/Splitter tiles, you can walk up next to (or onto, then fire at a neighboring tile of) an enemy's logistics chain and damage it. Costs 2 Ti per hit for 2 damage.
+Builder Bots can attack the building on **the tile they are currently standing on** — not an adjacent tile at all, cardinal or diagonal. Since Builder Bots can walk onto Conveyor/Splitter tiles belonging to either team, this is how sabotage works in practice: walk onto an enemy's logistics chain and fire on your own position to damage whatever's under you. Costs 2 Ti per hit for 2 damage.
 
 ```python
-for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
-    target = ct.get_position().add(d)
-    if ct.can_fire(target):
-        ct.fire(target)
-        break
+pos = ct.get_position()
+if ct.can_fire(pos):
+    ct.fire(pos)
 ```
 
 ### Heal
 
-Builder Bots can heal all friendly entities on any orthogonally adjacent tile — NORTH, SOUTH, EAST, or WEST of their current position. Diagonal tiles and their own tile are not valid targets. Heals 4 HP for 1 Ti — if a friendly Builder Bot is standing on a friendly building on the target tile, both are healed in the same call.
+Builder Bots can heal all friendly entities on any tile within action radius (r²≤2), including diagonals and their own tile (e.g. a Builder Bot standing on a damaged friendly Conveyor can heal itself and it in the same call). Heals 4 HP for 1 Ti.
 
 ```python
-for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
-    target = ct.get_position().add(d)
+for d in Direction:
+    target = ct.get_position().add(d)  # includes CENTRE (own tile) via add()
     if ct.can_heal(target):
         ct.heal(target)
         break
@@ -82,10 +88,12 @@ for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
 
 ### Destroy
 
-Builder Bots can destroy an allied building on any orthogonally adjacent tile — NORTH, SOUTH, EAST, or WEST of their current position. Diagonal tiles and their own tile are not valid targets. Unlike Build, Attack, and Heal, Destroy costs no titanium and does not use the action cooldown — you can destroy any number of allied buildings this way in a single round.
+Builder Bots can destroy an allied building on any tile within action radius (r²≤2), including diagonals. Unlike Build, Attack, and Heal, Destroy costs no titanium and does not use the action cooldown — you can destroy any number of allied buildings this way in a single round.
 
 ```python
-for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
+for d in Direction:
+    if d == Direction.CENTRE:
+        continue
     target = ct.get_position().add(d)
     if ct.can_destroy(target):
         ct.destroy(target)

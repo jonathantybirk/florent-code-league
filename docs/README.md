@@ -5,10 +5,14 @@ A single corrected mirror of the official docs at https://game.code.florent.vc/d
 ## How this is organized
 
 - **Every page below is based on the official site's text**, reformatted to Markdown. Where the installed `fcode` engine actually disagrees with what the site says, the page has a `> **Correction vs. the official docs.**` callout at that exact spot — the surrounding text is corrected to match reality, and the callout explains what changed and how it was verified (usually: enumerating the real `Controller`/`Position`/`Direction` objects at runtime, or a direct call that raises `AttributeError`).
+- **`engine-spec.md`** is a third source, distinct from both: it ships inside the `fcode` PyPI package itself rather than being scraped from the website. It's closer to ground truth than the website in places (and was what caught a real website bug — Build/Attack/Heal/Destroy adjacency was backwards on several site pages), but it's not perfect either — it has its own correction callout.
 - **`reference/`** and **`maps/map-atlas.md`** are not from the official site at all — original material written for this repo (reverse-engineered file formats, a rendered map atlas). Each says so at the top.
 - **`scraped-originals/`** keeps the raw, byte-for-byte scraped source text (unedited) — kept around so any correction above can be checked against exactly what the site said. If you're only reading the docs, you want the pages above, not this folder.
 
 If you find something else that's wrong, verify it against the running engine (a probe bot that calls `dir(ct)` or attempts the call directly beats trusting prose) before "correcting" it — this doc set has been burned by trusting the official site more than once.
+
+## Engine Spec
+- [Engine Spec](engine-spec.md) — bundled with the `fcode` package itself (not scraped from the website); closer to a primary source than anything else here, though not perfectly accurate either (one correction inside)
 
 ## Getting Started
 - [Florent Code League (overview)](getting-started/florent-code-league.md)

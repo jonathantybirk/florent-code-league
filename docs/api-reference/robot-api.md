@@ -30,13 +30,15 @@ for move_dir in (desired, desired.rotate_left(), desired.rotate_right()):
 
 ## Building & Construction
 
-Builder Bots can construct buildings on an orthogonally adjacent tile — NORTH, SOUTH, EAST, or WEST of the bot's current position. Diagonal tiles and its own tile are not valid build targets. `ct.destroy()` follows the same orthogonal-adjacency rule. All build methods raise if the build is not possible.
+> **Correction vs. the official docs.** The published page says building and destroying are restricted to an orthogonally adjacent tile. **Verified against the running engine — diagonal tiles are also legal** for both. See the [Builder Bot page](../game-rules/game-rules-builder-bot.md) for the full breakdown (Build/Heal/Destroy use the full action radius including diagonals; Attack is the one that's actually more restrictive — own tile only, see the Combat section below).
+
+Builder Bots can construct buildings on any tile within their action radius (r²≤2) of the bot's current position — including diagonals — but never their own tile. `ct.destroy()` also allows diagonals (confirmed); whether it allows the bot's own tile is untested. All build methods raise if the build is not possible.
 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `ct.spawn_builder(pos)` | `int` (unit id) | Spawn a Builder Bot at `pos` (Core only). |
 | `ct.can_spawn(pos)` | `bool` | `True` if Core can spawn a bot at `pos`. |
-| `ct.build_harvester(pos)` | `None` | Build a Harvester on an orthogonally adjacent ore tile. |
+| `ct.build_harvester(pos)` | `None` | Build a Harvester on an ore tile within action radius. |
 | `ct.can_build_harvester(pos)` | `bool` | Check if Harvester can be built. |
 | `ct.build_conveyor(pos, direction)` | `None` | Build a conveyor in the given direction. |
 | `ct.can_build_conveyor(pos, direction)` | `bool` | Check if a conveyor can be built. |
@@ -50,7 +52,7 @@ Builder Bots can construct buildings on an orthogonally adjacent tile — NORTH,
 | `ct.can_build_sentinel(pos, direction)` | `bool` | Check if a Sentinel can be built. |
 | `ct.build_launcher(pos)` | `None` | Build a Launcher turret (no facing direction). |
 | `ct.can_build_launcher(pos)` | `bool` | Check if a Launcher can be built. |
-| `ct.destroy(pos)` | `None` | Destroy the allied building at `pos` (orthogonally adjacent). |
+| `ct.destroy(pos)` | `None` | Destroy the allied building at `pos` (within action radius, diagonals included). |
 | `ct.can_destroy(pos)` | `bool` | Check if the building at `pos` can be destroyed. |
 | `ct.build(entity_type, pos, extra=None)` | `None` | Generic build. `extra` is a `Direction`, required for conveyor/splitter/gunner/sentinel, unused otherwise. |
 | `ct.can_build(entity_type, pos, extra=None)` | `bool` | Generic legality check for the above. |
@@ -59,13 +61,13 @@ Builder Bots can construct buildings on an orthogonally adjacent tile — NORTH,
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `ct.fire(target)` | `None` | Fire at `target` position (turrets only). |
+| `ct.fire(target)` | `None` | Fire at `target` position. For turrets, `target` is anywhere in range; for a Builder Bot, `target` must be the Builder Bot's own position — see correction below. |
 | `ct.can_fire(target)` | `bool` | Check if this unit can fire at `target` (including having enough ammo). |
 | `ct.can_fire_from(pos, direction, turret_type, target)` | `bool` | Hypothetical version of `can_fire`: whether a turret of `turret_type` (`EntityType.GUNNER`, `SENTINEL`, or `LAUNCHER`) at `pos` facing `direction` could hit `target`. Uses current map occupancy/walls but ignores ammo and cooldown. |
 | `ct.get_attackable_tiles()` | `list[Position]` | List of tiles this unit can currently attack (raw pattern — ignores ammo, cooldown, and occupancy). Raises if this unit is not a turret. |
 | `ct.get_attackable_tiles_from(pos, direction, turret_type)` | `list[Position]` | Hypothetical version of `get_attackable_tiles` for a turret of `turret_type` at `pos` facing `direction`. Launchers ignore `direction`. |
 | `ct.get_gunner_target()` | `Position \| None` | Closest targetable tile in a Gunner's facing line, or `None` if nothing is in range. Gunner only — raises on any other unit. |
-| `ct.heal(pos)` | `None` | Heal all friendly entities (building and/or Builder Bot) on `pos` by 4 HP for 1 Ti. |
+| `ct.heal(pos)` | `None` | Heal all friendly entities (building and/or Builder Bot) on `pos` by 4 HP for 1 Ti. `pos` can be any tile within action radius, including diagonals and the Builder Bot's own tile. |
 | `ct.can_heal(pos)` | `bool` | Check if healing is possible. |
 | `ct.self_destruct()` | `None` | Destroy this Builder Bot. Deals zero damage — not a weapon. |
 | `ct.rotate(direction)` | `None` | Rotate a Gunner to face `direction` (10 Ti, 1-round cooldown). Gunner only — errors on any other unit. |
@@ -73,7 +75,9 @@ Builder Bots can construct buildings on an orthogonally adjacent tile — NORTH,
 | `ct.can_launch(bot_pos, target)` | `bool` | Check if this Launcher can pick up the bot at `bot_pos` (must be adjacent, incl. diagonal) and throw it to `target` (within throw range, bot-passable). |
 | `ct.launch(bot_pos, target)` | `None` | Pick up the Builder Bot at `bot_pos` and throw it to `target` (Launcher only). |
 
-> **Correction vs. the official docs.** The published page's `ct.fire()` description says Gunners and Sentinels "spend from your team's global ammunition balance." **There is no global ammunition balance** — ammo is titanium stored per-turret and delivered by conveyor. See [Turrets](../game-rules/game-rules-turrets.md) for the corrected mechanic.
+> **Correction vs. the official docs.** Two separate issues here:
+> 1. The published page's `ct.fire()` description says Gunners and Sentinels "spend from your team's global ammunition balance." **There is no global ammunition balance** — ammo is titanium stored per-turret and delivered by conveyor. See [Turrets](../game-rules/game-rules-turrets.md) for the corrected mechanic.
+> 2. The published page describes a Builder Bot's `fire()`/`can_fire()` target as "an orthogonally adjacent tile." **Verified against the running engine — it only works on the Builder Bot's own tile**, never an adjacent one (cardinal or diagonal), even with a real, damageable target sitting right next to it. See the [Builder Bot page](../game-rules/game-rules-builder-bot.md) for the full write-up, including how Build/Heal/Destroy are (in the other direction) *less* restrictive than documented.
 
 ## Vision & Sensing
 

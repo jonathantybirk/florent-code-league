@@ -95,8 +95,8 @@ class Player:
 
     def _lay_conveyor_toward_core(self, ct: Controller, pos: Position) -> None:
         # Check every tile we could build on for the Core BEFORE calling
-        # _pick_direction, independent of movement. Builder bots can only
-        # build on an orthogonally adjacent tile now, never their own -- so
+        # _pick_direction, independent of movement. Builder bots can't
+        # build on their own tile (diagonals are legal, though) -- so
         # the final relay conveyor always has to go one tile AHEAD of us,
         # and we have to find that tile by checking who's standing next to
         # each of our neighbours, not by asking whether we can step toward
