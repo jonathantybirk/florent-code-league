@@ -32,8 +32,6 @@ import random
 
 from fcode import Controller, Direction, EntityType, Environment, GameConstants, Position
 
-from utils.map import MapMatchState, TileState, update_map
-
 # All directions except CENTRE — useful for movement and spawning
 DIRECTIONS = [d for d in Direction if d != Direction.CENTRE]
 
@@ -93,10 +91,6 @@ def nearest_cardinal(d: Direction) -> Direction:
 
 class Player:
     def __init__(self):
-        # Every unit keeps its own view of static terrain and last-seen occupancy.
-        self.map: dict[Position, TileState] = {}
-        self.map_match_state = MapMatchState()
-
         # Core tracks how many builder bots it has spawned
         self.num_spawned = 0
 
@@ -114,8 +108,6 @@ class Player:
         We check what type of entity we are and dispatch to the right handler.
         Each entity type (core, builder bot, gunner) has its own run logic.
         """
-        update_map(ct, self.map, self.map_match_state)
-
         etype = ct.get_entity_type()
         if etype == EntityType.CORE:
             self._run_core(ct)
