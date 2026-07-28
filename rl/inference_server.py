@@ -52,24 +52,30 @@ def serve(checkpoint: str | None, socket_path: str, stop_event: threading.Event 
     server.settimeout(1.0)
     print(f"[inference_server] listening on {sock_path}", flush=True)
 
+    # policy.act() only touches shared weights read-only (no grad, eval mode), so
+    # handling connections concurrently from multiple parallel matches is safe --
+    # a per-connection lock would just serialize what's already safe to interleave.
+    def handle(conn: socket.socket) -> None:
+        with conn:
+            f = conn.makefile("rwb")
+            line = f.readline()
+            if not line:
+                return
+            req = json.loads(line)
+            obs = torch.tensor(req["obs"], dtype=torch.float32)
+            etype = ENTITY_TYPE_BY_VALUE[req["entity_type"]]
+            action, log_prob, value = policy.act(obs, etype, greedy=req.get("greedy", False))
+            resp = json.dumps({"action": action, "log_prob": log_prob, "value": value})
+            f.write((resp + "\n").encode())
+            f.flush()
+
     try:
         while stop_event is None or not stop_event.is_set():
             try:
                 conn, _ = server.accept()
             except socket.timeout:
                 continue
-            with conn:
-                f = conn.makefile("rwb")
-                line = f.readline()
-                if not line:
-                    continue
-                req = json.loads(line)
-                obs = torch.tensor(req["obs"], dtype=torch.float32)
-                etype = ENTITY_TYPE_BY_VALUE[req["entity_type"]]
-                action, log_prob, value = policy.act(obs, etype, greedy=req.get("greedy", False))
-                resp = json.dumps({"action": action, "log_prob": log_prob, "value": value})
-                f.write((resp + "\n").encode())
-                f.flush()
+            threading.Thread(target=handle, args=(conn,), daemon=True).start()
     finally:
         server.close()
         if sock_path.exists():
