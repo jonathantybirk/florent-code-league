@@ -1,0 +1,75 @@
+# Harvesting Titanium · Step 4 of 5
+
+Source: https://game.code.florent.vc/tutorials/harvesting-titanium/04-cost-scaling
+
+## Cost scaling & early expansion
+
+Every build cost scales up as your team builds more entities — not simply because rounds are passing. The scale factor starts at 100% and increases additively each time something is built (and decreases again if it's destroyed); it never moves on its own between builds. `ct.get_scale_percent()` returns the current factor, and every `ct.get_*_cost()` method already bakes it in, so you never have to do the multiplication yourself.
+
+```python
+import random
+
+from fcode import Controller, Direction, Environment, EntityType
+
+CARDINALS = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST]
+
+class Player:
+    def run(self, ct: Controller) -> None:
+        etype = ct.get_entity_type()
+        if etype == EntityType.CORE:
+            self._run_core(ct)
+        elif etype == EntityType.BUILDER_BOT:
+            self._run_builder(ct)
+
+    def _run_core(self, ct: Controller) -> None:
+        if ct.get_current_round() % 50 == 0:
+            scale = ct.get_scale_percent()
+            harvester_cost = ct.get_harvester_cost()
+            print(f"round {ct.get_current_round()}: scale {scale:.0f}%, harvester costs {harvester_cost} Ti")
+
+        for pos in ct.get_nearby_tiles(dist_sq=2):
+            if ct.can_spawn(pos):
+                ct.spawn_builder(pos)
+                break
+
+    def _run_builder(self, ct: Controller) -> None:
+        pos = ct.get_position()
+
+        for tile in ct.get_nearby_tiles(dist_sq=2):
+            if ct.get_tile_env(tile) == Environment.ORE_TITANIUM and ct.can_build_harvester(tile):
+                ct.build_harvester(tile)
+                return
+
+        ore_tiles = [
+            t for t in ct.get_nearby_tiles() if ct.get_tile_env(t) == Environment.ORE_TITANIUM
+        ]
+        if ore_tiles:
+            target = min(ore_tiles, key=lambda t: pos.distance_squared(t))
+            direction = pos.direction_to(target)
+            if ct.can_move(direction):
+                ct.move(direction)
+                return
+
+        open_dirs = [
+            d for d in CARDINALS
+            if ct.can_move(d) and ct.get_tile_env(pos.add(d)) == Environment.EMPTY
+        ]
+        move_options = open_dirs or [d for d in CARDINALS if ct.can_move(d)]
+        if move_options:
+            ct.move(random.choice(move_options))
+```
+
+Watch the printed cost climb over the match. It isn't climbing because rounds are passing — it's climbing because the Core is still spawning a new Builder Bot every round it can afford one (that loop was there since Tutorial 1), and each spawned bot nudges your team's scale factor up. If the Core ever ran out of titanium and stopped spawning, the printed cost would stop climbing too, no matter how many more rounds went by. As costs rise, the Core will naturally spawn less often once titanium gets tight, without any extra code from us.
+
+The strategic implication: cost scaling isn't a clock ticking against you — it's a running tally of what your own team has already built. Everything you build makes the next thing you build a little more expensive, so it pays to sequence builds deliberately (cheapest, highest-leverage things first) rather than to rush for its own sake. A bot that spends its first hundred rounds scouting and building nothing pays no scale tax at all when it finally starts building.
+
+## Try it
+
+```
+fcode run starter starter
+fcode watch replay.replay26
+```
+
+What you should see: the printed cost line climbing as the Core keeps spawning Builder Bots — a Harvester that costs 20 Ti before anything is built should cost noticeably more by round 500, purely because of everything spawned in between.
+
+Next: recap, and why this tutorial ends with a bot that still can't grow its economy.
