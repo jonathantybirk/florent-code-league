@@ -23,16 +23,16 @@ MAX_THROW_DIST_SQ = 26
 # wait out its reload cooldown (1), the throw itself (1).
 LAUNCH_SETUP_ROUNDS = 3
 
-# Communication-store layout. Slot 15 is the final u32 in the global store.
-# Its low bit identifies the role of the most recently spawned Builder Bot;
-# the upper bits hold a one-based spawn sequence number.
-SLOT_ATTACKER_0_ID = 13
-SLOT_ATTACKER_1_ID = 14
-SLOT_SPAWN_ASSIGNMENT = 15
-ATTACKER_ROLE_BIT = 1
-
 ATTACKER_COUNT = 2
 MAX_INFRASTRUCTURE_BUILDERS = 3
+
+# Stable spawn registry. The Core writes each Builder's entity ID into the
+# slot for its spawn index. A Builder first runs on the following round, when
+# that write is visible, and finds its own immutable entry. The first two slots
+# double as the Launcher attacker registry.
+SLOT_BUILDER_ID_START = 10
+SLOT_ATTACKER_0_ID = SLOT_BUILDER_ID_START
+SLOT_ATTACKER_1_ID = SLOT_BUILDER_ID_START + 1
 
 CARDINAL_DIRECTIONS = (
     Direction.NORTH,
@@ -63,21 +63,6 @@ def known_map_or_warn(match_state: MapMatchState) -> KnownMap | None:
         )
         match_state.warned_unknown_map = True
     return km
-
-
-def encode_spawn_assignment(spawn_index: int, *, attacker: bool) -> int:
-    """Pack a spawn sequence and role into the final communication slot."""
-
-    return ((spawn_index + 1) << 1) | (ATTACKER_ROLE_BIT if attacker else 0)
-
-
-def decode_spawn_assignment(value: int) -> tuple[int, bool]:
-    """Unpack ``(spawn_index, is_attacker)`` from a role assignment word."""
-
-    sequence = value >> 1
-    if sequence == 0:
-        raise RuntimeError("Builder Bot did not receive a spawn-role assignment")
-    return sequence - 1, bool(value & ATTACKER_ROLE_BIT)
 
 
 def core_positions(ct: Controller, km: KnownMap) -> tuple[Position, Position]:
