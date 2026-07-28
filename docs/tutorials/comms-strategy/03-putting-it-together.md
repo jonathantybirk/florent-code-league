@@ -116,11 +116,10 @@ class Player:
         return None
 
     def _lay_conveyor_toward_core(self, ct: Controller, pos: Position) -> None:
-        # Builder bots can only build on an orthogonally adjacent tile now,
-        # never their own -- so we check every tile we could build on for
-        # the Core first, one tile further out than before, since the
-        # final relay (the Splitter) can no longer be built by standing on
-        # it either.
+        # Builder bots can't build on their own tile (diagonals are legal,
+        # though) -- so we check every tile we could build on for the Core
+        # first, one tile further out than before, since the final relay
+        # (the Splitter) can no longer be built by standing on it either.
         for d in CARDINALS:
             next_pos = pos.add(d)
             if not in_bounds(ct, next_pos):

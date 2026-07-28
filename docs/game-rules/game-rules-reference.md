@@ -9,7 +9,7 @@ Source: https://game.code.florent.vc/docs/game-rules-reference
 | Entity | HP | Cost (Ti) | Vision radius² | Action radius² | Spawn radius² | Move cooldown |
 |--------|----|-----------|----|----|----|---|
 | Core | 500 | — | 36 | — | 2 (adjacent ring) | — |
-| Builder Bot | 40 | 30 | 20 | — (Build/Attack/Heal/Destroy are all orthogonally adjacent only) | — | 1 |
+| Builder Bot | 40 | 30 | 20 | 2 for Build/Heal/Destroy (diagonals included); 0 (own tile only) for Attack — see [correction](game-rules-builder-bot.md#abilities) | — | 1 |
 
 ### Turrets
 

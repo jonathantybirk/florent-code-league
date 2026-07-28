@@ -4,7 +4,9 @@ Source: https://game.code.florent.vc/tutorials/harvesting-titanium/03-building-a
 
 ## Building a Harvester
 
-Once a Builder Bot is orthogonally adjacent to an ore tile — NORTH, SOUTH, EAST, or WEST of its position, never diagonal and never its own tile — it can build a Harvester there with `ct.build_harvester(pos)`.
+Once an ore tile is within a Builder Bot's action radius (any of the 8 surrounding tiles, diagonals included — never its own tile), it can build a Harvester there with `ct.build_harvester(pos)`. This tutorial's bot only ever checks the 4 cardinal neighbors for simplicity; diagonal ore would also work, just isn't handled below.
+
+> **Correction vs. the official docs.** The published page says this must be orthogonal only. **Verified against the running engine — diagonal build targets are also legal.**
 
 ```python
 import random

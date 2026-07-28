@@ -101,8 +101,8 @@ class Player:
             self.chain_done = True
             return
 
-        # Builder bots can only build on an orthogonally adjacent tile,
-        # never their own -- so the conveyor goes on the tile we're about
+        # Builder bots can't build on their own tile (diagonals are legal,
+        # though) -- so the conveyor goes on the tile we're about
         # to step onto, not the one we're standing on.
         next_pos = pos.add(direction)
         neighbor = next_pos.add(direction)
@@ -126,7 +126,7 @@ class Player:
             ct.move(direction)
 ```
 
-`_pick_direction` closes the horizontal gap to the Core first, then the vertical one — a simple L-shaped route that's enough to get around a lot of terrain without real pathfinding. Builder Bots can only ever build on a tile orthogonally adjacent to themselves, never their own — so `_lay_conveyor_toward_core` builds the conveyor one tile ahead, on the tile it's about to step onto, facing the same direction it's about to walk (and, same as before, checks whether that conveyor's own output faces straight into the Core, in which case we're done). Building and moving now share the same round's budget too: a successful build uses up the round's action and blocks that round's move, so the `ct.can_move(direction)` check right after it will simply come back `False` the round a build just happened — the bot just waits. Next round, the conveyor is already there, so the build is skipped (`can_build_conveyor` now returns `False`) and the guarded move goes through instead. No extra state needed to track any of this — it falls out of the same two checks, one round later.
+`_pick_direction` closes the horizontal gap to the Core first, then the vertical one — a simple L-shaped route that's enough to get around a lot of terrain without real pathfinding. Builder Bots can never build on their own tile (diagonal tiles are actually legal too, though this chain only ever moves and builds cardinally) — so `_lay_conveyor_toward_core` builds the conveyor one tile ahead, on the tile it's about to step onto, facing the same direction it's about to walk (and, same as before, checks whether that conveyor's own output faces straight into the Core, in which case we're done). Building and moving now share the same round's budget too: a successful build uses up the round's action and blocks that round's move, so the `ct.can_move(direction)` check right after it will simply come back `False` the round a build just happened — the bot just waits. Next round, the conveyor is already there, so the build is skipped (`can_build_conveyor` now returns `False`) and the guarded move goes through instead. No extra state needed to track any of this — it falls out of the same two checks, one round later.
 
 ## Try it
 

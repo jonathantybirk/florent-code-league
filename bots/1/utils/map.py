@@ -104,6 +104,7 @@ class MapMatchState:
     candidate_names: set[str] = field(default_factory=set)
     rejected_maps: set[str] = field(default_factory=set)
     inferred_map_name: str | None = None
+    warned_unknown_map: bool = False
     last_processed_round: int | None = None
     dimensions: tuple[int, int] | None = None
 

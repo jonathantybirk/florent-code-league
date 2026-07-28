@@ -4,7 +4,7 @@ Source: https://game.code.florent.vc/docs/agents-md
 
 Many AI coding tools — Claude Code, Cursor, GitHub Copilot, and others — automatically read a context file from the root of your project (commonly `AGENTS.md`, `CLAUDE.md`, or `.cursorrules`, depending on the tool). Copy the content below into your bot project under whichever filename your tool expects, and it'll have full, accurate context on the game rules and the Controller API when it helps you write or debug your bot.
 
-> **Corrections applied below.** This is the single highest-stakes page in the docs — it's meant to be pasted verbatim into an AI assistant's context file, so an error here silently corrupts every future session that trusts it. It originally repeated the ammo/`convert_ammo`/`get_global_ammo` claim (see [Turrets](../game-rules/game-rules-turrets.md)) and the `Direction.is_cardinal()` / `Position.cardinal_direction_to()` claim (see [Types & Enums](../api-reference/api-types.md)) several times over; all instances below are corrected. Both were confirmed wrong by enumerating the real `Controller`/`Position`/`Direction` objects at runtime and by direct calls raising `AttributeError`.
+> **Corrections applied below.** This is the single highest-stakes page in the docs — it's meant to be pasted verbatim into an AI assistant's context file, so an error here silently corrupts every future session that trusts it. It originally repeated the ammo/`convert_ammo`/`get_global_ammo` claim (see [Turrets](../game-rules/game-rules-turrets.md)) and the `Direction.is_cardinal()` / `Position.cardinal_direction_to()` claim (see [Types & Enums](../api-reference/api-types.md)) several times over; all instances below are corrected. It also claimed Build/Attack/Heal/Destroy all require an orthogonally adjacent tile — **verified against the running engine, this is backwards in both directions**: Build/Heal/Destroy also work diagonally, while Attack only ever works on the Builder Bot's own tile, not an adjacent one at all (see [Builder Bot](../game-rules/game-rules-builder-bot.md#abilities)). All of these were confirmed wrong by enumerating the real `Controller`/`Position`/`Direction` objects at runtime, by direct calls raising `AttributeError`, and (for the adjacency rules) by a probe bot exercising every direction against a real target.
 
 # What this game is
 
@@ -31,7 +31,7 @@ Bot file requirements: entry point must be `main.py` (at the zip root, or inside
 - Units vs. buildings: units = core, builder bots, gunners, sentinels, launchers (all except builder bots are also buildings). Buildings = everything except builder bots; they're immovable. Each team may have at most 50 living units at once (`GameConstants.MAX_TEAM_UNITS`), including the core — check with `get_unit_count()`.
 - Cooldowns: every unit has an action cooldown and (builder bots only) a move cooldown, both nonnegative integers that decrease by 1 at end of round. Actions/movement require cooldown == 0, and acting or moving is mutually exclusive per round for builder bots — doing one blocks the other until next round.
 - Cost scaling: every buildable entity's cost is `floor(scale * base_cost)`, where scale starts at 1.0 (100%) and rises as you build more of that category (conveyors/splitters/barriers +1% each, harvesters +5% each, gunners/launchers +10% each, builder bots/sentinels +20% each — destroying an entity removes its contribution). Use the `get_<entity>_cost()` getters rather than hardcoding base costs, since actual cost depends on live scale.
-- Vision vs. action vs. attack radius: vision = what a unit can sense; the core can spawn a builder bot on any passable tile touching its 2×2 footprint (the uniform ring of 12 tiles orthogonally or diagonally adjacent to the footprint, confirmed by probing `can_spawn()` directly against all four footprint corners) — no other unit has a radius-based action range: all builder bot actions (build/attack/heal/destroy) require an orthogonally adjacent tile; turrets additionally have an attack range for firing, separate from vision. (Don't compute this ring via `distance_squared()` from the Core's own single reported position — since the footprint has 4 corners, that gives inconsistent-looking cutoffs (1, 2, 4, 5, 8) even though the underlying ring is perfectly uniform. Either enumerate the ring around all 4 footprint tiles, or just check `can_spawn()` on candidate tiles.)
+- Vision vs. action vs. attack radius: vision = what a unit can sense; the core can spawn a builder bot on any passable tile touching its 2×2 footprint (the uniform ring of 12 tiles orthogonally or diagonally adjacent to the footprint, confirmed by probing `can_spawn()` directly against all four footprint corners). (Don't compute this ring via `distance_squared()` from the Core's own single reported position — since the footprint has 4 corners, that gives inconsistent-looking cutoffs (1, 2, 4, 5, 8) even though the underlying ring is perfectly uniform. Either enumerate the ring around all 4 footprint tiles, or just check `can_spawn()` on candidate tiles.) Builder bots have an action radius of r²=2 (diagonals included) for Build/Heal/Destroy, but Attack is a special case that only ever targets the builder bot's own tile (r²=0) — see below. Turrets additionally have an attack range for firing, separate from vision.
 - Resource distribution happens once at end of round, after all units have acted. Conveyors/splitters/harvesters form a purely economic pipeline into the core — turrets do not participate and never hold or accept resources via that pipeline (they hold ammo, fed the same way, but it's a separate concept). Resources can still be pushed onto an opposing team's conveyor network or core.
 
 ## Entities
@@ -39,7 +39,7 @@ Bot file requirements: entry point must be `main.py` (at the zip root, or inside
 | Entity | HP | Base cost | Scale/build | Notes |
 |---|---|---|---|---|
 | Core | 500 | — | — | 2x2 footprint; vision r²=36; spawns ≤1 builder bot/turn on a tile adjacent to its footprint |
-| Builder bot | 40 | 30 Ti | +20% | Only mobile unit; vision r²=20; build/attack/heal/destroy all require an orthogonally adjacent tile |
+| Builder bot | 40 | 30 Ti | +20% | Only mobile unit; vision r²=20; build/heal/destroy work within action r²=2 (diagonals included, own tile excluded except for heal); attack only works on its own tile (r²=0) — see correction below |
 | Conveyor | 20 | 3 Ti | +1% | Faces a cardinal direction; accepts from 3 sides, outputs to the 4th |
 | Splitter | 20 | 6 Ti | +1% | Accepts only from the back; rotates output among 3 directions, least-recently-used first |
 | Harvester | 30 | 20 Ti | +5% | Built on ore; outputs a stack every 4 rounds (first stack immediately on build) |
@@ -48,7 +48,7 @@ Bot file requirements: entry point must be `main.py` (at the zip root, or inside
 | Sentinel | 30 | 30 Ti | +20% | Facing turret, vision/attack r²=32; single-tile-wide line shot that ignores obstacles (unlike Gunner), dmg 18, reload 3, costs 10 ammo/shot from its own stored titanium |
 | Launcher | 30 | 20 Ti | +10% | Facing-independent, vision/attack r²=26; picks up an adjacent builder bot and throws it to a passable tile |
 
-Builder bot actions per turn (cooldown-gated, one per turn): build (any building type on an orthogonally adjacent empty tile — not diagonal, not its own tile), attack (2 Ti → 2 dmg to the building on an orthogonally adjacent tile — not diagonal, not its own tile), heal (1 Ti → +4 HP to all friendly entities on an orthogonally adjacent tile — not diagonal, not its own tile), destroy (any allied building on an orthogonally adjacent tile — not diagonal, not its own tile — unlimited per turn, no cooldown), self-destruct (no damage dealt).
+Builder bot actions per turn (cooldown-gated, one per turn): build (any building type on an empty tile within action r²=2 — diagonals included, not its own tile), attack (2 Ti → 2 dmg to the building on **its own tile only** — not an adjacent tile, cardinal or diagonal; walk onto the target first), heal (1 Ti → +4 HP to all friendly entities on a tile within action r²=2 — diagonals and its own tile included), destroy (any allied building within action r²=2, diagonals included — unlimited per turn, no cooldown), self-destruct (no damage dealt).
 
 Turrets fire from their own held ammo (gunner 2/shot, sentinel 10/shot; launchers use none) — ammo is titanium physically delivered via conveyor, so turrets *do* need feeding, same as any other resource-consuming building. There is no Core-side conversion step.
 
@@ -108,7 +108,7 @@ Every bot interacts with the game exclusively through the Controller instance pa
 
 | Method | Description |
 |---|---|
-| `can_build_conveyor/splitter/harvester/barrier/gunner/sentinel/launcher(...) -> bool` | Legality check per entity type (conveyor/splitter/gunner/sentinel need `(position, direction)`; harvester/barrier/launcher need only `(position)`); position must be an orthogonally adjacent tile, not diagonal, not this builder bot's own tile |
+| `can_build_conveyor/splitter/harvester/barrier/gunner/sentinel/launcher(...) -> bool` | Legality check per entity type (conveyor/splitter/gunner/sentinel need `(position, direction)`; harvester/barrier/launcher need only `(position)`); position must be within action r²=2 (diagonals included), not this builder bot's own tile |
 | `build_conveyor/splitter/harvester/barrier/gunner/sentinel/launcher(...) -> int` | Build and return new entity id; raises `GameError` if illegal |
 | `can_build(entity_type, position, extra=None) -> bool` | Generic form; `extra` is a `Direction` for conveyor/splitter/gunner/sentinel, unused otherwise; same orthogonal-adjacency restriction on position |
 | `build(entity_type, position, extra=None) -> int` | Generic form of the above |
@@ -117,8 +117,8 @@ Every bot interacts with the game exclusively through the Controller instance pa
 
 | Method | Description |
 |---|---|
-| `can_heal(position) -> bool` / `heal(position) -> None` | Heal all friendly entities on `position`; builder bots may only target an orthogonally adjacent tile, +4 HP for 1 Ti |
-| `can_destroy(building_pos) -> bool` / `destroy(building_pos) -> None` | Destroy an allied building on an orthogonally adjacent tile; free, no cooldown, unlimited per turn |
+| `can_heal(position) -> bool` / `heal(position) -> None` | Heal all friendly entities on `position`; any tile within action r²=2, including diagonals and the builder bot's own tile, +4 HP for 1 Ti |
+| `can_destroy(building_pos) -> bool` / `destroy(building_pos) -> None` | Destroy an allied building within action r²=2 (diagonals included); free, no cooldown, unlimited per turn |
 | `self_destruct() -> None` | Destroy this unit; no explosion damage |
 | `resign(message=None) -> None` | Forfeit immediately |
 
@@ -126,11 +126,11 @@ Every bot interacts with the game exclusively through the Controller instance pa
 
 `read_store(index) -> int` / `write_store(index, value) -> None` — index in `0..GameConstants.STORE_SIZE` (16). Writes are buffered until next round.
 
-## Turrets (gunner / sentinel / launcher; builder bots share `can_fire`/`fire` for their orthogonally-adjacent-tile attack)
+## Turrets (gunner / sentinel / launcher; builder bots share `can_fire`/`fire`, but only against their own tile)
 
 | Method | Description |
 |---|---|
-| `can_fire(target) -> bool` / `fire(target) -> None` | Attack `target`; gunners/sentinels spend their own held ammo (2/10 per shot), launchers use none; builder bots may only target an orthogonally adjacent tile |
+| `can_fire(target) -> bool` / `fire(target) -> None` | Attack `target`; gunners/sentinels spend their own held ammo (2/10 per shot), launchers use none; a builder bot may only target **its own tile** (`target == ct.get_position()`) — walk onto the building you want to hit first |
 | `can_fire_from(position, direction, turret_type, target) -> bool` | Hypothetical-turret version, ignores ammo/cooldown |
 | `can_rotate(direction) -> bool` / `rotate(direction) -> None` | Gunner-only; 10 Ti, sets action cooldown to 1 |
 | `get_gunner_target() -> Position \| None` | Nearest targetable tile in a gunner's facing line |

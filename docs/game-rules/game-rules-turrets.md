@@ -10,6 +10,8 @@ Gunners and Sentinels consume **ammo (titanium) held inside each individual turr
 
 Gunners have a facing direction set at build time and adjustable with `ct.rotate()` — Sentinels also face a fixed direction set at build time, but cannot rotate afterward. The Launcher has no facing direction at all.
 
+> **Additional detail, not on the official page** (from the engine's bundled [spec](../engine-spec.md)): a turret can hold at most one stack of ammo, and only accepts a new stack once it's completely empty — it doesn't top up partially. Feeding conveyors must approach from any side other than the turret's facing direction; a turret facing a diagonal direction can be fed from all four cardinal sides. If a tile has both a building and a Builder Bot on it and gets hit, only the Builder Bot takes damage.
+
 ## Gunner
 
 A rapid-firing turret that fires a narrow forward ray.
