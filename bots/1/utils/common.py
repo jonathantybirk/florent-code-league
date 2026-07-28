@@ -12,7 +12,7 @@ from collections import deque
 from typing import Collection
 from warnings import warn
 
-from fcode import Controller, Direction, Environment, Position
+from fcode import Controller, Direction, Environment, Position, Team
 
 from utils.map import KnownMap, MapMatchState
 
@@ -23,8 +23,46 @@ MAX_THROW_DIST_SQ = 26
 # wait out its reload cooldown (1), the throw itself (1).
 LAUNCH_SETUP_ROUNDS = 3
 
-ATTACKER_COUNT = 2
-MAX_INFRASTRUCTURE_BUILDERS = 3
+ATTACKER_COUNT = 3
+MAX_INFRASTRUCTURE_BUILDERS = 2
+MAX_TOTAL_BUILDERS = ATTACKER_COUNT + MAX_INFRASTRUCTURE_BUILDERS
+
+
+def attacker_count(ct: Controller, km: KnownMap) -> int:
+    """Return the map/side-specific number of opening pressure bots."""
+    if ct.get_team() == Team.A:
+        if km.name == "quarry":
+            return 4
+        if km.name in {"sprint", "twins", "vault"}:
+            return 2
+    if ct.get_team() == Team.B and km.name == "pinch":
+        return 2
+    return ATTACKER_COUNT
+
+
+def infrastructure_builder_count(ct: Controller, km: KnownMap) -> int:
+    return MAX_TOTAL_BUILDERS - attacker_count(ct, km)
+
+
+def guard_core_conveyor(ct: Controller, km: KnownMap) -> bool:
+    """Deny known supply-takeover openings by occupying the final belt."""
+    if ct.get_team() == Team.A:
+        return km.name not in {"hive", "quarry", "sprint", "twins", "vault"}
+    return km.name in {"duel", "hive", "quarry", "skerry", "sprint"}
+
+
+def use_path_aware_launch(ct: Controller, km: KnownMap) -> bool:
+    """Keep proven straight-line throws on the few maps where they race better."""
+    if ct.get_team() == Team.A and km.name in {
+        "quarry",
+        "sprint",
+        "twins",
+        "vault",
+    }:
+        return False
+    if ct.get_team() == Team.B and km.name in {"longship", "pinch"}:
+        return False
+    return True
 
 # Stable spawn registry. The Core writes each Builder's entity ID into the
 # slot for its spawn index. A Builder first runs on the following round, when

@@ -25,18 +25,20 @@ from fcode import (
 )
 
 from utils.common import (
-    ATTACKER_COUNT,
     CARDINAL_DIRECTIONS,
     COMPASS_DIRECTIONS,
     LAUNCH_SETUP_ROUNDS,
-    MAX_INFRASTRUCTURE_BUILDERS,
+    MAX_TOTAL_BUILDERS,
     MAX_THROW_DIST_SQ,
     SLOT_BUILDER_ID_START,
     adjacent_positions,
+    attacker_count,
     core_footprint,
     core_perimeter,
     core_positions,
+    guard_core_conveyor,
     in_bounds,
+    infrastructure_builder_count,
     ordered_ores,
     path_distance,
     known_map_or_warn,
@@ -112,6 +114,7 @@ class BuilderMixin:
         self.conveyor_index = 0
         self.offensive_gunner_index = 0
         self.survey_waypoint_index = 0
+        self.guard_position: Position | None = None
 
     def run_builder(self, ct: Controller) -> None:
         if self.is_attacker is None:
@@ -135,7 +138,7 @@ class BuilderMixin:
 
     def _read_assignment(self, ct: Controller, km: KnownMap) -> None:
         builder_id = ct.get_id()
-        total_slots = ATTACKER_COUNT + MAX_INFRASTRUCTURE_BUILDERS
+        total_slots = MAX_TOTAL_BUILDERS
         spawn_index = next(
             (
                 index
@@ -148,19 +151,19 @@ class BuilderMixin:
             raise RuntimeError(
                 f"Builder Bot {builder_id} is missing from the spawn registry"
             )
-        is_attacker = spawn_index < ATTACKER_COUNT
+        attackers = attacker_count(ct, km)
+        is_attacker = spawn_index < attackers
         self.spawn_index = spawn_index
         self.is_attacker = is_attacker
 
         if not is_attacker:
             my_core, _ = core_positions(ct, km)
-            infrastructure_index = spawn_index - ATTACKER_COUNT
+            infrastructure_index = spawn_index - attackers
             if infrastructure_index < 0:
                 raise RuntimeError("Infrastructure bot received an attacker spawn index")
             ores = ordered_ores(km, my_core)
-            self.infrastructure_targets = ores[
-                infrastructure_index::MAX_INFRASTRUCTURE_BUILDERS
-            ]
+            infrastructure_count = infrastructure_builder_count(ct, km)
+            self.infrastructure_targets = ores[infrastructure_index::infrastructure_count]
 
     # ------------------------------------------------------------------
     # Attackers and launcher relay
@@ -865,6 +868,11 @@ class BuilderMixin:
     # ------------------------------------------------------------------
 
     def _run_infrastructure(self, ct: Controller, km: KnownMap) -> None:
+        if self.guard_position is not None:
+            if ct.get_position() != self.guard_position:
+                self._move_toward(ct, km, {self.guard_position})
+            return
+
         if self.infrastructure_target_index >= len(self.infrastructure_targets):
             self._run_infrastructure_survey(ct, km)
             return
@@ -891,7 +899,17 @@ class BuilderMixin:
 
         if self.conveyor_plan is not None and self._build_conveyor_plan(ct, km):
             if self.conveyor_plan.splitter_direction is None:
-                self._advance_infrastructure_target()
+                my_core, _ = core_positions(ct, km)
+                if (
+                    self.conveyor_plan.positions
+                    and self.conveyor_plan.sink in core_footprint(my_core)
+                    and guard_core_conveyor(ct, km)
+                ):
+                    self.guard_position = self.conveyor_plan.positions[-1]
+                    if ct.get_position() != self.guard_position:
+                        self._move_toward(ct, km, {self.guard_position})
+                else:
+                    self._advance_infrastructure_target()
             elif self._build_offensive_battery(ct, km):
                 self._advance_infrastructure_target()
 
@@ -1032,9 +1050,11 @@ class BuilderMixin:
         if not waypoints:
             return
         if self.survey_waypoint_index == 0 and self.spawn_index is not None:
-            infrastructure_index = max(0, self.spawn_index - ATTACKER_COUNT)
+            attackers = attacker_count(ct, km)
+            infrastructure_count = infrastructure_builder_count(ct, km)
+            infrastructure_index = max(0, self.spawn_index - attackers)
             self.survey_waypoint_index = (
-                infrastructure_index * len(waypoints) // MAX_INFRASTRUCTURE_BUILDERS
+                infrastructure_index * len(waypoints) // infrastructure_count
             )
         waypoint = waypoints[self.survey_waypoint_index % len(waypoints)]
         if ct.get_position().distance_squared(waypoint) <= 2:
