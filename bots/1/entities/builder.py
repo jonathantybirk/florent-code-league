@@ -918,7 +918,7 @@ class BuilderMixin:
     ) -> ConveyorPlan | None:
         my_core, _ = core_positions(ct, km)
         core_tiles = core_footprint(my_core)
-        friendly_conveyors = self._friendly_conveyors(ct)
+        friendly_conveyors = self._core_connected_conveyors(ct, core_tiles)
         conveyor_directions = {
             position: self.map[position].building.direction
             for position in friendly_conveyors
@@ -1323,6 +1323,43 @@ class BuilderMixin:
             and tile.building.entity_type == EntityType.CONVEYOR
             and tile.building.direction in CARDINAL_DIRECTIONS
         }
+
+    def _core_connected_conveyors(
+        self, ct: Controller, core_tiles: set[Position]
+    ) -> set[Position]:
+        """Return friendly conveyors whose directed output chain reaches our Core.
+
+        An unfinished line must not become its own routing destination after a
+        replan. Work backward from conveyors that output directly into the Core
+        so cycles and dangling chains are excluded.
+        """
+
+        conveyors = {
+            position: self.map[position].building
+            for position in self._friendly_conveyors(ct)
+            if self.map[position].building is not None
+        }
+        connected: set[Position] = set()
+        changed = True
+        while changed:
+            changed = False
+            for position, building in conveyors.items():
+                if position in connected:
+                    continue
+                output = position.add(building.direction)
+                if output in core_tiles:
+                    connected.add(position)
+                    changed = True
+                    continue
+                downstream = conveyors.get(output)
+                if (
+                    output in connected
+                    and downstream is not None
+                    and position != output.add(downstream.direction)
+                ):
+                    connected.add(position)
+                    changed = True
+        return connected
 
     @staticmethod
     def _conveyor_tile_available(

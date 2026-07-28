@@ -316,6 +316,74 @@ class ConveyorRoutingTests(unittest.TestCase):
             )
         )
 
+    def test_dangling_partial_line_is_not_a_friendly_routing_sink(self) -> None:
+        own_anchor = Position(1, 7)
+        enemy_anchor = Position(7, 1)
+        own_core = FixedCore(Team.A, own_anchor)
+        enemy_core = FixedCore(Team.B, enemy_anchor)
+        cores = {
+            Position(anchor.x + dx, anchor.y + dy): fixed_core
+            for anchor, fixed_core in (
+                (own_anchor, own_core),
+                (enemy_anchor, enemy_core),
+            )
+            for dx in range(2)
+            for dy in range(2)
+        }
+        km = KnownMap(
+            name="dangling-line-test",
+            width=10,
+            height=10,
+            environments=tuple(
+                tuple(Environment.EMPTY for _ in range(10)) for _ in range(10)
+            ),
+            cores=cores,
+        )
+
+        def conveyor(direction: Direction) -> SimpleNamespace:
+            return SimpleNamespace(
+                occupancy_known=True,
+                building=SimpleNamespace(
+                    team=Team.A,
+                    entity_type=EntityType.CONVEYOR,
+                    direction=direction,
+                ),
+            )
+
+        harvester = Position(5, 3)
+        dangling_first = Position(5, 4)
+        builder = BuilderMixin()
+        builder.map = {
+            # This is the bot's own unfinished line, adjacent to its Harvester.
+            dangling_first: conveyor(Direction.SOUTH),
+            Position(5, 5): conveyor(Direction.WEST),
+            # This separate line is genuinely connected to our Core.
+            Position(2, 5): conveyor(Direction.SOUTH),
+            Position(2, 6): conveyor(Direction.SOUTH),
+        }
+
+        class TeamController:
+            @staticmethod
+            def get_team() -> Team:
+                return Team.A
+
+        ct = TeamController()
+        connected = builder._core_connected_conveyors(  # type: ignore[arg-type]
+            ct,
+            {
+                Position(own_anchor.x + dx, own_anchor.y + dy)
+                for dx in range(2)
+                for dy in range(2)
+            },
+        )
+        plan = builder._plan_conveyors(ct, km, harvester)  # type: ignore[arg-type]
+
+        self.assertEqual(connected, {Position(2, 5), Position(2, 6)})
+        self.assertIsNotNone(plan)
+        assert plan is not None
+        self.assertNotEqual(plan.sink, dangling_first)
+        self.assertGreater(len(plan.positions), 0)
+
     def test_friendly_route_is_kept_when_every_segment_approaches_target(self) -> None:
         plan = ConveyorPlan(
             (Position(4, 5), Position(3, 5)),
