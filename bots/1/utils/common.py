@@ -35,12 +35,19 @@ def attacker_count(ct: Controller, km: KnownMap) -> int:
             return 4
         if km.name in {"sprint", "twins", "vault"}:
             return 2
-    if ct.get_team() == Team.B and km.name == "pinch":
+    if ct.get_team() == Team.B and km.name in {"pinch", "twins"}:
         return 2
     return ATTACKER_COUNT
 
 
 def infrastructure_builder_count(ct: Controller, km: KnownMap) -> int:
+    if ct.get_team() == Team.B and km.name in {
+        "atoll",
+        "hive",
+        "longship",
+        "twins",
+    }:
+        return 1
     return MAX_TOTAL_BUILDERS - attacker_count(ct, km)
 
 
