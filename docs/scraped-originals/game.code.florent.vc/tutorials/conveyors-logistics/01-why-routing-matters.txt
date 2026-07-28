@@ -1,0 +1,26 @@
+Logistics: Conveyors & Splitters · Step 1 of 5
+
+Why routing matters
+
+Tutorial 2 ended with a real Harvester that never grew your balance. Here's why: a Harvester's output only reaches the 4 tiles directly next to it (north, east, south, west). If none of those tiles can accept a stack — and on a real map, none usually can until you build something there — the Harvester just sits idle, output ready but going nowhere. It isn't wasting titanium each round; it simply won't produce the next stack until something is there to receive the current one.
+
+Conveyors solve this by relaying resources one tile per round, in a single direction chosen when you build them. Chain enough of them together and you can move titanium from anywhere on the map back to base.
+
+One API detail matters a lot here: conveyors (and Splitters, later in this tutorial) can only face the 4 cardinal directions — NORTH, EAST, SOUTH, WEST — never a diagonal. That's the same CARDINALS list you've been moving with since Tutorial 1, doing double duty for building facings:
+
+CARDINALS = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST]
+
+You'll also need to know exactly where your Core is, in a form that's more precise than "wherever I spawned." Every Builder Bot can find it by scanning its surroundings for a building whose type is EntityType.CORE:
+
+core_tile = None
+for tile in ct.get_nearby_tiles():
+    bid = ct.get_tile_building_id(tile)
+    if bid is not None and ct.get_entity_type(bid) == EntityType.CORE:
+        core_tile = tile
+        break
+
+At round 1 the Core is the only building on the map, so the first builder-owned tile this finds is guaranteed to be part of the Core's footprint. Cache the result once — the Core never moves — the same way you'd cache anything expensive to recompute.
+
+Next: put a chain together and watch what happens when you don't quite get the routing right.
+
+Building a conveyor chain

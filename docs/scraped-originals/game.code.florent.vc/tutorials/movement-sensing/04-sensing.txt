@@ -1,0 +1,52 @@
+Your First Bot: Movement & Sensing · Step 4 of 5
+
+Sensing the map
+
+Every unit has a vision radius, and ct.get_nearby_tiles() returns the tiles inside it. For each tile you can ask ct.get_tile_env(pos), which returns one of three Environment values: EMPTY (plain traversable ground), WALL (impassable), or ORE_TITANIUM (an ore deposit — also traversable, and buildable on, which matters starting next tutorial).
+
+We'll use that to steer away from walls instead of bumping into them at random, and introduce two debugging tools along the way: print() (captured per-round and shown in the visualiser) and ct.draw_indicator_dot() (draws a coloured dot on the map, saved into the replay).
+
+import random
+
+from fcode import Controller, Direction, Environment, EntityType
+
+# Builder bots move only in the four cardinal directions.
+CARDINALS = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST]
+
+class Player:
+    def run(self, ct: Controller) -> None:
+        etype = ct.get_entity_type()
+        if etype == EntityType.CORE:
+            for pos in ct.get_nearby_tiles(dist_sq=2):
+                if ct.can_spawn(pos):
+                    ct.spawn_builder(pos)
+                    break
+        elif etype == EntityType.BUILDER_BOT:
+            self._run_builder(ct)
+
+    def _run_builder(self, ct: Controller) -> None:
+        pos = ct.get_position()
+        ct.draw_indicator_dot(pos, 0, 255, 0)
+
+        open_dirs = [
+            d for d in CARDINALS
+            if ct.can_move(d) and ct.get_tile_env(pos.add(d)) == Environment.EMPTY
+        ]
+        move_options = open_dirs or [d for d in CARDINALS if ct.can_move(d)]
+        if move_options:
+            direction = random.choice(move_options)
+            ct.move(direction)
+            print(f"round {ct.get_current_round()}: moved {direction.name} to {ct.get_position()}")
+
+We moved the Builder Bot's logic into its own _run_builder method to keep run() readable — a pattern you'll want as your bot grows. pos.add(direction) returns the position one step in that direction without actually moving, which lets us peek at a tile's environment before committing. We build a list of directions that are both legal (can_move) and lead to plain ground (Environment.EMPTY), preferring those; if none qualify (e.g. surrounded by ore or a dead end) we fall back to any legal move so the bot never just stops.
+
+Try it
+
+fcode run starter starter
+fcode watch replay.replay26
+
+What you should see: a green dot following the Builder Bot every round, and if your visualiser build supports it, a per-round log line in the replay's debug output showing the direction it chose. The bot should look slightly less erratic than in the previous step, since it's now actively avoiding walking in place against obstacles.
+
+Next: recap, and a look at what's coming.
+
+Moving your Builder BotRecap & checkpoint

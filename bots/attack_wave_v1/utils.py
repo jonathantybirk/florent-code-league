@@ -1,6 +1,6 @@
-"""Small stateless helpers shared by unit handlers in main.py."""
+"""Small stateless helpers shared by custom unit handlers in main.py."""
 
-from fcode import Controller, Direction, Position
+from fcode import Controller, Direction, Environment, Position
 
 
 def pack_pos(pos: Position) -> int:
@@ -17,6 +17,28 @@ def unpack_pos(val: int) -> Position | None:
     if val == 0:
         return None
     return Position((val >> 16) - 1, (val & 0xFFFF) - 1)
+
+
+def pack_claim(pos: Position, expires_round: int) -> int:
+    """Pack a <=30x30 coordinate and a 10-bit lease into one u32."""
+    return 1 | (pos.x << 1) | (pos.y << 6) | (expires_round << 11)
+
+
+def unpack_claim(value: int, current_round: int) -> Position | None:
+    """Return a live claimed position, or None for an empty/expired lease."""
+    if value == 0 or (value >> 11) < current_round:
+        return None
+    return Position((value >> 1) & 0x1F, (value >> 6) & 0x1F)
+
+
+def on_map(ct: Controller, pos: Position) -> bool:
+    """True if pos is inside the map. Tile queries raise GameError off-map."""
+    return 0 <= pos.x < ct.get_map_width() and 0 <= pos.y < ct.get_map_height()
+
+
+def is_free_ore(ct: Controller, tile: Position) -> bool:
+    """True if the tile is ore with no building (harvester or otherwise) on it."""
+    return ct.get_tile_env(tile) == Environment.ORE_TITANIUM and ct.get_tile_building_id(tile) is None
 
 
 def move_toward(ct: Controller, pos: Position, target: Position) -> Direction | None:
