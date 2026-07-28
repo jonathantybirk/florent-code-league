@@ -23,16 +23,16 @@ MAX_THROW_DIST_SQ = 26
 # wait out its reload cooldown (1), the throw itself (1).
 LAUNCH_SETUP_ROUNDS = 3
 
-# Communication-store layout. Slots 0-9 belong to individual infrastructure
-# workers. The final five slots coordinate launching, spawning, and economy.
-INFRASTRUCTURE_STATUS_SLOTS = tuple(range(10))
-SLOT_LAUNCH_REQUEST = 12
-SLOT_SPAWN_COUNT = 13
-SLOT_RESOURCE_PRESSURE = 14
+# Communication-store layout. Slot 15 is the final u32 in the global store.
+# Its low bit identifies the role of the most recently spawned Builder Bot;
+# the upper bits hold a one-based spawn sequence number.
+SLOT_ATTACKER_0_ID = 13
+SLOT_ATTACKER_1_ID = 14
 SLOT_SPAWN_ASSIGNMENT = 15
 ATTACKER_ROLE_BIT = 1
 
-MAX_BUILDERS = 11
+ATTACKER_COUNT = 2
+MAX_INFRASTRUCTURE_BUILDERS = 3
 
 CARDINAL_DIRECTIONS = (
     Direction.NORTH,
@@ -41,28 +41,6 @@ CARDINAL_DIRECTIONS = (
     Direction.WEST,
 )
 COMPASS_DIRECTIONS = tuple(d for d in Direction if d != Direction.CENTRE)
-
-
-def nearest_cardinal(direction: Direction) -> Direction:
-    return min(
-        CARDINAL_DIRECTIONS,
-        key=lambda cardinal: _direction_steps(cardinal, direction),
-    )
-
-
-def _direction_steps(a: Direction, b: Direction) -> int:
-    order = (
-        Direction.NORTH,
-        Direction.NORTHEAST,
-        Direction.EAST,
-        Direction.SOUTHEAST,
-        Direction.SOUTH,
-        Direction.SOUTHWEST,
-        Direction.WEST,
-        Direction.NORTHWEST,
-    )
-    difference = abs(order.index(a) - order.index(b))
-    return min(difference, len(order) - difference)
 
 
 def known_map(match_state: MapMatchState) -> KnownMap | None:
@@ -100,73 +78,6 @@ def decode_spawn_assignment(value: int) -> tuple[int, bool]:
     if sequence == 0:
         raise RuntimeError("Builder Bot did not receive a spawn-role assignment")
     return sequence - 1, bool(value & ATTACKER_ROLE_BIT)
-
-
-def is_attacker_spawn(spawn_index: int) -> bool:
-    """Bots 1, 2, 5, 8, 11, ... are attackers (index is zero-based)."""
-
-    return spawn_index < 2 or (spawn_index >= 4 and (spawn_index - 4) % 3 == 0)
-
-
-def infrastructure_ordinal(spawn_index: int) -> int:
-    """Return this infrastructure bot's zero-based status-slot ordinal."""
-
-    if is_attacker_spawn(spawn_index):
-        raise ValueError("attacker spawn has no infrastructure ordinal")
-    return sum(
-        not is_attacker_spawn(index) for index in range(spawn_index + 1)
-    ) - 1
-
-
-def pack_infrastructure_status(
-    ore_index: int,
-    *,
-    harvested: bool = False,
-    connector: Position | None = None,
-    connector_direction: Direction | None = None,
-) -> int:
-    """Pack an ore claim and optional connected conveyor into one store slot."""
-
-    value = ore_index + 1
-    if harvested:
-        value |= 1 << 6
-    if connector is not None and connector_direction in CARDINAL_DIRECTIONS:
-        value |= 1 << 7
-        value |= (connector.x & 0x1F) << 8
-        value |= (connector.y & 0x1F) << 13
-        value |= CARDINAL_DIRECTIONS.index(connector_direction) << 18
-    return value
-
-
-def unpack_infrastructure_status(
-    value: int,
-) -> tuple[int, bool, Position | None, Direction | None] | None:
-    if value == 0:
-        return None
-    ore_index = (value & 0x3F) - 1
-    harvested = bool(value & (1 << 6))
-    if not value & (1 << 7):
-        return ore_index, harvested, None, None
-    connector = Position((value >> 8) & 0x1F, (value >> 13) & 0x1F)
-    direction = CARDINAL_DIRECTIONS[(value >> 18) & 0x3]
-    return ore_index, harvested, connector, direction
-
-
-def pack_launch_request(builder_id: int, target: Position) -> int:
-    """Pack an exact 16-bit entity id and two 5-bit coordinates into one u32."""
-
-    return (
-        (1 << 31)
-        | (builder_id & 0xFFFF)
-        | ((target.x & 0x1F) << 16)
-        | ((target.y & 0x1F) << 21)
-    )
-
-
-def unpack_launch_request(value: int) -> tuple[int, Position] | None:
-    if not value & (1 << 31):
-        return None
-    return value & 0xFFFF, Position((value >> 16) & 0x1F, (value >> 21) & 0x1F)
 
 
 def core_positions(ct: Controller, km: KnownMap) -> tuple[Position, Position]:
@@ -309,70 +220,4 @@ def ordered_ores(km: KnownMap, my_core: Position) -> list[Position]:
 
     result = sorted(ore_positions(km), key=key)
     _ORDERED_ORE_CACHE[cache_key] = tuple(result)
-    return result
-
-
-_CHOKEPOINT_CACHE: dict[str, frozenset[Position]] = {}
-
-
-def chokepoints(km: KnownMap) -> frozenset[Position]:
-    """Return narrow cardinal articulation tiles in the static terrain graph."""
-
-    cached = _CHOKEPOINT_CACHE.get(km.name)
-    if cached is not None:
-        return cached
-    vertices = {
-        Position(x, y)
-        for y in range(km.height)
-        for x in range(km.width)
-        if static_bot_passable(km, Position(x, y))
-    }
-    neighbours = {
-        position: [
-            candidate
-            for direction in CARDINAL_DIRECTIONS
-            if (candidate := position.add(direction)) in vertices
-        ]
-        for position in vertices
-    }
-    discovery: dict[Position, int] = {}
-    low: dict[Position, int] = {}
-    parent: dict[Position, Position | None] = {}
-    articulation: set[Position] = set()
-    time = 0
-
-    def visit(position: Position) -> None:
-        nonlocal time
-        time += 1
-        discovery[position] = low[position] = time
-        child_count = 0
-        for candidate in neighbours[position]:
-            if candidate not in discovery:
-                parent[candidate] = position
-                child_count += 1
-                visit(candidate)
-                low[position] = min(low[position], low[candidate])
-                if parent[position] is None and child_count > 1:
-                    articulation.add(position)
-                if (
-                    parent[position] is not None
-                    and low[candidate] >= discovery[position]
-                ):
-                    articulation.add(position)
-            elif candidate != parent[position]:
-                low[position] = min(low[position], discovery[candidate])
-
-    for vertex in vertices:
-        if vertex not in discovery:
-            parent[vertex] = None
-            visit(vertex)
-
-    result = frozenset(
-        position
-        for position in articulation
-        if len(neighbours[position]) <= 2
-        and km.environment_at(position) != Environment.ORE_TITANIUM
-        and position not in km.cores
-    )
-    _CHOKEPOINT_CACHE[km.name] = result
     return result
