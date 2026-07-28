@@ -46,9 +46,11 @@ def export(checkpoint_path: str | Path, out_dir: Path = DEPLOY_DIR) -> None:
         }
 
     weights = {
-        "trunk": [linear("trunk.0"), linear("trunk.2")],
-        "actor_heads": {t.value: linear(f"actor_heads.{t.value}") for t in ENTITY_TYPES},
-        "critic_heads": {t.value: linear(f"critic_heads.{t.value}") for t in ENTITY_TYPES},
+        t.value: {
+            "body": [linear(f"nets.{t.value}.body.0"), linear(f"nets.{t.value}.body.2")],
+            "actor": linear(f"nets.{t.value}.actor"),
+        }
+        for t in ENTITY_TYPES
     }
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -56,6 +58,8 @@ def export(checkpoint_path: str | Path, out_dir: Path = DEPLOY_DIR) -> None:
         json.dump(weights, f)
 
     shutil.copy(REPO_ROOT / "rl" / "features.py", out_dir / "features.py")
+    shutil.copy(REPO_ROOT / "rl" / "map_memory.py", out_dir / "map_memory.py")
+    shutil.copytree(REPO_ROOT / "bots" / "rl" / "maps", out_dir / "maps", dirs_exist_ok=True)
     shutil.copy(REPO_ROOT / "rl" / "_deploy_main_template.py", out_dir / "main.py")
     print(f"Exported to {out_dir}")
 

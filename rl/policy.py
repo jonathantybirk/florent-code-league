@@ -1,8 +1,13 @@
-"""Actor-critic policy: a shared trunk with a small actor+critic head per entity type.
+"""Actor-critic policy: one independent network per entity type, not a shared trunk.
 
-Action spaces differ per entity type (see rl/features.py), so each type gets its own
-head, but they all share the trunk so learning about map/unit context transfers across
-roles -- similar in spirit to how OpenAI Five shares an LSTM torso across heroes.
+Each unit type's decision complexity is wildly different -- Builder Bot has 34
+actions and needs map-memory context, Gunner/Sentinel/Launcher have 1-4 actions and
+just react to engine-provided targeting helpers. A shared trunk would force every
+type through the same width, wasting budget on the simple types or starving the
+complex one. Instead each type gets its own (obs_dim -> hidden1 -> hidden2 ->
+heads) net, sized in HIDDEN_DIMS below so the *exported pure-Python* forward pass
+(see rl/export_pure_python.py) stays well under the ladder's 10ms-per-unit budget
+even after adding the Builder Bot's map-memory bookkeeping cost on top.
 """
 
 from __future__ import annotations
@@ -15,44 +20,57 @@ from torch.distributions import Categorical
 
 from fcode import EntityType
 
-from rl.features import ENTITY_TYPES, NUM_ACTIONS, OBS_DIM
+from rl.features import NUM_ACTIONS, OBS_DIM
 
-HIDDEN_DIM = 64
-TRUNK_OUT_DIM = 32
-# Kept small on purpose: the deployable bot (rl/export_pure_python.py) re-implements
-# this forward pass in plain Python (no torch/numpy) to run inside the ladder's
-# per-unit sandbox, under its 10ms-per-turn CPU budget. See that module's docstring.
+# (hidden1, hidden2) per type. Builder Bot is the only type with a large obs (839
+# dims from map memory + comms); its hidden dims are kept modest specifically to
+# offset that, rather than compounding it -- see the docstring above.
+HIDDEN_DIMS = {
+    EntityType.CORE: (48, 24),
+    EntityType.BUILDER_BOT: (96, 48),
+    EntityType.GUNNER: (16, 8),
+    EntityType.SENTINEL: (16, 8),
+    EntityType.LAUNCHER: (8, 8),
+}
 
 
 def _key(etype: EntityType) -> str:
     return etype.value
 
 
+class _TypeNet(nn.Module):
+    def __init__(self, obs_dim: int, hidden1: int, hidden2: int, num_actions: int):
+        super().__init__()
+        self.body = nn.Sequential(
+            nn.Linear(obs_dim, hidden1),
+            nn.ReLU(),
+            nn.Linear(hidden1, hidden2),
+            nn.ReLU(),
+        )
+        self.actor = nn.Linear(hidden2, num_actions)
+        self.critic = nn.Linear(hidden2, 1)
+
+    def forward(self, obs: torch.Tensor):
+        features = self.body(obs)
+        return self.actor(features), self.critic(features).squeeze(-1)
+
+
 class PolicyNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.trunk = nn.Sequential(
-            nn.Linear(OBS_DIM, HIDDEN_DIM),
-            nn.ReLU(),
-            nn.Linear(HIDDEN_DIM, TRUNK_OUT_DIM),
-            nn.ReLU(),
-        )
-        self.actor_heads = nn.ModuleDict(
-            {_key(t): nn.Linear(TRUNK_OUT_DIM, NUM_ACTIONS[t]) for t in ENTITY_TYPES}
-        )
-        self.critic_heads = nn.ModuleDict(
-            {_key(t): nn.Linear(TRUNK_OUT_DIM, 1) for t in ENTITY_TYPES}
+        self.nets = nn.ModuleDict(
+            {
+                _key(t): _TypeNet(OBS_DIM[t], *HIDDEN_DIMS[t], NUM_ACTIONS[t])
+                for t in NUM_ACTIONS
+            }
         )
 
     def forward(self, obs: torch.Tensor, entity_type: EntityType):
-        features = self.trunk(obs)
-        logits = self.actor_heads[_key(entity_type)](features)
-        value = self.critic_heads[_key(entity_type)](features).squeeze(-1)
-        return logits, value
+        return self.nets[_key(entity_type)](obs)
 
     @torch.no_grad()
     def act(self, obs: torch.Tensor, entity_type: EntityType, greedy: bool = False):
-        """obs: 1D tensor of shape (OBS_DIM,). Returns (action, log_prob, value) as python scalars."""
+        """obs: 1D tensor of shape (OBS_DIM[entity_type],). Returns (action, log_prob, value)."""
         logits, value = self.forward(obs.unsqueeze(0), entity_type)
         dist = Categorical(logits=logits)
         action = logits.argmax(dim=-1) if greedy else dist.sample()

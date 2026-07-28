@@ -23,9 +23,10 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from fcode import Controller
+from fcode import Controller, EntityType
 
-from rl.features import OBS_DIM, encode_observation, apply_action
+from rl.features import OBS_DIM, RICH_TYPES, encode_observation, apply_action
+from rl.map_memory import MapMemory
 
 _SOCK_PATH = os.environ.get("RL_SOCK")
 _GREEDY = os.environ.get("RL_GREEDY") == "1"
@@ -60,10 +61,15 @@ def _get_log_file(team_value: str):
 
 
 class Player:
+    def __init__(self) -> None:
+        self._memory: MapMemory | None = None
+
     def run(self, ct: Controller) -> None:
         etype = ct.get_entity_type()
-        obs = encode_observation(ct)
-        assert len(obs) == OBS_DIM
+        if etype in RICH_TYPES and self._memory is None:
+            self._memory = MapMemory()
+        obs = encode_observation(ct, self._memory)
+        assert len(obs) == OBS_DIM[etype]
 
         action, log_prob, value = _query_policy(obs, etype.value)
         apply_action(ct, etype, action)
