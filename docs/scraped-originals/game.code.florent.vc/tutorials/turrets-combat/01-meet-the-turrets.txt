@@ -1,0 +1,61 @@
+Building an Army: Turrets & Combat · Step 1 of 5
+
+Meet the turrets
+
+Turrets are stationary buildings that attack automatically once built — no CPU time spent aiming or deciding when to fire. There are three:
+
+Turret
+
+HP
+
+Cost
+
+Damage
+
+Ammo/shot
+
+Reload
+
+Gunner
+
+40
+
+10 Ti
+
+10
+
+2
+
+1 round
+
+Sentinel
+
+30
+
+30 Ti
+
+18
+
+10
+
+3 rounds
+
+Launcher
+
+30
+
+20 Ti
+
+— (repositions a Builder Bot instead)
+
+—
+
+1 round
+
+The Gunner is what you'll build first: cheap, fast-firing, good for holding a corridor. It fires a narrow ray straight ahead in its facing direction — anything in that line, friend or foe, blocks and can be hit. The Sentinel fires the same single-tile-wide line, but reaches much further and can't be blocked by anything standing in the way — trading a much higher cost and a 3-round reload for that reach and extra damage per hit; it's a defensive anchor, not something you spam early. The Launcher doesn't deal damage at all — it picks up a friendly Builder Bot within range and throws it to a target position, which is a repositioning tool, not a weapon.
+
+One thing isn't obvious from the numbers above: ammunition is a team-wide balance, not something a turret carries — and it starts at 0. A freshly built Gunner simply won't fire, no matter how good its target is, until your Core converts titanium into ammunition for the team. That's the entire subject of the next two steps.
+
+Next: build one and see this for yourself.
+
+Building a Gunner
