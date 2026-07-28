@@ -1,0 +1,79 @@
+Coordination & Strategy · Step 2 of 4
+
+Coordinating roles
+
+Back in Tutorial 2, every Builder Bot searched for ore entirely on its own — fine with one bot, wasteful with many, since each one re-discovers the same patches independently instead of splitting up. Let's have any bot that spots an uncovered ore tile broadcast it, so bots with nothing in sight can head toward a real target instead of wandering randomly.
+
+import random
+
+from fcode import Controller, Direction, Environment, EntityType, Position
+
+CARDINALS = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST]
+
+SLOT_ORE_X = 0
+SLOT_ORE_Y = 1
+
+class Player:
+    def run(self, ct: Controller) -> None:
+        etype = ct.get_entity_type()
+        if etype == EntityType.CORE:
+            for pos in ct.get_nearby_tiles(dist_sq=2):
+                if ct.can_spawn(pos):
+                    ct.spawn_builder(pos)
+                    break
+        elif etype == EntityType.BUILDER_BOT:
+            self._run_builder(ct)
+
+    def _run_builder(self, ct: Controller) -> None:
+        pos = ct.get_position()
+        self._share_ore(ct, pos)
+
+        for tile in ct.get_nearby_tiles(dist_sq=2):
+            if ct.get_tile_env(tile) == Environment.ORE_TITANIUM and ct.can_build_harvester(tile):
+                ct.build_harvester(tile)
+                return
+
+        ore_tiles = [
+            t for t in ct.get_nearby_tiles() if ct.get_tile_env(t) == Environment.ORE_TITANIUM
+        ]
+        if ore_tiles:
+            target = min(ore_tiles, key=lambda t: pos.distance_squared(t))
+        else:
+            shared_x, shared_y = ct.read_store(SLOT_ORE_X), ct.read_store(SLOT_ORE_Y)
+            target = Position(shared_x, shared_y) if (shared_x or shared_y) else None
+
+        if target is not None:
+            direction = pos.direction_to(target)
+            if ct.can_move(direction):
+                ct.move(direction)
+                return
+
+        open_dirs = [
+            d for d in CARDINALS
+            if ct.can_move(d) and ct.get_tile_env(pos.add(d)) == Environment.EMPTY
+        ]
+        move_options = open_dirs or [d for d in CARDINALS if ct.can_move(d)]
+        if move_options:
+            ct.move(random.choice(move_options))
+
+    def _share_ore(self, ct: Controller, pos: Position) -> None:
+        for tile in ct.get_nearby_tiles():
+            if ct.get_tile_env(tile) == Environment.ORE_TITANIUM and ct.get_tile_building_id(tile) is None:
+                ct.write_store(SLOT_ORE_X, tile.x)
+                ct.write_store(SLOT_ORE_Y, tile.y)
+                return
+
+_share_ore runs first, every round, for every Builder Bot: the moment any of them sees an ore tile with nothing built on it, its position goes into slots 0 and 1. Any bot that can't see ore itself falls back to reading that shared location instead of wandering — (shared_x or shared_y) is a cheap way to distinguish "nothing's been shared yet" (both slots still at their default 0) from a real coordinate.
+
+This is a genuinely simple protocol — one shared target, overwritten by whoever last saw ore, no negotiation about who should actually go there. Multiple bots can and will pile onto the same tile. That's fine for now; the Store gives you the primitive, and how you use those 16 slots is entirely up to your own strategy.
+
+Try it
+
+fcode run starter starter
+fcode watch replay.replay26
+
+What you should see: Builder Bots that start with no ore in sight beelining toward a specific spot instead of wandering, once any teammate has spotted ore somewhere on the map.
+
+Next: merge this with everything from the last three tutorials into one bot.
+
+The Global Communication StorePutting it all together

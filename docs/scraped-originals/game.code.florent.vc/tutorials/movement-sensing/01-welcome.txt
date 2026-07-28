@@ -1,0 +1,34 @@
+Your First Bot: Movement & Sensing · Step 1 of 5
+
+Welcome & the run() loop
+
+Every bot in Florent Code League is a single Python class: Player. The engine creates one Player instance per unit on your team, and calls its run() method once per round for that unit. Whatever run() does — or doesn't do — is that unit's entire turn.
+
+from fcode import Controller, EntityType
+
+class Player:
+    def run(self, ct: Controller) -> None:
+        etype = ct.get_entity_type()
+        if etype == EntityType.CORE:
+            pass
+
+The ct argument (short for "controller") is your only way to interact with the game — move, build, sense the map, read resources, all of it goes through ct. Since a Core, a Builder Bot, and a Gunner all share the same run() method, the first thing every bot does is check ct.get_entity_type() and branch based on what kind of unit is currently running. Right now we only handle EntityType.CORE, and it does nothing (pass) — this is the smallest bot that's valid Python and won't crash.
+
+Try it
+
+If you haven't already, install the CLI and scaffold a project:
+
+pip install fcode
+fcode login
+fcode starter
+
+Copy the code above into bots/starter/main.py, replacing its contents, then run a mirror match and watch the replay:
+
+fcode run starter starter
+fcode watch replay.replay26
+
+What you should see: two idle Cores sitting on the map for all 1000 rounds. Nothing moves — that's expected, we haven't told anything to happen yet. The match will end in a coin-flip tiebreak, since neither side does anything.
+
+Next: give the Core something to do — spawn a Builder Bot.
+
+Spawning a Builder Bot

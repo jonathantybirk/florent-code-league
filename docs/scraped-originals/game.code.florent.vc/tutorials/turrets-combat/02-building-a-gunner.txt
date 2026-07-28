@@ -1,0 +1,80 @@
+Building an Army: Turrets & Combat · Step 2 of 5
+
+Building a Gunner
+
+ct.build_gunner(pos, direction) works exactly like the other builds you already know — check with can_build_gunner, then build, and pick a facing direction for it to watch. Let's set up a small self-contained cluster: a Harvester, and a Gunner right next to it.
+
+import random
+
+from fcode import Controller, Direction, Environment, EntityType, Position
+
+CARDINALS = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST]
+
+def in_bounds(ct: Controller, pos: Position) -> bool:
+    return 0 <= pos.x < ct.get_map_width() and 0 <= pos.y < ct.get_map_height()
+
+class Player:
+    def __init__(self):
+        self.built = False
+
+    def run(self, ct: Controller) -> None:
+        etype = ct.get_entity_type()
+        if etype == EntityType.CORE:
+            for pos in ct.get_nearby_tiles(dist_sq=2):
+                if ct.can_spawn(pos):
+                    ct.spawn_builder(pos)
+                    break
+        elif etype == EntityType.BUILDER_BOT:
+            self._run_builder(ct)
+        elif etype == EntityType.GUNNER:
+            self._run_gunner(ct)
+
+    def _run_builder(self, ct: Controller) -> None:
+        if self.built:
+            return
+        pos = ct.get_position()
+
+        harvester_pos = pos.add(Direction.NORTH)
+        gunner_pos = pos.add(Direction.SOUTH)
+        if not in_bounds(ct, harvester_pos) or not in_bounds(ct, gunner_pos):
+            self._explore(ct, pos)
+            return
+
+        if ct.get_tile_env(harvester_pos) == Environment.ORE_TITANIUM:
+            if ct.can_build_harvester(harvester_pos):
+                ct.build_harvester(harvester_pos)
+            if ct.can_build_gunner(gunner_pos, Direction.SOUTH):
+                ct.build_gunner(gunner_pos, Direction.SOUTH)
+                self.built = True
+            return
+
+        self._explore(ct, pos)
+
+    def _explore(self, ct: Controller, pos: Position) -> None:
+        open_dirs = [
+            d for d in CARDINALS
+            if ct.can_move(d) and ct.get_tile_env(pos.add(d)) == Environment.EMPTY
+        ]
+        move_options = open_dirs or [d for d in CARDINALS if ct.can_move(d)]
+        if move_options:
+            ct.move(random.choice(move_options))
+
+    def _run_gunner(self, ct: Controller) -> None:
+        if ct.get_current_round() % 100 == 0:
+            print(f"round {ct.get_current_round()}: ammo = {ct.get_global_ammo()}")
+        target = ct.get_gunner_target()
+        if target is not None and ct.can_fire(target):
+            ct.fire(target)
+
+A Builder Bot that finds ore builds a Harvester one tile north of itself and a Gunner one tile south, facing further south — income and a guard for it, both within its action radius so no extra movement is needed. The Gunner's own run() branch checks ct.get_global_ammo() — the team's shared ammunition balance — and tries to fire at whatever ct.get_gunner_target() finds in its line of sight.
+
+Try it
+
+fcode run starter starter
+fcode watch replay.replay26
+
+What you should see: every 100 rounds, a printed line reading ammo = 0 — for the entire match. The Gunner never fires, no matter what walks in front of it. It's built, it's facing the right way, and it's completely useless: our team never produced a single unit of ammunition.
+
+Next: fix that with two lines in the Core.
+
+Meet the turretsThe ammo gap

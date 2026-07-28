@@ -1,0 +1,240 @@
+Types & Enums
+
+All types are importable directly from fcode:
+
+from fcode import Controller, Team, EntityType, Environment, Direction, Position, GameError
+
+Team
+
+Identifies which side a unit belongs to.
+
+Value
+
+Description
+
+Team.A
+
+Team A
+
+Team.B
+
+Team B
+
+if ct.get_team() == Team.A:
+    # we are team A
+
+EntityType
+
+The type of a unit or building.
+
+Value
+
+Category
+
+Description
+
+CORE
+
+Base
+
+Team base unit
+
+BUILDER_BOT
+
+Mobile
+
+Mobile worker
+
+GUNNER
+
+Turret
+
+Forward-ray turret
+
+SENTINEL
+
+Turret
+
+Long-range line turret
+
+LAUNCHER
+
+Turret
+
+Bot-throwing utility turret
+
+HARVESTER
+
+Building
+
+Generates titanium from ore tiles
+
+CONVEYOR
+
+Building
+
+Basic resource conveyor
+
+SPLITTER
+
+Building
+
+Rotates resource flow between 3 outputs
+
+BARRIER
+
+Building
+
+Blocks movement and LOS
+
+etype = ct.get_entity_type()
+if etype == EntityType.GUNNER:
+    # handle as a turret
+
+Environment
+
+The terrain type of a tile, returned by ct.get_tile_env().
+
+Value
+
+Description
+
+Environment.EMPTY
+
+Traversable ground
+
+Environment.WALL
+
+Impassable wall
+
+Environment.ORE_TITANIUM
+
+Titanium ore deposit (passable, Harvester-buildable)
+
+Direction
+
+The 8 compass directions plus centre. Used for movement, building, and turret orientation.
+
+Builder Bot movement is cardinal-only. A Builder Bot may only ct.move() in a cardinal direction — NORTH, SOUTH, EAST, or WEST. The four diagonals (NORTHEAST, NORTHWEST, SOUTHEAST, SOUTHWEST) are still valid values, and remain usable for turret facing and building orientation, but passing one to ct.move() raises a GameError (and ct.can_move() returns False). Use Direction.is_cardinal() to test a direction, or Position.cardinal_direction_to() to pick a legal move.
+
+Value
+
+Description
+
+Direction.NORTH
+
+Up
+
+Direction.SOUTH
+
+Down
+
+Direction.EAST
+
+Right
+
+Direction.WEST
+
+Left
+
+Direction.NORTHEAST
+
+Up-right
+
+Direction.NORTHWEST
+
+Up-left
+
+Direction.SOUTHEAST
+
+Down-right
+
+Direction.SOUTHWEST
+
+Down-left
+
+Direction.CENTRE
+
+No movement (current tile)
+
+Method
+
+Returns
+
+Description
+
+direction.is_cardinal()
+
+bool
+
+True only for NORTH, SOUTH, EAST, WEST (a legal Builder Bot move).
+
+Position
+
+A 2D grid coordinate.
+
+pos = Position(x=3, y=7)
+
+Attribute / Method
+
+Returns
+
+Description
+
+pos.x
+
+int
+
+Column (0-indexed from left)
+
+pos.y
+
+int
+
+Row (0-indexed from top)
+
+pos.add(direction)
+
+Position
+
+Returns the adjacent position in direction.
+
+pos.distance_squared(other)
+
+int
+
+Squared Euclidean distance to other. Avoids floating point.
+
+pos.direction_to(other)
+
+Direction
+
+The direction from pos toward other. May be a diagonal, so it is not always a legal Builder Bot move.
+
+pos.cardinal_direction_to(other)
+
+Direction
+
+A legal cardinal step from pos toward other (or CENTRE if already there). Prefer this for choosing a move.
+
+my_pos = ct.get_position()
+target = Position(10, 5)
+dist_sq = my_pos.distance_squared(target)         # e.g. 50
+dir_to = my_pos.direction_to(target)              # e.g. Direction.NORTHEAST (may be diagonal)
+move_dir = my_pos.cardinal_direction_to(target)   # e.g. Direction.NORTH (always a legal move)
+
+GameError
+
+Raised when an action is not valid (e.g. moving into a wall, building without sufficient titanium).
+
+from fcode import GameError
+
+try:
+    ct.move(Direction.NORTH)
+except GameError as e:
+    # handle gracefully
+    pass
+
+Prefer using can_* checks before acting to avoid catching exceptions in the hot path.
+
+Letting an exception escape run() uncaught is fatal to the unit. This applies to GameError and any other exception. Unlike a CPU-time interruption — which just skips that unit's turn and calls run() again fresh next round (see CPU time limit) — an uncaught exception permanently destroys the unit. It will never run again for the rest of the match.

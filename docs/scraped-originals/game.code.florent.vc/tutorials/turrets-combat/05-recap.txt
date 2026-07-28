@@ -1,0 +1,21 @@
+Building an Army: Turrets & Combat · Step 5 of 5
+
+Recap & checkpoint
+
+You now have a bot that:
+
+Knows the three turret types and their tradeoffs — Gunner (cheap, fast), Sentinel (expensive, hard-hitting), Launcher (repositions, doesn't damage)
+
+Builds a Gunner with ct.build_gunner and confirmed it does nothing without ammunition
+
+Keeps the team's ammunition topped up by converting titanium at the Core (ct.convert_ammo), and watched ct.get_global_ammo() fill up and drop as the Gunner fires
+
+Uses ct.heal() to repair damaged friendly entities (buildings and Builder Bots alike) on a tile
+
+Understands ct.fire()'s real scope for Builder Bots — sabotaging whatever building you're standing on, friendly or enemy — and that self_destruct() is a cleanup tool, not a weapon
+
+The combination you built in this tutorial — a Harvester for income, a Gunner guarding it, and a Core that keeps the ammunition balance topped up — is a real, if small, piece of a competitive bot. Everything from here is about connecting more pieces like it and coordinating them.
+
+Next up: Coordination & Strategy — use the Global Communication Store to let multiple Builder Bots share information, and put together a bot that combines everything from all four tutorials.
+
+Healing and sabotageFinish & start Coordination & Strategy
