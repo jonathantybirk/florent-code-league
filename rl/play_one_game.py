@@ -30,7 +30,8 @@ def main() -> None:
     parser.add_argument("--tle", type=int, default=0)
     args = parser.parse_args()
 
-    result = run_game(args.bot_a, args.bot_b, ENGINE_ROOT, args.map_path, args.replay_path, args.seed, args.tle)
+    kwargs = {"seed": args.seed} if args.seed is not None else {}
+    result = run_game(args.bot_a, args.bot_b, ENGINE_ROOT, args.map_path, args.replay_path, **kwargs, turn_timeout_ms=args.tle)
     print(json.dumps(result))
 
 
