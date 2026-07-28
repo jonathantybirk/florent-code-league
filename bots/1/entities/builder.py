@@ -1,8 +1,8 @@
 """Role-based Builder Bot strategy.
 
-The first Builder infers its attacker role; the Core preannounces every later
-assignment. Attackers relay through launchers toward the enemy Core, then place
-ammo-fed Sentinels on open conveyor outputs.
+The Core records every Builder in a stable spawn-index registry. Attackers
+relay through launchers toward the enemy Core, capture complete enemy supply
+lines, and place ammo-fed turrets.
 Infrastructure bots claim disjoint ore sequences, build Harvesters, and connect
 them to the nearest conveyor that is known to lead to our Core (or the Core
 itself when no closer connected conveyor exists).
@@ -10,10 +10,11 @@ itself when no closer connected conveyor exists).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections import deque
 from dataclasses import dataclass
 
-from fcode import Controller, Direction, EntityType, Position
+from fcode import Controller, Direction, EntityType, Position, ResourceType, Team
 
 from utils.common import (
     ATTACKER_COUNT,
@@ -22,12 +23,11 @@ from utils.common import (
     LAUNCH_SETUP_ROUNDS,
     MAX_INFRASTRUCTURE_BUILDERS,
     MAX_THROW_DIST_SQ,
-    SLOT_SPAWN_ASSIGNMENT,
+    SLOT_BUILDER_ID_START,
     adjacent_positions,
     core_footprint,
     core_perimeter,
     core_positions,
-    decode_spawn_assignment,
     in_bounds,
     ordered_ores,
     path_distance,
@@ -64,13 +64,18 @@ class ConveyorEndpoint:
     turret: Position
 
 
+@dataclass(frozen=True, slots=True)
+class EnemySupplyChain:
+    harvester: Position
+    conveyors: tuple[Position, ...]
+
+
 class BuilderMixin:
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
 
-        # Builder 0 recognizes the untouched assignment word and becomes the
-        # first attacker. The Core announces every later Builder one round
-        # before spawning it. Each Builder decodes only its birth snapshot and
+        # The Core records each Builder ID in a stable slot for its spawn
+        # index. Each Builder finds its own slot on its first execution, then
         # retains that role locally for the rest of its life.
         self.spawn_index: int | None = None
         self.is_attacker: bool | None = None
@@ -81,6 +86,12 @@ class BuilderMixin:
         self.waiting_position: Position | None = None
         self.launch_wait_rounds = 0
         self.ignored_launchers: set[int] = set()
+        self.enemy_supply_chain: EnemySupplyChain | None = None
+        self.supply_takeover_stage = 0
+        self.supply_takeover_gunners: tuple[tuple[Position, Direction], ...] | None = (
+            None
+        )
+        self.supply_takeover_gunner_index = 0
 
         # Infrastructure state.
         self.infrastructure_targets: list[Position] = []
@@ -112,11 +123,21 @@ class BuilderMixin:
     # ------------------------------------------------------------------
 
     def _read_assignment(self, ct: Controller, km: KnownMap) -> None:
-        assignment = ct.read_store(SLOT_SPAWN_ASSIGNMENT)
-        if assignment == 0:
-            spawn_index, is_attacker = 0, True
-        else:
-            spawn_index, is_attacker = decode_spawn_assignment(assignment)
+        builder_id = ct.get_id()
+        total_slots = ATTACKER_COUNT + MAX_INFRASTRUCTURE_BUILDERS
+        spawn_index = next(
+            (
+                index
+                for index in range(total_slots)
+                if ct.read_store(SLOT_BUILDER_ID_START + index) == builder_id
+            ),
+            None,
+        )
+        if spawn_index is None:
+            raise RuntimeError(
+                f"Builder Bot {builder_id} is missing from the spawn registry"
+            )
+        is_attacker = spawn_index < ATTACKER_COUNT
         self.spawn_index = spawn_index
         self.is_attacker = is_attacker
 
@@ -176,7 +197,13 @@ class BuilderMixin:
                     self._start_waiting_for_launcher(ct, launcher_id)
                     return
 
-        self._seek_conveyor_endpoint(ct, km, enemy_core)
+        if self._seek_satisfying_gunner_endpoint(ct, km, enemy_core):
+            return
+        if self._seek_conveyor_endpoint(ct, km, enemy_core):
+            return
+        if self._run_enemy_supply_takeover(ct, km, enemy_core):
+            return
+        self._move_toward(ct, km, set(core_perimeter(enemy_core)))
 
     def _wait_for_launch(self, ct: Controller) -> bool:
         launcher_id = self.waiting_launcher_id
@@ -291,13 +318,435 @@ class BuilderMixin:
     # Offensive turret placement
     # ------------------------------------------------------------------
 
+    def _seek_satisfying_gunner_endpoint(
+        self, ct: Controller, km: KnownMap, enemy_core: Position
+    ) -> bool:
+        """Pursue an open conveyor output from which a Gunner can hit the Core."""
+
+        current = ct.get_position()
+        enemy_tiles = core_footprint(enemy_core)
+        fed_conveyors = self._fed_enemy_conveyors(ct.get_team())
+        candidates: list[
+            tuple[tuple[int, int, int, int, int], ConveyorEndpoint, Direction]
+        ] = []
+        for endpoint in self._visible_conveyor_endpoints(ct, km):
+            facing = self._gunner_facing_toward_core(
+                km, endpoint.turret, enemy_tiles
+            )
+            if facing is None:
+                continue
+            distance = path_distance(
+                km, current, adjacent_positions(km, endpoint.turret)
+            )
+            if distance is not None:
+                candidates.append(
+                    (
+                        self._gunner_endpoint_priority(
+                            endpoint,
+                            fed_conveyors,
+                            enemy_tiles,
+                            distance,
+                        ),
+                        endpoint,
+                        facing,
+                    )
+                )
+
+        if not candidates:
+            return False
+        _, endpoint, facing = min(candidates, key=lambda item: item[0])
+        if current not in adjacent_positions(km, endpoint.turret):
+            self._move_toward(ct, km, adjacent_positions(km, endpoint.turret))
+            return True
+        if ct.get_action_cooldown() != 0:
+            return True
+        if ct.can_build_gunner(endpoint.turret, facing):
+            ct.build_gunner(endpoint.turret, facing)
+            return True
+        return False
+
+    @staticmethod
+    def _gunner_endpoint_priority(
+        endpoint: ConveyorEndpoint,
+        fed_conveyors: set[Position],
+        enemy_core_tiles: set[Position],
+        walking_distance: int,
+    ) -> tuple[int, int, int, int, int]:
+        return (
+            0 if endpoint.conveyor in fed_conveyors else 1,
+            min(
+                endpoint.turret.distance_squared(core_tile)
+                for core_tile in enemy_core_tiles
+            ),
+            walking_distance,
+            endpoint.turret.y,
+            endpoint.turret.x,
+        )
+
+    def _fed_enemy_conveyors(self, my_team: Team) -> set[Position]:
+        """Conveyors connected to an enemy Harvester or observed titanium."""
+
+        conveyors = {
+            position: tile.building
+            for position, tile in self.map.items()
+            if tile.building is not None
+            and tile.building.team != my_team
+            and tile.building.entity_type == EntityType.CONVEYOR
+            and tile.building.direction in CARDINAL_DIRECTIONS
+        }
+        harvesters = {
+            position
+            for position, tile in self.map.items()
+            if tile.building is not None
+            and tile.building.team != my_team
+            and tile.building.entity_type == EntityType.HARVESTER
+        }
+
+        fed: set[Position] = set()
+        queue: deque[Position] = deque()
+        for position, building in conveyors.items():
+            input_positions = {
+                position.add(direction)
+                for direction in CARDINAL_DIRECTIONS
+                if position.add(direction) != position.add(building.direction)
+            }
+            if harvesters.intersection(input_positions) or (
+                getattr(building, "stored_resource", None)
+                == ResourceType.TITANIUM
+            ):
+                fed.add(position)
+                queue.append(position)
+
+        while queue:
+            position = queue.popleft()
+            building = conveyors[position]
+            output = position.add(building.direction)
+            downstream = conveyors.get(output)
+            if downstream is None or output in fed:
+                continue
+            # A Conveyor does not accept input from its own output side.
+            if position == output.add(downstream.direction):
+                continue
+            fed.add(output)
+            queue.append(output)
+        return fed
+
+    def _run_enemy_supply_takeover(
+        self, ct: Controller, km: KnownMap, enemy_core: Position
+    ) -> bool:
+        """Capture a complete enemy Harvester-to-Core conveyor supply line."""
+
+        if self.enemy_supply_chain is None:
+            chains = self._enemy_supply_chains(
+                ct.get_team(), core_footprint(enemy_core)
+            )
+            viable = [
+                chain
+                for chain in chains
+                if self._gunner_facing_toward_core(
+                    km, chain.conveyors[-1], core_footprint(enemy_core)
+                )
+                is not None
+            ]
+            if not viable:
+                return False
+            current = ct.get_position()
+
+            def takeover_distance(chain: EnemySupplyChain) -> int:
+                distance = path_distance(km, current, {chain.conveyors[-1]})
+                return distance if distance is not None else 10**9
+
+            self.enemy_supply_chain = min(
+                viable,
+                key=lambda chain: (
+                    takeover_distance(chain),
+                    len(chain.conveyors),
+                    chain.conveyors[-1].y,
+                    chain.conveyors[-1].x,
+                ),
+            )
+            self.supply_takeover_stage = 0
+            self.supply_takeover_gunners = None
+            self.supply_takeover_gunner_index = 0
+
+        chain = self.enemy_supply_chain
+        if self.supply_takeover_stage == 0:
+            return self._replace_final_conveyor_with_gunner(
+                ct, km, chain, enemy_core
+            )
+        if self.supply_takeover_stage == 1:
+            return self._replace_penultimate_conveyor_with_splitter(
+                ct, km, chain, enemy_core
+            )
+        if self.supply_takeover_stage == 2:
+            return self._build_supply_takeover_gunners(
+                ct, km, chain, enemy_core
+            )
+        return False
+
+    def _replace_final_conveyor_with_gunner(
+        self,
+        ct: Controller,
+        km: KnownMap,
+        chain: EnemySupplyChain,
+        enemy_core: Position,
+    ) -> bool:
+        target = chain.conveyors[-1]
+        facing = self._gunner_facing_toward_core(
+            km, target, core_footprint(enemy_core)
+        )
+        if facing is None:
+            self._clear_supply_takeover()
+            return False
+
+        building_id = self._visible_building_id(ct, km, target)
+        if building_id is None:
+            if not ct.is_in_vision(target):
+                return self._move_toward(ct, km, {target})
+            return self._build_takeover_building(
+                ct,
+                km,
+                target,
+                lambda: ct.can_build_gunner(target, facing),
+                lambda: ct.build_gunner(target, facing),
+            )
+
+        if ct.get_team(building_id) == ct.get_team():
+            if (
+                ct.get_entity_type(building_id) == EntityType.GUNNER
+                and ct.get_direction(building_id) == facing
+            ):
+                self.supply_takeover_stage = 1
+                return True
+            self._clear_supply_takeover()
+            return False
+        if ct.get_entity_type(building_id) != EntityType.CONVEYOR:
+            self._clear_supply_takeover()
+            return False
+        return self._sabotage_enemy_conveyor(ct, km, target)
+
+    def _replace_penultimate_conveyor_with_splitter(
+        self,
+        ct: Controller,
+        km: KnownMap,
+        chain: EnemySupplyChain,
+        enemy_core: Position,
+    ) -> bool:
+        if len(chain.conveyors) < 2:
+            self.supply_takeover_stage = 3
+            return False
+
+        target = chain.conveyors[-2]
+        predecessor = (
+            chain.harvester
+            if len(chain.conveyors) == 2
+            else chain.conveyors[-3]
+        )
+        direction = predecessor.direction_to(target)
+        if direction not in CARDINAL_DIRECTIONS:
+            self._clear_supply_takeover()
+            return False
+
+        building_id = self._visible_building_id(ct, km, target)
+        if building_id is None:
+            if not ct.is_in_vision(target):
+                return self._move_toward(ct, km, {target})
+            return self._build_takeover_building(
+                ct,
+                km,
+                target,
+                lambda: ct.can_build_splitter(target, direction),
+                lambda: ct.build_splitter(target, direction),
+            )
+
+        if ct.get_team(building_id) == ct.get_team():
+            if (
+                ct.get_entity_type(building_id) == EntityType.SPLITTER
+                and ct.get_direction(building_id) == direction
+            ):
+                self.supply_takeover_stage = 2
+                self.supply_takeover_gunners = None
+                return True
+            self._clear_supply_takeover()
+            return False
+        if ct.get_entity_type(building_id) != EntityType.CONVEYOR:
+            self._clear_supply_takeover()
+            return False
+        return self._sabotage_enemy_conveyor(ct, km, target)
+
+    def _build_supply_takeover_gunners(
+        self,
+        ct: Controller,
+        km: KnownMap,
+        chain: EnemySupplyChain,
+        enemy_core: Position,
+    ) -> bool:
+        splitter = chain.conveyors[-2]
+        predecessor = (
+            chain.harvester
+            if len(chain.conveyors) == 2
+            else chain.conveyors[-3]
+        )
+        if self.supply_takeover_gunners is None:
+            blocked = {
+                position
+                for position, tile in self.map.items()
+                if tile.building is not None
+            }
+            self.supply_takeover_gunners = self._offensive_gunner_layout(
+                km,
+                splitter,
+                predecessor,
+                core_footprint(enemy_core),
+                blocked,
+            )
+            self.supply_takeover_gunner_index = 0
+
+        gunners = self.supply_takeover_gunners
+        while self.supply_takeover_gunner_index < len(gunners):
+            position, facing = gunners[self.supply_takeover_gunner_index]
+            if not ct.is_in_vision(position):
+                return self._move_toward(
+                    ct, km, adjacent_positions(km, position)
+                )
+            building_id = ct.get_tile_building_id(position)
+            if building_id is not None:
+                self.supply_takeover_gunner_index += 1
+                continue
+            acted = self._build_takeover_building(
+                ct,
+                km,
+                position,
+                lambda: ct.can_build_gunner(position, facing),
+                lambda: ct.build_gunner(position, facing),
+            )
+            if acted:
+                return True
+            return False
+
+        self.supply_takeover_stage = 3
+        return False
+
+    def _build_takeover_building(
+        self,
+        ct: Controller,
+        km: KnownMap,
+        target: Position,
+        can_build: Callable[[], bool],
+        build: Callable[[], int],
+    ) -> bool:
+        build_positions = adjacent_positions(km, target)
+        if ct.get_position() not in build_positions:
+            return self._move_toward(ct, km, build_positions)
+        if ct.get_action_cooldown() != 0:
+            return True
+        if can_build():
+            build()
+        return True
+
+    def _sabotage_enemy_conveyor(
+        self, ct: Controller, km: KnownMap, target: Position
+    ) -> bool:
+        if ct.get_position() != target:
+            return self._move_toward(ct, km, {target})
+        if ct.get_action_cooldown() == 0 and ct.can_fire(target):
+            ct.fire(target)
+        return True
+
+    @staticmethod
+    def _visible_building_id(
+        ct: Controller, km: KnownMap, position: Position
+    ) -> int | None:
+        if not in_bounds(km, position) or not ct.is_in_vision(position):
+            return None
+        return ct.get_tile_building_id(position)
+
+    def _clear_supply_takeover(self) -> None:
+        self.enemy_supply_chain = None
+        self.supply_takeover_stage = 0
+        self.supply_takeover_gunners = None
+        self.supply_takeover_gunner_index = 0
+
+    def _enemy_supply_chains(
+        self, my_team: Team, enemy_core_tiles: set[Position]
+    ) -> list[EnemySupplyChain]:
+        """Return discovered, directed enemy Conveyor paths into the Core."""
+
+        conveyors = {
+            position: tile.building
+            for position, tile in self.map.items()
+            if tile.building is not None
+            and tile.building.team != my_team
+            and tile.building.entity_type == EntityType.CONVEYOR
+            and tile.building.direction in CARDINAL_DIRECTIONS
+        }
+        harvesters = {
+            position
+            for position, tile in self.map.items()
+            if tile.building is not None
+            and tile.building.team != my_team
+            and tile.building.entity_type == EntityType.HARVESTER
+        }
+        predecessors: dict[Position, list[Position]] = {}
+        for position, building in conveyors.items():
+            output = position.add(building.direction)
+            predecessors.setdefault(output, []).append(position)
+
+        chains: list[EnemySupplyChain] = []
+        finals = sorted(
+            (
+                position
+                for position, building in conveyors.items()
+                if position.add(building.direction) in enemy_core_tiles
+            ),
+            key=lambda position: (position.y, position.x),
+        )
+        for final in finals:
+            stack: list[tuple[Position, tuple[Position, ...]]] = [
+                (final, (final,))
+            ]
+            while stack:
+                current, reversed_chain = stack.pop()
+                current_building = conveyors[current]
+                input_positions = [
+                    current.add(direction)
+                    for direction in CARDINAL_DIRECTIONS
+                    if current.add(direction)
+                    != current.add(current_building.direction)
+                ]
+                source_harvesters = sorted(
+                    harvesters.intersection(input_positions),
+                    key=lambda position: (position.y, position.x),
+                )
+                if source_harvesters:
+                    chains.append(
+                        EnemySupplyChain(
+                            source_harvesters[0],
+                            tuple(reversed(reversed_chain)),
+                        )
+                    )
+                    break
+
+                for predecessor in sorted(
+                    predecessors.get(current, []),
+                    key=lambda position: (position.y, position.x),
+                    reverse=True,
+                ):
+                    if (
+                        predecessor not in reversed_chain
+                        and predecessor in input_positions
+                    ):
+                        stack.append(
+                            (predecessor, (*reversed_chain, predecessor))
+                        )
+        return chains
+
     def _seek_conveyor_endpoint(
         self, ct: Controller, km: KnownMap, enemy_core: Position
-    ) -> None:
+    ) -> bool:
         endpoints = self._visible_conveyor_endpoints(ct, km)
         if not endpoints:
-            self._move_toward(ct, km, set(core_perimeter(enemy_core)))
-            return
+            return False
 
         current = ct.get_position()
 
@@ -307,7 +756,12 @@ class BuilderMixin:
             )
             return distance if distance is not None else 10**9
 
-        endpoints.sort(
+        reachable_endpoints = [
+            endpoint for endpoint in endpoints if endpoint_distance(endpoint) < 10**9
+        ]
+        if not reachable_endpoints:
+            return False
+        reachable_endpoints.sort(
             key=lambda endpoint: (
                 endpoint_distance(endpoint),
                 endpoint.turret.distance_squared(enemy_core),
@@ -315,25 +769,19 @@ class BuilderMixin:
                 endpoint.turret.x,
             )
         )
-        endpoint = endpoints[0]
+        endpoint = reachable_endpoints[0]
         build_positions = adjacent_positions(km, endpoint.turret)
         if current not in build_positions:
             self._move_toward(ct, km, build_positions)
-            return
+            return True
         if ct.get_action_cooldown() != 0:
-            return
-
-        if self._is_next_to_core(endpoint.turret, enemy_core):
-            facing = self._gunner_facing_toward_core(
-                km, endpoint.turret, core_footprint(enemy_core)
-            )
-            if facing is not None and ct.can_build_gunner(endpoint.turret, facing):
-                ct.build_gunner(endpoint.turret, facing)
-            return
+            return True
 
         facing = self._sentinel_facing(ct, endpoint, enemy_core)
         if facing is not None and ct.can_build_sentinel(endpoint.turret, facing):
             ct.build_sentinel(endpoint.turret, facing)
+            return True
+        return False
 
     def _visible_conveyor_endpoints(
         self, ct: Controller, km: KnownMap

@@ -4,23 +4,21 @@ import sys
 import unittest
 import warnings
 from pathlib import Path
+from types import SimpleNamespace
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "bots" / "1"))
 
-from entities.builder import BuilderMixin, ConveyorPlan
+from entities.builder import BuilderMixin, ConveyorEndpoint, ConveyorPlan
 from entities.core import CoreMixin
 from entities.launcher import LauncherMixin
-from fcode import Direction, Environment, Position, Team
+from fcode import Direction, EntityType, Environment, Position, Team
 from utils.common import (
-    ATTACKER_ROLE_BIT,
     MAX_INFRASTRUCTURE_BUILDERS,
     SLOT_ATTACKER_0_ID,
     SLOT_ATTACKER_1_ID,
-    SLOT_SPAWN_ASSIGNMENT,
-    decode_spawn_assignment,
-    encode_spawn_assignment,
+    SLOT_BUILDER_ID_START,
     known_map_or_warn,
     ordered_ores,
 )
@@ -32,6 +30,7 @@ class FakeCoreController:
         self.store: dict[int, int] = {}
         self.pending_writes: dict[int, int] = {}
         self.spawned_ids: list[int] = []
+        self.current_id = 0
 
     def get_team(self) -> Team:
         return Team.A
@@ -56,21 +55,15 @@ class FakeCoreController:
     def read_store(self, slot: int) -> int:
         return self.store.get(slot, 0)
 
+    def get_id(self) -> int:
+        return self.current_id
+
     def commit_store_writes(self) -> None:
         self.store.update(self.pending_writes)
         self.pending_writes.clear()
 
 
 class SpawnAssignmentTests(unittest.TestCase):
-    def test_low_bit_carries_role_and_upper_bits_carry_spawn_order(self) -> None:
-        for spawn_index in range(8):
-            for attacker in (False, True):
-                encoded = encode_spawn_assignment(spawn_index, attacker=attacker)
-                self.assertEqual(encoded & ATTACKER_ROLE_BIT, int(attacker))
-                self.assertEqual(
-                    decode_spawn_assignment(encoded), (spawn_index, attacker)
-                )
-
     def test_infrastructure_ore_partitions_do_not_overlap(self) -> None:
         km = load_known_maps()["twins"]
         my_core = next(
@@ -89,7 +82,7 @@ class SpawnAssignmentTests(unittest.TestCase):
             for right in range(left + 1, len(partitions)):
                 self.assertTrue(partitions[left].isdisjoint(partitions[right]))
 
-    def test_first_builder_is_immediate_then_later_assignments_are_announced(self) -> None:
+    def test_consecutive_spawns_get_stable_id_assignments(self) -> None:
         km = load_known_maps()["twins"]
         core = CoreMixin()
         core.map_match_state = MapMatchState(
@@ -98,40 +91,33 @@ class SpawnAssignmentTests(unittest.TestCase):
         )
         ct = FakeCoreController()
 
-        # Bot 0 spawns immediately. The untouched store word tells the newborn
-        # that it is the first attacker, while bot 1's assignment is buffered.
-        core.run_core(ct)  # type: ignore[arg-type]
-        self.assertEqual(ct.spawned_ids, [100])
-        first_builder = BuilderMixin()
-        first_builder._read_assignment(ct, km)  # type: ignore[arg-type]
-        self.assertEqual(
-            (first_builder.spawn_index, first_builder.is_attacker),
-            (0, True),
-        )
-        self.assertEqual(
-            decode_spawn_assignment(ct.pending_writes[SLOT_SPAWN_ASSIGNMENT]),
-            (1, True),
-        )
-        ct.commit_store_writes()
-
-        expected_assignments = [(1, True), (2, False), (3, False)]
-        builders: list[BuilderMixin] = [first_builder]
-        for expected in expected_assignments:
+        builders: list[BuilderMixin] = []
+        for spawn_index in range(5):
             core.run_core(ct)  # type: ignore[arg-type]
+            builder_id = 100 + spawn_index
+            self.assertEqual(ct.spawned_ids[-1], builder_id)
+            self.assertEqual(
+                ct.pending_writes[SLOT_BUILDER_ID_START + spawn_index],
+                builder_id,
+            )
 
-            # Buffered writes made while spawning are not visible to the
-            # newborn, which still sees the assignment announced last round.
+            # The spawned Builder first executes next round, after its own ID
+            # entry has committed. Later spawns use different slots.
+            ct.commit_store_writes()
+            ct.current_id = builder_id
             builder = BuilderMixin()
             builder._read_assignment(ct, km)  # type: ignore[arg-type]
             builders.append(builder)
-            self.assertEqual((builder.spawn_index, builder.is_attacker), expected)
-            ct.commit_store_writes()
+            self.assertEqual(
+                (builder.spawn_index, builder.is_attacker),
+                (spawn_index, spawn_index < 2),
+            )
 
         self.assertEqual(ct.store[SLOT_ATTACKER_0_ID], 100)
         self.assertEqual(ct.store[SLOT_ATTACKER_1_ID], 101)
         self.assertEqual(
             [(builder.spawn_index, builder.is_attacker) for builder in builders],
-            [(0, True), *expected_assignments],
+            [(0, True), (1, True), (2, False), (3, False), (4, False)],
         )
 
     def test_builder_reads_its_birth_assignment_only_once(self) -> None:
@@ -153,14 +139,13 @@ class SpawnAssignmentTests(unittest.TestCase):
                 self.roles_run.append("infrastructure")
 
         ct = FakeCoreController()
+        ct.current_id = 777
+        ct.store[SLOT_BUILDER_ID_START] = 777
         builder = RecordingBuilder()
         builder.run_builder(ct)  # type: ignore[arg-type]
 
-        # A later spawn changes the shared slot, but this bot retains the
-        # assignment it decoded on its birth turn.
-        ct.store[SLOT_SPAWN_ASSIGNMENT] = encode_spawn_assignment(
-            2, attacker=False
-        )
+        # Even if the registry changes later, this bot retains its cached role.
+        ct.store[SLOT_BUILDER_ID_START] = 888
         builder.run_builder(ct)  # type: ignore[arg-type]
 
         self.assertEqual((builder.spawn_index, builder.is_attacker), (0, True))
@@ -324,6 +309,137 @@ class TurretSelectionTests(unittest.TestCase):
     def test_more_distant_tiles_keep_sentinel_behavior(self) -> None:
         self.assertFalse(
             BuilderMixin._is_next_to_core(Position(2, 5), Position(5, 5))
+        )
+
+
+class EnemySupplyTakeoverTests(unittest.TestCase):
+    @staticmethod
+    def _tile(
+        team: Team, entity_type, direction: Direction | None = None
+    ) -> SimpleNamespace:
+        return SimpleNamespace(
+            building=SimpleNamespace(
+                team=team,
+                entity_type=entity_type,
+                direction=direction,
+            )
+        )
+
+    def test_detects_complete_directed_harvester_to_core_chain(self) -> None:
+        harvester = Position(2, 4)
+        conveyors = (Position(3, 4), Position(4, 4), Position(5, 4))
+        builder = BuilderMixin()
+        builder.map = {
+            harvester: self._tile(Team.B, EntityType.HARVESTER),
+            **{
+                position: self._tile(
+                    Team.B, EntityType.CONVEYOR, Direction.EAST
+                )
+                for position in conveyors
+            },
+        }
+
+        chains = builder._enemy_supply_chains(Team.A, {Position(6, 4)})
+
+        self.assertEqual(len(chains), 1)
+        self.assertEqual(chains[0].harvester, harvester)
+        self.assertEqual(chains[0].conveyors, conveyors)
+
+    def test_rejects_incomplete_chain_near_core(self) -> None:
+        builder = BuilderMixin()
+        builder.map = {
+            Position(2, 4): self._tile(Team.B, EntityType.HARVESTER),
+            Position(3, 4): self._tile(
+                Team.B, EntityType.CONVEYOR, Direction.EAST
+            ),
+            Position(5, 4): self._tile(
+                Team.B, EntityType.CONVEYOR, Direction.EAST
+            ),
+        }
+
+        self.assertEqual(
+            builder._enemy_supply_chains(Team.A, {Position(6, 4)}),
+            [],
+        )
+
+    def test_enemy_conveyor_is_sabotaged_with_builder_fire(self) -> None:
+        target = Position(5, 4)
+
+        class SabotageController:
+            fired_at: Position | None = None
+
+            @staticmethod
+            def get_position() -> Position:
+                return target
+
+            @staticmethod
+            def get_action_cooldown() -> int:
+                return 0
+
+            @staticmethod
+            def can_fire(position: Position) -> bool:
+                return position == target
+
+            def fire(self, position: Position) -> None:
+                self.fired_at = position
+
+        ct = SabotageController()
+        builder = BuilderMixin()
+
+        acted = builder._sabotage_enemy_conveyor(  # type: ignore[arg-type]
+            ct, load_known_maps()["twins"], target
+        )
+
+        self.assertTrue(acted)
+        self.assertEqual(ct.fired_at, target)
+
+    def test_harvester_feed_propagates_through_directed_conveyors(self) -> None:
+        builder = BuilderMixin()
+        harvester = Position(2, 4)
+        first = Position(3, 4)
+        second = Position(4, 4)
+        dangling = Position(8, 4)
+        builder.map = {
+            harvester: self._tile(Team.B, EntityType.HARVESTER),
+            first: self._tile(Team.B, EntityType.CONVEYOR, Direction.EAST),
+            second: self._tile(Team.B, EntityType.CONVEYOR, Direction.EAST),
+            dangling: self._tile(
+                Team.B, EntityType.CONVEYOR, Direction.EAST
+            ),
+        }
+
+        self.assertEqual(
+            builder._fed_enemy_conveyors(Team.A),
+            {first, second},
+        )
+
+    def test_fed_gunner_endpoint_outranks_closer_dangling_endpoint(self) -> None:
+        fed = ConveyorEndpoint(Position(8, 4), Position(9, 4))
+        dangling = ConveyorEndpoint(Position(4, 4), Position(5, 4))
+        core_tiles = {Position(10, 4)}
+
+        fed_priority = BuilderMixin._gunner_endpoint_priority(
+            fed, {fed.conveyor}, core_tiles, walking_distance=20
+        )
+        dangling_priority = BuilderMixin._gunner_endpoint_priority(
+            dangling, {fed.conveyor}, core_tiles, walking_distance=1
+        )
+
+        self.assertLess(fed_priority, dangling_priority)
+
+    def test_core_proximity_breaks_ties_between_fed_endpoints(self) -> None:
+        near = ConveyorEndpoint(Position(8, 4), Position(9, 4))
+        far = ConveyorEndpoint(Position(5, 4), Position(6, 4))
+        core_tiles = {Position(10, 4)}
+        fed = {near.conveyor, far.conveyor}
+
+        self.assertLess(
+            BuilderMixin._gunner_endpoint_priority(
+                near, fed, core_tiles, walking_distance=20
+            ),
+            BuilderMixin._gunner_endpoint_priority(
+                far, fed, core_tiles, walking_distance=1
+            ),
         )
 
 
