@@ -8,6 +8,7 @@ dependencies = [
     "fcode==2.2.0",
     "numpy>=2.5.1",
     "torch>=2.13.0",
+    "wandb>=0.28.1",
 ]
 
 [tool.uv]

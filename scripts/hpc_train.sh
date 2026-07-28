@@ -32,8 +32,16 @@ command -v uv >/dev/null 2>&1 || { echo "uv not found on PATH -- see comment abo
 
 uv sync
 
+# wandb logging is opt-in: run `uv run wandb login` once interactively first
+# (or export WANDB_API_KEY), then pass WANDB=1 to this job.
+WANDB_ARGS=""
+if [ "${WANDB:-0}" = "1" ]; then
+    WANDB_ARGS="--wandb --wandb-run-name ${LSB_JOBID:-local}"
+fi
+
 uv run python3 -m rl.self_play \
     --iterations "${ITERATIONS:-2000}" \
     --opponent "${OPPONENT:-opponent_luc}" \
     --checkpoint checkpoints/policy.pt \
-    --save-every 20
+    --save-every 20 \
+    $WANDB_ARGS

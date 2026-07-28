@@ -17,8 +17,11 @@ from fcode import EntityType
 
 from rl.features import ENTITY_TYPES, NUM_ACTIONS, OBS_DIM
 
-HIDDEN_DIM = 256
-TRUNK_OUT_DIM = 128
+HIDDEN_DIM = 64
+TRUNK_OUT_DIM = 32
+# Kept small on purpose: the deployable bot (rl/export_pure_python.py) re-implements
+# this forward pass in plain Python (no torch/numpy) to run inside the ladder's
+# per-unit sandbox, under its 10ms-per-turn CPU budget. See that module's docstring.
 
 
 def _key(etype: EntityType) -> str:
