@@ -198,6 +198,124 @@ class LauncherRoleTests(unittest.TestCase):
 
 
 class ConveyorRoutingTests(unittest.TestCase):
+    @staticmethod
+    def _planning_map(
+        width: int,
+        height: int,
+        *,
+        walls: set[Position] | None = None,
+        ores: set[Position] | None = None,
+    ) -> KnownMap:
+        walls = walls or set()
+        ores = ores or set()
+        return KnownMap(
+            name=f"planning-{width}-{height}-{len(walls)}-{len(ores)}",
+            width=width,
+            height=height,
+            environments=tuple(
+                tuple(
+                    Environment.WALL
+                    if Position(x, y) in walls
+                    else Environment.ORE_TITANIUM
+                    if Position(x, y) in ores
+                    else Environment.EMPTY
+                    for x in range(width)
+                )
+                for y in range(height)
+            ),
+            cores={},
+        )
+
+    def test_conveyor_path_takes_longer_route_to_avoid_ore(self) -> None:
+        ore = Position(2, 2)
+        km = self._planning_map(7, 5, ores={ore})
+        builder = BuilderMixin()
+
+        plan = builder._plan_conveyor_path(
+            km,
+            Position(1, 2),
+            {Position(5, 2)},
+            {},
+            set(),
+        )
+
+        self.assertIsNotNone(plan)
+        assert plan is not None
+        self.assertNotIn(ore, plan.positions)
+        self.assertGreater(len(plan.positions), 3)
+
+    def test_short_enemy_conveyor_detour_is_preserved(self) -> None:
+        km = self._planning_map(9, 7)
+        enemy_conveyor = Position(4, 3)
+        builder = BuilderMixin()
+
+        plan = builder._plan_route_with_optional_sabotage(
+            km,
+            Position(1, 3),
+            {Position(7, 3)},
+            {},
+            {enemy_conveyor},
+            {enemy_conveyor},
+        )
+
+        self.assertIsNotNone(plan)
+        assert plan is not None
+        self.assertEqual(plan.sabotage, frozenset())
+        self.assertNotIn(enemy_conveyor, plan.positions)
+
+    def test_enemy_conveyor_is_sabotaged_when_detour_exceeds_five_belts(self) -> None:
+        enemy_conveyor = Position(4, 3)
+        walls = {
+            Position(4, y)
+            for y in range(1, 6)
+            if y != enemy_conveyor.y
+        }
+        km = self._planning_map(9, 7, walls=walls)
+        builder = BuilderMixin()
+
+        plan = builder._plan_route_with_optional_sabotage(
+            km,
+            Position(1, 3),
+            {Position(7, 3)},
+            {},
+            {enemy_conveyor},
+            {enemy_conveyor},
+        )
+
+        self.assertIsNotNone(plan)
+        assert plan is not None
+        self.assertEqual(plan.sabotage, {enemy_conveyor})
+        self.assertIn(enemy_conveyor, plan.positions)
+
+    def test_new_building_invalidates_remaining_conveyor_plan(self) -> None:
+        blocked_position = Position(3, 2)
+        plan = ConveyorPlan(
+            (Position(2, 2), blocked_position, Position(4, 2)),
+            Position(5, 2),
+        )
+        builder = BuilderMixin()
+        builder.map = {
+            blocked_position: SimpleNamespace(
+                rounds_since_last_seen=0,
+                building=SimpleNamespace(
+                    team=Team.B,
+                    entity_type=EntityType.BARRIER,
+                    direction=None,
+                ),
+            )
+        }
+
+        class TeamController:
+            @staticmethod
+            def get_team() -> Team:
+                return Team.A
+
+        self.assertTrue(
+            builder._conveyor_plan_is_broken(  # type: ignore[arg-type]
+                TeamController(), plan
+            )
+        )
+
     def test_friendly_route_is_kept_when_every_segment_approaches_target(self) -> None:
         plan = ConveyorPlan(
             (Position(4, 5), Position(3, 5)),

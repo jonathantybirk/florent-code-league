@@ -14,7 +14,15 @@ from collections.abc import Callable
 from collections import deque
 from dataclasses import dataclass
 
-from fcode import Controller, Direction, EntityType, Position, ResourceType, Team
+from fcode import (
+    Controller,
+    Direction,
+    EntityType,
+    Environment,
+    Position,
+    ResourceType,
+    Team,
+)
 
 from utils.common import (
     ATTACKER_COUNT,
@@ -56,6 +64,8 @@ class ConveyorPlan:
     sink: Position
     splitter_direction: Direction | None = None
     gunners: tuple[tuple[Position, Direction], ...] = ()
+    sabotage: frozenset[Position] = frozenset()
+    sink_conveyor_direction: Direction | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -920,18 +930,26 @@ class BuilderMixin:
             if tile.occupancy_known and tile.building is not None
         }
         blocked |= set(km.cores)
+        enemy_conveyors = {
+            position
+            for position, tile in self.map.items()
+            if tile.building is not None
+            and tile.building.team != ct.get_team()
+            and tile.building.entity_type == EntityType.CONVEYOR
+        }
 
         # Prefer joining the nearest friendly line, provided doing so never
         # sends titanium farther away from our Core. This prevents two
         # unfinished lines from turning toward one another. If the friendly
         # route fails that check, use the shortest direct route to the Core.
         if friendly_conveyors:
-            friendly_plan = self._plan_conveyor_path(
+            friendly_plan = self._plan_route_with_optional_sabotage(
                 km,
                 harvester,
                 friendly_conveyors,
                 conveyor_directions,
                 blocked,
+                enemy_conveyors,
             )
             if friendly_plan is not None:
                 sink_direction = conveyor_directions[friendly_plan.sink]
@@ -943,15 +961,91 @@ class BuilderMixin:
                 ) < self._target_distance(friendly_plan.sink, core_tiles):
                     return friendly_plan
 
-        return self._plan_conveyor_path(
+        return self._plan_route_with_optional_sabotage(
             km,
             harvester,
             core_tiles,
             {},
             blocked,
+            enemy_conveyors,
+        )
+
+    def _plan_route_with_optional_sabotage(
+        self,
+        km: KnownMap,
+        source_building: Position,
+        sinks: set[Position],
+        sink_directions: dict[Position, Direction],
+        blocked: set[Position],
+        enemy_conveyors: set[Position],
+    ) -> ConveyorPlan | None:
+        avoiding = self._plan_conveyor_path(
+            km,
+            source_building,
+            sinks,
+            sink_directions,
+            blocked,
+        )
+        if not enemy_conveyors:
+            return avoiding
+
+        through_enemy = self._plan_conveyor_path(
+            km,
+            source_building,
+            sinks,
+            sink_directions,
+            blocked - enemy_conveyors,
+        )
+        if through_enemy is None:
+            return avoiding
+        sabotage = frozenset(through_enemy.positions).intersection(enemy_conveyors)
+        if not sabotage:
+            return through_enemy
+        if avoiding is not None and len(avoiding.positions) <= len(
+            through_enemy.positions
+        ) + 5:
+            return avoiding
+        return ConveyorPlan(
+            through_enemy.positions,
+            through_enemy.sink,
+            sabotage=sabotage,
+            sink_conveyor_direction=through_enemy.sink_conveyor_direction,
         )
 
     def _plan_conveyor_path(
+        self,
+        km: KnownMap,
+        source_building: Position,
+        sinks: set[Position],
+        sink_directions: dict[Position, Direction],
+        blocked: set[Position],
+    ) -> ConveyorPlan | None:
+        """Prefer a route using no ore tiles, falling back only if required."""
+
+        ore_tiles = {
+            Position(x, y)
+            for y, row in enumerate(km.environments)
+            for x, environment in enumerate(row)
+            if environment == Environment.ORE_TITANIUM
+        }
+        avoiding_ore = self._plan_conveyor_path_bfs(
+            km,
+            source_building,
+            sinks,
+            sink_directions,
+            blocked | ore_tiles,
+        )
+        if avoiding_ore is not None:
+            return avoiding_ore
+        return self._plan_conveyor_path_bfs(
+            km,
+            source_building,
+            sinks,
+            sink_directions,
+            blocked,
+        )
+
+    def _plan_conveyor_path_bfs(
         self,
         km: KnownMap,
         source_building: Position,
@@ -970,7 +1064,11 @@ class BuilderMixin:
         ordered_sinks = sorted(sinks, key=lambda position: (position.y, position.x))
         for sink in ordered_sinks:
             if accepts(source_building, sink):
-                return ConveyorPlan((), sink)
+                return ConveyorPlan(
+                    (),
+                    sink,
+                    sink_conveyor_direction=sink_directions.get(sink),
+                )
 
         previous: dict[Position, Position | None] = {}
         queue: deque[Position] = deque()
@@ -1007,7 +1105,11 @@ class BuilderMixin:
         while previous[path[-1]] is not None:
             path.append(previous[path[-1]])  # type: ignore[arg-type]
         path.reverse()
-        return ConveyorPlan(tuple(path), reached_sink)
+        return ConveyorPlan(
+            tuple(path),
+            reached_sink,
+            sink_conveyor_direction=sink_directions.get(reached_sink),
+        )
 
     @classmethod
     def _plan_moves_toward_targets(
@@ -1034,7 +1136,12 @@ class BuilderMixin:
         )
 
     def _plan_offensive_conveyors(
-        self, ct: Controller, km: KnownMap, harvester: Position
+        self,
+        ct: Controller,
+        km: KnownMap,
+        harvester: Position,
+        *,
+        allow_ore: bool = False,
     ) -> ConveyorPlan | None:
         """Route an otherwise stranded Harvester into a small Gunner battery."""
 
@@ -1046,6 +1153,13 @@ class BuilderMixin:
             if tile.occupancy_known and tile.building is not None
         }
         blocked |= set(km.cores)
+        if not allow_ore:
+            blocked |= {
+                Position(x, y)
+                for y, row in enumerate(km.environments)
+                for x, environment in enumerate(row)
+                if environment == Environment.ORE_TITANIUM
+            }
 
         # One BFS gives a path to every possible input tile. Candidate
         # Splitters are evaluated afterward, preferring more Core-hitting
@@ -1114,6 +1228,10 @@ class BuilderMixin:
                 )
 
         if not candidates:
+            if not allow_ore:
+                return self._plan_offensive_conveyors(
+                    ct, km, harvester, allow_ore=True
+                )
             return None
         for _, source, splitter_direction, gunners in sorted(
             candidates, key=lambda item: item[0]
@@ -1136,6 +1254,10 @@ class BuilderMixin:
                 splitter,
                 splitter_direction=splitter_direction,
                 gunners=gunners,
+            )
+        if not allow_ore:
+            return self._plan_offensive_conveyors(
+                ct, km, harvester, allow_ore=True
             )
         return None
 
@@ -1214,6 +1336,9 @@ class BuilderMixin:
             return False
         if self.conveyor_index >= len(plan.positions):
             return True
+        if self._conveyor_plan_is_broken(ct, plan):
+            self._invalidate_conveyor_plan()
+            return False
 
         conveyor_position = plan.positions[self.conveyor_index]
         output = (
@@ -1226,9 +1351,22 @@ class BuilderMixin:
             raise RuntimeError("Conveyor plan contains a non-cardinal segment")
 
         current = ct.get_position()
-        build_positions = adjacent_positions(km, conveyor_position) | {
-            conveyor_position
-        }
+        if conveyor_position in plan.sabotage and current != conveyor_position:
+            self._move_toward(ct, km, {conveyor_position})
+            return False
+
+        existing_id = ct.get_tile_building_id(conveyor_position)
+        if (
+            conveyor_position in plan.sabotage
+            and existing_id is not None
+            and ct.get_team(existing_id) != ct.get_team()
+            and ct.get_entity_type(existing_id) == EntityType.CONVEYOR
+        ):
+            if ct.get_action_cooldown() == 0 and ct.can_fire(conveyor_position):
+                ct.fire(conveyor_position)
+            return False
+
+        build_positions = adjacent_positions(km, conveyor_position)
         if current not in build_positions:
             self._move_toward(ct, km, build_positions)
             return False
@@ -1242,7 +1380,7 @@ class BuilderMixin:
             ):
                 self.conveyor_index += 1
                 return self.conveyor_index >= len(plan.positions)
-            self.conveyor_plan_ready = False
+            self._invalidate_conveyor_plan()
             return False
 
         if ct.get_action_cooldown() == 0 and ct.can_build_conveyor(
@@ -1252,6 +1390,57 @@ class BuilderMixin:
             self.conveyor_index += 1
             return self.conveyor_index >= len(plan.positions)
         return False
+
+    def _conveyor_plan_is_broken(
+        self, ct: Controller, plan: ConveyorPlan
+    ) -> bool:
+        if plan.sink_conveyor_direction is not None:
+            sink_tile = self.map.get(plan.sink)
+            if sink_tile is not None and sink_tile.rounds_since_last_seen == 0:
+                sink_building = sink_tile.building
+                if not (
+                    sink_building is not None
+                    and sink_building.team == ct.get_team()
+                    and sink_building.entity_type == EntityType.CONVEYOR
+                    and sink_building.direction == plan.sink_conveyor_direction
+                ):
+                    return True
+
+        for index in range(self.conveyor_index, len(plan.positions)):
+            position = plan.positions[index]
+            tile = self.map.get(position)
+            if (
+                tile is None
+                or tile.rounds_since_last_seen != 0
+                or tile.building is None
+            ):
+                continue
+            building = tile.building
+            if (
+                position in plan.sabotage
+                and building.team != ct.get_team()
+                and building.entity_type == EntityType.CONVEYOR
+            ):
+                continue
+            output = (
+                plan.positions[index + 1]
+                if index + 1 < len(plan.positions)
+                else plan.sink
+            )
+            expected_direction = position.direction_to(output)
+            if (
+                building.team == ct.get_team()
+                and building.entity_type == EntityType.CONVEYOR
+                and building.direction == expected_direction
+            ):
+                continue
+            return True
+        return False
+
+    def _invalidate_conveyor_plan(self) -> None:
+        self.conveyor_plan = None
+        self.conveyor_plan_ready = False
+        self.conveyor_index = 0
 
     def _build_offensive_battery(self, ct: Controller, km: KnownMap) -> bool:
         plan = self.conveyor_plan
