@@ -1,0 +1,47 @@
+# Your First Bot: Movement & Sensing · Step 3 of 5
+
+Source: https://game.code.florent.vc/tutorials/movement-sensing/03-moving
+
+## Moving your Builder Bot
+
+Builder Bots are the only unit that can move, and they move only in the four cardinal directions — `Direction.NORTH`, `Direction.SOUTH`, `Direction.EAST`, `Direction.WEST`. (The `Direction` enum still lists all 8 compass points plus `Direction.CENTRE`, but diagonals aren't legal moves: `ct.move()` with a diagonal raises a `GameError`, and `ct.can_move()` returns `False`. Diagonals stay valid elsewhere, e.g. turret facing.) Movement follows the same check-then-act pattern as spawning.
+
+```python
+import random
+
+from fcode import Controller, Direction, EntityType
+
+CARDINALS = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST]
+
+class Player:
+    def run(self, ct: Controller) -> None:
+        etype = ct.get_entity_type()
+        if etype == EntityType.CORE:
+            for pos in ct.get_nearby_tiles(dist_sq=2):
+                if ct.can_spawn(pos):
+                    ct.spawn_builder(pos)
+                    break
+        elif etype == EntityType.BUILDER_BOT:
+            direction = random.choice(CARDINALS)
+            if ct.can_move(direction):
+                ct.move(direction)
+```
+
+`CARDINALS` is the four legal move directions — a handy constant you'll reuse throughout these tutorials. Each round, our Builder Bot picks a random cardinal direction and moves there if `ct.can_move()` says it's legal (not a wall, not occupied, and not a diagonal). Movement puts the unit on a 1-round cooldown, so a bot can only move once every round at most — no double-stepping.
+
+Once you start building/attacking/healing in later tutorials, `ct.can_move()` can also return `False` for a different reason: acting and moving are mutually exclusive per round for Builder Bots. If a move you expected to be legal is rejected, check `ct.get_action_cooldown()` — if it's nonzero, you're act-locked from a previous action this round, not blocked by terrain or another unit.
+
+> **Correction vs. the official docs.** The published page says to check `ct.can_act()` here. **This method does not exist** in the installed `fcode` engine (confirmed by direct call at runtime — raises `AttributeError`). Use `ct.get_action_cooldown() == 0` instead, as corrected above.
+
+This is a genuinely bad movement strategy — the bot has no memory and no goal, so it'll wander in place as often as it makes progress. That's fine for now; the point is confirming movement works before we add any intelligence.
+
+## Try it
+
+```
+fcode run starter starter
+fcode watch replay.replay26
+```
+
+What you should see: the Builder Bot visibly wanders around the map instead of standing still. Scrub through the replay — you should see it occasionally get stuck against a wall (that round it just won't move, since `can_move` returned `False` in the direction it picked).
+
+Next: use what the bot can see to move somewhere purposeful, instead of randomly.
