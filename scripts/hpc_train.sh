@@ -11,7 +11,7 @@
 ### plain CPU queue; don't reintroduce a GPU queue unless the code is changed to use one.
 #BSUB -q hpc
 #BSUB -J llm-rl-selfplay
-#BSUB -n 4
+#BSUB -n 8
 #BSUB -W 24:00
 #BSUB -R "rusage[mem=8GB]"
 #BSUB -o llm_rl_%J.out

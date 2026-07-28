@@ -29,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import torch
@@ -138,37 +139,39 @@ def _start_inference_server(checkpoint_path: Path) -> subprocess.Popen:
     raise RuntimeError("inference server did not start (socket file never appeared)")
 
 
-def run_iteration(policy_path: Path, opponent_main: str, seed: int | None) -> dict:
+def _run_match(worker_id: int, opponent_main: str, seed: int | None) -> dict:
+    """Play one match in its own log dir/replay path so it can run alongside sibling
+    workers without clobbering their files. All workers query the same inference
+    server (already handling connections concurrently -- see inference_server.py)."""
     maps = sorted(MAPS_DIR.glob("*.map26"))
     map_path = str(random.choice(maps))
 
-    log_dir = RUNS_DIR / "current_game_logs"
+    log_dir = RUNS_DIR / "game_logs" / f"worker{worker_id}"
     if log_dir.exists():
         shutil.rmtree(log_dir)
     log_dir.mkdir(parents=True)
 
-    replay_path = str(RUNS_DIR / "last_game.replay26")
+    replays_dir = RUNS_DIR / "replays"
+    replays_dir.mkdir(parents=True, exist_ok=True)
+    replay_path = str(replays_dir / f"latest_worker{worker_id}.replay26")
+
     env = os.environ.copy()
     env["RL_SOCK"] = SOCKET_PATH
     env["RL_LOG_DIR"] = str(log_dir)
     env["RL_GREEDY"] = "0"
 
-    server = _start_inference_server(policy_path)
-    try:
-        seed_args = ["--seed", str(seed)] if seed is not None else []
-        proc = subprocess.run(
-            [sys.executable, "-m", "rl.play_one_game", RL_BOT_MAIN, opponent_main, map_path, replay_path, *seed_args],
-            cwd=REPO_ROOT,
-            env=env,
-            capture_output=True,
-            text=True,
-        )
-        if proc.returncode != 0:
-            raise RuntimeError(f"play_one_game failed:\n{proc.stderr}")
-        result = json.loads(proc.stdout.strip().splitlines()[-1])
-    finally:
-        server.terminate()
-        server.wait(timeout=5)
+    match_seed = None if seed is None else seed + worker_id
+    seed_args = ["--seed", str(match_seed)] if match_seed is not None else []
+    proc = subprocess.run(
+        [sys.executable, "-m", "rl.play_one_game", RL_BOT_MAIN, opponent_main, map_path, replay_path, *seed_args],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"play_one_game (worker {worker_id}) failed:\n{proc.stderr}")
+    result = json.loads(proc.stdout.strip().splitlines()[-1])
 
     won = None
     if result["winner"] == "A":
@@ -177,7 +180,27 @@ def run_iteration(policy_path: Path, opponent_main: str, seed: int | None) -> di
         won = False
 
     trajectories = _build_trajectories(log_dir, "a", won)
-    return {"result": result, "trajectories": trajectories}
+    return {"result": result, "trajectories": trajectories, "replay_path": replay_path}
+
+
+def run_iteration(policy_path: Path, opponent_main: str, seed: int | None, n_workers: int) -> dict:
+    """Play n_workers matches concurrently against the same frozen checkpoint, then
+    return their pooled results/trajectories for a single batched PPO update."""
+    server = _start_inference_server(policy_path)
+    try:
+        with ThreadPoolExecutor(max_workers=n_workers) as pool:
+            # subprocess.run releases the GIL while waiting on the child, so these
+            # threads genuinely run the n_workers matches in parallel.
+            outs = list(pool.map(lambda w: _run_match(w, opponent_main, seed), range(n_workers)))
+    finally:
+        server.terminate()
+        server.wait(timeout=5)
+
+    return {
+        "results": [o["result"] for o in outs],
+        "trajectories": [t for o in outs for t in o["trajectories"]],
+        "replay_paths": [o["replay_path"] for o in outs],
+    }
 
 
 def main() -> None:
@@ -188,6 +211,15 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--checkpoint", default=str(CHECKPOINTS_DIR / "policy.pt"))
     parser.add_argument("--save-every", type=int, default=10)
+    # LSB_DJOB_NUMPROC (set by LSF to the job's actual allocated core count) takes
+    # priority over os.cpu_count(), which reports the whole node rather than our slice.
+    default_parallel = int(os.environ.get("LSB_DJOB_NUMPROC", 0)) or max(1, (os.cpu_count() or 1) - 1)
+    parser.add_argument(
+        "--parallel",
+        type=int,
+        default=default_parallel,
+        help="matches to play concurrently per iteration (one PPO update per batch of these)",
+    )
     parser.add_argument("--wandb", action="store_true", help="log metrics to Weights & Biases")
     parser.add_argument("--wandb-project", default="florent-code-league-rl")
     parser.add_argument("--wandb-run-name", default=None)
@@ -213,46 +245,50 @@ def main() -> None:
     RUNS_DIR.mkdir(exist_ok=True)
     save_checkpoint(policy, checkpoint_path)
 
+    print(f"Playing {args.parallel} matches per iteration in parallel")
+
     wins = losses = draws = 0
+    total_matches = 0
     for i in range(1, args.iterations + 1):
         t0 = time.time()
         save_checkpoint(policy, checkpoint_path)  # bot processes load from disk
 
-        out = run_iteration(checkpoint_path, opponent_main, args.seed)
-        result, trajectories = out["result"], out["trajectories"]
+        out = run_iteration(checkpoint_path, opponent_main, args.seed, args.parallel)
+        results, trajectories, replay_paths = out["results"], out["trajectories"], out["replay_paths"]
 
-        if result["winner"] == "A":
-            wins += 1
-        elif result["winner"] == "B":
-            losses += 1
-        else:
-            draws += 1
+        batch_wins = sum(1 for r in results if r["winner"] == "A")
+        batch_losses = sum(1 for r in results if r["winner"] == "B")
+        batch_draws = len(results) - batch_wins - batch_losses
+        wins += batch_wins
+        losses += batch_losses
+        draws += batch_draws
+        total_matches += len(results)
 
         ppo_stats = ppo_update(policy, optimizer, trajectories) if trajectories else {}
 
         dt = time.time() - t0
+        avg_turns = sum(r["turns"] for r in results) / len(results)
         print(
-            f"[{i}/{args.iterations}] winner={result['winner']} turns={result['turns']} "
-            f"a_ti={result['a_titanium']} b_ti={result['b_titanium']} "
-            f"units(a/b)={result['a_units']}/{result['b_units']} "
-            f"record(W/L/D)={wins}/{losses}/{draws} ({dt:.1f}s)"
+            f"[{i}/{args.iterations}] matches={len(results)} avg_turns={avg_turns:.0f} "
+            f"batch(W/L/D)={batch_wins}/{batch_losses}/{batch_draws} "
+            f"record(W/L/D)={wins}/{losses}/{draws} ({dt:.1f}s, {dt / len(results):.1f}s/match)"
         )
 
         if run is not None:
             log = {
-                "match/winner_is_a": {"A": 1, "B": 0}.get(result["winner"], 0.5),
-                "match/turns": result["turns"],
-                "match/a_titanium": result["a_titanium"],
-                "match/b_titanium": result["b_titanium"],
-                "match/a_titanium_collected": result["a_titanium_collected"],
-                "match/a_units": result["a_units"],
-                "match/b_units": result["b_units"],
-                "match/a_buildings": result["a_buildings"],
+                "match/win_rate_batch": batch_wins / len(results),
+                "match/avg_turns": avg_turns,
+                "match/avg_a_titanium": sum(r["a_titanium"] for r in results) / len(results),
+                "match/avg_b_titanium": sum(r["b_titanium"] for r in results) / len(results),
+                "match/avg_a_units": sum(r["a_units"] for r in results) / len(results),
+                "match/avg_b_units": sum(r["b_units"] for r in results) / len(results),
+                "match/matches_per_iteration": len(results),
                 "match/seconds_per_iteration": dt,
+                "match/seconds_per_match": dt / len(results),
                 "record/wins": wins,
                 "record/losses": losses,
                 "record/draws": draws,
-                "record/win_rate": wins / i,
+                "record/win_rate": wins / total_matches,
             }
             for etype_value, s in ppo_stats.items():
                 for k, v in s.items():
@@ -262,6 +298,12 @@ def main() -> None:
         if i % args.save_every == 0:
             archive_path = CHECKPOINTS_DIR / f"policy_iter{i}.pt"
             save_checkpoint(policy, archive_path)
+            # Archive one replay from this batch so training progress can be watched
+            # later with `fcode watch` -- runs/replays/latest_worker*.replay26 only
+            # ever holds the most recent batch.
+            archive_replay_dir = RUNS_DIR / "replays" / "archive"
+            archive_replay_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy(replay_paths[0], archive_replay_dir / f"iter{i}.replay26")
 
     save_checkpoint(policy, checkpoint_path)
     if run is not None:
