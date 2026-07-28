@@ -1,7 +1,8 @@
 """Role-based Builder Bot strategy.
 
-The Core publishes one assignment per spawn. Attackers relay through launchers
-toward the enemy Core, then place ammo-fed Sentinels on open conveyor outputs.
+The first Builder infers its attacker role; the Core preannounces every later
+assignment. Attackers relay through launchers toward the enemy Core, then place
+ammo-fed Sentinels on open conveyor outputs.
 Infrastructure bots claim disjoint ore sequences, build Harvesters, and connect
 them to the nearest conveyor that is known to lead to our Core (or the Core
 itself when no closer connected conveyor exists).
@@ -36,6 +37,7 @@ from utils.common import (
 from utils.map import KnownMap
 
 _MAX_LAUNCH_WAIT_ROUNDS = 15
+_GUNNER_RANGE_SQ = 13
 _DIRECTION_ORDER = (
     Direction.NORTH,
     Direction.NORTHEAST,
@@ -52,6 +54,8 @@ _DIRECTION_ORDER = (
 class ConveyorPlan:
     positions: tuple[Position, ...]
     sink: Position
+    splitter_direction: Direction | None = None
+    gunners: tuple[tuple[Position, Direction], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,9 +68,10 @@ class BuilderMixin:
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
 
-        # A store write made during spawning is visible next round. Every new
-        # Builder therefore skips its birth turn before reading this word.
-        self.waited_for_assignment = False
+        # Builder 0 recognizes the untouched assignment word and becomes the
+        # first attacker. The Core announces every later Builder one round
+        # before spawning it. Each Builder decodes only its birth snapshot and
+        # retains that role locally for the rest of its life.
         self.spawn_index: int | None = None
         self.is_attacker: bool | None = None
 
@@ -84,12 +89,10 @@ class BuilderMixin:
         self.conveyor_plan: ConveyorPlan | None = None
         self.conveyor_plan_ready = False
         self.conveyor_index = 0
+        self.offensive_gunner_index = 0
 
     def run_builder(self, ct: Controller) -> None:
         if self.is_attacker is None:
-            if not self.waited_for_assignment:
-                self.waited_for_assignment = True
-                return
             km = known_map_or_warn(self.map_match_state)
             if km is None:
                 return
@@ -109,9 +112,11 @@ class BuilderMixin:
     # ------------------------------------------------------------------
 
     def _read_assignment(self, ct: Controller, km: KnownMap) -> None:
-        spawn_index, is_attacker = decode_spawn_assignment(
-            ct.read_store(SLOT_SPAWN_ASSIGNMENT)
-        )
+        assignment = ct.read_store(SLOT_SPAWN_ASSIGNMENT)
+        if assignment == 0:
+            spawn_index, is_attacker = 0, True
+        else:
+            spawn_index, is_attacker = decode_spawn_assignment(assignment)
         self.spawn_index = spawn_index
         self.is_attacker = is_attacker
 
@@ -318,6 +323,14 @@ class BuilderMixin:
         if ct.get_action_cooldown() != 0:
             return
 
+        if self._is_next_to_core(endpoint.turret, enemy_core):
+            facing = self._gunner_facing_toward_core(
+                km, endpoint.turret, core_footprint(enemy_core)
+            )
+            if facing is not None and ct.can_build_gunner(endpoint.turret, facing):
+                ct.build_gunner(endpoint.turret, facing)
+            return
+
         facing = self._sentinel_facing(ct, endpoint, enemy_core)
         if facing is not None and ct.can_build_sentinel(endpoint.turret, facing):
             ct.build_sentinel(endpoint.turret, facing)
@@ -378,6 +391,13 @@ class BuilderMixin:
         difference = abs(a_index - b_index)
         return min(difference, len(_DIRECTION_ORDER) - difference)
 
+    @staticmethod
+    def _is_next_to_core(position: Position, core_anchor: Position) -> bool:
+        return any(
+            max(abs(position.x - tile.x), abs(position.y - tile.y)) == 1
+            for tile in core_footprint(core_anchor)
+        )
+
     # ------------------------------------------------------------------
     # Infrastructure
     # ------------------------------------------------------------------
@@ -393,17 +413,24 @@ class BuilderMixin:
 
         if not self.conveyor_plan_ready:
             self.conveyor_plan = self._plan_conveyors(ct, km, self.active_harvester)
+            if self.conveyor_plan is None:
+                self.conveyor_plan = self._plan_offensive_conveyors(
+                    ct, km, self.active_harvester
+                )
             self.conveyor_plan_ready = True
             self.conveyor_index = 0
+            self.offensive_gunner_index = 0
             if self.conveyor_plan is None:
                 # Some ore pockets are diagonally walkable but have no
-                # cardinal route for conveyors. Keep the Harvester and move
-                # on to this bot's next non-overlapping ore assignment.
+                # cardinal route to either base or an enemy-Core battery.
                 self._advance_infrastructure_target()
                 return
 
         if self.conveyor_plan is not None and self._build_conveyor_plan(ct, km):
-            self._advance_infrastructure_target()
+            if self.conveyor_plan.splitter_direction is None:
+                self._advance_infrastructure_target()
+            elif self._build_offensive_battery(ct, km):
+                self._advance_infrastructure_target()
 
     def _seek_and_build_harvester(
         self, ct: Controller, km: KnownMap, target: Position
@@ -439,33 +466,68 @@ class BuilderMixin:
             for position in friendly_conveyors
             if self.map[position].building is not None
         }
-        # Joining any nearby friendly conveyor is cheaper and faster than
-        # proving that its complete downstream chain currently reaches the
-        # Core. The BFS below selects the nearest usable input side.
-        sinks = self._preferred_connection_sinks(core_tiles, friendly_conveyors)
-
-        def accepts(source: Position, sink: Position) -> bool:
-            if abs(source.x - sink.x) + abs(source.y - sink.y) != 1:
-                return False
-            if sink in core_tiles:
-                return True
-            direction = conveyor_directions[sink]
-            return source != sink.add(direction)
-
-        for sink in sinks:
-            if accepts(harvester, sink):
-                return ConveyorPlan((), sink)
-
         blocked = {
             position
             for position, tile in self.map.items()
             if tile.occupancy_known and tile.building is not None
         }
         blocked |= set(km.cores)
+
+        # Prefer joining the nearest friendly line, provided doing so never
+        # sends titanium farther away from our Core. This prevents two
+        # unfinished lines from turning toward one another. If the friendly
+        # route fails that check, use the shortest direct route to the Core.
+        if friendly_conveyors:
+            friendly_plan = self._plan_conveyor_path(
+                km,
+                harvester,
+                friendly_conveyors,
+                conveyor_directions,
+                blocked,
+            )
+            if friendly_plan is not None:
+                sink_direction = conveyor_directions[friendly_plan.sink]
+                sink_output = friendly_plan.sink.add(sink_direction)
+                if self._plan_moves_toward_targets(
+                    harvester, friendly_plan, core_tiles
+                ) and self._target_distance(
+                    sink_output, core_tiles
+                ) < self._target_distance(friendly_plan.sink, core_tiles):
+                    return friendly_plan
+
+        return self._plan_conveyor_path(
+            km,
+            harvester,
+            core_tiles,
+            {},
+            blocked,
+        )
+
+    def _plan_conveyor_path(
+        self,
+        km: KnownMap,
+        source_building: Position,
+        sinks: set[Position],
+        sink_directions: dict[Position, Direction],
+        blocked: set[Position],
+    ) -> ConveyorPlan | None:
+        """Return the shortest cardinal conveyor path to an accepted sink."""
+
+        def accepts(source: Position, sink: Position) -> bool:
+            if abs(source.x - sink.x) + abs(source.y - sink.y) != 1:
+                return False
+            direction = sink_directions.get(sink)
+            return direction is None or source != sink.add(direction)
+
+        ordered_sinks = sorted(sinks, key=lambda position: (position.y, position.x))
+        for sink in ordered_sinks:
+            if accepts(source_building, sink):
+                return ConveyorPlan((), sink)
+
         previous: dict[Position, Position | None] = {}
         queue: deque[Position] = deque()
         for direction in CARDINAL_DIRECTIONS:
-            candidate = harvester.add(direction)
+            candidate = source_building.add(direction)
             if self._conveyor_tile_available(km, candidate, blocked):
                 previous[candidate] = None
                 queue.append(candidate)
@@ -474,7 +536,7 @@ class BuilderMixin:
         reached_sink: Position | None = None
         while queue:
             current = queue.popleft()
-            for sink in sinks:
+            for sink in ordered_sinks:
                 if accepts(current, sink):
                     reached = current
                     reached_sink = sink
@@ -499,6 +561,189 @@ class BuilderMixin:
         path.reverse()
         return ConveyorPlan(tuple(path), reached_sink)
 
+    @classmethod
+    def _plan_moves_toward_targets(
+        cls,
+        source: Position,
+        plan: ConveyorPlan,
+        targets: set[Position],
+    ) -> bool:
+        positions = (*plan.positions, plan.sink)
+        previous = source
+        for position in positions:
+            if cls._target_distance(position, targets) > cls._target_distance(
+                previous, targets
+            ):
+                return False
+            previous = position
+        return True
+
+    @staticmethod
+    def _target_distance(position: Position, targets: set[Position]) -> int:
+        return min(
+            abs(position.x - target.x) + abs(position.y - target.y)
+            for target in targets
+        )
+
+    def _plan_offensive_conveyors(
+        self, ct: Controller, km: KnownMap, harvester: Position
+    ) -> ConveyorPlan | None:
+        """Route an otherwise stranded Harvester into a small Gunner battery."""
+
+        _, enemy_core = core_positions(ct, km)
+        enemy_tiles = core_footprint(enemy_core)
+        blocked = {
+            position
+            for position, tile in self.map.items()
+            if tile.occupancy_known and tile.building is not None
+        }
+        blocked |= set(km.cores)
+
+        # One BFS gives a path to every possible input tile. Candidate
+        # Splitters are evaluated afterward, preferring more Core-hitting
+        # Gunners and then the shortest supply line.
+        previous: dict[Position, Position | None] = {}
+        distance: dict[Position, int] = {}
+        queue: deque[Position] = deque()
+        for direction in CARDINAL_DIRECTIONS:
+            candidate = harvester.add(direction)
+            if self._conveyor_tile_available(km, candidate, blocked):
+                previous[candidate] = None
+                distance[candidate] = 1
+                queue.append(candidate)
+
+        while queue:
+            current = queue.popleft()
+            for direction in CARDINAL_DIRECTIONS:
+                candidate = current.add(direction)
+                if candidate in previous or not self._conveyor_tile_available(
+                    km, candidate, blocked
+                ):
+                    continue
+                previous[candidate] = current
+                distance[candidate] = distance[current] + 1
+                queue.append(candidate)
+
+        candidates: list[
+            tuple[
+                tuple[int, int, int, int, int],
+                Position,
+                Direction,
+                tuple[tuple[Position, Direction], ...],
+            ]
+        ] = []
+        for source in previous:
+            for splitter_direction in CARDINAL_DIRECTIONS:
+                splitter = source.add(splitter_direction)
+                if not self._conveyor_tile_available(km, splitter, blocked):
+                    continue
+                if splitter.distance_squared(enemy_core) >= source.distance_squared(
+                    enemy_core
+                ):
+                    continue
+                gunners = self._offensive_gunner_layout(
+                    km,
+                    splitter,
+                    source,
+                    enemy_tiles,
+                    blocked,
+                )
+                if not gunners:
+                    continue
+                candidates.append(
+                    (
+                        (
+                            -len(gunners),
+                            distance[source],
+                            splitter.distance_squared(enemy_core),
+                            splitter.y,
+                            splitter.x,
+                        ),
+                        source,
+                        splitter_direction,
+                        gunners,
+                    )
+                )
+
+        if not candidates:
+            return None
+        for _, source, splitter_direction, gunners in sorted(
+            candidates, key=lambda item: item[0]
+        ):
+            splitter = source.add(splitter_direction)
+            path = [source]
+            while previous[path[-1]] is not None:
+                path.append(previous[path[-1]])  # type: ignore[arg-type]
+            path.reverse()
+
+            # Do not lay the supply line through a future turret tile.
+            gunner_positions = {position for position, _ in gunners}
+            if any(
+                position in gunner_positions or position == splitter
+                for position in path
+            ):
+                continue
+            return ConveyorPlan(
+                tuple(path),
+                splitter,
+                splitter_direction=splitter_direction,
+                gunners=gunners,
+            )
+        return None
+
+    @classmethod
+    def _offensive_gunner_layout(
+        cls,
+        km: KnownMap,
+        splitter: Position,
+        input_position: Position,
+        enemy_tiles: set[Position],
+        blocked: set[Position],
+    ) -> tuple[tuple[Position, Direction], ...]:
+        input_side = splitter.direction_to(input_position)
+        result: list[tuple[Position, Direction]] = []
+        for output_direction in CARDINAL_DIRECTIONS:
+            if output_direction == input_side:
+                continue
+            gunner = splitter.add(output_direction)
+            if gunner in blocked or not static_bot_passable(km, gunner):
+                continue
+            facing = cls._gunner_facing_toward_core(km, gunner, enemy_tiles)
+            if facing is not None:
+                result.append((gunner, facing))
+        return tuple(result)
+
+    @staticmethod
+    def _gunner_facing_toward_core(
+        km: KnownMap, gunner: Position, enemy_tiles: set[Position]
+    ) -> Direction | None:
+        for target in sorted(
+            enemy_tiles,
+            key=lambda position: (
+                gunner.distance_squared(position),
+                position.y,
+                position.x,
+            ),
+        ):
+            dx = target.x - gunner.x
+            dy = target.y - gunner.y
+            if gunner.distance_squared(target) > _GUNNER_RANGE_SQ:
+                continue
+            if dx != 0 and dy != 0 and abs(dx) != abs(dy):
+                continue
+            direction = gunner.direction_to(target)
+            step_x, step_y = direction.delta()
+            current = Position(gunner.x + step_x, gunner.y + step_y)
+            clear = True
+            while current != target:
+                if not static_bot_passable(km, current):
+                    clear = False
+                    break
+                current = Position(current.x + step_x, current.y + step_y)
+            if clear:
+                return direction
+        return None
+
     def _friendly_conveyors(self, ct: Controller) -> set[Position]:
         return {
             position
@@ -508,12 +753,6 @@ class BuilderMixin:
             and tile.building.entity_type == EntityType.CONVEYOR
             and tile.building.direction in CARDINAL_DIRECTIONS
         }
-
-    @staticmethod
-    def _preferred_connection_sinks(
-        core_tiles: set[Position], friendly_conveyors: set[Position]
-    ) -> set[Position]:
-        return friendly_conveyors if friendly_conveyors else core_tiles
 
     @staticmethod
     def _conveyor_tile_available(
@@ -566,12 +805,57 @@ class BuilderMixin:
             return self.conveyor_index >= len(plan.positions)
         return False
 
+    def _build_offensive_battery(self, ct: Controller, km: KnownMap) -> bool:
+        plan = self.conveyor_plan
+        if plan is None or plan.splitter_direction is None:
+            return True
+
+        splitter_id = ct.get_tile_building_id(plan.sink)
+        if splitter_id is None:
+            build_positions = adjacent_positions(km, plan.sink)
+            if ct.get_position() not in build_positions:
+                self._move_toward(ct, km, build_positions)
+                return False
+            if ct.get_action_cooldown() != 0:
+                return False
+            if ct.can_build_splitter(plan.sink, plan.splitter_direction):
+                ct.build_splitter(plan.sink, plan.splitter_direction)
+                # Splitters are walkable, so use the independent movement
+                # action to get into position for the first Gunner.
+                self._move_toward(ct, km, {plan.sink})
+            return False
+        if (
+            ct.get_team(splitter_id) != ct.get_team()
+            or ct.get_entity_type(splitter_id) != EntityType.SPLITTER
+        ):
+            return True
+
+        while self.offensive_gunner_index < len(plan.gunners):
+            gunner_position, facing = plan.gunners[self.offensive_gunner_index]
+            existing_id = ct.get_tile_building_id(gunner_position)
+            if existing_id is not None:
+                self.offensive_gunner_index += 1
+                continue
+
+            build_positions = adjacent_positions(km, gunner_position)
+            if ct.get_position() not in build_positions:
+                self._move_toward(ct, km, build_positions)
+                return False
+            if ct.get_action_cooldown() != 0:
+                return False
+            if ct.can_build_gunner(gunner_position, facing):
+                ct.build_gunner(gunner_position, facing)
+                self.offensive_gunner_index += 1
+            return self.offensive_gunner_index >= len(plan.gunners)
+        return True
+
     def _advance_infrastructure_target(self) -> None:
         self.infrastructure_target_index += 1
         self.active_harvester = None
         self.conveyor_plan = None
         self.conveyor_plan_ready = False
         self.conveyor_index = 0
+        self.offensive_gunner_index = 0
 
     # ------------------------------------------------------------------
     # Shared movement helpers
