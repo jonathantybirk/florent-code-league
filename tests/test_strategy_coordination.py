@@ -19,6 +19,7 @@ from utils.common import (
     SLOT_ATTACKER_0_ID,
     SLOT_ATTACKER_1_ID,
     SLOT_BUILDER_ID_START,
+    adjacent_positions,
     known_map_or_warn,
     ordered_ores,
 )
@@ -226,6 +227,51 @@ class ConveyorRoutingTests(unittest.TestCase):
             cores={},
         )
 
+    @classmethod
+    def _planning_map_with_cores(cls) -> KnownMap:
+        km = cls._planning_map(10, 10)
+        own_anchor = Position(1, 7)
+        enemy_anchor = Position(7, 1)
+        own_core = FixedCore(Team.A, own_anchor)
+        enemy_core = FixedCore(Team.B, enemy_anchor)
+        return KnownMap(
+            name="survey-recovery-test",
+            width=km.width,
+            height=km.height,
+            environments=km.environments,
+            cores={
+                Position(anchor.x + dx, anchor.y + dy): fixed_core
+                for anchor, fixed_core in (
+                    (own_anchor, own_core),
+                    (enemy_anchor, enemy_core),
+                )
+                for dx in range(2)
+                for dy in range(2)
+            },
+        )
+
+    @staticmethod
+    def _observed_building(
+        team: Team, entity_type: EntityType, direction: Direction | None = None
+    ) -> SimpleNamespace:
+        return SimpleNamespace(
+            occupancy_known=True,
+            rounds_since_last_seen=0,
+            building=SimpleNamespace(
+                team=team,
+                entity_type=entity_type,
+                direction=direction,
+            ),
+        )
+
+    @staticmethod
+    def _observed_empty() -> SimpleNamespace:
+        return SimpleNamespace(
+            occupancy_known=True,
+            rounds_since_last_seen=0,
+            building=None,
+        )
+
     def test_conveyor_path_takes_longer_route_to_avoid_ore(self) -> None:
         ore = Position(2, 2)
         km = self._planning_map(7, 5, ores={ore})
@@ -305,16 +351,58 @@ class ConveyorRoutingTests(unittest.TestCase):
             )
         }
 
-        class TeamController:
-            @staticmethod
-            def get_team() -> Team:
-                return Team.A
+        self.assertTrue(builder._conveyor_plan_is_broken(plan))
 
-        self.assertTrue(
-            builder._conveyor_plan_is_broken(  # type: ignore[arg-type]
-                TeamController(), plan
+    def test_matching_opposite_team_conveyor_does_not_break_plan(self) -> None:
+        position = Position(3, 2)
+        plan = ConveyorPlan((position,), Position(4, 2))
+        builder = BuilderMixin()
+        builder.map = {
+            position: SimpleNamespace(
+                rounds_since_last_seen=0,
+                building=SimpleNamespace(
+                    team=Team.B,
+                    entity_type=EntityType.CONVEYOR,
+                    direction=Direction.EAST,
+                ),
             )
+        }
+
+        self.assertFalse(builder._conveyor_plan_is_broken(plan))
+
+    def test_builder_moves_before_querying_out_of_vision_conveyor(self) -> None:
+        target = Position(6, 2)
+        km = self._planning_map(10, 6)
+
+        class RecordingBuilder(BuilderMixin):
+            def __init__(self) -> None:
+                super().__init__()
+                self.movement_goals: set[Position] | None = None
+
+            def _move_toward(self, ct, known_map, goals) -> bool:
+                self.movement_goals = goals
+                return True
+
+        class OutOfVisionController:
+            @staticmethod
+            def is_in_vision(position: Position) -> bool:
+                assert position == target
+                return False
+
+            @staticmethod
+            def get_tile_building_id(position: Position) -> int | None:
+                raise AssertionError("out-of-vision tile was queried")
+
+        builder = RecordingBuilder()
+        builder.map = {}
+        builder.conveyor_plan = ConveyorPlan((target,), Position(7, 2))
+
+        completed = builder._build_conveyor_plan(  # type: ignore[arg-type]
+            OutOfVisionController(), km
         )
+
+        self.assertFalse(completed)
+        self.assertEqual(builder.movement_goals, adjacent_positions(km, target))
 
     def test_dangling_partial_line_is_not_a_friendly_routing_sink(self) -> None:
         own_anchor = Position(1, 7)
@@ -340,11 +428,13 @@ class ConveyorRoutingTests(unittest.TestCase):
             cores=cores,
         )
 
-        def conveyor(direction: Direction) -> SimpleNamespace:
+        def conveyor(
+            direction: Direction, team: Team = Team.A
+        ) -> SimpleNamespace:
             return SimpleNamespace(
                 occupancy_known=True,
                 building=SimpleNamespace(
-                    team=Team.A,
+                    team=team,
                     entity_type=EntityType.CONVEYOR,
                     direction=direction,
                 ),
@@ -357,8 +447,8 @@ class ConveyorRoutingTests(unittest.TestCase):
             # This is the bot's own unfinished line, adjacent to its Harvester.
             dangling_first: conveyor(Direction.SOUTH),
             Position(5, 5): conveyor(Direction.WEST),
-            # This separate line is genuinely connected to our Core.
-            Position(2, 5): conveyor(Direction.SOUTH),
+            # This mixed-owner line is genuinely connected to our Core.
+            Position(2, 5): conveyor(Direction.SOUTH, Team.B),
             Position(2, 6): conveyor(Direction.SOUTH),
         }
 
@@ -368,8 +458,7 @@ class ConveyorRoutingTests(unittest.TestCase):
                 return Team.A
 
         ct = TeamController()
-        connected = builder._core_connected_conveyors(  # type: ignore[arg-type]
-            ct,
+        connected = builder._core_connected_conveyors(
             {
                 Position(own_anchor.x + dx, own_anchor.y + dy)
                 for dx in range(2)
@@ -383,6 +472,147 @@ class ConveyorRoutingTests(unittest.TestCase):
         assert plan is not None
         self.assertNotEqual(plan.sink, dangling_first)
         self.assertGreater(len(plan.positions), 0)
+
+    def test_idle_survey_continues_from_dangling_conveyor_output(self) -> None:
+        km = self._planning_map_with_cores()
+        dangling = Position(5, 3)
+        output = Position(4, 3)
+        builder = BuilderMixin()
+        builder.map = {
+            dangling: self._observed_building(
+                Team.A, EntityType.CONVEYOR, Direction.WEST
+            ),
+            output: self._observed_empty(),
+            Position(2, 6): self._observed_building(
+                Team.A, EntityType.CONVEYOR, Direction.SOUTH
+            ),
+        }
+
+        class TeamController:
+            @staticmethod
+            def get_team() -> Team:
+                return Team.A
+
+            @staticmethod
+            def get_position() -> Position:
+                return Position(6, 3)
+
+        plan = builder._plan_survey_recovery(  # type: ignore[arg-type]
+            TeamController(), km
+        )
+
+        self.assertIsNotNone(plan)
+        assert plan is not None
+        self.assertEqual(plan.positions[0], output)
+
+    def test_idle_survey_leeches_enemy_harvester_through_unused_side(self) -> None:
+        km = self._planning_map_with_cores()
+        harvester = Position(5, 3)
+        unused_side = Position(4, 3)
+        builder = BuilderMixin()
+        builder.map = {
+            harvester: self._observed_building(
+                Team.B, EntityType.HARVESTER
+            ),
+            unused_side: self._observed_empty(),
+            Position(5, 2): self._observed_building(
+                Team.B, EntityType.CONVEYOR, Direction.NORTH
+            ),
+            Position(6, 3): self._observed_building(
+                Team.B, EntityType.CONVEYOR, Direction.EAST
+            ),
+            Position(5, 4): self._observed_building(
+                Team.B, EntityType.CONVEYOR, Direction.SOUTH
+            ),
+            Position(2, 6): self._observed_building(
+                Team.A, EntityType.CONVEYOR, Direction.SOUTH
+            ),
+        }
+
+        class TeamController:
+            @staticmethod
+            def get_team() -> Team:
+                return Team.A
+
+            @staticmethod
+            def get_position() -> Position:
+                return Position(4, 4)
+
+        plan = builder._plan_survey_recovery(  # type: ignore[arg-type]
+            TeamController(), km
+        )
+
+        self.assertIsNotNone(plan)
+        assert plan is not None
+        self.assertEqual(plan.positions[0], unused_side)
+
+    def test_assigned_ore_reuses_opposite_team_harvester(self) -> None:
+        km = self._planning_map_with_cores()
+        harvester = Position(5, 3)
+        builder = BuilderMixin()
+
+        class HarvesterController:
+            @staticmethod
+            def get_position() -> Position:
+                return Position(4, 3)
+
+            @staticmethod
+            def get_tile_building_id(position: Position) -> int | None:
+                return 71 if position == harvester else None
+
+            @staticmethod
+            def get_entity_type(entity_id: int) -> EntityType:
+                assert entity_id == 71
+                return EntityType.HARVESTER
+
+        builder._seek_and_build_harvester(  # type: ignore[arg-type]
+            HarvesterController(), km, harvester
+        )
+
+        self.assertEqual(builder.active_harvester, harvester)
+
+    def test_idle_survey_can_break_enemy_conveyor_to_reach_harvester(self) -> None:
+        km = self._planning_map_with_cores()
+        harvester = Position(5, 3)
+        enemy_conveyors = {
+            Position(5, 2),
+            Position(6, 3),
+            Position(5, 4),
+            Position(4, 3),
+        }
+        builder = BuilderMixin()
+        builder.map = {
+            harvester: self._observed_building(
+                Team.B, EntityType.HARVESTER
+            ),
+            **{
+                position: self._observed_building(
+                    Team.B, EntityType.CONVEYOR, Direction.NORTH
+                )
+                for position in enemy_conveyors
+            },
+            Position(2, 6): self._observed_building(
+                Team.A, EntityType.CONVEYOR, Direction.SOUTH
+            ),
+        }
+
+        class TeamController:
+            @staticmethod
+            def get_team() -> Team:
+                return Team.A
+
+            @staticmethod
+            def get_position() -> Position:
+                return Position(4, 4)
+
+        plan = builder._plan_survey_recovery(  # type: ignore[arg-type]
+            TeamController(), km
+        )
+
+        self.assertIsNotNone(plan)
+        assert plan is not None
+        self.assertTrue(plan.sabotage)
+        self.assertTrue(plan.sabotage.issubset(enemy_conveyors))
 
     def test_friendly_route_is_kept_when_every_segment_approaches_target(self) -> None:
         plan = ConveyorPlan(
@@ -519,13 +749,15 @@ class EnemySupplyTakeoverTests(unittest.TestCase):
             harvester: self._tile(Team.B, EntityType.HARVESTER),
             **{
                 position: self._tile(
-                    Team.B, EntityType.CONVEYOR, Direction.EAST
+                    Team.A if position == conveyors[1] else Team.B,
+                    EntityType.CONVEYOR,
+                    Direction.EAST,
                 )
                 for position in conveyors
             },
         }
 
-        chains = builder._enemy_supply_chains(Team.A, {Position(6, 4)})
+        chains = builder._supply_chains_to_core({Position(6, 4)})
 
         self.assertEqual(len(chains), 1)
         self.assertEqual(chains[0].harvester, harvester)
@@ -544,7 +776,7 @@ class EnemySupplyTakeoverTests(unittest.TestCase):
         }
 
         self.assertEqual(
-            builder._enemy_supply_chains(Team.A, {Position(6, 4)}),
+            builder._supply_chains_to_core({Position(6, 4)}),
             [],
         )
 
@@ -588,14 +820,14 @@ class EnemySupplyTakeoverTests(unittest.TestCase):
         builder.map = {
             harvester: self._tile(Team.B, EntityType.HARVESTER),
             first: self._tile(Team.B, EntityType.CONVEYOR, Direction.EAST),
-            second: self._tile(Team.B, EntityType.CONVEYOR, Direction.EAST),
+            second: self._tile(Team.A, EntityType.CONVEYOR, Direction.EAST),
             dangling: self._tile(
                 Team.B, EntityType.CONVEYOR, Direction.EAST
             ),
         }
 
         self.assertEqual(
-            builder._fed_enemy_conveyors(Team.A),
+            builder._fed_conveyors(),
             {first, second},
         )
 
