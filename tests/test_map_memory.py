@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT / "bots" / "starter"))
+sys.path.insert(0, str(PROJECT_ROOT / "bots" / "1"))
 
 from fcode import Direction, EntityType, Environment, Position, ResourceType, Team
 from utils.map import (
@@ -122,7 +122,7 @@ class MapAtlasTests(unittest.TestCase):
         for name, known_map in atlas.items():
             with self.subTest(map=name):
                 source = PROJECT_ROOT / "maps" / f"{name}.map26"
-                bundled = PROJECT_ROOT / "bots" / "starter" / "maps" / f"{name}.map26"
+                bundled = PROJECT_ROOT / "bots" / "1" / "maps" / f"{name}.map26"
                 self.assertEqual(source.read_bytes(), bundled.read_bytes())
                 walls = sum(
                     tile == Environment.WALL
