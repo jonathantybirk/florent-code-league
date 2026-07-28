@@ -2,7 +2,7 @@
 
 Source: https://game.code.florent.vc/docs/global-comms
 
-The **Global Communication Store** provides a shared communication mechanism through 16 integer slots that persist across turns, enabling bots to coordinate without hardcoding values.
+The Global Communication Store gives all your bots a shared blackboard: 16 integer slots that persist across turns. Use it to coordinate strategy without hard-coding locations.
 
 ## API
 
@@ -10,8 +10,6 @@ The **Global Communication Store** provides a shared communication mechanism thr
 |--------|---------|-------------|
 | `ct.read_store(slot)` | `int` | Read the value in slot `slot` (0–15). |
 | `ct.write_store(slot, value)` | `None` | Write `value` to slot `slot` (0–15). |
-
-**Example usage:**
 
 ```python
 # Read what last turn's bots wrote
@@ -27,25 +25,27 @@ ct.write_store(1, target.y)
 
 There are 16 slots, indexed 0 to 15. All values start at 0 and accept any non-negative integer. Reading slot 16 or above raises an error.
 
-## Timing: Writes are Buffered
+## Timing: writes are buffered
 
-Writes are not applied immediately. They commit at round's end and become readable the following round. This ensures every bot observes consistent store state throughout the entire round.
+Writes are not applied immediately. They are committed at the end of the round, and the new values become readable for all your bots in the next round.
 
 | Round | Event |
-|-------|-------|
+|---|---|
 | N | Bot A calls `write_store(0, 42)` |
-| N | Bot B calls `read_store(0)` → reads **0** (previous round's value) |
-| N+1 | Bot B calls `read_store(0)` → reads **42** |
+| N | Bot B calls `read_store(0)` → still reads 0 (last round's value) |
+| N+1 | Bot B calls `read_store(0)` → now reads 42 |
 
-## Team Isolation
+This means every bot sees a consistent snapshot of the store for the entire round, regardless of execution order. Design your communication protocol around this one-round delay.
 
-Each team maintains its own separate store. Writes remain invisible to opponents, and opponent data cannot be read.
+## Team isolation
 
-## Usage Patterns
+Each team has its own store. Your writes are invisible to the opponent, and you cannot read theirs.
 
-### Scouting Target
+## Usage patterns
 
-Designate fixed slots for shared attack targets:
+### Scouting target
+
+Designate fixed slots for a shared attack target:
 
 ```python
 # Any bot that finds the enemy core sets slots 0 and 1
@@ -60,7 +60,7 @@ if target_x > 0 and target_y > 0:
     move_toward(ct, Position(target_x, target_y))
 ```
 
-### Unit Census
+### Unit census
 
 Count units by type to decide when to expand:
 
@@ -70,9 +70,9 @@ current = ct.read_store(2)
 ct.write_store(2, current + 1)  # buffered, so safe from race conditions
 ```
 
-The buffering ensures consistency: the read reflects the previous turn's total, so increment operations remain race-free.
+Because writes are buffered you need to be careful: `read_store(2) + 1` reads the last round's total, so you're incrementing from the previous turn's count. This is consistent and race-free — just account for the lag.
 
-### Status Flags
+### Status flags
 
 Use individual slots as boolean flags:
 
@@ -89,6 +89,6 @@ if ct.read_store(SLOT_UNDER_ATTACK) == 1:
 
 ## Tips
 
-- Assign slot numbers as named constants at the top of your file to avoid magic numbers.
-- The one-round delay is a feature, not a bug — it guarantees every bot sees the same store state throughout a round.
-- There is no lock or mutex; the buffered write model makes concurrent updates safe by design.
+- Assign slot numbers as named constants at the top of your file to avoid magic numbers
+- The one-round delay is a feature, not a bug — it guarantees every bot sees the same store state throughout a round
+- There is no lock or mutex; the buffered write model makes concurrent updates safe by design

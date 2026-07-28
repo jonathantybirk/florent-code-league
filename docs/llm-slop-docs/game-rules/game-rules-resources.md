@@ -2,39 +2,44 @@
 
 Source: https://game.code.florent.vc/docs/game-rules-resources
 
-**Titanium** serves as the singular in-game currency in Florent Code League, functioning as a shared team balance. All units withdraw from and contribute to this collective pool.
+## Titanium
 
-To check your current titanium:
+Titanium is the only resource in Florent Code League. It is a shared team balance — all your units draw from and deposit into the same pool.
 
 ```python
 titanium = ct.get_global_resources()
 ```
 
-## Income Sources
+## Income sources
 
-### Passive Income
+### Passive income
 
-Every team automatically receives 10 titanium every 4 rounds regardless of territorial control.
+All teams receive 10 titanium every 4 rounds passively, regardless of map control.
 
 ### Harvesters
 
-Builder Bots can construct Harvesters on ore tiles to generate ongoing income. These structures operate without a construction limit and don't consume the 50-unit cap. Greater ore tile control amplifies your economic advantage throughout the match.
+Builder Bots can construct Harvesters on `ORE_TITANIUM` tiles to generate passive income — see [Harvester](game-rules-harvester.md) for full mechanics. There is no cap on the number of Harvesters (they're buildings, not units, so they don't count against the 50-unit cap either). Controlling more ore tiles compounds your income advantage over the match.
 
-## Cost Scaling
+## Cost scaling
 
-Build expenses increase as you construct more entities, scaling based on production volume rather than time. Each structure type contributes differently: conveyors add +1%, harvesters add +5%, combat units add +10%, and builder bots/sentinels add +20%. Destruction reverses these contributions.
+All build costs scale upward as you build more entities — not as a function of elapsed rounds. Each conveyor/splitter/barrier built adds +1% to your team's scale factor, each harvester +5%, each gunner/launcher +10%, and each builder bot/sentinel +20%; destroying an entity removes its contribution again. A team that builds nothing stays at scale 1.0 (100%) indefinitely, no matter how many rounds pass.
 
-Query current costs using:
+> **Correction vs. the official docs.** The published page's example comment reads `# 1.0 with nothing built`. **`ct.get_scale_percent()` returns a percentage, not a 0–1 fraction** — confirmed at runtime: with nothing built it returns `100.0`, not `1.0`.
 
 ```python
-scale = ct.get_scale_percent()
+scale = ct.get_scale_percent()  # 100.0 with nothing built; rises only as you build
+```
+
+Query the current cost of any specific action:
+
+```python
 titanium_cost = ct.get_gunner_cost()
 ```
 
-**Key insight:** early expansion is disproportionately valuable. Early purchases cost significantly less than equivalent late-game acquisitions.
+**Implication:** early expansion is disproportionately valuable. Units and buildings bought in the early game cost less than identical purchases later. Build aggressively early and consolidate your position before costs make expansion prohibitive.
 
-## Economic Strategy Notes
+## Economic strategy notes
 
-- Harvesters recover their construction cost within dozens of rounds.
-- Eliminating enemy Harvesters eliminates their income generation.
-- Movement is free—Builder Bots can traverse open terrain without expenditure, allowing resources to focus on structures and defense.
+- Harvesters on ore tiles pay back their build cost within a few dozen rounds at typical scale values.
+- Destroying an enemy Harvester denies them income for the rest of the match.
+- Movement itself is free — Builder Bots can walk over any open tile without building anything — so titanium can go entirely toward Harvesters, turrets, and other buildings.

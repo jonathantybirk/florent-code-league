@@ -2,15 +2,15 @@
 
 Source: https://game.code.florent.vc/docs/game-rules-overview
 
-## Win Condition
+## Win condition
 
-To win, a team must **destroy the opponent's Core**. The Core serves as each team's single base unit, and losing it ends the match immediately as a loss.
+Destroy the opponent's Core. The Core is each team's single base unit; losing it immediately ends the match as a loss.
 
-If both Cores survive until round 1000, the winner is determined by tiebreakers in this order: most titanium collected, then most harvesters, then most titanium stored, then a coin flip.
+If neither Core is destroyed by the end of round 1000, the winner is decided by tiebreakers, in order: most titanium collected, then most harvesters, then most titanium stored, then a coin flip.
 
-## The Map
+## The map
 
-Matches take place on a rectangular grid ranging from **8×8 to 30×30 tiles**. Each tile has one of these environment types:
+Matches are played on a rectangular grid ranging from 8×8 to 30×30 tiles. Each tile has one of the following environment types:
 
 | Environment | Description |
 |---|---|
@@ -18,33 +18,33 @@ Matches take place on a rectangular grid ranging from **8×8 to 30×30 tiles**. 
 | `WALL` | Impassable — blocks all movement and line-of-sight. |
 | `ORE_TITANIUM` | Ore tile; a Harvester built here generates extra titanium. |
 
-Maps are symmetric and randomly selected from the competition map pool for each match.
+Maps are symmetric and chosen from the competition map pool at random for each match.
 
-## Units and Buildings
+## Units and buildings
 
-Every entity belongs to a Team (A or B) and has an EntityType. Two overlapping categories exist:
+Every entity on the map belongs to a Team (A or B) and has an `EntityType`. There are two overlapping categories:
 
-- **Units** — the Core, Builder Bots, and turrets (Gunner, Sentinel, Launcher). Each runs its own bot code instance and consumes CPU time per round.
-- **Buildings** — all immovable entities: the Core, turrets, conveyors, splitters, harvesters, and barriers.
+- **Units** — the Core, Builder Bots, and turrets (Gunner, Sentinel, Launcher). Each runs its own instance of your bot code and uses CPU time every round.
+- **Buildings** — everything immovable: the Core, turrets, conveyors, splitters, harvesters, and barriers.
 
-The Core and turrets function as both units and buildings. Builder Bots are the only units that aren't buildings, while conveyors, splitters, harvesters, and barriers are the only buildings that aren't units.
+The Core and turrets are both a unit and a building — Builder Bots are the only unit that isn't also a building, and conveyors/splitters/harvesters/barriers are the only buildings that aren't also units.
 
-## Unit Cap
+## Unit cap
 
-Each team may have at most **50 living units** at any time. Spawning attempts fail when this limit is reached.
+Each team may have at most 50 living units at any time — this includes the Core, Builder Bots, and turrets. Attempts to spawn a Builder Bot (or build a turret) when the cap is reached will fail.
 
-## Turn Order
+## Turn order
 
-Each round, every living unit executes its `run()` method **in the order it was spawned**. The Core always acts first, before any subsequently-built units. Resource changes from one unit become visible immediately to the next acting unit.
+Each round, every living unit executes its `run()` method in the order it was spawned — the Core (spawned first) always acts before any Builder Bot or turret built later in the match. Within a round, resource changes made by one unit are immediately visible to the next unit that acts.
 
-## CPU Time Limit
+## CPU time limit
 
-Each unit has **10 ms of CPU time per round**, plus a banked extra-time buffer of up to 5% of that limit. Unused time accumulates; overuse debits from the bank. Exceeding available time interrupts execution, and the unit doesn't resume—`run()` restarts fresh next round. Use `ct.get_cpu_time_elapsed()` to monitor usage.
+Each unit has 10 ms of CPU time per round, plus a banked extra-time buffer of up to 5% of that limit (unused time is banked; overuse is debited from the bank). If `run()` exceeds the available time, execution is interrupted immediately and the unit does not resume where it left off — `run()` is simply called again fresh next round. Use `ct.get_cpu_time_elapsed()` inside `run()` to monitor usage.
 
-## Uncaught Exceptions
+## Uncaught exceptions
 
-CPU-time interruption costs only one round; `run()` continues normally next round. However, an **uncaught exception** is not recoverable in the same way: if `run()` raises anything it doesn't catch, the engine logs the traceback to the replay and **permanently removes that unit from the match**. Wrap risky calls in `try`/`except` blocks if units should survive errors.
+A CPU-time interruption only costs that unit a single round — `run()` is called again next round as normal. An uncaught exception is not recoverable in the same way: if `run()` raises anything it doesn't catch (a `GameError` or otherwise), the engine logs the traceback to the replay and permanently removes that unit from the match. It will never act again for the rest of the match. Wrap risky calls in `try`/`except` (see `GameError`) if a unit should keep playing through an error instead of being destroyed.
 
-## Round Limit
+## Round limit
 
-Matches end after **1000 rounds** if neither Core has been destroyed.
+Matches end after 1000 rounds if neither Core has been destroyed.

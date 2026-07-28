@@ -1,8 +1,8 @@
 # Florent Code League — Map Atlas
 
-*Locally generated (not part of the scraped mirror).* Every map in the competition pool, shown in two views side by side — **isometric** (the map-editor's dimetric render) and **replay top-down** (the flat 2D replay style).
+*LLM-generated, not from the official site — see [.map26 file format](../reference/map26-file-format.md) for how this was produced.* Every map in the competition pool, shown in two views side by side — **isometric** (the map-editor's dimetric render) and **replay top-down** (the flat 2D replay style).
 
-Maps are **rotationally symmetric**. Each ranked match uses a randomly selected map from this pool. Locally, `fcode run` uses the first map alphabetically — **atoll** — unless you pass a map name or `--map-random`.
+Maps are symmetric between the two starting corners, but not always via 180° rotation — some are mirrored horizontally, some vertically. Don't assume rotational symmetry when reasoning about one half of a map from the other. Each ranked match uses a randomly selected map from this pool. Locally, `fcode run` uses the first map alphabetically — **atoll** — unless you pass a map name or `--map-random`.
 
 **Teams** — Team A (gold) always starts bottom-left · Team B (silver/blue) top-right. Each **Core occupies a 2×2 block** (its listed coordinate is the top-left tile). ◆ = titanium ore deposit; stone = walls (impassable, block line-of-sight).
 

@@ -2,11 +2,11 @@
 
 Source: https://game.code.florent.vc/docs/cli-reference
 
-## Global Flags
+## Global flags
 
 | Flag | Description |
-|------|-------------|
-| `--version` | Print the installed `fcode` version and exit. |
+|---|---|
+| `--version` | Print the installed fcode version and exit. |
 | `--help` | Show help for the command or subcommand. |
 
 ## `fcode login`
@@ -44,7 +44,7 @@ fcode run BOT_A BOT_B [MAP] [--replay FILE] [--seed N] [--watch] [--map-random] 
 ```
 
 | Argument / Flag | Default | Description |
-|-----------------|---------|-------------|
+|---|---|---|
 | `BOT_A` | — | First bot — a path, or a name resolved against your `bots/` folder. |
 | `BOT_B` | — | Second bot. Pass the same value as `BOT_A` for a mirror match. |
 | `MAP` | first map | Optional map — a path or a name resolved against your `maps/` folder. Omitted uses the first map in `maps/`. |
@@ -52,7 +52,7 @@ fcode run BOT_A BOT_B [MAP] [--replay FILE] [--seed N] [--watch] [--map-random] 
 | `--seed N` | from config | Deterministic match seed. |
 | `--watch` | off | Open the visualiser automatically when the match finishes. |
 | `--map-random` | off | Pick a random map from `maps/` when no map is given. |
-| `--tle MS` | `0` (disabled) | Enforce a per-turn CPU time limit locally, in milliseconds. The ladder server always enforces **10 ms**; local runs don't unless you pass this. |
+| `--tle MS` | 0 (disabled) | Enforce a per-turn CPU time limit locally, in milliseconds. The ladder server always enforces 10 ms; local runs don't unless you pass this. |
 
 ## `fcode watch`
 
@@ -64,7 +64,7 @@ fcode watch --match MATCH_ID [--game N]
 ```
 
 | Argument / Flag | Description |
-|-----------------|-------------|
+|---|---|
 | `REPLAY` | Path to a local `.replay26` replay file. |
 | `--match MATCH_ID` | Open a match's replay from the platform instead of a local file. |
 | `--game N` | Game number within the match (for `--match`). |
@@ -79,7 +79,7 @@ fcode map-editor --platform
 ```
 
 | Flag | Description |
-|------|-------------|
+|---|---|
 | `--platform` | Open the map editor on the platform in your browser instead of running it locally. |
 
 ## `fcode submit`
@@ -91,9 +91,9 @@ fcode submit PATH [--name NAME]
 ```
 
 | Argument / Flag | Description |
-|-----------------|-------------|
+|---|---|
 | `PATH` | A bot directory (containing `main.py`), a `.py` file, or a `.zip` archive. |
-| `--name`, `-n NAME` | Optional name for this submission. |
+| `--name, -n NAME` | Optional name for this submission. |
 
 ## `fcode submission`
 
@@ -106,9 +106,9 @@ fcode submission upload PATH [--name NAME]
 ```
 
 | Argument / Flag | Description |
-|-----------------|-------------|
+|---|---|
 | `PATH` | A bot directory (containing `main.py`), a `.py` file, or a `.zip` archive. |
-| `--name`, `-n NAME` | Optional name for this submission. |
+| `--name, -n NAME` | Optional name for this submission. |
 
 Identical to `fcode submit`.
 
@@ -127,7 +127,7 @@ fcode submission activate VERSION
 ```
 
 | Argument | Description |
-|----------|-------------|
+|---|---|
 | `VERSION` | Version number of the submission to make active on the ladder. |
 
 ### `submission rename`
@@ -137,7 +137,7 @@ fcode submission rename VERSION NAME
 ```
 
 | Argument | Description |
-|----------|-------------|
+|---|---|
 | `VERSION` | Version number of the submission to rename. |
 | `NAME` | New name for the submission. |
 
@@ -148,9 +148,9 @@ fcode submission download [VERSION] [--output FILE]
 ```
 
 | Argument / Flag | Default | Description |
-|-----------------|---------|-------------|
+|---|---|---|
 | `VERSION` | active/ready submission | Version number to download. Omitted downloads your currently active (or most recent ready) submission. |
-| `--output`, `-o FILE` | `v<VERSION>.zip` | Output file path for the downloaded archive. |
+| `--output, -o FILE` | `v<VERSION>.zip` | Output file path for the downloaded archive. |
 
 ## `fcode match`
 
@@ -171,11 +171,11 @@ fcode match list [--type ladder|unrated] [--team TEAM] [--mine] [--limit N] [--c
 ```
 
 | Flag | Default | Description |
-|------|---------|-------------|
+|---|---|---|
 | `--type ladder\|unrated` | all types | Filter by match type. |
 | `--team TEAM` | — | Filter by team name or team ID. |
 | `--mine` | off | Show only your own team's matches. |
-| `--limit N` | `20` | Number of matches to show (max 100). |
+| `--limit N` | 20 | Number of matches to show (max 100). |
 | `--cursor CURSOR` | — | Pagination cursor from a previous page. |
 
 ### `match unrated`
@@ -185,7 +185,7 @@ fcode match unrated OPPONENT_ID [--match SOURCE_MATCH_ID] [--map MAP_NAME]
 ```
 
 | Argument / Flag | Description |
-|-----------------|-------------|
+|---|---|
 | `OPPONENT_ID` | Team ID to request an unrated match against. |
 | `--match SOURCE_MATCH_ID` | Use the opponent's submission from this specific match instead of their currently active one. |
 | `--map MAP_NAME` | Map to play (repeatable, up to 5). Omitted picks random maps. |
@@ -201,11 +201,11 @@ fcode match test BOT_A BOT_B [MAPS...]
 ```
 
 | Argument | Description |
-|----------|-------------|
-| `BOT_A`, `BOT_B` | Each is a directory (containing `main.py`), a `.py` file, or a `.zip`. |
+|---|---|
+| `BOT_A, BOT_B` | Each is a directory (containing `main.py`), a `.py` file, or a `.zip`. |
 | `MAPS...` | Optional map names, one per game. Omitted runs 5 random maps. |
 
-Rate limit: 5 matches per 10 minutes per account.
+**Rate limit:** 5 matches per 10 minutes per account.
 
 ### `match replay`
 
@@ -214,10 +214,10 @@ fcode match replay MATCH_ID [--game N] [--output FILE]
 ```
 
 | Argument / Flag | Default | Description |
-|-----------------|---------|-------------|
+|---|---|---|
 | `MATCH_ID` | — | Match to download replays from. |
-| `--game`, `-g N` | all games | Game number (1-5) to download. Omitted downloads all games in the match. |
-| `--output`, `-o FILE` | `<matchId>_game_<N>.replay26` | Output file path. |
+| `--game, -g N` | all games | Game number (1-5) to download. Omitted downloads all games in the match. |
+| `--output, -o FILE` | `<matchId>_game_<N>.replay26` | Output file path. |
 
 ### `match watch`
 
@@ -226,9 +226,9 @@ fcode match watch MATCH_ID [--game N]
 ```
 
 | Argument / Flag | Description |
-|-----------------|-------------|
+|---|---|
 | `MATCH_ID` | Match to open in the browser-based visualiser. |
-| `--game`, `-g N` | Game number within the match. |
+| `--game, -g N` | Game number within the match. |
 
 Shorthand for `fcode watch --match MATCH_ID [--game N]`.
 
@@ -239,8 +239,8 @@ fcode match tests [--limit N]
 ```
 
 | Flag | Default | Description |
-|------|---------|-------------|
-| `--limit N` | `20` | Number of test runs to show. |
+|---|---|---|
+| `--limit N` | 20 | Number of test runs to show. |
 
 Lists your recent `fcode match test` runs.
 
@@ -255,7 +255,7 @@ fcode team search QUERY
 ```
 
 | Argument | Description |
-|----------|-------------|
+|---|---|
 | `QUERY` | Search text matched against team names. |
 
 ### `team info`
@@ -265,7 +265,7 @@ fcode team info TEAM_ID
 ```
 
 | Argument | Description |
-|----------|-------------|
+|---|---|
 | `TEAM_ID` | Team to show — name, rating, match count, and members. |
 
 ## `fcode ladder`
@@ -277,8 +277,8 @@ fcode ladder [--limit N] [--around]
 ```
 
 | Flag | Default | Description |
-|------|---------|-------------|
-| `--limit N` | `20` | Number of teams to show. |
+|---|---|---|
+| `--limit N` | 20 | Number of teams to show. |
 | `--around` | off | Center the list on your own team's rank (±5), instead of starting from the top. |
 
 ## `fcode status`

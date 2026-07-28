@@ -4,18 +4,18 @@ Source: https://game.code.florent.vc/docs/game-rules-turrets
 
 Turrets are stationary combat buildings constructed by Builder Bots. Like every other unit, each turret runs its own instance of your bot code once per round.
 
-> **Correction vs. the official docs.** The published page describes ammo as a team-wide pool produced at the Core (`convert_ammo()` / `get_global_ammo()`) that turrets draw from. That is not how the installed `fcode` engine works — those methods do not exist. The paragraph below has been rewritten to match the actual engine.
+> **Correction vs. the official docs.** The published page describes ammo as a team-wide pool produced at the Core (`convert_ammo()` / `get_global_ammo()`) that turrets draw from. **That is not how the installed `fcode` engine works** — those methods do not exist (confirmed by enumerating the real `Controller` object at runtime; calling any of them raises `AttributeError`). The paragraph below is rewritten to match the actual engine.
 
-Gunners and Sentinels consume **ammo (titanium) held inside each individual turret** — there is **no team-wide ammo balance** and no titanium→ammo conversion. Each turret simply stores titanium which acts as ammo as a physical resource, and you must **deliver titanium to it via conveyors**. Each shot deducts its ammo cost (2 for a Gunner, 10 for a Sentinel) from **that turret's own stock**; a turret with empty ammo cannot fire. Launchers use no ammo. Check a turret's own supply with `ct.get_ammo_amount()` and `ct.get_ammo_type()` (see below).
+Gunners and Sentinels consume **ammo (titanium) held inside each individual turret** — there is **no team-wide ammo balance** and no titanium→ammo conversion. Each turret simply stores titanium which acts as ammo as a physical resource, and you must **deliver titanium to it via conveyors**. Each shot deducts its ammo cost (2 for a Gunner, 10 for a Sentinel) from **that turret's own stock**; a turret with empty ammo cannot fire. Launchers use no ammo. Check a turret's own supply with `ct.get_ammo_amount()` and `ct.get_ammo_type()`.
 
-Gunners have a **facing direction** set at build time and adjustable with `ct.rotate()` — Sentinels also face a fixed direction set at build time, but cannot rotate afterward. The Launcher has no facing direction at all.
+Gunners have a facing direction set at build time and adjustable with `ct.rotate()` — Sentinels also face a fixed direction set at build time, but cannot rotate afterward. The Launcher has no facing direction at all.
 
 ## Gunner
 
 A rapid-firing turret that fires a narrow forward ray.
 
 | Property | Value |
-|----------|-------|
+|---|---|
 | HP | 40 |
 | Cost | 10 Ti |
 | Damage | 10 |
@@ -31,7 +31,7 @@ The line stops at the first targetable tile (a builder bot or a building) in its
 A defensive turret that fires a long, obstacle-piercing line.
 
 | Property | Value |
-|----------|-------|
+|---|---|
 | HP | 30 |
 | Cost | 30 Ti |
 | Damage | 18 |
@@ -47,7 +47,7 @@ Sentinels hit a single tile-wide line along their facing direction, just like a 
 A utility turret that picks up and throws Builder Bots.
 
 | Property | Value |
-|----------|-------|
+|---|---|
 | HP | 30 |
 | Cost | 20 Ti |
 | Action | Picks up an adjacent (including diagonal) friendly Builder Bot and throws it to any bot-passable tile in range |
@@ -59,7 +59,7 @@ The Launcher does not deal direct damage and needs no ammo. Its value is rapid r
 
 ## Rotating turrets
 
-Only the **Gunner** can rotate after placement:
+Only the Gunner can rotate after placement:
 
 ```python
 if ct.can_rotate(Direction.WEST):

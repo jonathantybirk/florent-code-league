@@ -1,0 +1,44 @@
+# Building an Army: Turrets & Combat · Step 4 of 5
+
+Source: https://game.code.florent.vc/tutorials/turrets-combat/04-healing-and-sabotage
+
+## Healing and sabotage
+
+Builder Bots have two more combat-adjacent abilities worth knowing, and both are narrower than they might sound at first.
+
+`ct.heal(pos)` repairs damaged friendly entities on a tile — like fire, it's restricted to a tile that's orthogonally adjacent to the Builder Bot (NORTH, SOUTH, EAST, or WEST, never diagonal and never its own tile) — for 4 HP at a cost of 1 titanium. It heals a building and a Builder Bot standing on it in the same call if both are friendly and damaged. Use `ct.can_heal(pos)` first — it checks adjacency, cooldown, titanium, and that there's actually damage to repair.
+
+```python
+for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
+    target = ct.get_position().add(d)  # an adjacent tile, never your own
+    if ct.can_heal(target):
+        ct.heal(target)
+        break
+```
+
+`ct.fire(pos)` is more restrictive than it looks: a Builder Bot can only target a tile that's orthogonally adjacent to it — NORTH, SOUTH, EAST, or WEST of its current position, never diagonal and never its own tile — and only damages the building there. It's not a way to attack a nearby enemy unit — for that, you'd need a turret. What it's actually for is sabotage: walk up next to an enemy's logistics chain (Conveyor and Splitter tiles are walkable, so you could also stand on one and fire at whatever's next to you) and damage a building from the side. Two titanium per hit, same as the cost of the shot itself.
+
+```python
+for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
+    target = ct.get_position().add(d)  # an adjacent tile, never your own
+    if ct.can_fire(target):
+        ct.fire(target)
+        break
+```
+
+One more method you'll see referenced elsewhere: `ct.self_destruct()`. Older material (including some in-game documentation) describes it as dealing area damage when you blow up — that's no longer how it works. Self-destructing a Builder Bot today deals zero damage to anything nearby; it just removes the unit. Its only real use is freeing up your 50-unit cap or retreating a doomed bot before it gets picked off for a bounty — it is not a weapon.
+
+## Try it
+
+You don't need a full match to see these work — try building a Conveyor on a tile adjacent to your Builder Bot, firing at that tile a couple of times to damage it, then healing it back up:
+
+```python
+if ct.can_fire(pos):
+    ct.fire(pos)
+elif ct.can_heal(pos):
+    ct.heal(pos)
+```
+
+What you should see: the Conveyor's HP drop by 2 each time you fire, then climb back by 4 each time you heal, in the replay's building-health display.
+
+Next: recap, and putting a full economy-plus-defense bot together.

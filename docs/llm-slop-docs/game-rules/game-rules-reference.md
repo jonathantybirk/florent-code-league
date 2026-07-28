@@ -2,14 +2,14 @@
 
 Source: https://game.code.florent.vc/docs/game-rules-reference
 
-## Entity Stats
+## Entity stats
 
 ### Units
 
 | Entity | HP | Cost (Ti) | Vision radius² | Action radius² | Spawn radius² | Move cooldown |
 |--------|----|-----------|----|----|----|---|
 | Core | 500 | — | 36 | — | 2 (adjacent ring) | — |
-| Builder Bot | 40 | 30 | 20 | Orthogonally adjacent only | — | 1 |
+| Builder Bot | 40 | 30 | 20 | — (Build/Attack/Heal/Destroy are all orthogonally adjacent only) | — | 1 |
 
 ### Turrets
 
@@ -28,9 +28,9 @@ Source: https://game.code.florent.vc/docs/game-rules-reference
 | Basic Conveyor | 20 | 3 (base) | No | No |
 | Splitter | 20 | 6 (base) | No | No |
 
-Base costs scale with team entity count (see Cost scaling section).
+All costs above are base costs — the effective cost scales up with the number of entities your team has built (see [Cost scaling](game-rules-resources.md#cost-scaling)).
 
-## Game Constants
+## Game constants
 
 | Constant | Value |
 |----------|-------|
@@ -42,8 +42,12 @@ Base costs scale with team entity count (see Cost scaling section).
 | Map size range | 8×8 – 30×30 |
 | Series length | Best of 5 |
 
-## Cost Scaling
+## Cost scaling
 
-Building costs multiply by a scale factor: `effective_cost = base_cost × scale_factor`
+All build costs are multiplied by the current scale factor:
 
-Starting at 1.0, the factor increases additively per entity built: conveyors/splitters/barriers (+1%), harvesters (+5%), gunners/launchers (+10%), builder bots/sentinels (+20% each). Removals decrease the factor accordingly.
+```
+effective_cost = base_cost × scale_factor
+```
+
+The scale factor starts at 1.0 and increases additively as entities are built (conveyor/splitter/barrier +1%, harvester +5%, gunner/launcher +10%, builder bot/sentinel +20% each — removed again on destruction), not as a function of elapsed rounds. Use `ct.get_scale_percent()` to read the current value (as a percentage — see the [correction note](game-rules-resources.md#cost-scaling)). Use `ct.get_<entity>_cost()` methods to read the already-scaled current cost of any specific build action.

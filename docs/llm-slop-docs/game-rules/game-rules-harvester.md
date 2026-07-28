@@ -4,25 +4,25 @@ Source: https://game.code.florent.vc/docs/game-rules-harvester
 
 ## Overview
 
-Harvesters are buildings that generate passive titanium income. A Builder Bot constructs these structures on `ORE_TITANIUM` tiles, after which they automatically produce titanium to adjacent buildings without further bot involvement. These facilities don't count toward unit caps and require no CPU resources.
+Harvesters are buildings that generate passive titanium income. A Builder Bot constructs a Harvester on an `ORE_TITANIUM` tile, and from then on it periodically outputs titanium to an adjacent building without any further action from your bots. Harvesters are buildings, not units — they don't count toward the 50-unit cap and consume no CPU time.
 
 ## Stats
 
 | Property | Value |
-|----------|-------|
+|---|---|
 | HP | 30 |
 | Base cost | 20 Ti (scales +5% per Harvester built) |
 | Output | 10 Ti every 4 rounds |
 | Blocks movement | No |
 | Blocks LOS | No |
 
-## Output Behavior
+## Output behavior
 
-Every 4 rounds, a Harvester outputs one stack (10 Ti) to an adjacent building, prioritizing whichever of its 4 cardinal output directions was used least recently. This follows the same round-robin distribution pattern as Splitters. Production begins immediately upon construction rather than after a full 4-round delay.
+Every 4 rounds, a Harvester outputs one stack (10 Ti) to an adjacent building, prioritizing whichever of its 4 cardinal output directions was used least recently — the same round-robin pattern used by Splitters. The first output happens immediately on the round the Harvester is built, not after waiting a full 4 rounds.
 
 ## Building
 
-Harvesters can only be placed on `ORE_TITANIUM` tiles:
+Harvesters can only be built on `ORE_TITANIUM` tiles:
 
 ```python
 if ct.get_tile_env(pos) == Environment.ORE_TITANIUM:
@@ -32,6 +32,6 @@ if ct.get_tile_env(pos) == Environment.ORE_TITANIUM:
 
 ## Notes
 
-- These structures don't count toward unit capacity limits.
-- Output operates independently from bot CPU budgets.
-- Use `ct.destroy()` to remove Harvesters no longer needed.
+- Harvesters are buildings, not units — they don't count toward the 50-unit cap.
+- They have no move or action cooldown of their own; their output timer runs independently of your bots' CPU budget.
+- Use `ct.destroy()` to remove a Harvester you no longer need, same as a Conveyor or Splitter.

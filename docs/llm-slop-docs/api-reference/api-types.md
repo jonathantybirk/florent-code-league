@@ -29,7 +29,7 @@ if ct.get_team() == Team.A:
 The type of a unit or building.
 
 | Value | Category | Description |
-|-------|----------|-------------|
+|---|---|---|
 | `CORE` | Base | Team base unit |
 | `BUILDER_BOT` | Mobile | Mobile worker |
 | `GUNNER` | Turret | Forward-ray turret |
@@ -37,7 +37,7 @@ The type of a unit or building.
 | `LAUNCHER` | Turret | Bot-throwing utility turret |
 | `HARVESTER` | Building | Generates titanium from ore tiles |
 | `CONVEYOR` | Building | Basic resource conveyor |
-| `SPLITTER` | Building | One input side (the back); rotates resource flow between its 3 outputs |
+| `SPLITTER` | Building | Rotates resource flow between 3 outputs |
 | `BARRIER` | Building | Blocks movement and LOS |
 
 ```python
@@ -51,7 +51,7 @@ if etype == EntityType.GUNNER:
 The terrain type of a tile, returned by `ct.get_tile_env()`.
 
 | Value | Description |
-|-------|-------------|
+|---|---|
 | `Environment.EMPTY` | Traversable ground |
 | `Environment.WALL` | Impassable wall |
 | `Environment.ORE_TITANIUM` | Titanium ore deposit (passable, Harvester-buildable) |
@@ -60,10 +60,12 @@ The terrain type of a tile, returned by `ct.get_tile_env()`.
 
 The 8 compass directions plus centre. Used for movement, building, and turret orientation.
 
-> Builder Bot movement is cardinal-only. A Builder Bot may only `ct.move()` in a cardinal direction — `NORTH`, `SOUTH`, `EAST`, or `WEST`.
+> **Correction vs. the official docs.** The published page says Builder Bot movement is cardinal-only and recommends `Direction.is_cardinal()` / `Position.cardinal_direction_to()` to handle that. **Neither method exists** in the installed `fcode` engine — confirmed both by enumerating the real `Direction`/`Position` objects at runtime and by direct calls, which raise `AttributeError`. `Direction` does have `delta()`, `rotate_left()`, `rotate_right()`, and `opposite()` (all confirmed working). To test cardinality yourself: `d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST)`. To pick a legal move toward a target, use `direction_to()` and fall back to `rotate_left()`/`rotate_right()` if the result is diagonal and blocked.
+
+Builder Bot movement is cardinal-only. A Builder Bot may only `ct.move()` in a cardinal direction — NORTH, SOUTH, EAST, or WEST. The four diagonals (NORTHEAST, NORTHWEST, SOUTHEAST, SOUTHWEST) are still valid values, and remain usable for turret facing and building orientation, but passing one to `ct.move()` raises a `GameError` (and `ct.can_move()` returns `False`).
 
 | Value | Description |
-|-------|-------------|
+|---|---|
 | `Direction.NORTH` | Up |
 | `Direction.SOUTH` | Down |
 | `Direction.EAST` | Right |
@@ -76,7 +78,10 @@ The 8 compass directions plus centre. Used for movement, building, and turret or
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `direction.is_cardinal()` | `bool` | `True` only for `NORTH`, `SOUTH`, `EAST`, `WEST` (a legal Builder Bot move). |
+| `direction.delta()` | `tuple[int, int]` | The `(dx, dy)` step for this direction. |
+| `direction.rotate_left()` | `Direction` | This direction rotated 45° counterclockwise. |
+| `direction.rotate_right()` | `Direction` | This direction rotated 45° clockwise. |
+| `direction.opposite()` | `Direction` | This direction rotated 180°. |
 
 ## Position
 
@@ -92,15 +97,13 @@ pos = Position(x=3, y=7)
 | `pos.y` | `int` | Row (0-indexed from top) |
 | `pos.add(direction)` | `Position` | Returns the adjacent position in `direction`. |
 | `pos.distance_squared(other)` | `int` | Squared Euclidean distance to `other`. Avoids floating point. |
-| `pos.direction_to(other)` | `Direction` | The direction from `pos` toward `other`. May be a diagonal, so it is **not** always a legal Builder Bot move. |
-| `pos.cardinal_direction_to(other)` | `Direction` | A legal cardinal step from `pos` toward `other` (or `CENTRE` if already there). Prefer this for choosing a move. |
+| `pos.direction_to(other)` | `Direction` | The direction from `pos` toward `other`, snapped to the nearest 45-degree compass sector. May be a diagonal, so it is **not** always a legal Builder Bot move. |
 
 ```python
 my_pos = ct.get_position()
 target = Position(10, 5)
 dist_sq = my_pos.distance_squared(target)         # e.g. 50
 dir_to = my_pos.direction_to(target)              # e.g. Direction.NORTHEAST (may be diagonal)
-move_dir = my_pos.cardinal_direction_to(target)   # e.g. Direction.NORTH (always a legal move)
 ```
 
 ## GameError
@@ -117,4 +120,6 @@ except GameError as e:
     pass
 ```
 
-> Letting an exception escape `run()` uncaught is fatal to the unit. This applies to `GameError` and any other exception.
+Prefer using `can_*` checks before acting to avoid catching exceptions in the hot path.
+
+Letting an exception escape `run()` uncaught is fatal to the unit. This applies to `GameError` and any other exception. Unlike a CPU-time interruption — which just skips that unit's turn and calls `run()` again fresh next round (see [Overview](../game-rules/game-rules-overview.md#cpu-time-limit)) — an uncaught exception permanently destroys the unit. It will never run again for the rest of the match.

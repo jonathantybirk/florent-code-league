@@ -2,107 +2,168 @@
 
 Source: https://game.code.florent.vc/docs/agents-md
 
-## Overview
+Many AI coding tools — Claude Code, Cursor, GitHub Copilot, and others — automatically read a context file from the root of your project (commonly `AGENTS.md`, `CLAUDE.md`, or `.cursorrules`, depending on the tool). Copy the content below into your bot project under whichever filename your tool expects, and it'll have full, accurate context on the game rules and the Controller API when it helps you write or debug your bot.
 
-This page provides guidance for AI coding tools (Claude Code, Cursor, GitHub Copilot) to understand a competitive robotics game. Developers should copy this content into their bot project as `AGENTS.md`, `CLAUDE.md`, or `.cursorrules`.
+> **Corrections applied below.** This is the single highest-stakes page in the docs — it's meant to be pasted verbatim into an AI assistant's context file, so an error here silently corrupts every future session that trusts it. It originally repeated the ammo/`convert_ammo`/`get_global_ammo` claim (see [Turrets](../game-rules/game-rules-turrets.md)) and the `Direction.is_cardinal()` / `Position.cardinal_direction_to()` claim (see [Types & Enums](../api-reference/api-types.md)) several times over; all instances below are corrected. Both were confirmed wrong by enumerating the real `Controller`/`Position`/`Direction` objects at runtime and by direct calls raising `AttributeError`.
 
-## Game Fundamentals
+# What this game is
 
-Players write a single Python class with a `run(self, ct: Controller)` method. The method executes once per round for every living unit. A team wins by destroying the enemy core, or having the better tiebreakers after round 1000.
+Two teams each control a fleet of robots on a rectangular grid (8x8 to 30x30, symmetric by reflection or rotation). A competitor writes a single Python class:
 
-The game features:
+```python
+class Player:
+    def run(self, ct: Controller) -> None:
+        ...
+```
 
-- Rectangular symmetric grids (8x8 to 30x30)
-- One resource type: titanium
-- Teams start with 500 titanium and receive 10 passive titanium every 4 rounds
-- Maximum 50 living units per team
-- Each unit receives 10ms CPU time per turn
+`run()` is called once per round for every living unit on the team (the core and every builder bot, gunner, sentinel, launcher — turrets included). `ct` (a `Controller`) is unit-scoped: all of its methods act on or query relative to "this unit" unless an explicit entity `id` is passed. There is no shared game-object; all state is read through `Controller` getters.
 
-## Core Game Rules
+Win condition: destroy the enemy core, or have the better tiebreakers after round 1000 (titanium delivered to core → harvesters alive → titanium stored → coinflip).
 
-**Map tiles** include empty spaces, walls (block building), and ore tiles (for harvester placement only).
+Bot file requirements: entry point must be `main.py` (at the zip root, or inside exactly one top-level directory) containing a top-level `class Player`. Bots are Python only. Auxiliary modules may be imported from other files in the same zip. Each unit gets 10ms CPU time per turn (with a small rolling 5% buffer) — if exceeded, that turn's `run()` is interrupted and does not resume next turn. This is different from an uncaught exception: if `run()` raises anything besides that timeout, the engine prints the traceback and permanently destroys that unit — it will never run again for the rest of the match.
 
-**Resources and ammunition:** the single resource is titanium, which moves physically through conveyors/splitters/harvesters. Ammo **is titanium** stored **per-turret** and must be **delivered to each turret via conveyors** — it is NOT a team-global pool and there is NO Core conversion mechanic. (The official docs incorrectly describe a team-wide ammo pool filled by the Core; `convert_ammo`/`can_convert_ammo`/`get_global_ammo` do not exist in the engine. Use the per-turret `get_ammo_amount()` / `get_ammo_type()`.)
+# Core game rules
 
-**Units include** the core, builder bots, gunners, sentinels, and launchers. Buildings = everything except builder bots; they're immovable.
+- Map tiles: `Environment.EMPTY`, `Environment.WALL`, `Environment.ORE_TITANIUM`. Walls block building. Harvesters can only be built on ore tiles.
+- Resources: one resource type, `ResourceType.TITANIUM`. Each team starts with 500 global titanium, plus 10 passive titanium every 4 rounds. Titanium also moves physically through the map in stacks of 10 via conveyors/splitters/harvesters, separate from the global pool used to pay build costs.
+- **Ammunition: there is no team-wide ammo balance.** Gunners and Sentinels each hold their own ammo (titanium) locally and must be fed via conveyors, same as any other resource-consuming building. There is no `convert_ammo()`, `can_convert_ammo()`, or `get_global_ammo()` — check a turret's own supply with `get_ammo_amount()` / `get_ammo_type()`.
+- Global communication store: 16 integer slots (`read_store(index)`/`write_store(index, value)`, index 0-15), private per team, shared by all of a team's units. Writes are buffered — visible only from the next round, so every unit sees a consistent snapshot for the whole round.
+- Units vs. buildings: units = core, builder bots, gunners, sentinels, launchers (all except builder bots are also buildings). Buildings = everything except builder bots; they're immovable. Each team may have at most 50 living units at once (`GameConstants.MAX_TEAM_UNITS`), including the core — check with `get_unit_count()`.
+- Cooldowns: every unit has an action cooldown and (builder bots only) a move cooldown, both nonnegative integers that decrease by 1 at end of round. Actions/movement require cooldown == 0, and acting or moving is mutually exclusive per round for builder bots — doing one blocks the other until next round.
+- Cost scaling: every buildable entity's cost is `floor(scale * base_cost)`, where scale starts at 1.0 (100%) and rises as you build more of that category (conveyors/splitters/barriers +1% each, harvesters +5% each, gunners/launchers +10% each, builder bots/sentinels +20% each — destroying an entity removes its contribution). Use the `get_<entity>_cost()` getters rather than hardcoding base costs, since actual cost depends on live scale.
+- Vision vs. action vs. attack radius: vision = what a unit can sense; the core can spawn a builder bot on any passable tile touching its 2×2 footprint (the uniform ring of 12 tiles orthogonally or diagonally adjacent to the footprint, confirmed by probing `can_spawn()` directly against all four footprint corners) — no other unit has a radius-based action range: all builder bot actions (build/attack/heal/destroy) require an orthogonally adjacent tile; turrets additionally have an attack range for firing, separate from vision. (Don't compute this ring via `distance_squared()` from the Core's own single reported position — since the footprint has 4 corners, that gives inconsistent-looking cutoffs (1, 2, 4, 5, 8) even though the underlying ring is perfectly uniform. Either enumerate the ring around all 4 footprint tiles, or just check `can_spawn()` on candidate tiles.)
+- Resource distribution happens once at end of round, after all units have acted. Conveyors/splitters/harvesters form a purely economic pipeline into the core — turrets do not participate and never hold or accept resources via that pipeline (they hold ammo, fed the same way, but it's a separate concept). Resources can still be pushed onto an opposing team's conveyor network or core.
 
-**Cooldowns** decrease by 1 each round; actions require cooldown == 0.
+## Entities
 
-**Cost scaling** applies multipliers based on entity category: conveyors/splitters/barriers (+1%), harvesters (+5%), gunners/launchers (+10%), builder bots/sentinels (+20%).
+| Entity | HP | Base cost | Scale/build | Notes |
+|---|---|---|---|---|
+| Core | 500 | — | — | 2x2 footprint; vision r²=36; spawns ≤1 builder bot/turn on a tile adjacent to its footprint |
+| Builder bot | 40 | 30 Ti | +20% | Only mobile unit; vision r²=20; build/attack/heal/destroy all require an orthogonally adjacent tile |
+| Conveyor | 20 | 3 Ti | +1% | Faces a cardinal direction; accepts from 3 sides, outputs to the 4th |
+| Splitter | 20 | 6 Ti | +1% | Accepts only from the back; rotates output among 3 directions, least-recently-used first |
+| Harvester | 30 | 20 Ti | +5% | Built on ore; outputs a stack every 4 rounds (first stack immediately on build) |
+| Barrier | 30 | 3 Ti | +1% | Cheap HP wall, no other function |
+| Gunner | 40 | 10 Ti | +10% | Facing turret, vision/attack r²=13; straight-line shot, dmg 10, reload 1, costs 2 ammo/shot from its own stored titanium; `rotate()` costs 10 Ti + 1 cooldown |
+| Sentinel | 30 | 30 Ti | +20% | Facing turret, vision/attack r²=32; single-tile-wide line shot that ignores obstacles (unlike Gunner), dmg 18, reload 3, costs 10 ammo/shot from its own stored titanium |
+| Launcher | 30 | 20 Ti | +10% | Facing-independent, vision/attack r²=26; picks up an adjacent builder bot and throws it to a passable tile |
 
-## Entity Reference
+Builder bot actions per turn (cooldown-gated, one per turn): build (any building type on an orthogonally adjacent empty tile — not diagonal, not its own tile), attack (2 Ti → 2 dmg to the building on an orthogonally adjacent tile — not diagonal, not its own tile), heal (1 Ti → +4 HP to all friendly entities on an orthogonally adjacent tile — not diagonal, not its own tile), destroy (any allied building on an orthogonally adjacent tile — not diagonal, not its own tile — unlimited per turn, no cooldown), self-destruct (no damage dealt).
 
-| Entity | HP | Base Cost | Scale |
-|--------|----|-----------| ------|
-| Core | 500 | — | — |
-| Builder bot | 40 | 30 Ti | +20% |
-| Conveyor | 20 | 3 Ti | +1% |
-| Splitter | 20 | 6 Ti | +1% |
-| Harvester | 30 | 20 Ti | +5% |
-| Barrier | 30 | 3 Ti | +1% |
-| Gunner | 40 | 10 Ti | +10% |
-| Sentinel | 30 | 30 Ti | +20% |
-| Launcher | 30 | 20 Ti | +10% |
+Turrets fire from their own held ammo (gunner 2/shot, sentinel 10/shot; launchers use none) — ammo is titanium physically delivered via conveyor, so turrets *do* need feeding, same as any other resource-consuming building. There is no Core-side conversion step.
 
-The core has 2x2 footprint; vision r²=36, action r²=8; spawns ≤1 builder bot/turn on an adjacent tile.
+Entities and resource stacks both have unique integer IDs; entity properties are queried via getters like `get_hp(id)` rather than returned as objects (perf reasons — object construction is slow in the hot path).
 
-## Controller API
+# Controller API reference
 
-### Information Queries
+Every bot interacts with the game exclusively through the Controller instance passed into `run()`. Methods that take an optional `id: int | None` default to the calling unit when omitted.
 
-Methods include `get_team()`, `get_position()`, `get_id()`, `get_action_cooldown()`, `get_move_cooldown()`, `get_vision_radius_sq()`, `get_hp()`, `get_max_hp()`, `get_entity_type()`, `get_direction()`, `get_stored_resource()`, and numerous tile/nearby entity queries.
+## Info / queries
 
-### Builder Bot Actions
+| Method | Description |
+|---|---|
+| `get_team(id=None) -> Team` | Team of entity `id` (or self) |
+| `get_position(id=None) -> Position` | Position of entity `id` (or self) |
+| `get_id() -> int` | This unit's own entity id |
+| `get_action_cooldown() -> int` | Current action cooldown (0 = can act) |
+| `get_move_cooldown() -> int` | Current move cooldown, builder bots only (0 = can move) |
+| `get_vision_radius_sq(id=None) -> int` | Vision radius² of `id` (or self) |
+| `get_hp(id=None) -> int` | Current HP of `id` (or self) |
+| `get_max_hp(id=None) -> int` | Max HP of `id` (or self) |
+| `get_entity_type(id=None) -> EntityType` | Type of `id` (or self) |
+| `get_direction(id=None) -> Direction` | Facing of a conveyor/splitter/turret (raises if entity has no direction) |
+| `get_stored_resource(id=None) -> ResourceType \| None` | Resource held by a conveyor/splitter |
+| `get_stored_resource_id(id=None) -> int \| None` | Resource stack id held (distinct from entity ids) |
+| `get_tile_env(pos) -> Environment` | Tile terrain at `pos` |
+| `get_tile_building_id(pos) -> int \| None` | Building id at `pos`, if any |
+| `get_tile_builder_bot_id(pos) -> int \| None` | Builder bot id at `pos`, if any |
+| `is_tile_empty(pos) -> bool` | No building and not a wall |
+| `is_tile_passable(pos) -> bool` | A friendly builder bot could stand there |
+| `is_in_vision(pos) -> bool` | `pos` within this unit's vision |
+| `get_nearby_tiles(dist_sq=None) -> list[Position]` | In-bounds tiles within `dist_sq` (default: vision radius) |
+| `get_nearby_entities(dist_sq=None) -> list[int]` | Entity ids on tiles within `dist_sq` |
+| `get_nearby_buildings(dist_sq=None) -> list[int]` | Building ids within `dist_sq` |
+| `get_nearby_units(dist_sq=None) -> list[int]` | Unit ids within `dist_sq` |
+| `get_map_width() -> int` / `get_map_height() -> int` | Map dimensions |
+| `get_current_round() -> int` | Round number, 0-indexed (0 on the first round) |
+| `get_global_resources() -> int` | This team's titanium balance |
+| `get_ammo_amount(id=None) -> int` | Ammo (titanium) held by this turret (or `id`) |
+| `get_ammo_type(id=None) -> ResourceType \| None` | Resource type held as ammo by this turret (or `id`) |
+| `get_scale_percent() -> float` | Current cost-scale multiplier as a percentage (100.0 = base cost, with nothing built) |
+| `get_cpu_time_elapsed() -> int` | Microseconds of CPU used this turn so far |
+| `get_unit_count() -> int` | Living units on this team (incl. core); compare to `GameConstants.MAX_TEAM_UNITS` |
 
-Actions per turn (one per turn, cooldown-gated):
+## Cost getters
 
-- **Build**: any building type on an orthogonally adjacent empty tile — not diagonal
-- **Attack**: 2 Ti → 2 dmg to the building on an orthogonally adjacent tile
-- **Heal**: 1 Ti → +4 HP to all friendly entities on an orthogonally adjacent tile
-- **Destroy**: Free, unlimited, no cooldown
-- **Self-destruct**: No damage dealt
+`get_conveyor_cost()`, `get_splitter_cost()`, `get_harvester_cost()`, `get_barrier_cost()`, `get_gunner_cost()`, `get_sentinel_cost()`, `get_launcher_cost()`, `get_builder_bot_cost()` — all `-> int`, return the currently scaled cost. Always prefer these over hardcoded base costs.
 
-### Movement
+## Movement (builder bots only)
 
-Builder bots move only in cardinal directions (north, south, east, west). Diagonal movement raises `GameError`.
+| Method | Description |
+|---|---|
+| `can_move(direction) -> bool` | Whether a move in `direction` is legal this turn |
+| `move(direction) -> None` | Move one step; raises `GameError` if illegal |
 
-### Turret Methods
+## Building
 
-Gunners and sentinels spend team global ammunition (2 and 10 per shot respectively). Launchers use no ammunition. Methods include `can_fire()`, `fire()`, `can_rotate()`, `rotate()` (gunner-only), and launcher-specific `can_launch()` and `launch()`.
+| Method | Description |
+|---|---|
+| `can_build_conveyor/splitter/harvester/barrier/gunner/sentinel/launcher(...) -> bool` | Legality check per entity type (conveyor/splitter/gunner/sentinel need `(position, direction)`; harvester/barrier/launcher need only `(position)`); position must be an orthogonally adjacent tile, not diagonal, not this builder bot's own tile |
+| `build_conveyor/splitter/harvester/barrier/gunner/sentinel/launcher(...) -> int` | Build and return new entity id; raises `GameError` if illegal |
+| `can_build(entity_type, position, extra=None) -> bool` | Generic form; `extra` is a `Direction` for conveyor/splitter/gunner/sentinel, unused otherwise; same orthogonal-adjacency restriction on position |
+| `build(entity_type, position, extra=None) -> int` | Generic form of the above |
 
-### Core Methods
+## Healing / destruction (builder bots only)
 
-- `can_spawn(position)` / `spawn_builder(position)`: Spawn adjacent to footprint
-- The Core has no ammo-conversion methods. (`can_convert_ammo` / `convert_ammo` do not exist — see the ammunition correction above.)
+| Method | Description |
+|---|---|
+| `can_heal(position) -> bool` / `heal(position) -> None` | Heal all friendly entities on `position`; builder bots may only target an orthogonally adjacent tile, +4 HP for 1 Ti |
+| `can_destroy(building_pos) -> bool` / `destroy(building_pos) -> None` | Destroy an allied building on an orthogonally adjacent tile; free, no cooldown, unlimited per turn |
+| `self_destruct() -> None` | Destroy this unit; no explosion damage |
+| `resign(message=None) -> None` | Forfeit immediately |
 
-### Communication Store
+## Communication store
 
-`read_store(index)` and `write_store(index, value)` access 16 shared integer slots (index 0–15). Writes are buffered — visible only from the next round.
+`read_store(index) -> int` / `write_store(index, value) -> None` — index in `0..GameConstants.STORE_SIZE` (16). Writes are buffered until next round.
 
-### Debugging
+## Turrets (gunner / sentinel / launcher; builder bots share `can_fire`/`fire` for their orthogonally-adjacent-tile attack)
 
-`draw_indicator_line()` and `draw_indicator_dot()` visualize in replays. `print()` is captured to replay; use stderr for console-only output.
+| Method | Description |
+|---|---|
+| `can_fire(target) -> bool` / `fire(target) -> None` | Attack `target`; gunners/sentinels spend their own held ammo (2/10 per shot), launchers use none; builder bots may only target an orthogonally adjacent tile |
+| `can_fire_from(position, direction, turret_type, target) -> bool` | Hypothetical-turret version, ignores ammo/cooldown |
+| `can_rotate(direction) -> bool` / `rotate(direction) -> None` | Gunner-only; 10 Ti, sets action cooldown to 1 |
+| `get_gunner_target() -> Position \| None` | Nearest targetable tile in a gunner's facing line |
+| `get_attackable_tiles() -> list[Position]` | Raw attack pattern for this turret (ignores ammo/cooldown/occupancy) |
+| `get_attackable_tiles_from(position, direction, turret_type) -> list[Position]` | Hypothetical-turret version |
+| `can_launch(bot_pos, target) -> bool` / `launch(bot_pos, target) -> None` | Launcher-only; pick up an adjacent builder bot, throw to `target` |
 
-## Key Types and Constants
+## Core
 
-**Direction**: NORTH, NORTHEAST, EAST, SOUTHEAST, SOUTH, SOUTHWEST, WEST, NORTHWEST, CENTRE with compass convention: (0, 0) is the map's northwest corner, x grows east and y grows south.
+| Method | Description |
+|---|---|
+| `can_spawn(position) -> bool` | Whether the core can spawn a builder bot at `position` (adjacent to footprint) this turn |
+| `spawn_builder(position) -> int` | Spawn and return the new builder bot's id; costs one action cooldown |
 
-**Position**: NamedTuple with methods `.add(direction)`, `.distance_squared()`, `.direction_to()`, `.cardinal_direction_to()`.
+## Debugging
 
-**EntityType**: BUILDER_BOT, CORE, GUNNER, SENTINEL, LAUNCHER, CONVEYOR, SPLITTER, HARVESTER, BARRIER.
+`draw_indicator_line(pos_a, pos_b, r, g, b)` and `draw_indicator_dot(pos, r, g, b)` draw into the replay for visual debugging. `print()` output is captured to the replay; use stderr for console-only output.
 
-**Environment**: EMPTY, WALL, ORE_TITANIUM.
+# Key types and constants
 
-**Team**: A, B.
+- Direction: `NORTH, NORTHEAST, EAST, SOUTHEAST, SOUTH, SOUTHWEST, WEST, NORTHWEST, CENTRE`. Compass convention: (0, 0) is the map's northwest corner, x grows east and y grows south, so **NORTH is (0, −1)** (toward row 0); in the isometric viewer north renders up-right on screen — see the on-screen compass. Has `.delta() -> (dx, dy)`, `.rotate_left()`, `.rotate_right()`, `.opposite()` (all confirmed working at runtime). There is **no** `.is_cardinal()` method — test membership manually: `d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST)`. Builder bots may only **move** in the 4 cardinal directions — `move(<diagonal>)` raises `GameError` and `can_move(<diagonal>)` is `False`. All 8 directions remain valid for turret facing and building orientation.
+- Position(x, y) (NamedTuple): `.add(direction) -> Position`, `.distance_squared(other) -> int`, `.direction_to(other) -> Direction` (nearest 45° compass direction — may be diagonal). There is **no** `.cardinal_direction_to()` method — to pick a legal builder move, use `direction_to()` and fall back to `.rotate_left()`/`.rotate_right()` if it's diagonal and blocked.
+- EntityType: `BUILDER_BOT, CORE, GUNNER, SENTINEL, LAUNCHER, CONVEYOR, SPLITTER, HARVESTER, BARRIER`.
+- Environment: `EMPTY, WALL, ORE_TITANIUM`.
+- Team: `A, B`. ResourceType: `TITANIUM` (only one, for now).
+- GameConstants: `MAX_TURNS=1000, STACK_SIZE=10, STARTING_TITANIUM=500, MAX_TEAM_UNITS=50, PASSIVE_TITANIUM_AMOUNT=10, PASSIVE_TITANIUM_INTERVAL=4, STORE_SIZE=16`, plus per-entity `_BASE_COST`, `_MAX_HP`, and radius-squared constants matching the tables above. Prefer these over magic numbers.
+- GameError: raised by any illegal action call (e.g. calling `move()` when unable). Always feasible to check first with the matching `can_*()` predicate. If `GameError` (or any other exception) escapes `run()` uncaught, the unit is permanently destroyed for the rest of the match — catch it if the unit should keep playing.
 
-**GameConstants**: MAX_TURNS=1000, STACK_SIZE=10, STARTING_TITANIUM=500, MAX_TEAM_UNITS=50, PASSIVE_TITANIUM_AMOUNT=10, PASSIVE_TITANIUM_INTERVAL=4, STORE_SIZE=16.
-
-**GameError**: Raised by illegal actions; feasible to check first with matching `can_*()` predicates.
-
-## Minimal Idiomatic Example
+# Minimal idiomatic example
 
 ```python
 from fcode import Controller, Direction, EntityType, Environment, Position
+
 
 class Player:
     def run(self, ct: Controller) -> None:
@@ -113,8 +174,6 @@ class Player:
             self._builder_turn(ct)
 
     def _core_turn(self, ct: Controller) -> None:
-        # NOTE: there is no Core ammo conversion. Ammo is per-turret and
-        # supplied via conveyors — the Core only spawns Builder Bots.
         if ct.get_action_cooldown() != 0:
             return
         if ct.get_global_resources() < ct.get_builder_bot_cost():
@@ -128,11 +187,13 @@ class Player:
                 return
 
     def _builder_turn(self, ct: Controller) -> None:
+        # Build a harvester on any adjacent ore tile.
         if ct.get_action_cooldown() == 0:
             for tile in ct.get_nearby_tiles(dist_sq=2):
                 if ct.get_tile_env(tile) == Environment.ORE_TITANIUM and ct.can_build_harvester(tile):
                     ct.build_harvester(tile)
                     return
+        # Otherwise, wander. Builder bots move only in cardinal directions.
         if ct.get_move_cooldown() == 0:
             for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
                 if ct.can_move(d):
@@ -140,11 +201,11 @@ class Player:
                     return
 ```
 
-## Notes for Coding Agents
+# Notes for the coding agent
 
-- Entry point: top-level `class Player` with `run(self, ct: Controller)` in main.py
-- Always gate actions with matching `can_*()` checks before mutating methods
-- Prefer `get_*_cost()` getters and `GameConstants` over hardcoded numbers
-- Branch on `ct.get_entity_type()` at the top of `run()`
-- Respect 10ms CPU budget per unit per turn; avoid unbounded loops
-- Stay consistent with documented API rather than inventing methods
+- Bots are Python only; the entry point is always a top-level `class Player` with a `run(self, ct: Controller) -> None` method, in `main.py`.
+- Always gate actions with the matching `can_*()` check before calling the mutating method — the engine raises `GameError` on illegal calls rather than silently no-opping.
+- Prefer the `get_*_cost()` getters and `GameConstants` over hardcoded numbers, since costs scale with what's already been built.
+- `run()` executes per-unit, every round, for every living unit on the team — branch on `ct.get_entity_type()` at the top, as in the example above.
+- Each unit gets its own 10ms turn budget; avoid unbounded loops or expensive recomputation over the whole map every round if it can be cached via the communication store or kept cheap.
+- Stay consistent with the API and idioms above rather than inventing methods that don't exist in this reference. If in doubt, verify against a probe bot that calls `dir(ct)` at runtime rather than trusting prose — this reference has been wrong before.

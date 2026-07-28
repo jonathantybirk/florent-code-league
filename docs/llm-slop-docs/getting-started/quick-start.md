@@ -2,58 +2,54 @@
 
 Source: https://game.code.florent.vc/docs/quick-start
 
-## Getting Started
-
 Get up and running in four steps.
 
-### Prerequisites
+## Prerequisites
 
-- Python **3.12 or 3.13** (Python 3.14 is not supported)
+- Python 3.12 or 3.13 (Python 3.14 is not supported)
 - pip (bundled with Python)
 - A registered account on the platform
 
-### Step 1 — Install the CLI
+## Step 1 — Install the CLI
 
 ```
 pip install fcode
 fcode --version
 ```
 
-### Step 2 — Authenticate and scaffold a project
+## Step 2 — Authenticate and scaffold a project
 
 ```
 fcode login
 fcode starter
 ```
 
-The `fcode login` command launches a browser to connect your CLI with your platform account. The `fcode starter` command generates a project structure including an `fcode.toml` configuration file, a `maps/` directory, and a sample bot located at `bots/starter/main.py`.
+`fcode login` opens a browser window to link the CLI to your platform account. `fcode starter` scaffolds a project in the current directory: an `fcode.toml`, a `maps/` folder, and a starter bot at `bots/starter/main.py`.
 
-### Step 3 — Run a local match
+## Step 3 — Run a local match
 
 ```
 fcode run starter starter
 ```
 
-The `fcode run` command executes matches between two bots—use the starter bot for both parameters to test a mirror match. Upon completion, a replay file named `replay.replay26` is generated in your current directory.
+`fcode run` takes two bots — pass the starter twice for a mirror match. A replay file `replay.replay26` is written to the current directory when the match finishes.
 
-Watch the replay using the visualizer:
+Watch the replay in the visualiser:
 
 ```
 fcode watch replay.replay26
 ```
 
-### Step 4 — Submit
+## Step 4 — Submit
 
 ```
 fcode submit bots/starter
 ```
 
-Your bot enters the queue for ladder matches. Navigate to the **Matches** page on the platform to monitor results.
+Your bot is queued for ladder matches. Check the Matches page on the platform to track results.
 
----
+**Next steps:**
 
-## Next Steps
-
-- [CLI reference](../cli/cli-reference.md) — comprehensive guide to all available commands
-- [Game Rules — Overview](../game-rules/game-rules-overview.md) — learn about maps, units, and winning conditions
-- [Controller API Reference](../api-reference/robot-api.md) — complete list of methods usable within `run()`
+- [CLI reference](../cli/cli-reference.md) — full guide to each command
+- [Game Rules — Overview](../game-rules/game-rules-overview.md) — understand the map, units, and win conditions
+- [Controller API Reference](../api-reference/robot-api.md) — every method available inside `run()`

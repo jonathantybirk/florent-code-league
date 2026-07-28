@@ -2,11 +2,13 @@
 
 Source: https://game.code.florent.vc/docs/cli-first-bot
 
-## Scaffold a Starter Project
+## Scaffold a starter project
 
-Execute `fcode starter` to create a project with an `fcode.toml` file, `maps/` folder, and starter bot at `bots/starter/main.py`.
+```
+fcode starter
+```
 
-The basic structure includes:
+This scaffolds a project in the current directory — an `fcode.toml`, a `maps/` folder, and a working starter bot at `bots/starter/main.py`. Open `bots/starter/main.py` — the structure looks like this:
 
 ```python
 from fcode import Controller, Direction, EntityType
@@ -19,17 +21,17 @@ class Player:
         pass  # called once per round for each of your units
 ```
 
-## How the Engine Calls Your Bot
+## How the engine calls your bot
 
-The engine instantiates one `Player` object **per unit** when the match begins. During each round, it invokes `run()` on every active unit **in spawn order** (Core first), supplying a fresh `Controller` instance.
+The engine creates one `Player` instance per unit at the start of the match. Every round, it calls `run()` on each living unit in the order that unit was spawned (the Core acts first, since it exists from round one), passing a fresh `Controller` object.
 
-- `__init__` stores per-unit persistent state (e.g., movement targets)
-- `run()` handles all gameplay actions via the `Controller` argument
-- Cross-unit state uses the Global Communication Store
+- `__init__` is for per-unit persistent state (e.g. a movement target the unit is working toward).
+- `run()` is where all game actions happen. Everything goes through the `Controller` argument (`ct`).
+- For state shared across all your bots, use the [Global Communication Store](../api-reference/global-comms.md).
 
-## A Minimal Working Bot
+## A minimal working bot
 
-This example shows handling two common unit types:
+This starter bot demonstrates the two most common unit types:
 
 ```python
 from fcode import Controller, Direction, EntityType
@@ -65,13 +67,13 @@ class Player:
             )
 ```
 
-## What's Available in `run()`
+## What's available in `run()`
 
-The `Controller` provides access to:
+The Controller exposes methods for:
 
-- **Sensing** — examine the map, locate adjacent units and buildings, identify tile properties
-- **Acting** — perform movement, construction, combat, healing, spawning
-- **Information** — retrieve your unit's health, coordinates, team affiliation, current round, available resources
-- **Debugging** — render visual indicators and markers in the match visualizer
+- **Sensing** — read the map, find nearby units and buildings, check tile types
+- **Acting** — move, build, attack, heal, spawn units
+- **Information** — query your own HP, position, team, round number, resources
+- **Debugging** — draw indicator lines and dots in the visualiser
 
-Consult the Controller API Reference for complete method documentation.
+See the full [Controller API Reference](../api-reference/robot-api.md) for every method.
