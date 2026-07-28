@@ -433,13 +433,16 @@ class BuilderMixin:
     ) -> ConveyorPlan | None:
         my_core, _ = core_positions(ct, km)
         core_tiles = core_footprint(my_core)
-        connected = self._connected_conveyors(ct, core_tiles)
+        friendly_conveyors = self._friendly_conveyors(ct)
         conveyor_directions = {
             position: self.map[position].building.direction
-            for position in connected
+            for position in friendly_conveyors
             if self.map[position].building is not None
         }
-        sinks = core_tiles | connected
+        # Joining any nearby friendly conveyor is cheaper and faster than
+        # proving that its complete downstream chain currently reaches the
+        # Core. The BFS below selects the nearest usable input side.
+        sinks = self._preferred_connection_sinks(core_tiles, friendly_conveyors)
 
         def accepts(source: Position, sink: Position) -> bool:
             if abs(source.x - sink.x) + abs(source.y - sink.y) != 1:
@@ -496,38 +499,21 @@ class BuilderMixin:
         path.reverse()
         return ConveyorPlan(tuple(path), reached_sink)
 
-    def _connected_conveyors(
-        self, ct: Controller, core_tiles: set[Position]
-    ) -> set[Position]:
-        conveyors = {
-            position: tile.building
+    def _friendly_conveyors(self, ct: Controller) -> set[Position]:
+        return {
+            position
             for position, tile in self.map.items()
             if tile.building is not None
             and tile.building.team == ct.get_team()
             and tile.building.entity_type == EntityType.CONVEYOR
             and tile.building.direction in CARDINAL_DIRECTIONS
         }
-        connected: set[Position] = set()
-        visiting: set[Position] = set()
 
-        def reaches_core(position: Position) -> bool:
-            if position in connected:
-                return True
-            if position in visiting:
-                return False
-            visiting.add(position)
-            next_position = position.add(conveyors[position].direction)
-            result = next_position in core_tiles or (
-                next_position in conveyors and reaches_core(next_position)
-            )
-            visiting.remove(position)
-            if result:
-                connected.add(position)
-            return result
-
-        for position in conveyors:
-            reaches_core(position)
-        return connected
+    @staticmethod
+    def _preferred_connection_sinks(
+        core_tiles: set[Position], friendly_conveyors: set[Position]
+    ) -> set[Position]:
+        return friendly_conveyors if friendly_conveyors else core_tiles
 
     @staticmethod
     def _conveyor_tile_available(
