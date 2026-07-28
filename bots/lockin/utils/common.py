@@ -30,7 +30,13 @@ MAX_TOTAL_BUILDERS = ATTACKER_COUNT + MAX_INFRASTRUCTURE_BUILDERS
 
 def attacker_count(ct: Controller, km: KnownMap) -> int:
     """Use a fourth pressure bot only where team B loses the three-bot race."""
-    if ct.get_team() == Team.B and km.name in ("crossfire", "fjord"):
+    if (
+        ct.get_team() == Team.B
+        and km.name in ("crossfire", "fjord")
+    ) or (
+        ct.get_team() == Team.A
+        and km.name == "runestone"
+    ):
         return 4
     return ATTACKER_COUNT
 
@@ -47,12 +53,20 @@ def attacker_spawn_delay(ct: Controller, km: KnownMap, spawn_index: int) -> int:
             return 10
         if team == Team.B and km.name in ("aurora", "pinch", "quarry", "sprint"):
             return 20
-        if team == Team.A and km.name == "vault":
-            return 15
-    if spawn_index == 3 and team == Team.B:
-        if km.name == "crossfire":
-            return 15
-        if km.name == "fjord":
+        if team == Team.A:
+            if km.name in ("crossfire", "duel", "quarry", "sprint"):
+                return 10
+            if km.name == "vault":
+                return 15
+            if km.name == "strait":
+                return 20
+    if spawn_index == 3:
+        if team == Team.B:
+            if km.name == "crossfire":
+                return 15
+            if km.name == "fjord":
+                return 10
+        if team == Team.A and km.name == "runestone":
             return 10
     return 0
 
