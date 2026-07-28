@@ -1,0 +1,86 @@
+Building an Army: Turrets & Combat · Step 3 of 5
+
+The ammo gap
+
+Ammunition isn't a thing turrets carry — it's a team-wide balance, like your titanium, and it starts at 0. There's exactly one way to fill it: your Core converts titanium into ammunition with ct.convert_ammo(amount), 1:1, at most once per turn. The ammunition is usable the same turn, every turret on your team fires from the same pool, and converting doesn't use the Core's action cooldown — it never costs you a spawn.
+
+So the fix for our silent Gunner isn't anywhere near the Gunner. It's two lines in the Core's branch:
+
+import random
+
+from fcode import Controller, Direction, Environment, EntityType, Position
+
+CARDINALS = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST]
+
+def in_bounds(ct: Controller, pos: Position) -> bool:
+    return 0 <= pos.x < ct.get_map_width() and 0 <= pos.y < ct.get_map_height()
+
+class Player:
+    def __init__(self):
+        self.built = False
+
+    def run(self, ct: Controller) -> None:
+        etype = ct.get_entity_type()
+        if etype == EntityType.CORE:
+            # Keep the team's ammunition topped up: 1 titanium -> 1 ammo,
+            # at most once per turn — and it never costs us a spawn.
+            if ct.get_global_ammo() < 20 and ct.can_convert_ammo(10):
+                ct.convert_ammo(10)
+            for pos in ct.get_nearby_tiles(dist_sq=2):
+                if ct.can_spawn(pos):
+                    ct.spawn_builder(pos)
+                    break
+        elif etype == EntityType.BUILDER_BOT:
+            self._run_builder(ct)
+        elif etype == EntityType.GUNNER:
+            self._run_gunner(ct)
+
+    def _run_builder(self, ct: Controller) -> None:
+        if self.built:
+            return
+        pos = ct.get_position()
+
+        harvester_pos = pos.add(Direction.NORTH)
+        gunner_pos = pos.add(Direction.SOUTH)
+        if not in_bounds(ct, harvester_pos) or not in_bounds(ct, gunner_pos):
+            self._explore(ct, pos)
+            return
+
+        if ct.get_tile_env(harvester_pos) == Environment.ORE_TITANIUM:
+            if ct.can_build_harvester(harvester_pos):
+                ct.build_harvester(harvester_pos)
+            if ct.can_build_gunner(gunner_pos, Direction.SOUTH):
+                ct.build_gunner(gunner_pos, Direction.SOUTH)
+                self.built = True
+            return
+
+        self._explore(ct, pos)
+
+    def _explore(self, ct: Controller, pos: Position) -> None:
+        open_dirs = [
+            d for d in CARDINALS
+            if ct.can_move(d) and ct.get_tile_env(pos.add(d)) == Environment.EMPTY
+        ]
+        move_options = open_dirs or [d for d in CARDINALS if ct.can_move(d)]
+        if move_options:
+            ct.move(random.choice(move_options))
+
+    def _run_gunner(self, ct: Controller) -> None:
+        if ct.get_current_round() % 100 == 0:
+            print(f"round {ct.get_current_round()}: ammo = {ct.get_global_ammo()}")
+        target = ct.get_gunner_target()
+        if target is not None and ct.can_fire(target):
+            ct.fire(target)
+
+The buffer logic is worth reading twice, because it's a pattern you'll reuse: top the pool up to 20 whenever it dips (that's 10 Gunner shots), 10 titanium at a time. ct.can_convert_ammo(amount) is the legality check — it's False if you're not the Core, can't afford amount, or already converted this turn. Don't convert your whole treasury: titanium spent on ammunition can't be spent on builders and buildings, and there's no converting back.
+
+Try it
+
+fcode run starter starter
+fcode watch replay.replay26
+
+What you should see: the printed ammo line jumps to 20 within the first couple of rounds and stays topped up. Each Gunner shot costs 2 from the pool — if an enemy unit crosses the firing line, you'll see the number dip and recover as the Core converts again. In the visualiser, the team panel on the left shows your Ammo balance next to titanium, so you can watch the economy and the arsenal side by side.
+
+Next: give your Builder Bots a way to defend themselves too.
+
+Building a GunnerHealing and sabotage

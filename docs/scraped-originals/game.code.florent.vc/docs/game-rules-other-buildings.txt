@@ -1,0 +1,30 @@
+Other Buildings
+
+Barrier
+
+Barriers block movement, allowing you to create choke points and funnel enemy Builder Bots into kill zones.
+
+Property
+
+Value
+
+HP
+
+30
+
+Cost
+
+3 Ti
+
+Effect
+
+Makes the tile impassable
+
+Blocks LOS
+
+Yes
+
+Barriers cannot be placed on wall tiles. An enemy can destroy a barrier with sufficient firepower, so reinforce them with turrets.
+
+if ct.can_build_barrier(pos):
+    ct.build_barrier(pos)

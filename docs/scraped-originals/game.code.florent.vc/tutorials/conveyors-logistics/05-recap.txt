@@ -1,0 +1,21 @@
+Logistics: Conveyors & Splitters · Step 5 of 5
+
+Recap & checkpoint
+
+You now have a bot that:
+
+Locates its own Core precisely, by scanning for a building of type EntityType.CORE rather than guessing from spawn position
+
+Builds a cardinal-only conveyor chain from a Harvester back to the Core with ct.can_build_conveyor / ct.build_conveyor
+
+Routes around simple obstacles with a two-axis (horizontal-then-vertical) walk
+
+Detects "have I arrived" by querying tile occupancy directly, instead of relying on can_move as a proxy — and knows why that distinction matters
+
+Understands Splitters as a drop-in upgrade for the last conveyor segment before a destination, opening up extra output sides
+
+Titanium should now be visibly flowing from ore to Core — the "mined" column in your match summary should read nonzero for at least one side most of the time. This bot is still rough: independent Builder Bots can collide with each other's chains, dead ends aren't routed around, and none of this is optimized. That's fine. You have a working economy loop, which is the foundation everything else builds on.
+
+Next up: Building an Army: Turrets & Combat — put that Splitter's spare output to use feeding a Gunner.
+
+Splitting the flowFinish & start Building an Army: Turrets & Combat
