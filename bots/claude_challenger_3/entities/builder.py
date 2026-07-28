@@ -115,6 +115,7 @@ class BuilderMixin:
         self.offensive_gunner_index = 0
         self.survey_waypoint_index = 0
         self.guard_position: Position | None = None
+        self.fortify_done = False
 
     def run_builder(self, ct: Controller) -> None:
         if self.is_attacker is None:
@@ -884,9 +885,15 @@ class BuilderMixin:
         if self.guard_position is not None:
             if ct.get_position() != self.guard_position:
                 self._move_toward(ct, km, {self.guard_position})
+            else:
+                self._fortify_guard_flanks(ct, km)
             return
 
         if self.infrastructure_target_index >= len(self.infrastructure_targets):
+            if not self.fortify_done:
+                if self._fortify_core_perimeter(ct, km):
+                    return
+                self.fortify_done = True
             self._run_infrastructure_survey(ct, km)
             return
         target = self.infrastructure_targets[self.infrastructure_target_index]
@@ -925,6 +932,84 @@ class BuilderMixin:
                     self._advance_infrastructure_target()
             elif self._build_offensive_battery(ct, km):
                 self._advance_infrastructure_target()
+
+    # ------------------------------------------------------------------
+    # Home defense (Barriers only: 3 Ti base, +1% scale — far cheaper than
+    # a Builder Bot or turret, and never needs an ammo supply). Bots/1 never
+    # builds Barriers at all, so an enemy attacker mirroring bots/1's own
+    # supply-takeover logic (which needs to stand adjacent to our final
+    # conveyor segments, or reach an open core-perimeter tile) is not
+    # expecting them to be sealed off.
+    # ------------------------------------------------------------------
+
+    def _fortify_guard_flanks(self, ct: Controller, km: KnownMap) -> None:
+        """While parked on the guarded final conveyor tile, spend otherwise
+        idle rounds sealing its open flank tiles so an enemy can't get
+        build-adjacency to this tile (or the conveyor segment behind it)
+        from anywhere except by walking the belt itself.
+        """
+        if ct.get_action_cooldown() != 0:
+            return
+        plan = self.conveyor_plan
+        path_tiles = set(plan.positions) if plan is not None else set()
+        my_core, _ = core_positions(ct, km)
+        footprint = core_footprint(my_core)
+        position = ct.get_position()
+        for direction in COMPASS_DIRECTIONS:
+            target = position.add(direction)
+            if target in path_tiles or target in footprint:
+                continue
+            if not static_bot_passable(km, target):
+                continue
+            if km.environment_at(target) == Environment.ORE_TITANIUM:
+                continue
+            if ct.get_tile_building_id(target) is not None:
+                continue
+            if ct.get_tile_builder_bot_id(target) is not None:
+                continue
+            if ct.can_build_barrier(target):
+                ct.build_barrier(target)
+            return
+
+    def _fortify_core_perimeter(self, ct: Controller, km: KnownMap) -> bool:
+        """Seal unused tiles in our Core's immediate ring with Barriers.
+
+        Runs once, for an infrastructure Builder that has finished every
+        assigned ore target and has nothing better to do. Returns True while
+        still working the perimeter (caller should not fall through to the
+        indefinite survey patrol yet); False once the ring has no more open,
+        buildable tiles left to seal.
+        """
+        my_core, _ = core_positions(ct, km)
+        ring = core_perimeter(my_core)
+        open_tiles = [
+            tile
+            for tile in ring
+            if static_bot_passable(km, tile)
+            and km.environment_at(tile) != Environment.ORE_TITANIUM
+            and ct.get_tile_building_id(tile) is None
+        ]
+        if not open_tiles:
+            return False
+
+        current = ct.get_position()
+        open_tiles.sort(
+            key=lambda tile: (tile.distance_squared(current), tile.y, tile.x)
+        )
+        target = open_tiles[0]
+        build_positions = adjacent_positions(km, target)
+        if current not in build_positions:
+            self._move_toward(ct, km, build_positions)
+            return True
+        if ct.get_action_cooldown() != 0:
+            return True
+        if ct.get_tile_builder_bot_id(target) is not None:
+            # Something is standing on our candidate tile; leave it for a
+            # later round rather than stalling on it forever.
+            return True
+        if ct.can_build_barrier(target):
+            ct.build_barrier(target)
+        return True
 
     def _seek_and_build_harvester(
         self, ct: Controller, km: KnownMap, target: Position
