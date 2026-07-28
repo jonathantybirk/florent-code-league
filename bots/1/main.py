@@ -10,11 +10,13 @@ from fcode import Controller, EntityType, Position
 from entities.builder import BuilderMixin
 from entities.core import CoreMixin
 from entities.gunner import GunnerMixin
+from entities.launcher import LauncherMixin
 from utils.map import MapMatchState, TileState, update_map
 
 
-class Player(CoreMixin, BuilderMixin, GunnerMixin):
+class Player(CoreMixin, BuilderMixin, GunnerMixin, LauncherMixin):
     def __init__(self):
+        super().__init__()
         self.map: dict[Position, TileState] = {}
         self.map_match_state = MapMatchState()
 
@@ -28,3 +30,5 @@ class Player(CoreMixin, BuilderMixin, GunnerMixin):
             self.run_builder(ct)
         elif etype == EntityType.GUNNER:
             self.run_gunner(ct)
+        elif etype == EntityType.LAUNCHER:
+            self.run_launcher(ct)
