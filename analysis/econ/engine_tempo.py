@@ -10,8 +10,9 @@ sys.path.insert(0, 'analysis/econ')
 from mapstats import CORES
 from sweep_plan import make_plan
 
-ROOT = "/Users/jonathantybirk/Documents/GitHub/florent-code-league"
-SCR = "/private/tmp/claude-501/-Users-jonathantybirk-Documents-GitHub-florent-code-league/2c47d030-787d-4a82-a6f5-224c333e01c1/scratchpad"
+import sys
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).parent))
+from harness import ROOT, SCRATCH  # noqa: E402
 HZ = [150, 250, 400, 999]
 NBS = [1, 2, 3, 4]
 BASE = {20: 30, 5: 20, 1: 3}      # scale delta -> base cost
@@ -21,8 +22,8 @@ def one(a):
     m, nb = a
     path, _, _, _ = make_plan(m, nb)
     env = dict(os.environ, EP_PLAN=path, EP_TRACE="1")
-    r = subprocess.run(["uv", "run", "fcode", "run", "exec_plan", "do_nothing_bot", m,
-                        "--replay", f"{SCR}/tp_{m}_{nb}.replay26"],
+    r = subprocess.run(["uv", "run", "fcode", "run", "jon/probes/exec_plan", "common/donothingbot", m,
+                        "--replay", f"{SCRATCH}/tp_{m}_{nb}.replay26"],
                        cwd=ROOT, env=env, capture_output=True, text=True)
     tr = {}
     for l in r.stderr.splitlines():

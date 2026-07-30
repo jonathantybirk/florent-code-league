@@ -3,8 +3,9 @@ measures pure opening-economy throughput with no combat interference."""
 import os, re, subprocess, sys
 from concurrent.futures import ProcessPoolExecutor
 
-ROOT = "/Users/jonathantybirk/Documents/GitHub/florent-code-league"
-SCR = "/private/tmp/claude-501/-Users-jonathantybirk-Documents-GitHub-florent-code-league/2c47d030-787d-4a82-a6f5-224c333e01c1/scratchpad"
+import sys
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).parent))
+from harness import ROOT, SCRATCH  # noqa: E402
 MAPS = ["atoll", "aurora", "crossfire", "duel", "fjord", "hive", "longship",
         "pinch", "quarry", "runestone", "skerry", "sprint", "strait", "twins", "vault"]
 
@@ -14,8 +15,8 @@ def one(args):
     env = dict(os.environ, EL_BUILDERS=str(nb), EL_DEBUG="0", EL_REUSE="0", **extra)
     tag = f"{mapname}_{nb}_{'_'.join(sorted(extra.values())) or 'd'}"
     p = subprocess.run(
-        ["uv", "run", "fcode", "run", "econ_lab", "do_nothing_bot", mapname,
-         "--replay", f"{SCR}/sw_{tag}.replay26"],
+        ["uv", "run", "fcode", "run", "jon/probes/econ_lab", "common/donothingbot", mapname,
+         "--replay", f"{SCRATCH}/sw_{tag}.replay26"],
         cwd=ROOT, env=env, capture_output=True, text=True)
     m = re.search(r"Titanium\s+([\d,]+) \(([\d,]+) mined\)", p.stdout)
     b = re.search(r"Buildings\s+(\d+)", p.stdout)

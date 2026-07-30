@@ -1,12 +1,14 @@
+import pathlib
 import json, os, re, subprocess, sys
-ROOT="/Users/jonathantybirk/Documents/GitHub/florent-code-league"
-SCR="/private/tmp/claude-501/-Users-jonathantybirk-Documents-GitHub-florent-code-league/2c47d030-787d-4a82-a6f5-224c333e01c1/scratchpad"
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+import fixtures
+from harness import ROOT, SCRATCH  # noqa: E402
 cfg={"ores":[[x,1] for x in range(6,19,2)],"trunk_y":2,"trunk_w":4,"trunk_e":18,
      "first_harv_round":60,"add_every":120}
-json.dump(cfg,open(f"{SCR}/tcfg.json","w"))
-env=dict(os.environ,FCODE_ECON_CFG=f"{SCR}/tcfg.json")
-out=subprocess.run(["uv","run","fcode","run","probe_trunk","do_nothing_bot","_trunk",
-                    "--replay",f"{SCR}/t.replay26"],cwd=ROOT,env=env,
+json.dump(cfg,open(f"{SCRATCH}/tcfg.json","w"))
+env=dict(os.environ,FCODE_ECON_CFG=f"{SCRATCH}/tcfg.json")
+out=subprocess.run(["uv","run","fcode","run","jon/probes/probe_trunk","common/donothingbot",fixtures.trunk(),
+                    "--replay",f"{SCRATCH}/t.replay26"],cwd=ROOT,env=env,
                    capture_output=True,text=True).stderr
 res={}; ev=[]
 for l in out.splitlines():

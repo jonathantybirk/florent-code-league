@@ -4,8 +4,10 @@ import os
 import re
 import subprocess
 
-ROOT = "/Users/jonathantybirk/Documents/GitHub/florent-code-league"
-SCRATCH = "/private/tmp/claude-501/-Users-jonathantybirk-Documents-GitHub-florent-code-league/2c47d030-787d-4a82-a6f5-224c333e01c1/scratchpad"
+import sys
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).parent))
+import fixtures
+from harness import ROOT, SCRATCH  # noqa: E402
 
 
 def run(cfg, mapname):
@@ -13,7 +15,7 @@ def run(cfg, mapname):
     json.dump(cfg, open(p, "w"))
     env = dict(os.environ, FCODE_ECON_CFG=p)
     out = subprocess.run(
-        ["uv", "run", "fcode", "run", "probe_econ", "do_nothing_bot", mapname,
+        ["uv", "run", "fcode", "run", "jon/probes/probe_econ", "common/donothingbot", mapname,
          "--replay", f"{SCRATCH}/s.replay26"],
         cwd=ROOT, env=env, capture_output=True, text=True).stderr
     res, events = {}, []
@@ -44,7 +46,8 @@ if __name__ == "__main__":
     print(f"{'d':>3} {'harv_r':>7} {'convs':>6} {'first_del':>10} {'cadence':>8} {'setup_cost':>10}")
     for d in range(3, 16):
         tx = 2 + d
-        res, ev = run({"spawns": [0], "targets": [[tx, 2]], "core": [2, 2]}, f"_line{d}")
+        res, ev = run({"spawns": [0], "targets": [[tx, 2]], "core": [2, 2]},
+                      fixtures.line(d))
         harv_r = next((int(re.search(r"r=(\d+)", e).group(1)) for e in ev if e.startswith("HARV")), None)
         dels = deliveries(res)
         cad = (dels[5] - dels[1]) / 4 if len(dels) > 5 else None

@@ -1,14 +1,15 @@
 """Diagnose: how many harvesters actually end up connected and delivering?"""
 import os, re, subprocess, sys
 
-ROOT = "/Users/jonathantybirk/Documents/GitHub/florent-code-league"
-SCR = "/private/tmp/claude-501/-Users-jonathantybirk-Documents-GitHub-florent-code-league/2c47d030-787d-4a82-a6f5-224c333e01c1/scratchpad"
+import sys
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).parent))
+from harness import ROOT, SCRATCH  # noqa: E402
 
 
 def run(mapname, nb, debug=0):
     env = dict(os.environ, EL_BUILDERS=str(nb), EL_TRACE="1", EL_DEBUG=str(debug))
-    p = subprocess.run(["uv", "run", "fcode", "run", "econ_lab", "do_nothing_bot",
-                        mapname, "--replay", f"{SCR}/d.replay26"],
+    p = subprocess.run(["uv", "run", "fcode", "run", "jon/probes/econ_lab", "common/donothingbot",
+                        mapname, "--replay", f"{SCRATCH}/d.replay26"],
                        cwd=ROOT, env=env, capture_output=True, text=True)
     res, dbg = {}, []
     for l in p.stderr.splitlines():
