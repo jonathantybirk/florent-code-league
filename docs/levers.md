@@ -1,5 +1,31 @@
 # Lever Board — ranked by expected needle movement
 
+> ## RESULTS (measured, mirrored 30-game sweeps)
+>
+> | Opponent | Session start | Now | Core kills |
+> |---|---|---|---|
+> | `idle` | — | **30–0** | 30/30 |
+> | `starter_fixed` | 21–9 | **23–7** | 4 |
+> | `frontier` | 3–27 | **18–12** | 10 |
+> | `lockin` | 0–30 | **6–24** | 6 |
+> | `luc1` | 1–29 | **8–22** | 7 |
+> | **total vs the four real bots** | **25–95** | **55–65** | |
+>
+> Shipped config: `BUILDERS = 6`, `USE_ATLAS_ORE = False`, BFS navigation, chain repair,
+> rush enabled on all 15 maps.
+>
+> **What actually moved the needle, in order:**
+> 1. **Builder navigation** (one dead-code branch) — the dominant term, and it was on nobody's list.
+> 2. **Rush route execution + firing-lane reservation** — 13/30 → 30/30 rush conversion.
+> 3. **Builder count 4 → 6** — only became profitable *after* nav; the curve was flat before.
+> 4. **Chain repair** — +1 vs luc1.
+>
+> **What was ranked high and measured worthless:** barrier denial (S1, my #1 pick), launcher relay,
+> magazine discipline, atlas ore-seeding, chain-length ore ranking, parallel-chain joining.
+> Six of my top picks were wrong; the winner was a bug nobody had ranked at all. Rank cheaply,
+> measure before believing.
+
+
 Benchmark throughout: **games moved out of 30 against `luc1`**, the strongest bot on the team.
 Current baseline: **3–27**, with our Core destroyed in ~20 of 30. Against `starter_fixed` we are 18–12.
 
