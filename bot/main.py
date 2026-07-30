@@ -1,4 +1,4 @@
-"""AutistimusPrime — Florent Code League 2026.
+"""AutistimusPrime -- Florent Code League 2026.
 
 Design rules, every one derived from a measured engine fact (docs/ground-truth.md):
 
@@ -21,7 +21,7 @@ CHAIN CONSTRUCTION (the thing that actually wins games)
 A harvester with no complete path into the Core is worth strictly less than nothing: it costs titanium,
 permanently raises the global cost scale, and delivers zero. So the chain is laid BEHIND the builder as
 it walks from the ore back to the Core, which makes every belt's facing exactly the direction we truly
-travelled — no guessing, no broken bends:
+travelled -- no guessing, no broken bends:
 
     build harvester on ore  ->  walk one step coreward  ->  build belt on the tile just vacated,
     facing the way we walked  ->  repeat  ->  on reaching the Core, step aside once so the final tile
@@ -30,7 +30,12 @@ travelled — no guessing, no broken bends:
 Bot name is deliberate; the team knows.
 """
 
-from fcode import Controller, Direction, EntityType, Environment, Position
+from fcode import Controller, Direction, EntityType, Environment, Position, Team
+
+try:
+    import atlas
+except Exception:      # unknown-map fallback must always exist -- never stall like a pure-atlas bot
+    atlas = None
 
 CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 ALL_DIRS = tuple(d for d in Direction if d != Direction.CENTRE)
@@ -45,10 +50,18 @@ N_CLAIMS = 6
 S_ENEMY_CORE = 10
 S_THREAT = 11
 
-# Each builder is +20 percentage points of GLOBAL cost scale, permanently. An economy simulation across
-# all 15 maps put the optimum near 3-4; 5 costs 40 scale points for ~0.15% more mined titanium.
-MAX_BUILDERS = 4
-# Keep enough banked to finish a chain in flight — a half-built chain delivers exactly zero.
+# Each builder is +20 percentage points of GLOBAL cost scale, permanently -- but a builder that is actively
+# completing a chain repays ~2470 titanium, and we were losing to the starter by a deficit of exactly one
+# harvester, repeatedly. Scale the count to the work actually available rather than a flat constant.
+BUILDERS = 4
+# Seeding map memory from the precomputed pool MEASURED WORSE: 17-13 with, 20-10 without, against the
+# deterministic starter_fixed. Theory (untested): with the atlas every builder immediately claims the
+# globally-nearest-to-Core ore and they walk past each other to distant tiles, whereas vision-discovery
+# yields short chains completed early -- and every round of delay costs ~2.5 collected, so early short
+# chains dominate late long ones. Left off until ore is ranked by CHAIN LENGTH rather than by distance
+# from the builder. The atlas import is still wanted for turret denial and the rush plan.
+USE_ATLAS_ORE = False
+# Keep enough banked to finish a chain in flight -- a half-built chain delivers exactly zero.
 CHAIN_RESERVE = 45
 # Budget 3ms locally against the ladder's 10ms. Reads 0 on Windows (G21), where this is advisory only.
 CPU_BUDGET_US = 6000
@@ -85,17 +98,20 @@ class Player:
         self.stuck = 0
         self.last_pos = None
 
-        # Shared per-unit knowledge (self persists the whole match — G20)
+        # Shared per-unit knowledge (self persists the whole match -- G20)
         self.core_pos = None
         self.core_tiles = set()
         self.known_ore = set()
         self.known_walls = set()
         self.seen = set()
+        self.atlas_done = False
+        self.map_name = None
+        self.failed_ore = set()
 
         self.errors = 0
 
     # ------------------------------------------------------------------
-    # Entry point — an escaping exception permanently deletes this unit (G23)
+    # Entry point -- an escaping exception permanently deletes this unit (G23)
     # ------------------------------------------------------------------
 
     def run(self, ct: Controller) -> None:
@@ -188,7 +204,7 @@ class Player:
         ct.write_store(S_CORE_X, pos.x)
         ct.write_store(S_CORE_Y, pos.y)
 
-        if self.spawned >= MAX_BUILDERS or not self._can_act(ct):
+        if self.spawned >= BUILDERS or not self._can_act(ct):
             return
         try:
             balance = ct.get_global_resources()
@@ -209,6 +225,37 @@ class Player:
             except Exception:
                 continue
 
+    def _builder_target(self, ct):
+        """One builder per ore tile we could still chain, clamped -- never a flat constant.
+
+        Each builder is +20 percentage points of permanent global cost scale, so an idle one is pure tax;
+        but each builder that completes a chain returns ~2470 collected. The binding resource is ore, so
+        size the workforce to the ore actually available on our half of the map.
+        """
+        ore_count = None
+        if atlas is not None:
+            try:
+                tag = "a" if ct.get_team() == Team.A else "b"
+                rec = atlas.identify(ct.get_map_width(), ct.get_map_height(),
+                                     (self.core_pos.x, self.core_pos.y), tag)
+                if rec is not None:
+                    own = rec["own_core"]
+                    ore_count = sum(
+                        1 for o in rec["ore"]
+                        if (o[0] - own[0]) ** 2 + (o[1] - own[1]) ** 2
+                        <= (o[0] - rec["enemy_core"][0]) ** 2 + (o[1] - rec["enemy_core"][1]) ** 2
+                    )
+            except Exception:
+                ore_count = None
+        if ore_count is None:
+            return MIN_BUILDERS + 1
+        target = (ore_count + 1) // 2
+        if target < MIN_BUILDERS:
+            return MIN_BUILDERS
+        if target > MAX_BUILDERS:
+            return MAX_BUILDERS
+        return target
+
     # ------------------------------------------------------------------
     # Builder
     # ------------------------------------------------------------------
@@ -228,6 +275,7 @@ class Player:
                     self.core_pos = Position(x, y)
             except Exception:
                 pass
+        self._load_atlas(ct)
 
         self._observe(ct, pos)
 
@@ -241,7 +289,7 @@ class Player:
         #    reaches the Core, so finishing always outranks starting (G02).
         if self._settle_owed(ct, pos):
             return
-        # 2. Range-0 sabotage — the only attack a builder has (G14). Cuts every harvester upstream.
+        # 2. Range-0 sabotage -- the only attack a builder has (G14). Cuts every harvester upstream.
         if self._sabotage(ct, pos):
             return
         # 3. Phase work.
@@ -258,6 +306,40 @@ class Player:
             return
         # 5. Otherwise walk.
         self._walk(ct, pos)
+
+    def _load_atlas(self, ct):
+        """Seed map memory from the precomputed pool, once, so builders never have to explore.
+
+        Blind exploration was costing us whole chains: a builder that wanders the wrong way spends
+        hundreds of rounds not delivering, and every round of delay costs ~2.5 collected. Falls back
+        silently to vision-only play on an unrecognised map -- never stalls (that flaw sinks a pure-atlas
+        bot on any map outside the bundled pool).
+        """
+        if not USE_ATLAS_ORE or self.atlas_done or atlas is None or self.core_pos is None:
+            return
+        self.atlas_done = True
+        try:
+            # Our real team, not a guess. Asking for the wrong team returns a record oriented to the
+            # OPPONENT, so own_core_tiles would be the enemy's Core and every chain would terminate
+            # on the wrong tiles -- scoring zero.
+            tag = "a" if ct.get_team() == Team.A else "b"
+            rec = atlas.identify(ct.get_map_width(), ct.get_map_height(),
+                                 (self.core_pos.x, self.core_pos.y), tag)
+            if rec is None:
+                return
+            self.map_name = rec["name"]
+            # Only OUR half. Seeding every ore tile sends builders across the map to ore they would
+            # never have discovered, and a long chain costs far more than it returns.
+            own, foe = rec["own_core"], rec["enemy_core"]
+            for o in rec["ore"]:
+                d_own = (o[0] - own[0]) ** 2 + (o[1] - own[1]) ** 2
+                d_foe = (o[0] - foe[0]) ** 2 + (o[1] - foe[1]) ** 2
+                if d_own <= d_foe:
+                    self.known_ore.add(tuple(o))
+            self.known_walls.update(tuple(w) for w in rec["walls"])
+            self.core_tiles.update(tuple(t) for t in rec["own_core_tiles"])
+        except Exception:
+            return
 
     def _observe(self, ct, pos):
         """Fold this round's vision into private map memory (~66us for a full scan)."""
@@ -325,7 +407,7 @@ class Player:
 
         Checked live against the building actually on the tile rather than trusting a cached
         footprint: a builder that never happened to scan its own Core would otherwise never
-        recognise the terminal tile, and the chain would never be capped — scoring zero (G02).
+        recognise the terminal tile, and the chain would never be capped -- scoring zero (G02).
         """
         for d in CARDINALS:
             n = pos.add(d)
@@ -411,6 +493,11 @@ class Player:
             pass
 
     def _abandon(self):
+        # Blacklist the tile we failed on. The atlas knows about ore that vision would never have
+        # surfaced -- including tiles walled off from us -- and without this the builder re-picks the
+        # same unreachable target forever and delivers nothing all match.
+        if self.target_ore is not None:
+            self.failed_ore.add(self.target_ore)
         self.phase = "seek"
         self.target_ore = None
         self.owed = None
@@ -447,7 +534,7 @@ class Player:
             if ct.can_build_harvester(ore):
                 ct.build_harvester(ore)
                 # A harvester orthogonally adjacent to the Core footprint already delivers straight
-                # into it — the chain is complete with zero conveyors. Building one anyway would add
+                # into it -- the chain is complete with zero conveyors. Building one anyway would add
                 # a second output and split the harvester's fixed 10 Ti/4 rounds round-robin.
                 if self._core_dir_from(ct, ore) is not None:
                     self._finish_chain(ct)
@@ -471,7 +558,7 @@ class Player:
                 claimed.add(other)
         best, best_d = None, None
         for key in self.known_ore:
-            if key in claimed:
+            if key in claimed or key in self.failed_ore:
                 continue
             tile = Position(key[0], key[1])
             if self._building_at(ct, tile) is not None:
@@ -500,7 +587,7 @@ class Player:
         self._explore(ct, pos)
 
     def _explore(self, ct, pos):
-        """Spread out from the Core to find ore. Deterministic — never the global random module (G26)."""
+        """Spread out from the Core to find ore. Deterministic -- never the global random module (G26)."""
         core = self._nearest_core_tile(pos)
         if core is None:
             order = CARDINALS
@@ -544,7 +631,7 @@ class Player:
     # --- builder combat / upkeep ---------------------------------------
 
     def _sabotage(self, ct, pos):
-        """Fire at our own tile while standing on an enemy belt (G14) — the only builder attack."""
+        """Fire at our own tile while standing on an enemy belt (G14) -- the only builder attack."""
         bid = self._building_at(ct, pos)
         if not self._is_enemy(ct, bid) or not self._can_act(ct):
             return False
@@ -574,7 +661,7 @@ class Player:
         return False
 
     # ------------------------------------------------------------------
-    # Turrets — every API here is team-blind (G10). Verify before firing.
+    # Turrets -- every API here is team-blind (G10). Verify before firing.
     # ------------------------------------------------------------------
 
     def _run_gunner(self, ct):
@@ -589,7 +676,7 @@ class Player:
             occupant = self._bot_at(ct, target)
         if not self._is_enemy(ct, occupant):
             # Friendly or unknown in the ray. Firing destroys our own unit, and the engine keeps
-            # offering this same target forever (G11) — hold fire rather than shoot through it.
+            # offering this same target forever (G11) -- hold fire rather than shoot through it.
             return
         try:
             if ct.can_fire(target):
