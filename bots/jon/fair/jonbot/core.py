@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 from fcode import Controller, Direction, Environment, Position
 
+from constants import MAX_OPENING_BUILDERS
+
 if TYPE_CHECKING:
     from main import Player
 
@@ -23,7 +25,7 @@ def run(player: "Player", ct: Controller) -> None:
         player.opening_ore_targets = ores
 
     role = player.builders_spawned
-    if role >= 2 or ct.get_global_resources() < ct.get_builder_bot_cost():
+    if role >= MAX_OPENING_BUILDERS or ct.get_global_resources() < ct.get_builder_bot_cost():
         return
 
     if role < len(player.opening_ore_targets):
