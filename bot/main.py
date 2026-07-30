@@ -63,7 +63,12 @@ S_RUSHER = 12         # id+1 of the builder that owns the rush; 0 = unclaimed
 # Each builder is +20 percentage points of GLOBAL cost scale, permanently -- but a builder that is actively
 # completing a chain repays ~2470 titanium, and we were losing to the starter by a deficit of exactly one
 # harvester, repeatedly. Scale the count to the work actually available rather than a flat constant.
-BUILDERS = 4
+# Swept with BFS navigation in place (mirrored 30-game sweeps, starter_fixed | luc1):
+#   4 -> 19-11 | 4-26     5 -> 22-8 | 7-23     6 -> 23-7 | 8-22     7 -> 27-3 | 5-25
+# Six is the pick: seven is stronger against the starter but falls off against the opponent that
+# actually resembles the ladder. Before the nav fix this curve was flat and peaked at 4 -- extra
+# builders paid their cost scale but could not navigate well enough to deliver.
+BUILDERS = 6
 # Seeding map memory from the precomputed pool MEASURED WORSE: 17-13 with, 20-10 without, against the
 # deterministic starter_fixed. Theory (untested): with the atlas every builder immediately claims the
 # globally-nearest-to-Core ore and they walk past each other to distant tiles, whereas vision-discovery
@@ -72,10 +77,10 @@ BUILDERS = 4
 # from the builder. The atlas import is still wanted for turret denial and the rush plan.
 USE_ATLAS_ORE = False
 
-# Maps where the precomputed rush MEASURABLY converts to a Core kill (vs an inert opponent, kill turns
-# 66-101). The other six -- atoll, fjord, pinch, quarry, runestone, vault -- ran the full 1000 rounds, so
-# rushing there only burns a quarter of the workforce for nothing. Gate on measurement, not on the
-# rushplan's own RUSH/ECON recommendation, which was optimistic on all six.
+# Maps where the precomputed rush MEASURABLY converts to a Core kill vs an inert opponent. That is now
+# ALL FIFTEEN, on both sides, kill turns 72-95 -- once the BFS walk, full-route execution and firing-lane
+# reservation landed. (The earlier nine-map list was a symptom of those three bugs, not of map geometry;
+# and its "9 of 15" figure was itself measured side-a only, so the real baseline was 13 of 30.)
 RUSH_MAPS = frozenset((
     "aurora", "crossfire", "duel", "hive", "longship", "skerry", "sprint", "strait", "twins",
     "atoll", "fjord", "pinch", "quarry", "runestone", "vault",
@@ -131,6 +136,14 @@ class Player:
         # Every belt this builder has laid, so it can notice one going missing and put it back.
         self.built_belts = []
         self.repair_target = None
+
+        # Navigation. Buildings block movement and are NOT walls, so they need their own set --
+        # and it must be refreshed in BOTH directions, or a destroyed building poisons every
+        # future route forever.
+        self.known_blocked = set()
+        self._nav = None
+        self._nav_key = None
+        self._nav_n = -1
 
         # Rush state
         self.rush_role = None          # None = undecided, True = this builder owns the rush
@@ -662,6 +675,10 @@ class Player:
                             self.core_tiles.add(key)
                     except Exception:
                         pass
+            if self._building_at(ct, tile) is None:
+                self.known_blocked.discard(key)
+            else:
+                self.known_blocked.add(key)
             if key in self.seen:
                 continue
             env = self._env(ct, tile)
@@ -977,7 +994,64 @@ class Player:
         n = pos.add(d)
         return (n.x, n.y) not in self.rush_ray
 
+    def _nav_field(self, ct, target):
+        """BFS distance field from `target` over everything we know is impassable.
+
+        The greedy stepper below cannot route around a concave obstacle: `Direction.rotate_left()`
+        returns a DIAGONAL, which the cardinal filter then discards, so its sidestep branch is dead
+        code and the walk degenerates into a two-tile oscillation that never terminates and never
+        trips a stuck counter (the moves all succeed). That single defect was costing whole chains.
+        Cached on (target, obstacle count); a full 30x30 BFS is ~270 us against a 10 ms budget.
+        """
+        key = (target.x, target.y)
+        n = len(self.known_walls) + len(self.known_blocked)
+        if self._nav is not None and self._nav_key == key and self._nav_n == n:
+            return self._nav
+        try:
+            w, h = ct.get_map_width(), ct.get_map_height()
+        except Exception:
+            return None
+        walls, blocked = self.known_walls, self.known_blocked
+        dist = {key: 0}
+        frontier = [key]
+        d = 0
+        while frontier:
+            d += 1
+            nxt = []
+            for x, y in frontier:
+                for nb in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if nb[0] < 0 or nb[1] < 0 or nb[0] >= w or nb[1] >= h:
+                        continue
+                    if nb in dist or nb in walls or nb in blocked:
+                        continue
+                    dist[nb] = d
+                    nxt.append(nb)
+            frontier = nxt
+        self._nav, self._nav_key, self._nav_n = dist, key, n
+        return dist
+
     def _step_toward(self, ct, pos, target):
+        field = self._nav_field(ct, target)
+        if field is not None:
+            here = field.get((pos.x, pos.y))
+            best, best_d = None, None
+            for d in CARDINALS:
+                n = pos.add(d)
+                nd = field.get((n.x, n.y))
+                if nd is None:
+                    continue
+                if here is not None and nd >= here:
+                    continue
+                try:
+                    if not ct.can_move(d):
+                        continue
+                except Exception:
+                    continue
+                if best_d is None or nd < best_d:
+                    best_d, best = nd, d
+            if best is not None:
+                return best
+
         want = cardinal_of(target.x - pos.x, target.y - pos.y)
         options = [want]
         try:
