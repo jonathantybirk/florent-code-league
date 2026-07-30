@@ -143,7 +143,11 @@ class Player:
         self.known_blocked = set()
         self._nav = None
         self._nav_key = None
-        self._nav_n = -1
+        self._nav_ver = -1
+        # Version the obstacle set on EVENTS, not on its size. len(known_walls) +
+        # len(known_blocked) is not a fingerprint: a round that both adds and removes an obstacle
+        # inside vision leaves it identical, and the cache then serves a stale field.
+        self.nav_ver = 0
 
         # Rush state
         self.rush_role = None          # None = undecided, True = this builder owns the rush
@@ -675,10 +679,13 @@ class Player:
                             self.core_tiles.add(key)
                     except Exception:
                         pass
-            if self._building_at(ct, tile) is None:
-                self.known_blocked.discard(key)
-            else:
+            if occ is None:
+                if key in self.known_blocked:
+                    self.known_blocked.discard(key)
+                    self.nav_ver += 1
+            elif key not in self.known_blocked:
                 self.known_blocked.add(key)
+                self.nav_ver += 1
             if key in self.seen:
                 continue
             env = self._env(ct, tile)
@@ -686,7 +693,9 @@ class Player:
                 continue
             self.seen.add(key)
             if env == Environment.WALL:
-                self.known_walls.add(key)
+                if key not in self.known_walls:
+                    self.known_walls.add(key)
+                    self.nav_ver += 1
             elif env == Environment.ORE_TITANIUM:
                 self.known_ore.add(key)
 
@@ -1001,11 +1010,14 @@ class Player:
         returns a DIAGONAL, which the cardinal filter then discards, so its sidestep branch is dead
         code and the walk degenerates into a two-tile oscillation that never terminates and never
         trips a stuck counter (the moves all succeed). That single defect was costing whole chains.
-        Cached on (target, obstacle count); a full 30x30 BFS is ~270 us against a 10 ms budget.
+        Cached on (target, obstacle VERSION); a full 30x30 BFS is ~270 us against a 10 ms budget.
+        The version is an event counter, not len(known_walls) + len(known_blocked): a count is not
+        a fingerprint, and a round that both adds and removes an obstacle inside vision left it
+        unchanged, so the cache silently served a stale field.
         """
         key = (target.x, target.y)
-        n = len(self.known_walls) + len(self.known_blocked)
-        if self._nav is not None and self._nav_key == key and self._nav_n == n:
+        n = self.nav_ver
+        if self._nav is not None and self._nav_key == key and self._nav_ver == n:
             return self._nav
         try:
             w, h = ct.get_map_width(), ct.get_map_height()
@@ -1027,7 +1039,7 @@ class Player:
                     dist[nb] = d
                     nxt.append(nb)
             frontier = nxt
-        self._nav, self._nav_key, self._nav_n = dist, key, n
+        self._nav, self._nav_key, self._nav_ver = dist, key, n
         return dist
 
     def _step_toward(self, ct, pos, target):
