@@ -8,7 +8,7 @@ Sources: [Florent announcement](https://www.linkedin.com/posts/florent-vc_the-ne
 
 The Cambridge documentation describes Python bots controlling autonomous mining fleets on Titan, including resource harvesting, infrastructure construction, and destruction of the opposing core. Florent's locally archived rules use the same named setting and game elements, including titanium, cores, builders, harvesters, conveyors, and turrets.
 
-Sources: [Cambridge documentation](https://docs.battlecode.cam/), [local Florent rules overview](../docs/llm-slop-docs/game-rules/game-rules-overview.md)
+Sources: [Cambridge documentation](https://docs.battlecode.cam/), [local Florent rules overview](../../docs/llm-slop-docs/game-rules/game-rules-overview.md)
 
 No public statement located during this pass specifies which portions of the Cambridge implementation, rules, or code were reused or changed for Florent.
 
@@ -21,4 +21,3 @@ Source: [MIT Battlecode](https://battlecode.org/)
 BattleBots is an arena competition involving physical armed and armored machines operated by competitors. No Florent or Cambridge source located during this pass states that either competition is based on BattleBots.
 
 This distinction does not rule on informal uses of phrases such as “battle bots”; it records only the named competitions and the public lineage statements above.
-
