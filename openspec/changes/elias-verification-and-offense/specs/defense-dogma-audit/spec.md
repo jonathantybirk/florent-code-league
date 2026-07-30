@@ -20,7 +20,8 @@ The following SHALL each carry a written audit in the register. Initial verdicts
 |---|---|---|
 | Barriers protect the Core | `CONDITIONAL` | 10 HP/Ti is real armour, but 3 rounds per lane vs a Gunner, zero vs Sentinels, and it can block own spawn ring and own turret rays |
 | Turtle and win the tiebreak | `REFUTED` | tiebreak counts delivered titanium only; turtling delivers zero |
-| Heal-tank the attack | `REFUTED` (pending Linux combat verification) | Gunner 0.20 Ti/dmg beats heal 0.25 Ti/HP and out-paces it 10 vs 4 per round |
+| Heal-tank the attack | `REFUTED` | Gunner 0.20 Ti/dmg beats heal 0.25 Ti/HP and out-paces it 10 vs 4 per round. Confirmed on Linux that the only thing that can damage a unit is a turret (G13) |
+| Belt chains are safe from builders | `REFUTED` | Range-0 sabotage exists (G14): an enemy builder stands *on* a walkable conveyor/splitter tile and fires its own tile — 2 dmg / 2 Ti, a 20 HP conveyor dies in 10 rounds. Chain-guarding is mandatory |
 | Defensive gunners near the Core | `REFUTED` as implemented anywhere in the field | never fed by the starter; no friend/foe check; friendly buildings jam the ray |
 | More builders = safer | `REFUTED` | +20 scale points each, forever; economy optimum sits near 3–4 builders; builders may deal zero damage |
 | Must scout for the enemy Core | `REFUTED` | atlas + per-map symmetry answers it at round 0; blanket mirroring is wrong on 6/15 maps |
