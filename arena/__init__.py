@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import os
 import sys
+from functools import lru_cache as _lru_cache
 from pathlib import Path
 
 __all__ = [
@@ -128,6 +129,7 @@ def bot_name(main_py: str | os.PathLike[str]) -> str:
     return p.parent.name if p.name == "main.py" else p.stem
 
 
+@_lru_cache(maxsize=1)
 def physical_cores() -> int:
     """Best-effort physical (not logical) core count.
 

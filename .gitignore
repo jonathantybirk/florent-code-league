@@ -3,3 +3,6 @@ __pycache__/
 *.py[cod]
 .DS_Store
 replay.replay26
+# arena/strict.py writes ~200 kB of .replay26 per match into here
+replays/
+*.replay26

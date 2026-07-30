@@ -180,26 +180,40 @@ def _top_level_imports(tree: ast.AST) -> set[str]:
     return mods
 
 
-def _reachable_modules(root: Path) -> set[str]:
-    """Module stems reachable from main.py by static import analysis."""
-    local = {p.stem: p for p in root.rglob("*.py") if "__pycache__" not in p.parts}
-    seen: set[str] = set()
-    stack = ["main"]
+def _reachable_files(root: Path) -> set[Path]:
+    """The .py files reachable from main.py by static import analysis.
+
+    Import names are matched against both sibling modules (`import helper` ->
+    helper.py) and package directories (`from pkg import x` -> everything under
+    pkg/). Treating a package as wholly reachable is deliberate: a package's
+    __init__ can pull in siblings dynamically, and a false "stray file" would be
+    a gate that cries wolf.
+    """
+    files = [p for p in root.rglob("*.py") if "__pycache__" not in p.parts]
+    by_stem: dict[str, Path] = {}
+    for p in files:
+        by_stem.setdefault(p.stem, p)
+    pkg_dirs = {d.name: d for d in root.rglob("*") if d.is_dir() and d.name != "__pycache__"}
+
+    main_py = root / "main.py"
+    seen: set[Path] = set()
+    stack: list[Path] = [main_py] if main_py.is_file() else []
     while stack:
-        name = stack.pop()
-        if name in seen or name not in local:
+        path = stack.pop()
+        if path in seen or not path.is_file():
             continue
-        seen.add(name)
+        seen.add(path)
         try:
-            tree = ast.parse(local[name].read_text(encoding="utf-8", errors="replace"))
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
         except SyntaxError:
             continue
         for mod in _top_level_imports(tree):
-            if mod in local and mod not in seen:
-                stack.append(mod)
-        # a package dir's __init__ pulls in its siblings implicitly
-        if name == "__init__":
-            continue
+            if mod in pkg_dirs:
+                for q in pkg_dirs[mod].rglob("*.py"):
+                    if "__pycache__" not in q.parts and q not in seen:
+                        stack.append(q)
+            elif mod in by_stem and by_stem[mod] not in seen:
+                stack.append(by_stem[mod])
     return seen
 
 
@@ -257,12 +271,8 @@ def static_audit(bot: str | os.PathLike[str]) -> dict:
     checks["ast_validator"] = "ok" if not ast_violations else f"FAIL ({len(ast_violations)})"
 
     # --- stray modules -----------------------------------------------------
-    reachable = _reachable_modules(root)
-    stray = [
-        p
-        for p in py_files
-        if p.stem not in reachable and p.stem != "__init__"
-    ]
+    reachable = _reachable_files(root)
+    stray = [p for p in py_files if p not in reachable and p.name != "__init__.py"]
     for p in stray:
         failures.append(
             f"{p.relative_to(root)} is not imported from main.py -- it still ships and is "

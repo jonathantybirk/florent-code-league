@@ -8,12 +8,28 @@ match. `worker_env()` sets it explicitly.
 The other invariant: a worker that dies or times out must never silently shrink
 the sample. Every match id handed to a worker comes back, either as a real result
 or as a `crashed: True` record that the scorer treats as a loss.
+
+Worker exit codes worth recognising (the engine terminates the process rather
+than raising, so these arrive as a dead worker, not an exception):
+
+    10   a bot was REJECTED by the engine's AST validator. Everything else in
+         that worker's chunk dies with it. `arena.strict` catches this
+         statically, before a sweep is ever launched.
+    11   a bot failed to load.
+
+Bot directories and __pycache__: the engine trial-loads each bot with importlib,
+which writes `__pycache__/main.cpython-*.pyc` next to main.py -- and a stray
+__pycache__ in a bot directory is exactly what makes the engine run a bot INERT
+(G30). We set PYTHONDONTWRITEBYTECODE in the worker environment so the engine
+cannot poison a bot directory by being run, and sweep any pre-existing bytecode
+before launching.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -31,6 +47,39 @@ WORKER_PY = str(Path(__file__).resolve().parent / "worker.py")
 DEFAULT_PER_MATCH_TIMEOUT = 60.0
 #: Interpreter start + engine extension load + spec read.
 DEFAULT_STARTUP_TIMEOUT = 60.0
+
+#: The engine exits the process on these instead of raising, so they surface as a
+#: dead worker. Verified against the engine: rc=10 on all 9 AST-validator cases.
+EXIT_CODE_HINTS = {
+    10: "engine REJECTED a bot at AST validation -- run `python -m arena.strict <bot>`",
+    11: "engine failed to LOAD a bot -- check for a stray __pycache__ (G30)",
+}
+
+
+def sweep_pycache(paths: Iterable[str | os.PathLike[str]]) -> int:
+    """Delete __pycache__ / *.pyc from the given bot directories. Returns the count.
+
+    A stray __pycache__ makes the engine run a bot INERT with no error message
+    (G30), and the engine itself creates one whenever it is allowed to write
+    bytecode. Sweeping before a batch costs a few stat calls and removes the
+    entire failure class.
+    """
+    removed = 0
+    for raw in paths:
+        d = Path(raw)
+        if not d.is_dir():
+            continue
+        for p in sorted(d.rglob("*"), key=lambda q: len(q.parts), reverse=True):
+            if p.name == "__pycache__" and p.is_dir():
+                shutil.rmtree(p, ignore_errors=True)
+                removed += 1
+            elif p.suffix == ".pyc" and p.is_file():
+                try:
+                    p.unlink()
+                    removed += 1
+                except OSError:
+                    pass
+    return removed
 
 
 def worker_env(extra: dict[str, str] | None = None) -> dict[str, str]:
@@ -52,8 +101,10 @@ def worker_env(extra: dict[str, str] | None = None) -> dict[str, str]:
             seen.add(key)
             ordered.append(p)
     env["PYTHONPATH"] = os.pathsep.join(ordered)
-    env.setdefault("PYTHONUNBUFFERED", "1")
-    env.setdefault("PYTHONDONTWRITEBYTECODE", "1")  # never leave __pycache__ near a bot
+    env["PYTHONUNBUFFERED"] = "1"
+    # Not optional: the engine's importlib trial-load writes __pycache__ next to the
+    # bot's main.py, and that stray __pycache__ is what makes a bot run INERT (G30/G33).
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     if extra:
         env.update(extra)
     return env
@@ -168,7 +219,12 @@ class _Worker:
                 tail = self.err_path.read_text(encoding="utf-8", errors="replace")[-800:]
             except OSError:
                 pass
-            reason = f"worker {self.idx} exited rc={self.proc.returncode}: {tail.strip()}"
+            hint = EXIT_CODE_HINTS.get(self.proc.returncode, "")
+            reason = (
+                f"worker {self.idx} exited rc={self.proc.returncode}"
+                + (f" ({hint})" if hint else "")
+                + f": {tail.strip()}"
+            )
         elif len(results) < len(self.chunk):
             reason = f"worker {self.idx} produced {len(results)}/{len(self.chunk)} results"
         return results, reason
@@ -181,6 +237,7 @@ def run_matches(
     per_match_timeout: float = DEFAULT_PER_MATCH_TIMEOUT,
     startup_timeout: float = DEFAULT_STARTUP_TIMEOUT,
     progress: Callable[[int, int], None] | None = None,
+    clean_pycache: bool = True,
 ) -> tuple[list[dict], dict]:
     """Run every match and return `(results_in_input_order, stats)`.
 
@@ -209,9 +266,16 @@ def run_matches(
         "matches_per_hour": 0.0,
         "crashed": 0,
         "worker_failures": [],
+        "pycache_swept": 0,
     }
     if not specs:
         return [], stats
+
+    if clean_pycache:
+        bot_dirs = {os.path.dirname(s["a"]) for s in specs} | {
+            os.path.dirname(s["b"]) for s in specs
+        }
+        stats["pycache_swept"] = sweep_pycache(bot_dirs)
 
     k = workers or physical_cores()
     k = max(1, min(k, len(specs)))

@@ -228,10 +228,7 @@ def ensure_zoo(rebuild: bool = False) -> dict[str, Path]:
     paths: dict[str, Path] = {}
 
     idle = ZOO_DIR / "idle" / "main.py"
-    if rebuild or not idle.is_file():
-        _write(idle, IDLE_SRC)
-    else:
-        _write(idle, IDLE_SRC)
+    _write(idle, IDLE_SRC)
     paths["idle"] = idle
 
     fixed = ZOO_DIR / "starter_fixed" / "main.py"

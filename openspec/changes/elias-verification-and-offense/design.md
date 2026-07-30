@@ -79,6 +79,34 @@ a *passive* opponent. Nobody has yet tested a forward gunner against a defender 
 own gunner covering the approach, and (c) destroys the attacking harvester — which is 30 HP and the single
 point of failure for the whole attack. The doctrine is not adopted until it survives that.
 
+### Update — the doctrine is confirmed, and it was confirmed against us
+
+Head-to-head measurement of AutistimusPrime against the three teammate bots (30 oriented games each,
+`bots/rivals/`):
+
+| Opponent | Record | Our Core destroyed |
+|---|---|---|
+| `luc1` | 1–29 | **21 / 30** |
+| `lockin` | 0–30 | **25 / 30** |
+| `frontier` | 3–27 | 11 / 30 |
+
+Two conclusions, both of which overturn earlier reasoning in this document:
+
+1. **Between competent bots the game is decided by Core kills, not by the round-1000 tiebreak.** The earlier
+   observation that "100% of games ran the full 1000 rounds" was an artifact of measuring bots that never
+   fed a turret. Against real opponents, 70–83% of games end in a Core kill. The economy race is what
+   happens when *both* sides fail to kill.
+2. **Survival is a prerequisite, not a dogma to be ridiculed.** This document opened by treating defensive
+   beliefs as guilty until proven innocent, and that framing was correct about *specific* defensive
+   techniques (heal-tanking, turtling for the tiebreak) while being badly wrong about the category. We
+   collected **zero titanium in half of our losses** — we are being killed before the first chain completes.
+   A bot that dies on round ~150 never gets to express any economic advantage at all.
+
+The revised ordering for our own bot is therefore: **survive first, out-collect second, kill third.** The
+per-map firing-position table computed for the offence doctrine is dual-use — the same tiles that let us
+kill their Core are the tiles from which ours is killed, and denying them with 3 Ti barriers is the cheapest
+defensive intervention available.
+
 ## Decision 3: Defensive dogmas are guilty until proven innocent
 
 Each of the following is a belief a reasonable person would hold, and each is at best unproven. They are
