@@ -37,8 +37,17 @@ try:
 except Exception:      # unknown-map fallback must always exist -- never stall like a pure-atlas bot
     atlas = None
 
+try:
+    import rushplan
+except Exception:
+    rushplan = None
+
 CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 ALL_DIRS = tuple(d for d in Direction if d != Direction.CENTRE)
+DIR_BY_NAME = {
+    "NORTH": Direction.NORTH, "EAST": Direction.EAST,
+    "SOUTH": Direction.SOUTH, "WEST": Direction.WEST,
+}
 
 # --- Communication store (16 slots, writes visible next round) ----------------
 S_CORE_X = 0
@@ -49,6 +58,7 @@ S_CLAIM_0 = 4
 N_CLAIMS = 6
 S_ENEMY_CORE = 10
 S_THREAT = 11
+S_RUSHER = 12         # id+1 of the builder that owns the rush; 0 = unclaimed
 
 # Each builder is +20 percentage points of GLOBAL cost scale, permanently -- but a builder that is actively
 # completing a chain repays ~2470 titanium, and we were losing to the starter by a deficit of exactly one
@@ -61,6 +71,14 @@ BUILDERS = 4
 # chains dominate late long ones. Left off until ore is ranked by CHAIN LENGTH rather than by distance
 # from the builder. The atlas import is still wanted for turret denial and the rush plan.
 USE_ATLAS_ORE = False
+
+# Maps where the precomputed rush MEASURABLY converts to a Core kill (vs an inert opponent, kill turns
+# 66-101). The other six -- atoll, fjord, pinch, quarry, runestone, vault -- ran the full 1000 rounds, so
+# rushing there only burns a quarter of the workforce for nothing. Gate on measurement, not on the
+# rushplan's own RUSH/ECON recommendation, which was optimistic on all six.
+RUSH_MAPS = frozenset((
+    "aurora", "crossfire", "duel", "hive", "longship", "skerry", "sprint", "strait", "twins",
+))
 # Keep enough banked to finish a chain in flight -- a half-built chain delivers exactly zero.
 CHAIN_RESERVE = 45
 # Budget 3ms locally against the ladder's 10ms. Reads 0 on Windows (G21), where this is advisory only.
@@ -106,7 +124,15 @@ class Player:
         self.seen = set()
         self.atlas_done = False
         self.map_name = None
+        self.team_tag = "a"
         self.failed_ore = set()
+
+        # Rush state
+        self.rush_role = None          # None = undecided, True = this builder owns the rush
+        self.rush_plan = None
+        self.rush_gun_built = False
+        self.rush_ore_built = False
+        self.rush_stuck = 0
 
         self.errors = 0
 
@@ -285,6 +311,13 @@ class Player:
             self.stuck = 0
         self.last_pos = pos
 
+        # 0. The rusher runs a precomputed kill instead of an economy. On 13 of the 15 pool maps a
+        #    Gunner firing position exists with an ore tile orthogonally adjacent, so the harvester
+        #    feeds it directly with ZERO conveyors -- a Core kill around turn 60-80 for well under
+        #    100 Ti. Rival bots kill us around round 150-300, so executing this wins the race.
+        if self._is_rusher(ct) and self._run_rush(ct, pos):
+            return
+
         # 1. Settle the belt we owe. Highest-value action in the game: nothing scores until the chain
         #    reaches the Core, so finishing always outranks starting (G02).
         if self._settle_owed(ct, pos):
@@ -315,7 +348,7 @@ class Player:
         silently to vision-only play on an unrecognised map -- never stalls (that flaw sinks a pure-atlas
         bot on any map outside the bundled pool).
         """
-        if not USE_ATLAS_ORE or self.atlas_done or atlas is None or self.core_pos is None:
+        if self.atlas_done or atlas is None or self.core_pos is None:
             return
         self.atlas_done = True
         try:
@@ -328,6 +361,10 @@ class Player:
             if rec is None:
                 return
             self.map_name = rec["name"]
+            self.team_tag = tag
+            self.core_tiles.update(tuple(t) for t in rec["own_core_tiles"])
+            if not USE_ATLAS_ORE:
+                return
             # Only OUR half. Seeding every ore tile sends builders across the map to ore they would
             # never have discovered, and a long chain costs far more than it returns.
             own, foe = rec["own_core"], rec["enemy_core"]
@@ -337,9 +374,107 @@ class Player:
                 if d_own <= d_foe:
                     self.known_ore.add(tuple(o))
             self.known_walls.update(tuple(w) for w in rec["walls"])
-            self.core_tiles.update(tuple(t) for t in rec["own_core_tiles"])
         except Exception:
             return
+
+    # --- the rush ------------------------------------------------------
+
+    def _is_rusher(self, ct):
+        """Exactly one builder runs the kill; everyone else keeps building economy.
+
+        Claimed through the store rather than by spawn ordinal. A builder does not act on the round it
+        is spawned, so by its first turn the Core has already incremented the ordinal counter and NO
+        builder ever reads 0 -- gating on `ordinal == 0` silently disabled the whole rush.
+        Claim-then-confirm: write our id, and next round the single writer that sees its own id wins.
+        """
+        if rushplan is None or self.map_name is None or self.map_name not in RUSH_MAPS:
+            return False
+        if self.rush_role is None:
+            try:
+                claim = ct.read_store(S_RUSHER)
+                mine = ct.get_id() + 1
+                if claim == 0:
+                    ct.write_store(S_RUSHER, mine)
+                    return False
+                self.rush_role = (claim == mine)
+            except Exception:
+                self.rush_role = False
+        if not self.rush_role:
+            return False
+        if self.rush_plan is None:
+            try:
+                if rushplan.recommendation(self.map_name, self.team_tag) == "ECON":
+                    return False
+                self.rush_plan = rushplan.attack_plan(self.map_name, self.team_tag)
+            except Exception:
+                self.rush_plan = None
+        return self.rush_plan is not None
+
+    def _run_rush(self, ct, pos):
+        """Walk to the precomputed firing position, plant the Gunner, then feed it."""
+        plan = self.rush_plan
+        fire = Position(plan["fire_pos"][0], plan["fire_pos"][1])
+        facing = DIR_BY_NAME.get(plan["facing"])
+        ore = plan["ore"]
+
+        # 1. Plant the Gunner on the firing tile.
+        if not self.rush_gun_built:
+            if self._building_at(ct, fire) is not None:
+                self.rush_gun_built = True      # someone already built here; move on to ammo
+            elif pos.distance_squared(fire) == 1 and facing is not None:
+                if not self._can_act(ct):
+                    return True
+                try:
+                    if ct.can_build_gunner(fire, facing):
+                        ct.build_gunner(fire, facing)
+                        self.rush_gun_built = True
+                        return True
+                except Exception:
+                    pass
+                return True
+            else:
+                return self._rush_walk(ct, pos, fire)
+
+        # 2. Plant the Harvester that feeds it. Orthogonally adjacent to the Gunner means zero
+        #    conveyors -- the ammo arrives directly (G05 keeps this OFF the economy chain).
+        if ore is not None and not self.rush_ore_built:
+            ore_pos = Position(ore[0], ore[1])
+            if self._building_at(ct, ore_pos) is not None:
+                self.rush_ore_built = True
+            elif pos.distance_squared(ore_pos) == 1:
+                if not self._can_act(ct):
+                    return True
+                try:
+                    if ct.can_build_harvester(ore_pos):
+                        ct.build_harvester(ore_pos)
+                        self.rush_ore_built = True
+                        return True
+                except Exception:
+                    pass
+                return True
+            else:
+                return self._rush_walk(ct, pos, ore_pos)
+
+        # 3. Stay and keep the Gunner alive -- it is the whole attack, and 40 HP.
+        if self._heal(ct, pos):
+            return True
+        return True
+
+    def _rush_walk(self, ct, pos, target):
+        if not self._can_move_now(ct):
+            return True
+        step = self._step_toward(ct, pos, target)
+        if step is None:
+            self.rush_stuck += 1
+            if self.rush_stuck >= 12:
+                self.rush_plan = None       # give up and fall back to economy
+                self.map_name = None
+            return True
+        try:
+            ct.move(step)
+        except Exception:
+            pass
+        return True
 
     def _observe(self, ct, pos):
         """Fold this round's vision into private map memory (~66us for a full scan)."""

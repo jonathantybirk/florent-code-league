@@ -553,9 +553,24 @@ def recommendation(map_name, team):
 # --- extended detail, for callers that want to execute the plan step by step ------------------
 
 _DETAIL_KEYS = ("map", "team", "own_core", "enemy_core", "gunner", "facing", "range", "ore",
-                "conveyors", "ray", "stand", "stands", "walk", "t_gunner", "t_harvester",
+                "conveyors", "ray", "stand", "stands", "route", "walk", "t_gunner", "t_harvester",
                 "first_shot", "kill_turn", "cost", "zero_conveyor", "n_firing_tiles",
                 "n_zero_conveyor_options", "deny")
+
+def _build_plans():
+    out = {}
+    for k, row in _DETAIL.items():
+        if row is None:
+            out[k] = None
+            continue
+        d = dict(zip(_DETAIL_KEYS, row))
+        d["deny"] = _DENY.get(k, ())
+        out[k] = d
+    return out
+
+
+PLANS = _build_plans()
+RECOMMENDATION = dict(_REC)
 
 
 def plan(map_name, team):
@@ -564,12 +579,7 @@ def plan(map_name, team):
         k = _key(map_name, team)
         if k is None:
             return None
-        row = _DETAIL.get(k)
-        if row is None:
-            return None
-        d = dict(zip(_DETAIL_KEYS, row))
-        d["deny"] = _DENY.get(k, ())
-        return d
+        return PLANS.get(k)
     except Exception:
         return None
 
@@ -658,13 +668,24 @@ def emit(rows, path):
         ray = "(%s%s)" % (ray, "," if len(p["ray"]) == 1 else "")
         stands = ", ".join("(%d, %d)" % q for q in p["stands"])
         stands = "(%s%s)" % (stands, "," if len(p["stands"]) == 1 else "")
+        legs = [("gunner", p["g"], p["facing"])]
+        legs += [("conveyor", t, f) for t, f in p["conveyors"]]
+        legs.append(("harvester", p["ore"], None))
+        route = ", ".join(
+            '("%s", (%d, %d), %s, (%d, %d))'
+            % (kind, t[0], t[1], ('"%s"' % f) if f else "None", s[0], s[1])
+            for (kind, t, f), s in zip(legs, p["stands"]))
+        route = "(%s%s)" % (route, "," if len(legs) == 1 else "")
         L.append(
             '    ("%s", "%s"): ("%s", "%s", (%d, %d), (%d, %d), (%d, %d), "%s", %d, (%d, %d),\n'
-            '        %s, %s, (%d, %d), %s, %d, %d, %d, %d, %d, %d, %s, %d, %d, None),\n'
+            '        %s, %s, (%d, %d), %s,\n'
+            '        %s,\n'
+            '        %d, %d, %d, %d, %d, %d, %s, %d, %d, None),\n'
             % (k[0], k[1], k[0], k[1], bd.team_own_core[0], bd.team_own_core[1],
                bd.team_enemy_core[0], bd.team_enemy_core[1], p["g"][0], p["g"][1], p["facing"],
                p["range"], p["ore"][0], p["ore"][1], conv, ray,
-               p["stands"][0][0], p["stands"][0][1], stands, p["walk"], p["t_gunner"],
+               p["stands"][0][0], p["stands"][0][1], stands, route,
+               p["walk"], p["t_gunner"],
                p["t_harv"], p["first_shot"], p["turns"], p["ti"], p["nconv"] == 0,
                r["n_fire_tiles"], r["n_zero_opts"]))
     L.append("}\n")
