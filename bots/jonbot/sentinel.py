@@ -9,5 +9,10 @@ if TYPE_CHECKING:
 
 
 def run(player: "Player", ct: Controller) -> None:
-    """Run one turn of Sentinel behavior."""
-    pass
+    """Fire at the lowest-HP visible enemy on the fixed firing line."""
+    targets = [entity_id for entity_id in ct.get_nearby_entities()
+               if ct.get_team(entity_id) != ct.get_team()
+               and ct.can_fire(ct.get_position(entity_id))]
+    if targets:
+        target = min(targets, key=ct.get_hp)
+        ct.fire(ct.get_position(target))

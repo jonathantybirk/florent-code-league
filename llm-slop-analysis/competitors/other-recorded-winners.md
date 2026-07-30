@@ -39,4 +39,3 @@ Kaggle's Lux AI Season 2 archive identifies Deimos as tenth place. The team repo
 Source: [Deimos tenth-place write-up](https://www.kaggle.com/competitions/lux-ai-season-2/writeups/deimos-10th-place-deimos-s-rl-approach)
 
 No organizer-accessible top-three Lux Season 2 solution write-up was located during this pass.
-

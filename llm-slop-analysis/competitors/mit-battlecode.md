@@ -37,4 +37,3 @@ Sources: [official past-years page](https://battlecode.org/past.html), [Gone Fis
 The official results record don't @ me in seventh place. Its postmortem describes balancing resource-harvesting assignments, grouping launchers into squadrons, pathfinding and group movement, and kiting behavior.
 
 Sources: [official past-years page](https://battlecode.org/past.html), [don't @ me postmortem (PDF)](https://battlecode.org/assets/files/postmortem-2023-dont-at-me.pdf)
-
