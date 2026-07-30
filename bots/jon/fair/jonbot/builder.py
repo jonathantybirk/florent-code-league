@@ -24,6 +24,13 @@ if TYPE_CHECKING:
     from main import Player
 
 
+HARASS_PRIORITY = {
+    EntityType.SPLITTER: 0,
+    EntityType.CONVEYOR: 1,
+    EntityType.HARVESTER: 2,
+}
+
+
 def run(p: "Player", ct: Controller) -> None:
     try:
         _run(p, ct)
@@ -41,6 +48,7 @@ def _run(p, ct):
         p.w, p.h = ct.get_map_width(), ct.get_map_height()
         p.seen, p.terrain = set(), {}
         p.walls, p.ores, p.solids, p.conveyors = set(), set(), set(), {}
+        p.enemy_economy = {}
         p.core, p.foot = None, set()
         p.task, p.route, p.route_i, p.phase = None, [], 0, "scout"
         p.explored = set()
@@ -48,10 +56,18 @@ def _run(p, ct):
         p.current_route_tiles = set()
         p.network_tiles = set()
         p.network_load = 0
+        p.economy_lines_completed = 0
         p.lock_required = False
     _sense(p, ct)
     _update_enemy_core_inference(p, ct)
     if p.core is None:
+        return
+    # Builder 1 establishes one income line, then becomes the opening scout
+    # and saboteur. Builder 0 remains responsible for continued expansion.
+    if p.builder_index == 1 and p.economy_lines_completed >= 1:
+        p.phase = "harass"
+    if p.phase == "harass":
+        _harass(p, ct)
         return
     if p.phase == "scout":
         _pick(p, ct)
@@ -84,10 +100,16 @@ def _sense(p, ct):
         if bid is None:
             p.solids.discard(key)
             p.conveyors.pop(key, None)
+            p.enemy_economy.pop(key, None)
             continue
         kind = ct.get_entity_type(bid)
-        if kind == EntityType.CORE and ct.get_team(bid) != ct.get_team():
+        enemy = ct.get_team(bid) != ct.get_team()
+        if kind == EntityType.CORE and enemy:
             ct.write_store(SLOT_ENEMY_CORE, pack_pos(ct.get_position(bid)))
+        if enemy and kind in HARASS_PRIORITY:
+            p.enemy_economy[key] = kind
+        else:
+            p.enemy_economy.pop(key, None)
         if kind == EntityType.CORE:
             if ct.get_team(bid) == ct.get_team():
                 p.core = tuple(ct.get_position(bid))
@@ -198,6 +220,7 @@ def _goto(p, ct):
         if ct.can_build_harvester(target):
             ct.build_harvester(target)
             p.solids.add(p.task)
+            p.economy_lines_completed += 1
             _done(p, ct)
         elif ct.get_tile_building_id(target) is not None:
             _done(p, ct)
@@ -417,6 +440,46 @@ def _explore(p, ct):
     _step(p, ct, Position(*target), False)
 
 
+def _harass(p, ct):
+    """Scout for the enemy economy and sabotage high-value logistics.
+
+    The opening harasser deliberately ignores the Core and combat buildings.
+    Builder attacks are too slow and expensive for a Core kill, while damaging
+    logistics immediately denies income and forces an opposing Builder home.
+    """
+    me = tuple(ct.get_position())
+    targets = sorted(
+        p.enemy_economy,
+        key=lambda tile: (
+            HARASS_PRIORITY[p.enemy_economy[tile]],
+            max(abs(tile[0] - me[0]), abs(tile[1] - me[1])),
+            tile,
+        ),
+    )
+    for target in targets:
+        if _cardinal_distance(me, target) == 1:
+            position = Position(*target)
+            if ct.can_fire(position):
+                ct.fire(position)
+                return
+
+    if targets:
+        target = targets[0]
+        goals = _cardinal_adjacent(p, target) - p.walls - p.solids
+        if goals:
+            reachable = [(distance, goal) for goal in goals
+                         if (distance := _distance(p, me, {goal})) is not None]
+            if reachable:
+                _, goal = min(reachable)
+                _step(p, ct, Position(*goal), True)
+                return
+
+    # No remembered economy is reachable yet. Resolve the enemy-Core location
+    # and continue normal partitioned exploration; infrastructure discovered on
+    # the way is recorded by _sense and attacked on the following round.
+    _explore(p, ct)
+
+
 def _enemy_core_candidates(p):
     """Candidate top-left Core coordinates: rotation, x mirror, y mirror."""
     x, y = p.core
@@ -497,6 +560,15 @@ def _team_rejected_symmetries(ct):
 def _adjacent(p, target):
     return {(target[0] + d.delta()[0], target[1] + d.delta()[1]) for d in D8
             if _inside(p, (target[0] + d.delta()[0], target[1] + d.delta()[1]))}
+
+
+def _cardinal_adjacent(p, target):
+    return {(target[0] + dx, target[1] + dy) for dx, dy in D4_DELTAS
+            if _inside(p, (target[0] + dx, target[1] + dy))}
+
+
+def _cardinal_distance(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
 def _inside(p, tile):
