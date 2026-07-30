@@ -8,20 +8,20 @@ strategy built from prose nobody re-derived.
 
 Meanwhile the single strongest result found so far is not in any teammate branch: a Gunner fed by one
 adjacent Harvester **destroyed a 500 HP Core on turn 77 for roughly 96 titanium**, while every observed
-bot-vs-bot game between conventional bots ran the full 1000 rounds with no Core ever dying. If that result
-holds, the entire field — including us — is playing the wrong game.
+bot-vs-bot game between conventional bots ran the full 1000 rounds with no Core ever dying. That result has
+since been confirmed the hard way — our teammates' bots destroy AutistimusPrime's Core in 70–83% of games.
 
 This change establishes `elias_dev` as the branch that **verifies rather than assumes**. Its deliverable is
-not a bot. It is a ground-truth register, a falsification suite, and an offensive doctrine that has survived
-deliberate attempts to kill it.
+a ground-truth register, a falsification suite, an offensive doctrine that has survived deliberate attempts
+to kill it, and a bot built only from claims that survived.
 
 Two failure modes this exists to prevent:
 
 1. **Inherited belief.** A constant, a build order, or a "rule" that entered our codebase from prose or from
    a teammate and was never independently re-derived.
-2. **Platform illusion.** Every measurement so far was taken on Windows/x86. The ladder runs Linux on AWS
-   Graviton3 (ARM). At least two dramatic findings (Builder Bots dealing zero damage; the CPU timer reading
-   zero) are plausibly Windows-wheel regressions rather than game rules.
+2. **Platform illusion.** Early measurements were taken on Windows/x86. The ladder runs Linux on AWS
+   Graviton3 (ARM). One dramatic finding (the CPU timer reading zero, TLE never firing) turned out to be
+   exactly such an illusion — real on Windows, absent on Linux.
 
 ## What Changes
 
@@ -39,6 +39,7 @@ Two failure modes this exists to prevent:
   units, and must conform to the engine's AST validator and server sandbox.
 - A **deterministic evaluation harness** exploiting the discovery that this engine has zero within-map
   variance, making a 30-game sweep exhaustive rather than a sample.
+- **AutistimusPrime itself**, specified against measured deficits rather than intuition.
 
 ## Capabilities
 
@@ -54,6 +55,8 @@ Two failure modes this exists to prevent:
   CPU, and never fails submission validation.
 - `evaluation-harness`: The deterministic, mirrored, exhaustive arena used to decide every question,
   replacing ladder results and intuition as our arbiter.
+- `bot-behaviour`: What AutistimusPrime itself must do — survive the forward-gunner kill, build chains in
+  parallel, and never regress on the crash and validator gates.
 
 ### Modified Capabilities
 
@@ -62,11 +65,11 @@ None — this is the first OpenSpec change in the repository.
 ## Impact
 
 - **New branch** `elias_dev`, branched from `main`. Does not touch `x/jon`, `x/luc`, or `x/llm-RL`.
-- **New directories**: `openspec/`, `probes/` (falsification bots and arenas), `arena/` (harness),
-  `docs/ground-truth.md` (generated register).
+- **New directories**: `openspec/`, `arena/` (harness), `bot/` (AutistimusPrime), `bots/zoo/` (deterministic
+  reference opponents), `bots/rivals/` (teammate bots extracted for head-to-head), `docs/ground-truth.md`.
 - **Corrects repo documentation**: `docs/cli/cli-submitting.md` states the entry point is `bot.py`; the
-  engine imports `main`. This will be fixed in-repo so no teammate loses an evening to it.
-- **Cross-platform requirement**: WSL or a Linux box becomes mandatory for CPU and combat verification.
-  Windows silently reports `get_cpu_time_elapsed() == 0` and does not enforce `--tle`.
+  engine imports `main`. Plus five further doc errors catalogued in the register.
+- **Cross-platform requirement**: WSL or a Linux box is mandatory for CPU verification. Windows silently
+  reports `get_cpu_time_elapsed() == 0` and does not enforce `--tle`.
 - **No dependency on numpy** anywhere in shippable code. It cannot be imported inside the bot sandbox at all.
 - **Team process**: any claim promoted into a teammate's bot must cite a register entry.

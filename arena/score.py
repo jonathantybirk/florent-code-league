@@ -444,6 +444,17 @@ def format_report(rep: dict) -> str:
     lines.append(
         f"crashed games: {rep['crashed']}   worker failures: {t.get('worker_failures') or 'none'}"
     )
+    if rep["crashed"]:
+        # S is antisymmetric, so a bot that crashes in BOTH orientations scores 0,
+        # not -1. Zero here means "no evidence", not "even". Read this line first.
+        lines.append(
+            f"  !! {rep['crashed']}/{rep['engine_games']} games did not complete. S is NOT "
+            "trustworthy: a bot that crashes on both sides scores S=0, not S=-1."
+        )
+    if rep["exceptions"]["x"] or rep["exceptions"]["y"]:
+        lines.append(
+            "  !! units were deleted by uncaught exceptions; run `python -m arena.strict <bot>`"
+        )
     lines.append(
         f"throughput: {t['matches']} matches on {t['workers']} workers in "
         f"{t['wall_seconds']:.2f}s = {t['matches_per_sec']:.2f} matches/sec "
