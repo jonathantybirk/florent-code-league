@@ -9,5 +9,7 @@ if TYPE_CHECKING:
 
 
 def run(player: "Player", ct: Controller) -> None:
-    """Run one turn of Gunner behavior."""
-    pass
+    """Fire at the first target in the current ray when locally supplied."""
+    target = ct.get_gunner_target()
+    if target is not None and ct.can_fire(target):
+        ct.fire(target)

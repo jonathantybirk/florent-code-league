@@ -58,4 +58,3 @@ Source: [cheesynachos postmortem (PDF)](https://game.battlecode.cam/postmortems/
 Team member Vaishakh Vipin reported a peak ladder rank of seven with a 2597 rating and a round-of-16 international-qualifier result. He also reported records for a round-55 core destruction and a round-1998 core destruction, and described the bot as handling attack, defense, and resource management. His post said a postmortem was planned; no such artifact was located during this pass.
 
 Source: [Vaishakh Vipin's account](https://www.linkedin.com/posts/vaishakh-vipin_just-spent-the-last-few-weeks-deep-in-cambridge-activity-7459144416440537088-uvnk)
-

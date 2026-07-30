@@ -45,4 +45,3 @@ The public ladder says rankings update after each rated match. On 29 July 2026, 
 These are recorded as ladder positions, not Grand Finals placements.
 
 Source: [public ladder](https://game.battlecode.cam/ladder)
-

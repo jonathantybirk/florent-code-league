@@ -4,32 +4,33 @@ from typing import TYPE_CHECKING
 
 from fcode import Controller, Direction, Position
 
+
 if TYPE_CHECKING:
     from main import Player
 
 
-OPENING_ROUNDS = 6
-
-
 def run(player: "Player", ct: Controller) -> None:
-    """Spawn six builders onto the map-facing sides of the Core."""
-    tick = ct.get_current_round()
-    if tick >= OPENING_ROUNDS:
+    """Spawn exactly two opening Builders.
+
+    Engine-backed peer review found that round-zero visible ore count is a
+    misleading predictor of useful economic parallelism. Reconsider any third
+    Builder later from live workload/combat evidence, not a map fingerprint.
+    """
+    if not hasattr(player, "builders_spawned"):
+        player.builders_spawned = 0
+    if player.builders_spawned >= 2:
+        return
+    if ct.get_global_resources() < ct.get_builder_bot_cost():
         return
 
-    core_pos = ct.get_position()
-    directions = _exploration_directions(ct, core_pos)
-
-    # Start with this round's assigned direction. If that whole side is
-    # blocked, fall back to the next useful exploration direction.
-    start = tick % len(directions)
-    ordered_directions = directions[start:] + directions[:start]
-
-    for direction in ordered_directions:
-        for spawn_pos in _spawn_tiles(core_pos, direction):
-            if ct.can_spawn(spawn_pos):
-                ct.spawn_builder(spawn_pos)
-                return
+    # Engine ordering is deterministic. Keeping the spawn rule simple also
+    # avoids placing a Builder on the far side of the 2x2 Core from its first
+    # visible job; task selection handles directional specialization afterward.
+    for spawn_pos in ct.get_nearby_tiles(2):
+        if ct.can_spawn(spawn_pos):
+            ct.spawn_builder(spawn_pos)
+            player.builders_spawned += 1
+            return
 
 
 def _exploration_directions(

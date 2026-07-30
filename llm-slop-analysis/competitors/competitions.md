@@ -6,7 +6,7 @@ Florent describes its event as a three-week competition in which teams program a
 
 Sources: [Florent Code League](https://league.florent.vc/), [Florent announcement](https://www.linkedin.com/posts/florent-vc_the-next-generation-of-nordic-founders-will-activity-7470449375492878336-eaB2)
 
-The locally archived Florent rules describe cores, builders, harvesters, conveyors, titanium, turrets, and other buildings. Those descriptions are preserved in [the local rules overview](../docs/llm-slop-docs/game-rules/game-rules-overview.md).
+The locally archived Florent rules describe cores, builders, harvesters, conveyors, titanium, turrets, and other buildings. Those descriptions are preserved in [the local rules overview](../../docs/llm-slop-docs/game-rules/game-rules-overview.md).
 
 ## Cambridge Battlecode
 
@@ -85,4 +85,3 @@ Source: [IEEE CoG 2026 competitions](https://cog2026.org/competitions)
 CodeCup describes itself as an online programming competition in which submitted programs play a selected game against one another. Its site retains an archive of past contests and separates game rules, technical submission rules, and competition/ranking rules.
 
 Sources: [CodeCup rules](https://www.codecup.nl/rules.php), [past contests](https://www.codecup.nl/archives.php)
-
