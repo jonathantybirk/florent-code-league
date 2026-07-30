@@ -49,8 +49,10 @@ def sweep(bot_x, bot_y, maps=None):
             else:
                 losses += 1
             mine = "a" if side == "A" else "b"
+            theirs = "b" if side == "A" else "a"
             rows.append((name, side, "W" if won else "L", cond, res["turns"],
-                         res[f"{mine}_titanium_collected"], res[f"{mine}_units"]))
+                         res[f"{mine}_titanium_collected"], res[f"{theirs}_titanium_collected"],
+                         res[f"{mine}_units"]))
     return wins, losses, kills, conds, rows
 
 
@@ -59,8 +61,13 @@ if __name__ == "__main__":
     y = sys.argv[2] if len(sys.argv) > 2 else "bots/starter"
     w, l, k, conds, rows = sweep(x, y)
     print(f"{x}  vs  {y}")
-    print(f"{'map':<11}{'side':<6}{'res':<5}{'win_condition':<20}{'turns':<7}{'collected':<11}units")
+    print(f"{'map':<11}{'side':<5}{'res':<4}{'win_condition':<20}{'ours':<9}{'theirs':<9}units")
     for r in rows:
-        print(f"{r[0]:<11}{r[1]:<6}{r[2]:<5}{r[3]:<20}{r[4]:<7}{r[5]:<11}{r[6]}")
+        print(f"{r[0]:<11}{r[1]:<5}{r[2]:<4}{r[3]:<20}{r[5]:<9}{r[6]:<9}{r[7]}")
+    print("\n--- LOSSES ONLY ---")
+    for r in rows:
+        if r[2] == "L":
+            gap = r[6] - r[5]
+            print(f"{r[0]:<11}{r[1]:<5}ours={r[5]:<8}theirs={r[6]:<8}deficit={gap}")
     print(f"\nRECORD {w}-{l}   core kills: {k}")
     print("win_conditions:", conds)
