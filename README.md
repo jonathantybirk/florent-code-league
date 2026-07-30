@@ -18,3 +18,12 @@ Run the game CLI through the project environment:
 ```sh
 uv run fcode --help
 ```
+
+## Play
+
+Run the movement-and-sensing tutorial bot against itself:
+
+```sh
+uv run fcode run tutorial tutorial
+uv run fcode watch replay.replay26
+```
