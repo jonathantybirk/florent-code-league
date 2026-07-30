@@ -7,8 +7,9 @@ from maplib import WALL, read_map
 from mapstats import CORES, footprint
 from planner import plan
 
-ROOT = "/Users/jonathantybirk/Documents/GitHub/florent-code-league"
-SCR = "/private/tmp/claude-501/-Users-jonathantybirk-Documents-GitHub-florent-code-league/2c47d030-787d-4a82-a6f5-224c333e01c1/scratchpad"
+import sys
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).parent))
+from harness import ROOT, SCRATCH  # noqa: E402
 MAPS = list(CORES)
 NBS = [1, 2, 3, 4, 6]
 
@@ -22,7 +23,7 @@ def make_plan(m, nb):
          "foot": [list(t) for t in footprint(ca)],
          "efoot": [list(t) for t in footprint(cb)],
          "jobs": [b["jobs"] for b in p["builders"]]}
-    path = f"{SCR}/plan_{m}_{nb}.json"
+    path = f"{SCRATCH}/plan_{m}_{nb}.json"
     json.dump(d, open(path, "w"))
     return path, p["revenue"], p["connected"], p["total_ore"]
 
@@ -31,8 +32,8 @@ def one(a):
     m, nb = a
     path, pred, conn, tot = make_plan(m, nb)
     env = dict(os.environ, EP_PLAN=path)
-    r = subprocess.run(["uv", "run", "fcode", "run", "exec_plan", "do_nothing_bot", m,
-                        "--replay", f"{SCR}/pl_{m}_{nb}.replay26"],
+    r = subprocess.run(["uv", "run", "fcode", "run", "jon/probes/exec_plan", "common/donothingbot", m,
+                        "--replay", f"{SCRATCH}/pl_{m}_{nb}.replay26"],
                        cwd=ROOT, env=env, capture_output=True, text=True)
     mm = re.search(r"Titanium\s+([\d,]+) \(([\d,]+) mined\)", r.stdout)
     return m, nb, int(mm.group(2).replace(",", "")) if mm else None, pred, conn, tot

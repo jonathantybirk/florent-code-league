@@ -4,8 +4,5 @@ __pycache__/
 .DS_Store
 *.replay26
 .vscode/
-
-# Local research scaffolding — kept off main on purpose (see AGENTS.md).
-# Personal branches may force-add these; main stays clean.
 /analysis/
 /scripts/

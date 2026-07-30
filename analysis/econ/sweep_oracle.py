@@ -6,15 +6,16 @@ sys.path.insert(0, 'analysis/econ')
 from maplib import ORE, read_map
 from mapstats import CORES
 
-ROOT = "/Users/jonathantybirk/Documents/GitHub/florent-code-league"
-SCR = "/private/tmp/claude-501/-Users-jonathantybirk-Documents-GitHub-florent-code-league/2c47d030-787d-4a82-a6f5-224c333e01c1/scratchpad"
+import sys
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).parent))
+from harness import ROOT, SCRATCH  # noqa: E402
 MAPS = list(CORES)
 NBS = [1, 2, 3, 4, 6]
 
 
 def ore_file(m):
     w, h, rows = read_map(f"{ROOT}/maps/{m}.map26")
-    p = f"{SCR}/ore_{m}.txt"
+    p = f"{SCRATCH}/ore_{m}.txt"
     with open(p, "w") as f:
         for y in range(h):
             for x in range(w):
@@ -28,8 +29,8 @@ def one(a):
     env = dict(os.environ, EL_BUILDERS=str(nb), EL_REUSE="0", EL_DEBUG="0")
     if oracle:
         env["EL_ORACLE"] = ore_file(m)
-    r = subprocess.run(["uv", "run", "fcode", "run", "econ_lab", "do_nothing_bot", m,
-                        "--replay", f"{SCR}/o_{m}_{nb}_{int(oracle)}.replay26"],
+    r = subprocess.run(["uv", "run", "fcode", "run", "jon/probes/econ_lab", "common/donothingbot", m,
+                        "--replay", f"{SCRATCH}/o_{m}_{nb}_{int(oracle)}.replay26"],
                        cwd=ROOT, env=env, capture_output=True, text=True)
     mm = re.search(r"Titanium\s+([\d,]+) \(([\d,]+) mined\)", r.stdout)
     return m, nb, oracle, int(mm.group(2).replace(",", "")) if mm else None
