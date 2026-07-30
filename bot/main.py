@@ -78,6 +78,7 @@ USE_ATLAS_ORE = False
 # rushplan's own RUSH/ECON recommendation, which was optimistic on all six.
 RUSH_MAPS = frozenset((
     "aurora", "crossfire", "duel", "hive", "longship", "skerry", "sprint", "strait", "twins",
+    "atoll", "fjord", "pinch", "quarry", "runestone", "vault",
 ))
 # Keep enough banked to finish a chain in flight -- a half-built chain delivers exactly zero.
 CHAIN_RESERVE = 45
@@ -127,12 +128,24 @@ class Player:
         self.team_tag = "a"
         self.failed_ore = set()
 
+        # Every belt this builder has laid, so it can notice one going missing and put it back.
+        self.built_belts = []
+        self.repair_target = None
+
         # Rush state
         self.rush_role = None          # None = undecided, True = this builder owns the rush
         self.rush_plan = None
         self.rush_gun_built = False
         self.rush_ore_built = False
         self.rush_stuck = 0
+        self.rush_i = 0
+        self.rush_route = None
+        self.rush_dist = None
+        self.rush_dist_key = None
+        self.enemy_core_tiles = set()
+        self.occupied = set()
+        self.occ_ver = 0
+        self.rush_ray = frozenset()
 
         self.errors = 0
 
@@ -330,6 +343,12 @@ class Player:
             return
         if self.phase == "belt" and self._belt_step(ct, pos):
             return
+        # A cut belt makes the ENTIRE chain upstream of it score zero (G02), and an enemy builder can
+        # destroy a 20 HP conveyor for 20 Ti using the range-0 attack. Repairing one link costs ~3 Ti and
+        # restores ~2.5 collected per round, so it outranks starting anything new.
+        if self.phase == "seek" and self._repair_chain(ct, pos):
+            return
+
         if self.phase == "seek":
             self._seek(ct, pos)
             if self.phase == "harvest" and self._try_harvester(ct, pos):
@@ -362,7 +381,22 @@ class Player:
                 return
             self.map_name = rec["name"]
             self.team_tag = tag
+            # G11: a friendly ANYWHERE in the gunner's ray flips the target to it and jams the turret
+            # for the rest of the match. Measured on vault/a: an economy builder laid a conveyor on
+            # (20,2) at round 47 and the gunner sat on the enemy Core for 953 rounds without firing.
+            # Every builder knows the lane offline, so no store slot is needed to reserve it.
+            if rushplan is not None and self.map_name in RUSH_MAPS:
+                try:
+                    full = rushplan.plan(self.map_name, tag)
+                    if full is not None:
+                        self.rush_ray = frozenset(tuple(t) for t in full["ray"])
+                except Exception:
+                    self.rush_ray = frozenset()
             self.core_tiles.update(tuple(t) for t in rec["own_core_tiles"])
+            # Walls are ALWAYS wanted: the rush BFS needs the full static wall set, and the greedy
+            # stepper 2-cycles forever without it.
+            self.known_walls.update(tuple(w) for w in rec["walls"])
+            self.enemy_core_tiles = set(tuple(t) for t in rec["enemy_core_tiles"])
             if not USE_ATLAS_ORE:
                 return
             # Only OUR half. Seeding every ore tile sends builders across the map to ore they would
@@ -403,24 +437,80 @@ class Player:
             return False
         if self.rush_plan is None:
             try:
-                if rushplan.recommendation(self.map_name, self.team_tag) == "ECON":
-                    return False
                 self.rush_plan = rushplan.attack_plan(self.map_name, self.team_tag)
+                full = rushplan.plan(self.map_name, self.team_tag)
+                if full is not None:
+                    self.rush_route = full["route"]
             except Exception:
                 self.rush_plan = None
         return self.rush_plan is not None
 
     def _run_rush(self, ct, pos):
-        """Walk to the precomputed firing position, plant the Gunner, then feed it."""
+        """Execute the precomputed build route in order, walking with a wall-aware BFS.
+
+        Two measured failures this replaces:
+          1. The old greedy `_step_toward` has no wall avoidance -- `Direction.rotate_left()` returns a
+             DIAGONAL, which the CARDINALS filter then discards, so its sidestep branch was dead code
+             and the walk degenerated to "first passable of N,E,S,W". That 2-cycles forever in any
+             concave corner: measured on atoll/a, atoll/b, fjord/a, fjord/b, pinch/a, vault/a, vault/b.
+             `rush_stuck` stayed 0 in all seven, so the 12-round give-up never fired either.
+          2. The old code built only the gunner and the harvester. On quarry and runestone the plan
+             needs 1-2 CONVEYORS between them, so the gunner sat on ammo=0 for the whole match with
+             the enemy Core in its sights.
+        """
+        route = self.rush_route
+        if route is None:
+            return self._legacy_rush(ct, pos)
+        if self.rush_i >= len(route):
+            if self._heal(ct, pos):
+                return True
+            return True
+        kind, bxy, facing, _stand = route[self.rush_i]
+        bpos = Position(bxy[0], bxy[1])
+
+        # Already occupied (usually by our own earlier step) -- advance.
+        if self._building_at(ct, bpos) is not None:
+            self.rush_i += 1
+            self.rush_dist = None
+            return True
+
+        if pos.distance_squared(bpos) == 1:
+            if not self._can_act(ct):
+                return True
+            ok = False
+            try:
+                if kind == "gunner":
+                    d = DIR_BY_NAME.get(facing)
+                    if d is not None and ct.can_build_gunner(bpos, d):
+                        ct.build_gunner(bpos, d)
+                        ok = True
+                elif kind == "conveyor":
+                    d = DIR_BY_NAME.get(facing)
+                    if d is not None and ct.can_build_conveyor(bpos, d):
+                        ct.build_conveyor(bpos, d)
+                        ok = True
+                elif kind == "harvester":
+                    if ct.can_build_harvester(bpos):
+                        ct.build_harvester(bpos)
+                        ok = True
+            except Exception:
+                ok = False
+            if ok:
+                self.rush_i += 1
+                self.rush_dist = None
+                self.rush_stuck = 0
+            return True
+
+        return self._rush_walk(ct, pos, bpos)
+
+    def _legacy_rush(self, ct, pos):
         plan = self.rush_plan
         fire = Position(plan["fire_pos"][0], plan["fire_pos"][1])
         facing = DIR_BY_NAME.get(plan["facing"])
         ore = plan["ore"]
-
-        # 1. Plant the Gunner on the firing tile.
         if not self.rush_gun_built:
             if self._building_at(ct, fire) is not None:
-                self.rush_gun_built = True      # someone already built here; move on to ammo
+                self.rush_gun_built = True
             elif pos.distance_squared(fire) == 1 and facing is not None:
                 if not self._can_act(ct):
                     return True
@@ -428,15 +518,11 @@ class Player:
                     if ct.can_build_gunner(fire, facing):
                         ct.build_gunner(fire, facing)
                         self.rush_gun_built = True
-                        return True
                 except Exception:
                     pass
                 return True
             else:
                 return self._rush_walk(ct, pos, fire)
-
-        # 2. Plant the Harvester that feeds it. Orthogonally adjacent to the Gunner means zero
-        #    conveyors -- the ammo arrives directly (G05 keeps this OFF the economy chain).
         if ore is not None and not self.rush_ore_built:
             ore_pos = Position(ore[0], ore[1])
             if self._building_at(ct, ore_pos) is not None:
@@ -448,33 +534,102 @@ class Player:
                     if ct.can_build_harvester(ore_pos):
                         ct.build_harvester(ore_pos)
                         self.rush_ore_built = True
-                        return True
                 except Exception:
                     pass
                 return True
             else:
                 return self._rush_walk(ct, pos, ore_pos)
-
-        # 3. Stay and keep the Gunner alive -- it is the whole attack, and 40 HP.
         if self._heal(ct, pos):
             return True
         return True
 
     def _rush_walk(self, ct, pos, target):
+        """Walk to any tile orthogonally adjacent to `target`, shortest path around known walls."""
         if not self._can_move_now(ct):
             return True
-        step = self._step_toward(ct, pos, target)
+        step = self._bfs_step(ct, pos, (target.x, target.y))
+        if step is None:
+            step = self._step_toward(ct, pos, target)
         if step is None:
             self.rush_stuck += 1
             if self.rush_stuck >= 12:
-                self.rush_plan = None       # give up and fall back to economy
+                self.rush_plan = None
+                self.rush_route = None
                 self.map_name = None
             return True
         try:
             ct.move(step)
+            self.rush_stuck = 0
         except Exception:
-            pass
+            self.rush_stuck += 1
         return True
+
+    def _bfs_step(self, ct, pos, goal):
+        """First step of a shortest path to any tile orthogonally adjacent to `goal`.
+
+        Multi-source BFS from the goal ring outward over the STATIC wall set (which the atlas gives us
+        in full), cached per goal. ~w*h cheap integer ops, recomputed only when the goal changes.
+        """
+        try:
+            w, h = ct.get_map_width(), ct.get_map_height()
+        except Exception:
+            return None
+        key = (goal, self.occ_ver)
+        if self.rush_dist is None or self.rush_dist_key != key:
+            blocked = (self.known_walls | self.core_tiles | self.enemy_core_tiles
+                       | self.occupied)
+            blocked.discard((pos.x, pos.y))
+            dist = {}
+            frontier = []
+            for d in CARDINALS:
+                n = (goal[0] + d.delta()[0], goal[1] + d.delta()[1])
+                if 0 <= n[0] < w and 0 <= n[1] < h and n not in blocked:
+                    dist[n] = 0
+                    frontier.append(n)
+            step_n = 1
+            while frontier:
+                nxt = []
+                for cx, cy in frontier:
+                    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+                        n = (cx + dx, cy + dy)
+                        if n in dist or not (0 <= n[0] < w and 0 <= n[1] < h) or n in blocked:
+                            continue
+                        dist[n] = step_n
+                        nxt.append(n)
+                frontier = nxt
+                step_n += 1
+            self.rush_dist = dist
+            self.rush_dist_key = key
+        here = self.rush_dist.get((pos.x, pos.y))
+        if here is None:
+            return None
+        best = None
+        best_d = here
+        for d in CARDINALS:
+            n = pos.add(d)
+            nd = self.rush_dist.get((n.x, n.y))
+            if nd is None or nd >= best_d:
+                continue
+            try:
+                if not ct.can_move(d):
+                    continue
+            except Exception:
+                continue
+            best, best_d = d, nd
+        if best is not None:
+            return best
+        # Shortest step blocked by something dynamic -- accept a sideways move to break the block.
+        for d in CARDINALS:
+            n = pos.add(d)
+            nd = self.rush_dist.get((n.x, n.y))
+            if nd is None or nd > here:
+                continue
+            try:
+                if ct.can_move(d):
+                    return d
+            except Exception:
+                continue
+        return None
 
     def _observe(self, ct, pos):
         """Fold this round's vision into private map memory (~66us for a full scan)."""
@@ -486,6 +641,17 @@ class Player:
             return
         for tile in tiles:
             key = (tile.x, tile.y)
+            # Occupancy memory. The rush BFS must route AROUND buildings, not through them: the
+            # gunner we just planted sits in the ring of the next build target, and our own economy
+            # harvesters plug the ore tiles that form the only short lane on several maps.
+            occ = self._building_at(ct, tile)
+            if occ is None:
+                if key in self.occupied:
+                    self.occupied.discard(key)
+                    self.occ_ver += 1
+            elif key not in self.occupied:
+                self.occupied.add(key)
+                self.occ_ver += 1
             if key not in self.core_tiles:
                 # Learn our Core's real 2x2 footprint from vision rather than guessing the anchor.
                 bid = self._building_at(ct, tile)
@@ -514,6 +680,10 @@ class Player:
         if self.owed is None:
             return False
         belt_pos, facing = self.owed
+        if (belt_pos.x, belt_pos.y) in self.rush_ray:
+            self.owed = None
+            self._abandon()
+            return False
         if pos.distance_squared(belt_pos) != 1:
             self.owed = None          # drifted away; the chain is broken here, restart
             self._abandon()
@@ -528,6 +698,7 @@ class Player:
         try:
             if ct.can_build_conveyor(belt_pos, facing):
                 ct.build_conveyor(belt_pos, facing)
+                self.built_belts.append(((belt_pos.x, belt_pos.y), facing))
                 self.owed = None
                 if self.owed_is_final:
                     self._finish_chain(ct)
@@ -639,6 +810,58 @@ class Player:
         self.owed_is_final = False
         self.stuck = 0
 
+    def _repair_chain(self, ct, pos):
+        """Put back any belt of ours that has gone missing. Returns True if we acted or moved.
+
+        Only tiles we can actually see are judged missing -- get_tile_building_id is safe out of vision
+        but returns None there, which would look identical to a destroyed belt and send us chasing ghosts.
+        """
+        if not self.built_belts:
+            return False
+
+        if self.repair_target is None:
+            for belt_pos, facing in self.built_belts:
+                tile = Position(belt_pos[0], belt_pos[1])
+                try:
+                    if not ct.is_in_vision(tile):
+                        continue
+                except Exception:
+                    continue
+                if self._building_at(ct, tile) is None:
+                    self.repair_target = (tile, facing)
+                    break
+            if self.repair_target is None:
+                return False
+
+        tile, facing = self.repair_target
+        if self._building_at(ct, tile) is not None:
+            self.repair_target = None       # somebody beat us to it
+            return False
+
+        if pos.distance_squared(tile) == 1:
+            if not self._can_act(ct):
+                return True
+            try:
+                if ct.can_build_conveyor(tile, facing):
+                    ct.build_conveyor(tile, facing)
+                    self.repair_target = None
+                    return True
+            except Exception:
+                self.repair_target = None
+            return False
+
+        if not self._can_move_now(ct):
+            return True
+        step = self._step_toward(ct, pos, tile)
+        if step is None:
+            self.repair_target = None
+            return False
+        try:
+            ct.move(step)
+        except Exception:
+            self.repair_target = None
+        return True
+
     # --- phases --------------------------------------------------------
 
     def _seek(self, ct, pos):
@@ -656,6 +879,9 @@ class Player:
         if self.target_ore is None:
             return False
         ore = Position(self.target_ore[0], self.target_ore[1])
+        if (ore.x, ore.y) in self.rush_ray:
+            self._abandon()
+            return False
         if pos.distance_squared(ore) != 1:
             return False
         if self._building_at(ct, ore) is not None:
@@ -732,12 +958,24 @@ class Player:
         offset = (self.ordinal or 0) % len(order)
         for i in range(len(order)):
             d = order[(i + offset) % len(order)]
-            try:
-                if ct.can_move(d):
+            if self._passable(ct, pos, d):
+                try:
                     ct.move(d)
-                    return
-            except Exception:
-                continue
+                except Exception:
+                    continue
+                return
+
+    def _passable(self, ct, pos, d):
+        """can_move, plus: a non-rusher never enters the gunner's firing lane (G11)."""
+        try:
+            if not ct.can_move(d):
+                return False
+        except Exception:
+            return False
+        if self.rush_role is True or not self.rush_ray:
+            return True
+        n = pos.add(d)
+        return (n.x, n.y) not in self.rush_ray
 
     def _step_toward(self, ct, pos, target):
         want = cardinal_of(target.x - pos.x, target.y - pos.y)
@@ -750,17 +988,11 @@ class Player:
         for d in options:
             if d not in CARDINALS:
                 continue
-            try:
-                if ct.can_move(d):
-                    return d
-            except Exception:
-                continue
+            if self._passable(ct, pos, d):
+                return d
         for d in CARDINALS:
-            try:
-                if ct.can_move(d):
-                    return d
-            except Exception:
-                continue
+            if self._passable(ct, pos, d):
+                return d
         return None
 
     # --- builder combat / upkeep ---------------------------------------
