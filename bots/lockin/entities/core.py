@@ -5,11 +5,12 @@ from __future__ import annotations
 from fcode import Controller
 
 from utils.common import (
-    ATTACKER_COUNT,
-    MAX_INFRASTRUCTURE_BUILDERS,
     SLOT_BUILDER_ID_START,
+    attacker_count,
+    attacker_spawn_delay,
     core_perimeter,
     core_positions,
+    infrastructure_builder_count,
     ordered_ores,
     known_map_or_warn,
 )
@@ -27,18 +28,23 @@ class CoreMixin:
         my_core, enemy_core = core_positions(ct, km)
 
         ores = ordered_ores(km, my_core)
-        infrastructure_count = min(MAX_INFRASTRUCTURE_BUILDERS, len(ores))
-        total_builders = ATTACKER_COUNT + infrastructure_count
+        attackers = attacker_count(ct, km)
+        infrastructure_count = min(infrastructure_builder_count(ct, km), len(ores))
+        total_builders = attackers + infrastructure_count
         if self.spawn_count >= total_builders:
+            return
+
+        delay = attacker_spawn_delay(ct, km, self.spawn_count)
+        if delay and ct.get_current_round() < delay:
             return
 
         if ct.get_global_resources() < ct.get_builder_bot_cost():
             return
 
-        attacker = self.spawn_count < ATTACKER_COUNT
+        attacker = self.spawn_count < attackers
         target = enemy_core
         if not attacker:
-            target = ores[self.spawn_count - ATTACKER_COUNT]
+            target = ores[self.spawn_count - attackers]
 
         spawn_positions = [
             position
