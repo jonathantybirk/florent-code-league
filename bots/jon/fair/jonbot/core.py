@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING
 
 from fcode import Controller, Direction, Environment, Position
 
-from constants import MAX_OPENING_BUILDERS
+from constants import (ECONOMY_BUILDERS, MAX_OPENING_BUILDERS,
+                       SLOT_CORE_DAMAGED, SLOT_OWN_CORE)
+from utils import pack_pos
 
 if TYPE_CHECKING:
     from main import Player
@@ -14,7 +16,16 @@ CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 
 
 def run(player: "Player", ct: Controller) -> None:
-    """Spawn two Builders toward distinct visible work or scout objectives."""
+    """Spawn one economy Builder and three map-agnostic attackers."""
+    if not hasattr(player, "repair_alert"):
+        player.repair_alert = False
+    hp, max_hp = ct.get_hp(ct.get_id()), ct.get_max_hp(ct.get_id())
+    if hp <= max_hp - 50:
+        player.repair_alert = True
+    elif hp == max_hp:
+        player.repair_alert = False
+    ct.write_store(SLOT_OWN_CORE, pack_pos(ct.get_position()))
+    ct.write_store(SLOT_CORE_DAMAGED, int(player.repair_alert))
     if not hasattr(player, "builders_spawned"):
         player.builders_spawned = 0
         core = ct.get_position()
@@ -28,12 +39,12 @@ def run(player: "Player", ct: Controller) -> None:
     if role >= MAX_OPENING_BUILDERS or ct.get_global_resources() < ct.get_builder_bot_cost():
         return
 
-    if role < len(player.opening_ore_targets):
+    if role < ECONOMY_BUILDERS and role < len(player.opening_ore_targets):
         target = player.opening_ore_targets[role]
         goals = [target.add(direction) for direction in CARDINALS
                  if _on_map(ct, target.add(direction))]
     else:
-        target = _scout_target(ct, role - len(player.opening_ore_targets))
+        target = _scout_target(ct, role - ECONOMY_BUILDERS)
         goals = [target]
 
     candidates = [tile for tile in ct.get_nearby_tiles(2) if ct.can_spawn(tile)]
