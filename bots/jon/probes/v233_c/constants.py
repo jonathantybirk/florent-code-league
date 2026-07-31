@@ -91,5 +91,5 @@ HOME_GUNNERS = 2
 RAID_MIN_GAP = 5
 
 # Ammunition is a global pool the Core fills from titanium 1:1, once a turn.
-AMMO_TARGET = 40
+AMMO_TARGET = 120
 AMMO_FLOOR = 60
