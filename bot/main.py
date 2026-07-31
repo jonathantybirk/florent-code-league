@@ -59,6 +59,7 @@ N_CLAIMS = 6
 S_ENEMY_CORE = 10
 S_THREAT = 11
 S_RUSHER = 12         # id+1 of the builder that owns the rush; 0 = unclaimed
+S_RUSH_DONE = 13      # 1 once the rusher has built its whole route; 0 while it still needs money
 
 # Each builder is +20 percentage points of GLOBAL cost scale, permanently -- but a builder that is actively
 # completing a chain repays ~2470 titanium, and we were losing to the starter by a deficit of exactly one
@@ -87,6 +88,15 @@ RUSH_MAPS = frozenset((
 ))
 # Keep enough banked to finish a chain in flight -- a half-built chain delivers exactly zero.
 CHAIN_RESERVE = 45
+# Titanium the economy must leave unspent until the rush route is finished. Traced against an inert
+# opponent, the rusher reached its firing tile on aurora/a at round 39 -- the exact round the plan
+# predicts -- and then sat there for SEVENTEEN rounds because five economy builders had ground the
+# bank down to 0-16 Ti and it could not afford a 22 Ti Gunner. The match is a race decided in single
+# turns, so a turret that cannot be paid for is the most expensive thing on the board. Worth roughly
+# 30 turns of kill time across the 30 oriented games; worth +1 win against lockin and 0 elsewhere.
+RUSH_RESERVE = 80
+# If the rusher dies the store slot never flips, so stop holding the reserve once the race is over.
+RUSH_RESERVE_UNTIL = 200
 # Budget 3ms locally against the ladder's 10ms. Reads 0 on Windows (G21), where this is advisory only.
 CPU_BUDGET_US = 6000
 
@@ -112,6 +122,7 @@ class Player:
     def __init__(self):
         # Core
         self.spawned = 0
+        self.spawn_order = None        # ring tiles ranked by walk to the rusher's first build site
 
         # Builder
         self.ordinal = None
@@ -143,11 +154,7 @@ class Player:
         self.known_blocked = set()
         self._nav = None
         self._nav_key = None
-        self._nav_ver = -1
-        # Version the obstacle set on EVENTS, not on its size. len(known_walls) +
-        # len(known_blocked) is not a fingerprint: a round that both adds and removes an obstacle
-        # inside vision leaves it identical, and the cache then serves a stale field.
-        self.nav_ver = 0
+        self._nav_n = -1
 
         # Rush state
         self.rush_role = None          # None = undecided, True = this builder owns the rush
@@ -270,8 +277,7 @@ class Player:
         # Finishing a chain in flight always beats starting another builder (G02).
         if balance < cost + CHAIN_RESERVE:
             return
-        for d in ALL_DIRS:
-            target = pos.add(d)
+        for target in self._spawn_tiles(ct, pos):
             try:
                 if ct.can_spawn(target):
                     ct.spawn_builder(target)
@@ -280,6 +286,85 @@ class Player:
                     return
             except Exception:
                 continue
+
+    def _spawn_tiles(self, ct, pos):
+        """Candidate spawn tiles, best first.
+
+        The FIRST builder spawned is always the rusher: the claim-then-confirm in `_is_rusher` can
+        only ever resolve to it, because a builder does not act on the round it is spawned (G31),
+        so builder 1 is alone on the board the round it finds the claim slot empty. Give that one
+        builder the ring tile with the shortest walk to its first build site; every later builder
+        keeps the legacy order, so the economy is untouched.
+        """
+        if self.spawned == 0:
+            order = self._rush_spawn_order(ct, pos)
+            if order:
+                return order
+        return tuple(pos.add(d) for d in ALL_DIRS)
+
+    def _rush_spawn_order(self, ct, pos):
+        """The 12 legal ring tiles, ranked by BFS walk to the rusher's first build target.
+
+        The old code iterated ALL_DIRS off `pos`, and `pos` is the TOP-LEFT anchor of the 2x2
+        footprint (G33) -- so EAST, SOUTHEAST and SOUTH land ON the Core and `can_spawn` is False.
+        Only NORTH, NORTHEAST, SOUTHWEST, WEST and NORTHWEST were ever reachable: five of the
+        twelve legal ring tiles, every one of them on the north/west face of the Core. The enemy
+        lies north-west of us on half the pool and south-east on the other half, so that fixed
+        bias started the rusher on the wrong side of its own Core and made it walk around the
+        footprint. Recomputed offline over all 30 oriented games: 685 tiles walked to the first
+        build site against 598 for the best ring tile -- 87 wasted tiles, every one a turn.
+
+        It is NOT a side bias -- 44 wasted tiles for Team A against 43 for Team B -- but the turns
+        compound, because a rusher that arrives late finds the economy has already spent the bank
+        and then stalls waiting to afford its own turret.
+        """
+        if self.spawn_order is not None:
+            return self.spawn_order
+        self.spawn_order = ()
+        if atlas is None or rushplan is None:
+            return self.spawn_order
+        try:
+            tag = "a" if ct.get_team() == Team.A else "b"
+            rec = atlas.identify(ct.get_map_width(), ct.get_map_height(), (pos.x, pos.y), tag)
+            if rec is None or rec["name"] not in RUSH_MAPS:
+                return self.spawn_order
+            full = rushplan.plan(rec["name"], tag)
+            if full is None or not full["route"]:
+                return self.spawn_order
+            goal = full["route"][0][1]
+            w, h = rec["width"], rec["height"]
+            core = set(rec["own_core_tiles"])
+            blocked = set(rec["walls"]) | core | set(rec["enemy_core_tiles"])
+            dist = {}
+            frontier = []
+            for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+                n = (goal[0] + dx, goal[1] + dy)
+                if 0 <= n[0] < w and 0 <= n[1] < h and n not in blocked:
+                    dist[n] = 0
+                    frontier.append(n)
+            step = 1
+            while frontier:
+                nxt = []
+                for cx, cy in frontier:
+                    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+                        n = (cx + dx, cy + dy)
+                        if n in dist or not (0 <= n[0] < w and 0 <= n[1] < h) or n in blocked:
+                            continue
+                        dist[n] = step
+                        nxt.append(n)
+                frontier = nxt
+                step += 1
+            ring = []
+            for x in range(pos.x - 1, pos.x + 3):
+                for y in range(pos.y - 1, pos.y + 3):
+                    if (x, y) in core or not (0 <= x < w and 0 <= y < h):
+                        continue
+                    ring.append((dist.get((x, y), 9999), x, y))
+            ring.sort()
+            self.spawn_order = tuple(Position(t[1], t[2]) for t in ring)
+        except Exception:
+            self.spawn_order = ()
+        return self.spawn_order
 
     def _builder_target(self, ct):
         """One builder per ore tile we could still chain, clamped -- never a flat constant.
@@ -479,6 +564,10 @@ class Player:
         if route is None:
             return self._legacy_rush(ct, pos)
         if self.rush_i >= len(route):
+            try:
+                ct.write_store(S_RUSH_DONE, 1)      # release the economy's titanium reserve
+            except Exception:
+                pass
             if self._heal(ct, pos):
                 return True
             return True
@@ -679,13 +768,10 @@ class Player:
                             self.core_tiles.add(key)
                     except Exception:
                         pass
-            if occ is None:
-                if key in self.known_blocked:
-                    self.known_blocked.discard(key)
-                    self.nav_ver += 1
-            elif key not in self.known_blocked:
+            if self._building_at(ct, tile) is None:
+                self.known_blocked.discard(key)
+            else:
                 self.known_blocked.add(key)
-                self.nav_ver += 1
             if key in self.seen:
                 continue
             env = self._env(ct, tile)
@@ -693,9 +779,7 @@ class Player:
                 continue
             self.seen.add(key)
             if env == Environment.WALL:
-                if key not in self.known_walls:
-                    self.known_walls.add(key)
-                    self.nav_ver += 1
+                self.known_walls.add(key)
             elif env == Environment.ORE_TITANIUM:
                 self.known_ore.add(key)
 
@@ -916,7 +1000,10 @@ class Player:
         if not self._can_act(ct):
             return False
         try:
-            if ct.get_global_resources() < ct.get_harvester_cost():
+            need = ct.get_harvester_cost()
+            if not self._rush_funded(ct):
+                need += RUSH_RESERVE
+            if ct.get_global_resources() < need:
                 return False
             if ct.can_build_harvester(ore):
                 ct.build_harvester(ore)
@@ -931,6 +1018,23 @@ class Player:
         except Exception:
             return False
         return False
+
+    def _rush_funded(self, ct):
+        """True when the economy may spend freely again.
+
+        A harvester is 20 base titanium against a Gunner's 10, and five economy builders buying
+        them in the first forty rounds is what starves the rush. Hold RUSH_RESERVE back until the
+        rusher reports its route finished -- or until the race is decided either way, so a dead
+        rusher cannot freeze the economy for the rest of the match.
+        """
+        if self.map_name is None or self.map_name not in RUSH_MAPS or rushplan is None:
+            return True
+        try:
+            if ct.read_store(S_RUSH_DONE) == 1:
+                return True
+            return ct.get_current_round() > RUSH_RESERVE_UNTIL
+        except Exception:
+            return True
 
     def _pick_ore(self, ct, pos):
         claimed = set()
@@ -1010,14 +1114,11 @@ class Player:
         returns a DIAGONAL, which the cardinal filter then discards, so its sidestep branch is dead
         code and the walk degenerates into a two-tile oscillation that never terminates and never
         trips a stuck counter (the moves all succeed). That single defect was costing whole chains.
-        Cached on (target, obstacle VERSION); a full 30x30 BFS is ~270 us against a 10 ms budget.
-        The version is an event counter, not len(known_walls) + len(known_blocked): a count is not
-        a fingerprint, and a round that both adds and removes an obstacle inside vision left it
-        unchanged, so the cache silently served a stale field.
+        Cached on (target, obstacle count); a full 30x30 BFS is ~270 us against a 10 ms budget.
         """
         key = (target.x, target.y)
-        n = self.nav_ver
-        if self._nav is not None and self._nav_key == key and self._nav_ver == n:
+        n = len(self.known_walls) + len(self.known_blocked)
+        if self._nav is not None and self._nav_key == key and self._nav_n == n:
             return self._nav
         try:
             w, h = ct.get_map_width(), ct.get_map_height()
@@ -1039,7 +1140,7 @@ class Player:
                     dist[nb] = d
                     nxt.append(nb)
             frontier = nxt
-        self._nav, self._nav_key, self._nav_ver = dist, key, n
+        self._nav, self._nav_key, self._nav_n = dist, key, n
         return dist
 
     def _step_toward(self, ct, pos, target):
