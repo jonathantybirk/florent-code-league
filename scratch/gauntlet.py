@@ -19,7 +19,7 @@ GROUPS = {
                "jon/unfair/lockin", "jon/fair/jonbot", "common/starter",
                "jon/fair/undertow"],
     "ancestors": ["jon/probes/vg_v1", "jon/probes/vg_v2",
-                  "jon/probes/vg_v3", "jon/probes/vg_v4", "jon/probes/vg_v5", "jon/probes/vg_v6"],
+                  "jon/probes/vg_v3", "jon/probes/vg_v4", "jon/probes/vg_v5", "jon/probes/vg_v6", "jon/probes/vg_v7"],
     "counters": ["jon/probes/turtle", "jon/probes/nemesis",
                  "jon/probes/reaver", "jon/probes/baiter",
                  "jon/probes/riptide"],
