@@ -396,6 +396,8 @@ def _step(p, ct, target, exact):
     source = ct.get_position()
     nxt = _bfs_step(p, tuple(source), tuple(target), exact)
     if nxt:
+        # Cardinal only: a diagonal is not a legal Builder move in 2.3.3, and
+        # this loop silently did nothing whenever the path asked for one.
         for direction in D8:
             if source.add(direction) == Position(*nxt) and ct.can_move(direction):
                 ct.move(direction)
@@ -414,8 +416,7 @@ def _bfs_step(p, source, target, exact):
         if cur in goals:
             found = cur
             break
-        for direction in D8:
-            dx, dy = direction.delta()
+        for dx, dy in D4_DELTAS:
             nxt = cur[0] + dx, cur[1] + dy
             if nxt in prev or not _inside(p, nxt) or nxt in blocked:
                 continue
@@ -435,8 +436,7 @@ def _distance(p, source, goals):
     dist, queue = {source: 0}, deque([source])
     while queue:
         cur = queue.popleft()
-        for direction in D8:
-            dx, dy = direction.delta()
+        for dx, dy in D4_DELTAS:
             nxt = cur[0] + dx, cur[1] + dy
             if nxt in dist or not _inside(p, nxt) or nxt in blocked:
                 continue
@@ -490,15 +490,16 @@ def _harass(p, ct):
             tile,
         ),
     )
+    # 2.3.3 inverted the attack rule: a Builder damages an orthogonally
+    # adjacent tile and never the one it stands on, so stand *beside* the
+    # target rather than on it.
     for target in targets:
-        if me == target:
-            position = Position(*target)
-            if ct.can_fire(position):
-                ct.fire(position)
-                return
+        if ct.can_fire(Position(*target)):
+            ct.fire(Position(*target))
+            return
 
     if targets:
-        _step(p, ct, Position(*targets[0]), True)
+        _step(p, ct, Position(*targets[0]), False)
         return
 
     # No remembered economy is reachable yet. Resolve the enemy-Core location

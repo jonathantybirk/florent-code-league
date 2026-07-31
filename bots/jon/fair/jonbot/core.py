@@ -17,6 +17,7 @@ CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 
 def run(player: "Player", ct: Controller) -> None:
     """Spawn one economy Builder and three map-agnostic attackers."""
+    _keep_ammunition(ct)
     if not hasattr(player, "repair_alert"):
         player.repair_alert = False
     hp, max_hp = ct.get_hp(ct.get_id()), ct.get_max_hp(ct.get_id())
@@ -81,3 +82,21 @@ def _chebyshev(a: Position, b: Position) -> int:
 
 def _on_map(ct: Controller, position: Position) -> bool:
     return 0 <= position.x < ct.get_map_width() and 0 <= position.y < ct.get_map_height()
+
+
+def _keep_ammunition(ct) -> None:
+    """Turn titanium into ammunition, or no turret we own can fire at all.
+
+    Engine 2.3.3 replaced 2.2.0's per-turret ammunition with a global pool the
+    Core fills by conversion: 1 titanium for 1 ammunition, at most once per
+    team per turn, no action cooldown, usable the same turn.
+    """
+    try:
+        held = ct.get_global_ammo()
+        if held >= 120:
+            return
+        amount = min(120 - held, ct.get_global_resources() - 60)
+        if amount > 0 and ct.can_convert_ammo(amount):
+            ct.convert_ammo(amount)
+    except Exception:  # noqa: BLE001 - never let this kill the Core
+        return
