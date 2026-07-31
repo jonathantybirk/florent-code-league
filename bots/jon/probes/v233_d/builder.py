@@ -38,7 +38,7 @@ from constants import (
 )
 from utils import pack_pos
 
-DEBUG = bool(os.environ.get("VANGUARD_DEBUG"))
+DEBUG = False  # archived
 
 # A single trunk saturates at four Harvesters, but deposits far enough apart
 # get their own line into the Core, and once the barrier ring and the repair
@@ -275,12 +275,8 @@ def _lay_line(p, ct):
         if index == 0:
             p.phase = "harvester"
         return
-    # Never step onto the tile itself. 2.2.0 let a Builder stand on a walkable
-    # building and lay it under its own feet; 2.3.3 requires an orthogonally
-    # adjacent target, so a Builder that walks on is stranded there for good --
-    # this was silently costing us a third of the economy for whole matches.
     _step(p, ct, {t for t in world.adjacent4(p, tile)
-                  if t not in world.blocked_tiles(p)})
+                  if t not in world.blocked_tiles(p)} | {tile})
 
 
 def _place_harvester(p, ct):
@@ -558,9 +554,7 @@ def _raid(p, ct):
             p.stalls, p.clear_target = 0, None
             p.blacklist.add(tile)
             continue
-        # Stand *beside* it: 2.3.3 attacks an orthogonally adjacent tile, so
-        # walking onto the belt means never being able to cut it.
-        if _step(p, ct, world.adjacent4(p, tile) - world.blocked_tiles(p)):
+        if _step(p, ct, {tile}):
             return
     _assist(p, ct)
 
@@ -939,7 +933,7 @@ def _clear_tile(p, ct, tile):
         p.blacklist.add(tile)
         log(ct, f"siege t{p.ticket} gives up on denied tile {tile}")
         return False
-    _step(p, ct, world.adjacent4(p, tile) - world.blocked_tiles(p))
+    _step(p, ct, {tile})
     return True
 
 
