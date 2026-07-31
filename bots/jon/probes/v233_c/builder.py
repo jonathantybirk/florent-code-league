@@ -38,7 +38,7 @@ from constants import (
 )
 from utils import pack_pos
 
-DEBUG = bool(os.environ.get("VANGUARD_DEBUG"))
+DEBUG = False  # archived
 
 # A single trunk saturates at four Harvesters, but deposits far enough apart
 # get their own line into the Core, and once the barrier ring and the repair
@@ -371,10 +371,6 @@ def _home_gunner(p, ct):
     occupied = p.solids | set(p.conveyors) | set(p.enemy_buildings)
     guarded = {tile for tile in p.conveyors
                if world.cheb(tile, p.core) <= REPAIR_RADIUS}
-    # Kept beside a Harvester deliberately. Freeing the placement to any tile
-    # near the Core -- the obvious move now that turrets need no supply -- won
-    # the head-to-head against our own previous build 24-18 and still lost
-    # overall, 165-45 against 174-36 across the shared panel.
     best = None
     for harvester in sorted(p.my_harvesters):
         for delta in D4_DELTAS:
@@ -499,12 +495,12 @@ def _fortify(p, ct):
     return False
 
 
-def _core_ring(p, radius=1):
-    """Tiles within `radius` of our 2x2 Core footprint."""
+def _core_ring(p):
+    """The twelve tiles that touch our 2x2 Core footprint."""
     x, y = p.core
     ring = set()
-    for dx in range(-radius, 2 + radius):
-        for dy in range(-radius, 2 + radius):
+    for dx in range(-1, 3):
+        for dy in range(-1, 3):
             tile = (x + dx, y + dy)
             if tile in p.foot or not world.inside(p, tile):
                 continue
