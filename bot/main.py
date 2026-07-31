@@ -27,6 +27,16 @@ travelled -- no guessing, no broken bends:
     facing the way we walked  ->  repeat  ->  on reaching the Core, step aside once so the final tile
     is buildable, and cap it with a belt facing into the Core footprint.
 
+THE SIEGE IS COMPUTED, NOT LOOKED UP
+
+Everything about the forward-gunner kill -- where the enemy Core is, which tile bears on it, which
+deposit feeds the turret, what to build in what order -- is derived at match time from observed
+terrain by `siege`. The bot carried a precomputed table for the fifteen published maps instead, and
+on any map outside that table `atlas.identify()` returned None and the entire attack silently
+switched itself off: measured ZERO core kills on every unseen map. The runtime path is now the only
+path, so it is exercised on every map and cannot rot. The atlas is a pure accelerator -- it seeds
+the enemy Core anchor and the static wall set when it recognises the map, and nothing depends on it.
+
 Bot name is deliberate; the team knows.
 """
 
@@ -38,9 +48,9 @@ except Exception:      # unknown-map fallback must always exist -- never stall l
     atlas = None
 
 try:
-    import rushplan
+    import siege
 except Exception:
-    rushplan = None
+    siege = None
 
 CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 ALL_DIRS = tuple(d for d in Direction if d != Direction.CENTRE)
@@ -48,6 +58,9 @@ DIR_BY_NAME = {
     "NORTH": Direction.NORTH, "EAST": Direction.EAST,
     "SOUTH": Direction.SOUTH, "WEST": Direction.WEST,
 }
+# Index into siege.CDELTA / siege.DIR_NAMES, so a facing survives a trip through a store slot.
+DIR_BY_NAME_INDEX = {"NORTH": 0, "EAST": 1, "SOUTH": 2, "WEST": 3}
+DIR_DELTAS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 
 # --- Communication store (16 slots, writes visible next round) ----------------
 S_CORE_X = 0
@@ -56,10 +69,21 @@ S_SPAWN_ORD = 2
 S_CONNECTED = 3
 S_CLAIM_0 = 4
 N_CLAIMS = 6
+# Packed enemy Core anchor. Bit 16 set = SIGHTED, not merely inferred -- a sighting is authoritative
+# and no inference may ever overwrite it.
 S_ENEMY_CORE = 10
-S_THREAT = 11
+SIGHTED = 1 << 16
+# Rejected-symmetry mask (3 bits). Every unit ORs what it has personally refuted into this, so one
+# builder walking past a wall settles the map for the whole team. Rejections are monotone, so a
+# lost write only costs a round.
+S_SYMMETRY = 11
 S_RUSHER = 12         # id+1 of the builder that owns the rush; 0 = unclaimed
 S_RUSH_DONE = 13      # 1 once the rusher has built its whole route; 0 while it still needs money
+# Packed Gunner tile | facing index << 17. Publishes the firing lane so no economy builder ever
+# lays a belt across it -- a friendly in the ray becomes the target and jams the turret for good
+# (G11). Offline this came out of the atlas; there is no atlas on an unseen map.
+S_RUSH_RAY = 14
+S_RUSH_ACTIVE = 15    # 1 once the rusher owns an executable plan and the reserve is worth holding
 
 # Each builder is +20 percentage points of GLOBAL cost scale, permanently -- but a builder that is actively
 # completing a chain repays ~2470 titanium, and we were losing to the starter by a deficit of exactly one
@@ -78,14 +102,6 @@ BUILDERS = 6
 # from the builder. The atlas import is still wanted for turret denial and the rush plan.
 USE_ATLAS_ORE = False
 
-# Maps where the precomputed rush MEASURABLY converts to a Core kill vs an inert opponent. That is now
-# ALL FIFTEEN, on both sides, kill turns 72-95 -- once the BFS walk, full-route execution and firing-lane
-# reservation landed. (The earlier nine-map list was a symptom of those three bugs, not of map geometry;
-# and its "9 of 15" figure was itself measured side-a only, so the real baseline was 13 of 30.)
-RUSH_MAPS = frozenset((
-    "aurora", "crossfire", "duel", "hive", "longship", "skerry", "sprint", "strait", "twins",
-    "atoll", "fjord", "pinch", "quarry", "runestone", "vault",
-))
 # Keep enough banked to finish a chain in flight -- a half-built chain delivers exactly zero.
 CHAIN_RESERVE = 45
 # Titanium the economy must leave unspent until the rush route is finished. Traced against an inert
@@ -99,6 +115,13 @@ RUSH_RESERVE = 80
 RUSH_RESERVE_UNTIL = 200
 # Budget 3ms locally against the ladder's 10ms. Reads 0 on Windows (G21), where this is advisory only.
 CPU_BUDGET_US = 6000
+
+# Replanning the siege costs one full-map BFS plus the geometry search: ~1.3 ms worst case measured
+# over both map pools, against a 10 ms budget. It is cheap ONCE, ruinous every round for every unit,
+# so it is gated on observation actually having changed. Before anything is built the plan is free
+# to move; after the Gunner is up we are committed and only an explicit failure re-opens it.
+REPLAN_TILES = 24     # newly observed tiles that make the geometry worth recomputing
+REPLAN_ROUNDS = 10    # ...and a floor under it, so a stalled rusher still re-examines the board
 
 
 def cardinal_of(dx, dy):
@@ -144,6 +167,20 @@ class Player:
         self.team_tag = "a"
         self.failed_ore = set()
 
+        # Runtime map inference. `terrain` is the tile -> EMPTY/WALL/ORE memory the symmetry
+        # refutation reads; `sym_mask` is the set of symmetries this unit has personally ruled out;
+        # the pred_* sets are our own half reflected onto the enemy half once one survives.
+        self.terrain = {}
+        self.sym_mask = None
+        self.enemy_anchor = None
+        self.enemy_sighted = False
+        self.pred_walls = set()
+        self.pred_ore = set()
+        self.pred_seen = set()
+        self.pred_index = None
+        self.pred_n = -1
+        self.ray_raw = 0
+
         # Every belt this builder has laid, so it can notice one going missing and put it back.
         self.built_belts = []
         self.repair_target = None
@@ -158,9 +195,6 @@ class Player:
 
         # Rush state
         self.rush_role = None          # None = undecided, True = this builder owns the rush
-        self.rush_plan = None
-        self.rush_gun_built = False
-        self.rush_ore_built = False
         self.rush_stuck = 0
         self.rush_i = 0
         self.rush_route = None
@@ -170,6 +204,11 @@ class Player:
         self.occupied = set()
         self.occ_ver = 0
         self.rush_ray = frozenset()
+        self.rush_target = None        # enemy anchor the current route was planned against
+        self.rush_black = set()        # firing tiles we walked at and could not take
+        self.plan_anchor = None        # enemy anchor the last plan ATTEMPT was made against
+        self.plan_round = -999
+        self.plan_tiles = -1
 
         self.errors = 0
 
@@ -303,7 +342,7 @@ class Player:
         return tuple(pos.add(d) for d in ALL_DIRS)
 
     def _rush_spawn_order(self, ct, pos):
-        """The 12 legal ring tiles, ranked by BFS walk to the rusher's first build target.
+        """The 12 legal ring tiles, ranked toward wherever the enemy Core can be.
 
         The old code iterated ALL_DIRS off `pos`, and `pos` is the TOP-LEFT anchor of the 2x2
         footprint (G33) -- so EAST, SOUTHEAST and SOUTH land ON the Core and `can_spawn` is False.
@@ -314,52 +353,32 @@ class Player:
         footprint. Recomputed offline over all 30 oriented games: 685 tiles walked to the first
         build site against 598 for the best ring tile -- 87 wasted tiles, every one a turn.
 
-        It is NOT a side bias -- 44 wasted tiles for Team A against 43 for Team B -- but the turns
-        compound, because a rusher that arrives late finds the economy has already spent the bank
-        and then stalls waiting to afford its own turret.
+        The ranking used to come out of the precomputed route, which is exactly the dependency
+        being removed. The Core cannot infer the symmetry -- it never moves, so it never observes
+        the terrain that would refute one -- but it does not have to: it aims at the CENTROID of
+        the surviving candidates, which on every legal map lies on the enemy side of our own Core.
+        That recovers the wasted tiles on any map at all, instead of only on the fifteen.
         """
         if self.spawn_order is not None:
             return self.spawn_order
         self.spawn_order = ()
-        if atlas is None or rushplan is None:
+        if siege is None:
             return self.spawn_order
         try:
-            tag = "a" if ct.get_team() == Team.A else "b"
-            rec = atlas.identify(ct.get_map_width(), ct.get_map_height(), (pos.x, pos.y), tag)
-            if rec is None or rec["name"] not in RUSH_MAPS:
+            w, h = ct.get_map_width(), ct.get_map_height()
+            anchor = (pos.x, pos.y)
+            live = siege.alive(w, h, anchor, siege.seed_mask(w, h, anchor))
+            if not live:
                 return self.spawn_order
-            full = rushplan.plan(rec["name"], tag)
-            if full is None or not full["route"]:
-                return self.spawn_order
-            goal = full["route"][0][1]
-            w, h = rec["width"], rec["height"]
-            core = set(rec["own_core_tiles"])
-            blocked = set(rec["walls"]) | core | set(rec["enemy_core_tiles"])
-            dist = {}
-            frontier = []
-            for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-                n = (goal[0] + dx, goal[1] + dy)
-                if 0 <= n[0] < w and 0 <= n[1] < h and n not in blocked:
-                    dist[n] = 0
-                    frontier.append(n)
-            step = 1
-            while frontier:
-                nxt = []
-                for cx, cy in frontier:
-                    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-                        n = (cx + dx, cy + dy)
-                        if n in dist or not (0 <= n[0] < w and 0 <= n[1] < h) or n in blocked:
-                            continue
-                        dist[n] = step
-                        nxt.append(n)
-                frontier = nxt
-                step += 1
+            gx = sum(c[0] for c in live) / float(len(live))
+            gy = sum(c[1] for c in live) / float(len(live))
+            core = set(siege.footprint(anchor))
             ring = []
             for x in range(pos.x - 1, pos.x + 3):
                 for y in range(pos.y - 1, pos.y + 3):
                     if (x, y) in core or not (0 <= x < w and 0 <= y < h):
                         continue
-                    ring.append((dist.get((x, y), 9999), x, y))
+                    ring.append(((x - gx) ** 2 + (y - gy) ** 2, x, y))
             ring.sort()
             self.spawn_order = tuple(Position(t[1], t[2]) for t in ring)
         except Exception:
@@ -419,6 +438,8 @@ class Player:
         self._load_atlas(ct)
 
         self._observe(ct, pos)
+        self._infer_enemy_core(ct)
+        self._read_ray(ct)
 
         if self.last_pos is not None and self.last_pos == pos:
             self.stuck += 1
@@ -462,12 +483,12 @@ class Player:
         self._walk(ct, pos)
 
     def _load_atlas(self, ct):
-        """Seed map memory from the precomputed pool, once, so builders never have to explore.
+        """Pure accelerator: seed the enemy Core and the static wall set when the map is known.
 
-        Blind exploration was costing us whole chains: a builder that wanders the wrong way spends
-        hundreds of rounds not delivering, and every round of delay costs ~2.5 collected. Falls back
-        silently to vision-only play on an unrecognised map -- never stalls (that flaw sinks a pure-atlas
-        bot on any map outside the bundled pool).
+        Nothing downstream depends on this. The runtime planner is the default path and runs on
+        every map, recognised or not -- the atlas only lets it skip the inference on the fifteen
+        published ones. A bot that DEPENDS on its atlas plays an unseen map with the whole attack
+        silently switched off, which is precisely the failure being removed.
         """
         if self.atlas_done or atlas is None or self.core_pos is None:
             return
@@ -483,22 +504,13 @@ class Player:
                 return
             self.map_name = rec["name"]
             self.team_tag = tag
-            # G11: a friendly ANYWHERE in the gunner's ray flips the target to it and jams the turret
-            # for the rest of the match. Measured on vault/a: an economy builder laid a conveyor on
-            # (20,2) at round 47 and the gunner sat on the enemy Core for 953 rounds without firing.
-            # Every builder knows the lane offline, so no store slot is needed to reserve it.
-            if rushplan is not None and self.map_name in RUSH_MAPS:
-                try:
-                    full = rushplan.plan(self.map_name, tag)
-                    if full is not None:
-                        self.rush_ray = frozenset(tuple(t) for t in full["ray"])
-                except Exception:
-                    self.rush_ray = frozenset()
             self.core_tiles.update(tuple(t) for t in rec["own_core_tiles"])
             # Walls are ALWAYS wanted: the rush BFS needs the full static wall set, and the greedy
             # stepper 2-cycles forever without it.
             self.known_walls.update(tuple(w) for w in rec["walls"])
             self.enemy_core_tiles = set(tuple(t) for t in rec["enemy_core_tiles"])
+            self.enemy_anchor = tuple(rec["enemy_core"])
+            self.enemy_sighted = True
             if not USE_ATLAS_ORE:
                 return
             # Only OUR half. Seeding every ore tile sends builders across the map to ore they would
@@ -522,8 +534,13 @@ class Player:
         is spawned, so by its first turn the Core has already incremented the ordinal counter and NO
         builder ever reads 0 -- gating on `ordinal == 0` silently disabled the whole rush.
         Claim-then-confirm: write our id, and next round the single writer that sees its own id wins.
+
+        Nothing about this is gated on the map being recognised any more. It used to be, and the
+        cost of that was total: on an unrecognised map `atlas.identify()` returned None, the name
+        never matched the hard-coded list, `_is_rusher` answered False for every builder, and the
+        offence did not exist -- zero core kills across every unseen map measured.
         """
-        if rushplan is None or self.map_name is None or self.map_name not in RUSH_MAPS:
+        if siege is None or self.core_pos is None:
             return False
         if self.rush_role is None:
             try:
@@ -535,47 +552,65 @@ class Player:
                 self.rush_role = (claim == mine)
             except Exception:
                 self.rush_role = False
-        if not self.rush_role:
-            return False
-        if self.rush_plan is None:
-            try:
-                self.rush_plan = rushplan.attack_plan(self.map_name, self.team_tag)
-                full = rushplan.plan(self.map_name, self.team_tag)
-                if full is not None:
-                    self.rush_route = full["route"]
-            except Exception:
-                self.rush_plan = None
-        return self.rush_plan is not None
+        return self.rush_role is True
 
     def _run_rush(self, ct, pos):
-        """Execute the precomputed build route in order, walking with a wall-aware BFS.
+        """Execute the runtime build route in order, walking with a wall-aware BFS.
 
-        Two measured failures this replaces:
+        The route is (kind, tile, facing, _) triples in build order -- gunner, then any belt from
+        the turret end back, then the harvester that feeds it. Identical execution to the table
+        version; only its source changed. Three measured failures it already handles:
           1. The old greedy `_step_toward` has no wall avoidance -- `Direction.rotate_left()` returns a
              DIAGONAL, which the CARDINALS filter then discards, so its sidestep branch was dead code
              and the walk degenerated to "first passable of N,E,S,W". That 2-cycles forever in any
              concave corner: measured on atoll/a, atoll/b, fjord/a, fjord/b, pinch/a, vault/a, vault/b.
              `rush_stuck` stayed 0 in all seven, so the 12-round give-up never fired either.
-          2. The old code built only the gunner and the harvester. On quarry and runestone the plan
-             needs 1-2 CONVEYORS between them, so the gunner sat on ammo=0 for the whole match with
-             the enemy Core in its sights.
+          2. Building only the gunner and the harvester. On quarry and runestone the plan needs 1-2
+             CONVEYORS between them, so the gunner sat on ammo=0 for the whole match with the enemy
+             Core in its sights.
+          3. Parking in the finished turret's own firing lane, which jams it permanently (G11). The
+             offline table dodged that by choosing the final stand; a BFS that walks to ANY adjacent
+             tile does not, so the rusher now steps out of the ray the moment the route is done.
         """
+        try:
+            # Claim the economy's reserve the moment a rusher exists, not when its plan firms up.
+            # The race is decided in single turns and a Gunner that cannot be paid for is the most
+            # expensive thing on the board; waiting for the geometry to resolve on a big map means
+            # five economy builders have already spent the bank by the time it does.
+            if ct.read_store(S_RUSH_DONE) != 1:
+                ct.write_store(S_RUSH_ACTIVE, 1)
+        except Exception:
+            pass
+        self._plan_rush(ct, pos)
         route = self.rush_route
         if route is None:
-            return self._legacy_rush(ct, pos)
+            return self._rush_approach(ct, pos)
+
         if self.rush_i >= len(route):
             try:
                 ct.write_store(S_RUSH_DONE, 1)      # release the economy's titanium reserve
             except Exception:
                 pass
+            if (pos.x, pos.y) in self.rush_ray and self._clear_ray(ct, pos):
+                return True
             if self._heal(ct, pos):
                 return True
             return True
+
         kind, bxy, facing, _stand = route[self.rush_i]
         bpos = Position(bxy[0], bxy[1])
 
-        # Already occupied (usually by our own earlier step) -- advance.
-        if self._building_at(ct, bpos) is not None:
+        # Already occupied -- by our own earlier step, or by somebody who got there first.
+        occupant = self._building_at(ct, bpos)
+        if occupant is not None:
+            if self.rush_i == 0 and not self._is_our_gunner(ct, occupant):
+                # The firing tile is taken by something that is not our turret: an enemy squatting
+                # it, or one of our own belts wandering into it. Advancing would leave us building
+                # a harvester to feed a Gunner that does not exist -- give the tile up and
+                # re-derive. Walking at it forever is how a siege spends 900 rounds on nothing.
+                self.rush_black.add(bxy)
+                self._drop_plan()
+                return True
             self.rush_i += 1
             self.rush_dist = None
             return True
@@ -609,45 +644,153 @@ class Player:
 
         return self._rush_walk(ct, pos, bpos)
 
-    def _legacy_rush(self, ct, pos):
-        plan = self.rush_plan
-        fire = Position(plan["fire_pos"][0], plan["fire_pos"][1])
-        facing = DIR_BY_NAME.get(plan["facing"])
-        ore = plan["ore"]
-        if not self.rush_gun_built:
-            if self._building_at(ct, fire) is not None:
-                self.rush_gun_built = True
-            elif pos.distance_squared(fire) == 1 and facing is not None:
-                if not self._can_act(ct):
-                    return True
-                try:
-                    if ct.can_build_gunner(fire, facing):
-                        ct.build_gunner(fire, facing)
-                        self.rush_gun_built = True
-                except Exception:
-                    pass
-                return True
-            else:
-                return self._rush_walk(ct, pos, fire)
-        if ore is not None and not self.rush_ore_built:
-            ore_pos = Position(ore[0], ore[1])
-            if self._building_at(ct, ore_pos) is not None:
-                self.rush_ore_built = True
-            elif pos.distance_squared(ore_pos) == 1:
-                if not self._can_act(ct):
-                    return True
-                try:
-                    if ct.can_build_harvester(ore_pos):
-                        ct.build_harvester(ore_pos)
-                        self.rush_ore_built = True
-                except Exception:
-                    pass
-                return True
-            else:
-                return self._rush_walk(ct, pos, ore_pos)
-        if self._heal(ct, pos):
+    def _is_our_gunner(self, ct, entity_id):
+        if entity_id is None:
+            return False
+        try:
+            return (ct.get_entity_type(entity_id) == EntityType.GUNNER
+                    and ct.get_team(entity_id) == ct.get_team())
+        except Exception:
+            return False
+
+    def _clear_ray(self, ct, pos):
+        """Step off the firing lane. One round well spent: standing in it costs the whole match."""
+        if not self._can_move_now(ct):
             return True
-        return True
+        for d in CARDINALS:
+            n = pos.add(d)
+            if (n.x, n.y) in self.rush_ray:
+                continue
+            try:
+                if ct.can_move(d):
+                    ct.move(d)
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def _rush_approach(self, ct, pos):
+        """No executable plan yet: close on the likeliest enemy Core and keep looking.
+
+        Walking is never wasted while the symmetry is still ambiguous -- every tile observed on the
+        way refutes hypotheses, and arriving at a candidate footprint refutes it outright. Returns
+        False only when there is nothing left to aim at, which hands this builder back to the
+        economy rather than leaving it idle.
+        """
+        anchor = self.enemy_anchor
+        if anchor is None:
+            return False
+        return self._rush_walk(ct, pos, Position(anchor[0], anchor[1]))
+
+    def _drop_plan(self):
+        self.rush_route = None
+        self.rush_target = None
+        self.rush_i = 0
+        self.rush_dist = None
+        self.plan_round = -999
+
+    def _plan_rush(self, ct, pos):
+        """Derive the firing geometry from what we have observed, and keep it current.
+
+        Recomputed only when the answer could actually have changed: a different enemy Core, a
+        materially larger picture of the terrain, or an outright failure. Before the Gunner exists
+        the plan is free to move -- that is the whole point of planning at runtime instead of
+        reading a table. Once it exists we are committed: re-siting would abandon paid-for
+        titanium, so only an explicit failure re-opens the question.
+        """
+        if siege is None or self.core_pos is None:
+            return
+        anchor = self.enemy_anchor
+        if anchor is None:
+            return
+        if self.rush_route is not None and self.rush_target == anchor and self.rush_i > 0:
+            return
+        try:
+            rnd = ct.get_current_round()
+        except Exception:
+            rnd = 0
+        if self.plan_anchor == anchor:
+            # Throttled on the last ATTEMPT, not on the last success. Throttling only the success
+            # case is the expensive mistake: a rusher that cannot yet see a firing position -- the
+            # normal state for the first twenty rounds, and the permanent state if the geometry
+            # never resolves -- would pay the full BFS plus geometry search on all 1000 rounds.
+            if (rnd - self.plan_round < REPLAN_ROUNDS
+                    and len(self.terrain) - self.plan_tiles < REPLAN_TILES):
+                return
+        if not self._cpu_left(ct):
+            return
+        try:
+            w, h = ct.get_map_width(), ct.get_map_height()
+        except Exception:
+            return
+        self.plan_anchor = anchor
+        self.plan_round = rnd
+        self.plan_tiles = len(self.terrain)
+
+        walls = self.known_walls | self.pred_walls
+        ore = (self.known_ore | self.pred_ore) - self.known_walls
+        foot = set(siege.footprint(anchor))
+        blocked = walls | self.core_tiles | foot | self.enemy_core_tiles
+        buildings = (self.occupied - self.core_tiles) - self.enemy_core_tiles - foot
+        dist = self._flood(ct, (pos.x, pos.y), blocked | (buildings - {(pos.x, pos.y)}), w, h)
+        known = (self.seen | self.pred_seen) or None
+        try:
+            found = siege.plan(w, h, anchor, self.core_tiles, walls, ore, buildings, dist,
+                               blacklist=self.rush_black, known=known)
+            if found is None:
+                # Second pass with buildings ignored. Occupancy memory never expires -- a tile is
+                # only cleared while it is in vision -- so a single enemy conveyor glimpsed near
+                # their Core forty rounds ago permanently deletes every bead through it, and the
+                # attack quietly evaporates. Measured against `frontier` on the fifteen published
+                # maps: 21-9 with the old table, 13-17 once a strict planner replaced it, with
+                # kills falling 13 -> 6. Against an inert opponent the two are indistinguishable,
+                # which is exactly why this only shows up against a bot that builds things.
+                # A remembered building is a reason to prefer another tile, never a reason to have
+                # no plan: the executor re-checks legality on arrival anyway.
+                found = siege.plan(w, h, anchor, self.core_tiles, walls, ore, frozenset(),
+                                   self._flood(ct, (pos.x, pos.y), blocked, w, h),
+                                   blacklist=self.rush_black, known=known)
+        except Exception:
+            found = None
+        if found is None:
+            if self.rush_i == 0:
+                self.rush_route = None
+                self.rush_target = None
+            return
+        if self.rush_route is not None and found["route"] == self.rush_route:
+            return
+        self.rush_route = found["route"]
+        self.rush_target = anchor
+        self.rush_ray = found["ray"]
+        self.rush_i = 0
+        self.rush_dist = None
+        try:
+            g = found["gunner"]
+            ct.write_store(S_RUSH_RAY,
+                           pack(Position(g[0], g[1])) | (DIR_BY_NAME_INDEX[found["facing"]] << 17))
+            ct.write_store(S_RUSH_ACTIVE, 1)
+        except Exception:
+            pass
+
+    def _flood(self, ct, source, blocked, w, h):
+        """Walk distance from `source` over everything we believe is impassable. ~270 us."""
+        dist = {source: 0}
+        frontier = [source]
+        step = 0
+        while frontier:
+            step += 1
+            nxt = []
+            for cx, cy in frontier:
+                for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+                    n = (cx + dx, cy + dy)
+                    if n in dist or n[0] < 0 or n[1] < 0 or n[0] >= w or n[1] >= h:
+                        continue
+                    if n in blocked:
+                        continue
+                    dist[n] = step
+                    nxt.append(n)
+            frontier = nxt
+        return dist
 
     def _rush_walk(self, ct, pos, target):
         """Walk to any tile orthogonally adjacent to `target`, shortest path around known walls."""
@@ -658,10 +801,15 @@ class Player:
             step = self._step_toward(ct, pos, target)
         if step is None:
             self.rush_stuck += 1
+            # Unreachable. Blacklist the FIRING TILE -- not whichever step we happen to be on --
+            # and re-derive, rather than give up on the whole attack the way the table version did.
+            # The firing tile is what the geometry hangs off: banning a harvester tile leaves the
+            # planner free to propose the same dead position again.
             if self.rush_stuck >= 12:
-                self.rush_plan = None
-                self.rush_route = None
-                self.map_name = None
+                self.rush_stuck = 0
+                if self.rush_route:
+                    self.rush_black.add(self.rush_route[0][1])
+                self._drop_plan()
             return True
         try:
             ct.move(step)
@@ -745,6 +893,17 @@ class Player:
             tiles = ct.get_nearby_tiles()
         except Exception:
             return
+        try:
+            w, h = ct.get_map_width(), ct.get_map_height()
+        except Exception:
+            w = h = 0
+        # Seed the symmetry mask here rather than in the inference pass, which runs after this one:
+        # the refutation below is incremental, so a tile observed before the mask exists would
+        # never be paired against the tiles observed alongside it. Catch those up once, cheaply.
+        if siege is not None and w and self.sym_mask is None and self.core_pos is not None:
+            self.sym_mask = siege.seed_mask(w, h, (self.core_pos.x, self.core_pos.y))
+            for key, code in self.terrain.items():
+                self.sym_mask = siege.reject_by_tile(w, h, self.sym_mask, self.terrain, key, code)
         for tile in tiles:
             key = (tile.x, tile.y)
             # Occupancy memory. The rush BFS must route AROUND buildings, not through them: the
@@ -755,23 +914,27 @@ class Player:
                 if key in self.occupied:
                     self.occupied.discard(key)
                     self.occ_ver += 1
-            elif key not in self.occupied:
-                self.occupied.add(key)
-                self.occ_ver += 1
-            if key not in self.core_tiles:
-                # Learn our Core's real 2x2 footprint from vision rather than guessing the anchor.
-                bid = self._building_at(ct, tile)
-                if bid is not None:
-                    try:
-                        if (ct.get_entity_type(bid) == EntityType.CORE
-                                and ct.get_team(bid) == ct.get_team()):
-                            self.core_tiles.add(key)
-                    except Exception:
-                        pass
-            if self._building_at(ct, tile) is None:
                 self.known_blocked.discard(key)
             else:
+                if key not in self.occupied:
+                    self.occupied.add(key)
+                    self.occ_ver += 1
                 self.known_blocked.add(key)
+                if key not in self.core_tiles and key not in self.enemy_core_tiles:
+                    # Learn both Cores' real 2x2 footprints from vision rather than guessing an
+                    # anchor. A sighted enemy Core settles the symmetry outright and outranks every
+                    # inference -- it is the one observation that cannot be wrong.
+                    try:
+                        if ct.get_entity_type(occ) == EntityType.CORE:
+                            if ct.get_team(occ) == ct.get_team():
+                                self.core_tiles.add(key)
+                            else:
+                                self.enemy_core_tiles.add(key)
+                                seen_at = ct.get_position(occ)
+                                self.enemy_anchor = (seen_at.x, seen_at.y)
+                                self.enemy_sighted = True
+                    except Exception:
+                        pass
             if key in self.seen:
                 continue
             env = self._env(ct, tile)
@@ -779,9 +942,153 @@ class Player:
                 continue
             self.seen.add(key)
             if env == Environment.WALL:
+                code = siege.WALL if siege is not None else 1
                 self.known_walls.add(key)
             elif env == Environment.ORE_TITANIUM:
+                code = siege.ORE if siege is not None else 2
                 self.known_ore.add(key)
+            else:
+                code = siege.EMPTY if siege is not None else 0
+            if siege is None or w == 0:
+                continue
+            self.terrain[key] = code
+            if self.sym_mask is not None:
+                # One tile at a time, three dict lookups: a hypothesis dies the moment this tile
+                # and its image under it disagree. Rescanning the whole memory every round would
+                # be the same answer for a hundred times the CPU.
+                self.sym_mask = siege.reject_by_tile(w, h, self.sym_mask, self.terrain, key, code)
+
+    # --- runtime map inference -----------------------------------------
+
+    def _infer_enemy_core(self, ct):
+        """Decide where the enemy Core is, agree with the rest of the team, and mirror the map.
+
+        Every map in this game is symmetric one of exactly three ways (G32), so our own anchor
+        implies at most three enemy anchors and terrain refutes the wrong ones. That is the entire
+        replacement for `atlas.identify()`: it works on a map nobody has ever seen, which the atlas
+        by construction cannot.
+
+        Precedence is strict. A Core we have actually LOOKED at beats a Core somebody else looked
+        at, which beats an inference, which beats a guess. Anything less and one unit's bad guess
+        propagates through the store and sends the siege to an empty corner for a thousand rounds.
+        """
+        if siege is None or self.core_pos is None:
+            return
+        try:
+            w, h = ct.get_map_width(), ct.get_map_height()
+        except Exception:
+            return
+        anchor = (self.core_pos.x, self.core_pos.y)
+        if self.sym_mask is None:
+            self.sym_mask = siege.seed_mask(w, h, anchor)
+
+        try:
+            self.sym_mask |= ct.read_store(S_SYMMETRY) & siege.ALL_REJECTED
+        except Exception:
+            pass
+        self.sym_mask = siege.reject_by_footprint(w, h, anchor, self.sym_mask,
+                                                  self.seen, self.enemy_core_tiles)
+        if self.enemy_sighted and self.enemy_anchor is not None:
+            self.sym_mask |= siege.index_mask(w, h, anchor, self.enemy_anchor)
+        if self.sym_mask == siege.ALL_REJECTED:
+            # Our own reasoning has eliminated every possibility, so it is the reasoning that is
+            # wrong. Start again rather than stand still: a stale hypothesis is recoverable, an
+            # empty one is not.
+            self.sym_mask = siege.seed_mask(w, h, anchor)
+
+        shared = 0
+        try:
+            shared = ct.read_store(S_ENEMY_CORE)
+        except Exception:
+            shared = 0
+        told = unpack(shared & 0xFFFF) if shared else None
+        if told is not None and not self.enemy_sighted:
+            if shared & SIGHTED:
+                self.enemy_anchor, self.enemy_sighted = told, True
+            elif told in siege.alive(w, h, anchor, self.sym_mask):
+                self.enemy_anchor = told      # somebody else's inference, still consistent with ours
+        if not self.enemy_sighted:
+            live = siege.alive(w, h, anchor, self.sym_mask)
+            if live:
+                if self.enemy_anchor not in live:
+                    # Closest first: if the guess is wrong we find out on arrival, and we find out
+                    # after the shortest possible detour.
+                    self.enemy_anchor = min(
+                        live, key=lambda c: (c[0] - anchor[0]) ** 2 + (c[1] - anchor[1]) ** 2)
+            elif self.enemy_anchor is None:
+                return
+
+        try:
+            ct.write_store(S_SYMMETRY, self.sym_mask)
+            if self.enemy_anchor is not None:
+                value = pack(Position(self.enemy_anchor[0], self.enemy_anchor[1]))
+                if self.enemy_sighted:
+                    value |= SIGHTED
+                if self.enemy_sighted or not (shared & SIGHTED):
+                    ct.write_store(S_ENEMY_CORE, value)
+        except Exception:
+            pass
+
+        self._predict(ct, w, h, anchor)
+
+    def _predict(self, ct, w, h, anchor):
+        """Reflect our own half onto the enemy half once one symmetry survives.
+
+        The rulebook guarantee is that the map IS its own mirror image, so terrain we have walked
+        past on our side is a free, exact description of ground we have never seen. Only terrain --
+        buildings are not part of the map and still have to be looked at. Rebuilt on a hypothesis
+        change or once the picture has grown materially, never every round: ~90 us at full memory.
+
+        Only the rusher pays for this. Nothing else reads the prediction -- the economy navigates
+        on ground it has actually seen -- so mirroring the map in all six builders would be five
+        copies of the same 90 us for no behaviour at all.
+        """
+        if self.rush_role is False:
+            return
+        index = siege.symmetry_index(w, h, anchor, self.sym_mask)
+        if index is None:
+            if self.pred_seen:
+                self.pred_walls, self.pred_ore, self.pred_seen = set(), set(), set()
+                self.pred_index, self.pred_n = None, -1
+            return
+        if index == self.pred_index and len(self.terrain) - self.pred_n < REPLAN_TILES:
+            return
+        if not self._cpu_left(ct):
+            return
+        self.pred_index, self.pred_n = index, len(self.terrain)
+        try:
+            self.pred_walls, self.pred_ore, self.pred_seen = siege.mirror_terrain(
+                w, h, index, self.terrain)
+        except Exception:
+            self.pred_walls, self.pred_ore, self.pred_seen = set(), set(), set()
+
+    def _read_ray(self, ct):
+        """Refresh the reserved firing lane from the store.
+
+        A friendly ANYWHERE in a Gunner's ray becomes its target and jams it for the rest of the
+        match (G11). Measured on vault/a with the table version: an economy builder laid a conveyor
+        at (20,2) on round 47 and the Gunner sat on the enemy Core for 953 rounds without firing.
+        Offline the lane came out of the atlas; on an unseen map the rusher has to publish it.
+        """
+        if siege is None or self.rush_role is True:
+            return
+        try:
+            raw = ct.read_store(S_RUSH_RAY)
+        except Exception:
+            return
+        if raw == self.ray_raw:
+            return
+        self.ray_raw = raw
+        if raw <= 0:
+            self.rush_ray = frozenset()
+            return
+        g = unpack(raw & 0xFFFF)
+        if g is None:
+            self.rush_ray = frozenset()
+            return
+        dx, dy = DIR_DELTAS[(raw >> 17) & 3]
+        self.rush_ray = frozenset(
+            (g[0] + k * dx, g[1] + k * dy) for k in range(1, siege.GUNNER_REACH + 1))
 
     # --- chain construction -------------------------------------------
 
@@ -1026,10 +1333,15 @@ class Player:
         them in the first forty rounds is what starves the rush. Hold RUSH_RESERVE back until the
         rusher reports its route finished -- or until the race is decided either way, so a dead
         rusher cannot freeze the economy for the rest of the match.
+
+        The gate used to be "is this one of the fifteen maps we precomputed". It is now "does a
+        rusher actually own an executable plan", which is the condition that was always meant: an
+        economy that hoards for a siege nobody is running is pure loss, and one that spends through
+        a siege that IS running loses the race by a single turn.
         """
-        if self.map_name is None or self.map_name not in RUSH_MAPS or rushplan is None:
-            return True
         try:
+            if ct.read_store(S_RUSH_ACTIVE) != 1:
+                return True
             if ct.read_store(S_RUSH_DONE) == 1:
                 return True
             return ct.get_current_round() > RUSH_RESERVE_UNTIL
