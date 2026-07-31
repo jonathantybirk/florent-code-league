@@ -38,6 +38,17 @@ CPython sub-interpreter (G20), so import has to stay cheap. Nothing here raises.
 CDELTA = ((0, -1), (1, 0), (0, 1), (-1, 0))
 DIR_NAMES = ("NORTH", "EAST", "SOUTH", "WEST")
 
+# Eight facings, cardinals first so an index survives a trip through a store slot unchanged.
+# A Gunner's r^2 = 13 reaches 3 on a cardinal (9 <= 13 < 16) but only 2 on a diagonal
+# (8 <= 13 < 18). Diagonal beads used not to be generated at all, which threw away the four
+# CORNER tiles of the enemy Core's ring -- the only range-1 tiles no cardinal ray can occupy, and
+# the ones a defender bricking its ring is slowest to reach. Confirmed live rather than assumed:
+# in `bots/rivals/vanguard`'s hands a NORTHWEST ray from (4,3) landed 19 shots on (2,1) on sprint.
+DELTA8 = ((0, -1), (1, 0), (0, 1), (-1, 0), (1, -1), (1, 1), (-1, 1), (-1, -1))
+DIR_NAMES8 = ("NORTH", "EAST", "SOUTH", "WEST",
+              "NORTHEAST", "SOUTHEAST", "SOUTHWEST", "NORTHWEST")
+REACH8 = (3, 3, 3, 3, 2, 2, 2, 2)
+
 # Symmetry hypotheses, in the order their bits live in the rejection mask.
 ROT180, MIRROR_X, MIRROR_Y = 0, 1, 2
 ALL_REJECTED = 0b111
@@ -47,17 +58,30 @@ GUNNER_REACH = 3
 # Beyond this a forward belt costs more than the shots it delivers, and hands the defender more
 # 20 HP tiles to cut than one builder can hold.
 MAX_CONVEYORS = 4
-# At range 1 the Gunner is orthogonally adjacent to the enemy footprint and nothing can ever get
-# between the two. At range >= 2 the tile in front of it is on the enemy Core's own spawn ring, so
-# every Builder Bot they spawn lands in our lane and eats the shot instead of the Core (G11) --
-# roughly four wasted shots per builder. Worth about four rounds of walk to avoid.
-STANDOFF_PENALTY = 4
+# At range 1 the Gunner touches the enemy footprint and NOTHING can ever get between the two. At
+# range >= 2 every tile short of the Core is a tile the defender can put a 30 HP Barrier on, and a
+# Barrier two Builders are healing at 4 HP a shot beats one Gunner outright. Measured against
+# `vanguard` over 14 games: of 256 shots our single range-2/3 turret fired, 154 were absorbed by
+# its Barrier ring -- 2 of 25 reached the Core on crossfire/a. The penalty is therefore charged
+# PER TILE OF STANDOFF, not once: twelve rounds of extra walk is a cheap price for a lane that
+# cannot be bricked.
+STANDOFF_PENALTY = 6
 # How many beads get the (comparatively expensive) belt search when no ore touches any of them.
 # Each search is a 4-step flood, so this is the planner's worst-case CPU knob. It has to be
 # generous rather than tight: ranking beads by walk alone puts a 3-belt position ahead of a
 # 1-belt one two tiles further out, and cutting the list at six lost runestone and eight of the
-# forty-eight generated orientations outright.
-BELT_CANDIDATES = 24
+# forty-eight generated orientations outright. Now that the standoff penalty is charged per tile,
+# a tight cap is worse still -- the whole head of the list is range-1 tiles on the enemy Core's
+# own ring, and on a map whose only deposits are seven rows away NONE of them can reach one. That
+# cost random-...-011 its plan entirely at 24. The real CPU guard is the `cut` prune below, which
+# skips the search outright whenever a free position already beats anything a belt could buy.
+BELT_CANDIDATES = 64
+# How many extra turrets may be packed around one forward producer. A Harvester delivers 10 Ti
+# every four rounds and a Gunner burns 2 Ti a shot firing once a round, so ONE turret already
+# takes 80% of a deposit's output: the second and third are not bought for throughput, they are
+# bought for ANGLES. A defender can brick one lane and heal the brick; it cannot brick three at
+# once, and three turrets put 30 damage a round into a 30 HP Barrier that heals 4.
+MAX_BATTERY = 3
 
 EMPTY, WALL, ORE = 0, 1, 2
 
@@ -201,26 +225,27 @@ def mirror_terrain(w, h, index, terrain):
 # ---------------------------------------------------------------------------
 
 def firing_spots(enemy_anchor):
-    """Every tile that could possibly bear on the footprint with a cardinal ray.
+    """Every tile that could possibly bear on the footprint.
 
-    Independent of map size: 4 footprint tiles x 4 cardinals x 3 ranges, de-duplicated.
+    Independent of map size: 4 footprint tiles x 8 facings x their reach, de-duplicated.
     """
     out = set()
     for f in footprint(enemy_anchor):
-        for d in CDELTA:
-            for k in range(1, GUNNER_REACH + 1):
+        for di, d in enumerate(DELTA8):
+            for k in range(1, REACH8[di] + 1):
                 out.add((f[0] - k * d[0], f[1] - k * d[1]))
     return out
 
 
-def _ray(w, h, g, d, foot, walls, stoppers):
-    """(range, ray tiles) for a clear bead from g in direction d, or None.
+def _ray(w, h, g, di, foot, walls, stoppers):
+    """(range, ray tiles) for a clear bead from g on facing index di, or None.
 
     A shot stops at the first targetable tile: a wall stops it without being hit, any building or
     Core absorbs it. So every tile short of the footprint has to be genuinely empty.
     """
+    d = DELTA8[di]
     ray = []
-    for k in range(1, GUNNER_REACH + 1):
+    for k in range(1, REACH8[di] + 1):
         t = (g[0] + k * d[0], g[1] + k * d[1])
         if t[0] < 0 or t[1] < 0 or t[0] >= w or t[1] >= h:
             return None
@@ -347,38 +372,63 @@ def plan(w, h, enemy_anchor, own_core_tiles, walls, ore, buildings, dist,
         approach = stand_cost(g)
         if approach is None:
             continue
-        for di, d in enumerate(CDELTA):
-            shot = _ray(w, h, g, d, foot, walls, stoppers)
+        for di in range(8):
+            shot = _ray(w, h, g, di, foot, walls, stoppers)
             if shot is None:
                 continue
             k, ray = shot
             rayset = frozenset(ray)
             if known is not None and not rayset <= known:
                 continue
-            pen = 0 if k == 1 else STANDOFF_PENALTY
+            pen = STANDOFF_PENALTY * (k - 1)
             touched = False
             for c in CDELTA:
                 o = (g[0] + c[0], g[1] + c[1])
                 if o not in ore or o in rayset or o in buildings or o in foot or o in own:
                     continue
+                if o in blacklist:
+                    continue
                 if stand_cost(o, extra=rayset) is None:
                     continue
                 touched = True
                 zero.append((approach + pen, k, 0, g, di,
-                             {"gunner": g, "facing": DIR_NAMES[di], "range": k, "ore": o,
+                             {"gunner": g, "facing": DIR_NAMES8[di], "range": k, "ore": o,
                               "ray": rayset, "conveyors": ()}))
             if not touched:
                 beads.append((approach + pen, k, g, di, rayset))
 
     pool = zero
-    if not pool and beads:
-        # Nothing touches a deposit: creep a short belt from the nearest one instead. Only the
-        # cheapest few beads are worth the search -- the rest lose on walk before they start.
-        beads.sort()
+    if beads:
+        # A short belt creep is a FIRST-CLASS option, not a last resort. It used to run only when
+        # no position anywhere touched a deposit, which meant one ore tile happening to sit beside
+        # a range-3 bead vetoed every range-1 bead on the board -- and a range-3 lane is exactly
+        # what a defender bricks. Measured on sprint/a: the planner took (4,8) at range 3 because
+        # the deposit at (3,8) touched it, and 11 of its first 27 shots were eaten by a Barrier at
+        # (6,8). Belts are still charged 3 walk-tiles each, so nothing changes when the free
+        # position was genuinely the better one.
+        # One entry per TILE, keeping its cheapest facing. Eight facings roughly double the raw
+        # bead list, and BELT_CANDIDATES is a cap on tiles searched, not on rays considered:
+        # without this collapse the top of the list fills with four rays off the same square and
+        # the tiles that actually admit a belt fall off the end. Measured: two orientations of
+        # random-...-011 went from a working plan to none at all.
+        best_bead = {}
+        for row in beads:
+            cur = best_bead.get(row[2])
+            if cur is None or row[:2] < cur[:2]:
+                best_bead[row[2]] = row
+        beads = sorted(best_bead.values())
+        cut = min(row[0] for row in zero) if zero else None
         for approach, k, g, di, rayset in beads[:BELT_CANDIDATES]:
+            # Even a one-tile creep costs 3, so anything at or above the best free position's
+            # score cannot win. Prunes the whole (comparatively expensive) flood in the common
+            # case where a deposit already touches a good bead.
+            if cut is not None and approach + 3 >= cut:
+                continue
             reach = _spread(w, h, g, rayset, walls, ore, buildings, own, known)
             best_o = None
             for o in ore:
+                if o in blacklist:
+                    continue
                 n = reach.get(o)
                 if n is None or n < 2 or n - 1 > MAX_CONVEYORS:
                     continue
@@ -391,7 +441,7 @@ def plan(w, h, enemy_anchor, own_core_tiles, walls, ore, buildings, dist,
             if chain is None or len(chain) != n - 1:
                 continue
             pool.append((approach + 3 * (n - 1), k, n - 1, g, di,
-                         {"gunner": g, "facing": DIR_NAMES[di], "range": k, "ore": o,
+                         {"gunner": g, "facing": DIR_NAMES8[di], "range": k, "ore": o,
                           "ray": rayset, "conveyors": tuple(chain)}))
     if not pool:
         return None
@@ -404,3 +454,76 @@ def plan(w, h, enemy_anchor, own_core_tiles, walls, ore, buildings, dist,
     best["route"] = tuple(route)
     best["score"] = pool[0][0]
     return best
+
+
+def battery(w, h, enemy_anchor, feeders, own_core_tiles, walls, ore, buildings, lanes, dist,
+            known=None, blacklist=()):
+    """Extra Gunner tiles packed around a producer we already own, best first.
+
+    A Harvester round-robins its output into EVERY orthogonally adjacent building, so a second
+    turret beside the deposit that already feeds the first costs a turret and no logistics
+    whatsoever -- no belt for the defender to cut, no second walk across the map.
+
+    It is not bought for throughput. One Gunner firing every round burns 2 Ti a round against a
+    deposit's 2.5, so the deposit is nearly saturated already. It is bought for ANGLES: a Gunner
+    at range >= 2 can be shut off completely by one 30 HP Barrier that two Builders keep healing
+    at 4 HP a time, and that is exactly how `vanguard` beat this doctrine -- 154 of our 256 shots
+    absorbed across 14 games, 23 of 25 on crossfire/a. A defender can brick one lane. Three
+    turrets on three different bearings put 30 damage a round into whichever brick it chooses.
+
+    ``lanes``  every tile already reserved as one of OUR firing lines. A building in a friendly
+               turret's ray becomes its target and jams it for the rest of the match (G11), so a
+               new turret may never be sited in an old one's lane -- the single mistake that
+               would make this change strictly negative.
+    """
+    foot = frozenset(footprint(enemy_anchor))
+    own = frozenset(own_core_tiles)
+    stoppers = frozenset(buildings) | own
+    feeders = frozenset(feeders)
+    lanes = frozenset(lanes)
+    blacklist = frozenset(blacklist)
+    out = []
+    for f in feeders:
+        for c in CDELTA:
+            g = (f[0] + c[0], f[1] + c[1])
+            if g[0] < 0 or g[1] < 0 or g[0] >= w or g[1] >= h:
+                continue
+            if g in blacklist or g in lanes or g in foot or g in own or g in feeders:
+                continue
+            if g in walls or g in ore or g in buildings:
+                continue
+            if known is not None and g not in known:
+                continue
+            best = None
+            for di in range(8):
+                shot = _ray(w, h, g, di, foot, walls, stoppers)
+                if shot is None:
+                    continue
+                k, ray = shot
+                rayset = frozenset(ray)
+                if known is not None and not rayset <= known:
+                    continue
+                # Never lay a lane over our own supply: the producer becomes the target and the
+                # turret we just paid for shoots the deposit feeding it (G10/G11).
+                if rayset & feeders or rayset & own:
+                    continue
+                approach = None
+                for c2 in CDELTA:
+                    s = (g[0] + c2[0], g[1] + c2[1])
+                    if s[0] < 0 or s[1] < 0 or s[0] >= w or s[1] >= h:
+                        continue
+                    if s in walls or s in foot or s in own or s in rayset:
+                        continue
+                    v = dist.get(s)
+                    if v is not None and (approach is None or v < approach):
+                        approach = v
+                if approach is None:
+                    continue
+                row = (STANDOFF_PENALTY * (k - 1) + approach, k, di, g,
+                       {"gunner": g, "facing": DIR_NAMES8[di], "range": k, "ray": rayset})
+                if best is None or row[:4] < best[:4]:
+                    best = row
+            if best is not None:
+                out.append(best)
+    out.sort(key=lambda row: row[:4])
+    return [row[4] for row in out]
