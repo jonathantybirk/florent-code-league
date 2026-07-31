@@ -2,7 +2,8 @@
 
 from fcode import Controller, Direction, Environment, Position
 
-from constants import (ECONOMY_BUILDERS, EMERGENCY_RESERVE,
+from constants import (AMMO_FLOOR, AMMO_TARGET, ECONOMY_BUILDERS,
+                       EMERGENCY_RESERVE,
                        HOME_ALARM_PERCENT, RICH_RESERVE,
                        SLOT_HOME_UNDER_FIRE)
 
@@ -17,6 +18,7 @@ RICH_BUILDERS = 8
 
 
 def run(player, ct: Controller) -> None:
+    _keep_ammunition(ct)
     if not hasattr(player, "spawned"):
         player.spawned = 0
         player.alarm = False
@@ -73,6 +75,24 @@ def run(player, ct: Controller) -> None:
     candidates.sort(key=lambda t: (t.distance_squared(goal), t.x, t.y))
     ct.spawn_builder(candidates[0])
     player.spawned += 1
+
+
+def _keep_ammunition(ct: Controller) -> None:
+    """Turn titanium into ammunition, or no turret we own can fire at all.
+
+    Engine 2.3.3 replaced 2.2.0's per-turret ammunition with a global pool the
+    Core fills by conversion: 1 titanium for 1 ammunition, at most once per
+    team per turn, no action cooldown, usable the same turn.
+    """
+    try:
+        held = ct.get_global_ammo()
+        if held >= AMMO_TARGET:
+            return
+        amount = min(AMMO_TARGET - held, ct.get_global_resources() - AMMO_FLOOR)
+        if amount > 0 and ct.can_convert_ammo(amount):
+            ct.convert_ammo(amount)
+    except Exception:  # noqa: BLE001 - never let this kill the Core
+        return
 
 
 def _away_from_home(ct: Controller) -> Position:
