@@ -17,9 +17,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 DEFAULT = {
     "AutistimusPrime": "bot",
+    "vanguard": "bots/rivals/vanguard",
+    "jonbot": "bots/rivals/jonbot",
     "luc1": "bots/rivals/luc1",
     "lockin": "bots/rivals/lockin",
-    "frontier": "bots/rivals/frontier",
     "starter_fixed": "bots/zoo/starter_fixed",
 }
 
