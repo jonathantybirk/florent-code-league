@@ -110,7 +110,6 @@ def _init(p, ct):
     p.siege_ore = None
     p.feeders = set()        # our producers near the enemy Core
     p.gunners = set()
-    p.sentinel_plan = set()
     p.rejected_ores = set()
     p.stalls = 0
     p.clear_target = None
@@ -447,14 +446,6 @@ def _home_gunner(p, ct):
     target = Position(*spot)
 
     def attempt():
-        if facing in p.sentinel_plan:
-            if (ct.get_global_resources() > ct.get_sentinel_cost() + 40
-                    and ask(ct.can_build_sentinel, target, facing)):
-                ct.build_sentinel(target, facing)
-                p.solids.add(spot)
-                p.gunners.add(spot)
-                log(ct, f"siege t{p.ticket} sentinel {spot} {facing}")
-                return True
         if ask(ct.can_build_gunner, target, facing):
             ct.build_gunner(target, facing)
             p.solids.add(spot)
@@ -824,14 +815,6 @@ def _add_gunner(p, ct, without_travel=False):
                 return True
             p.blacklist.add(spot)
             continue
-        if facing in p.sentinel_plan:
-            if (ct.get_global_resources() > ct.get_sentinel_cost() + 40
-                    and ask(ct.can_build_sentinel, target, facing)):
-                ct.build_sentinel(target, facing)
-                p.solids.add(spot)
-                p.gunners.add(spot)
-                log(ct, f"siege t{p.ticket} sentinel {spot} {facing}")
-                return True
         if ask(ct.can_build_gunner, target, facing):
             ct.build_gunner(target, facing)
             p.solids.add(spot)
@@ -866,25 +849,6 @@ def _flank_bias(p, spot):
     rank = max(0, p.ticket - ECONOMY_BUILDERS)
     side = (spot[0] - p.enemy_core[0]) + (spot[1] - p.enemy_core[1]) >= 0
     return 0 if side == (rank % 2 == 0) else 1
-
-
-def _sentinel_aim(p, ct, spot, core_tiles):
-    """A facing from which a Sentinel at `spot` could hit the Core.
-
-    ct.can_fire_from() is evaluated by the engine against the real board, so
-    this asks rather than assumes -- including whether the line pierces the
-    Barriers in the way.
-    """
-    position = Position(*spot)
-    if not ct.is_in_vision(position):
-        return None
-    for facing in FACING8.values():
-        for tile in sorted(core_tiles):
-            if ask(ct.can_fire_from, position, facing, EntityType.SENTINEL,
-                   Position(*tile)):
-                p.sentinel_plan.add(facing)
-                return facing
-    return None
 
 
 def _feeder_outputs_into(p, feeder, spot):
