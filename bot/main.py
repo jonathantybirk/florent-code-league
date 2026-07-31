@@ -240,6 +240,14 @@ VAULT_PATIENCE = 3
 # one leaves it inside the same Launcher's pickup radius, which is exactly how the treadmill starts.
 VAULT_GAIN = 4
 
+# --- Ammunition (fcode 2.3.x) ------------------------------------------------
+# 2.3.x REPLACED per-turret ammo with a TEAM-WIDE POOL. `get_ammo_amount` / `get_ammo_type` are gone;
+# `get_global_ammo` / `can_convert_ammo` / `convert_ammo` replace them. Nothing converts implicitly, so
+# a bot that never calls convert_ammo has turrets that can never fire -- which is exactly what happened
+# to us: ZERO core kills across 42 games on 2.3.3 while every gunner we built sat loaded with nothing.
+AMMO_TARGET = 120     # stop converting once the pool holds this much
+AMMO_FLOOR = 60       # titanium held back so converting never starves a chain in progress (G02)
+
 
 def cardinal_of(dx, dy):
     """Snap a delta to the cardinal direction that dominates it."""
@@ -444,6 +452,7 @@ class Player:
         self.core_pos = pos
         ct.write_store(S_CORE_X, pos.x)
         ct.write_store(S_CORE_Y, pos.y)
+        self._top_up_ammo(ct)
 
         # The Core is the one unit that can read its own hit points, so it is the one unit that
         # can tell the team the base is being ground down. Once raised the alarm stays raised: an
@@ -482,6 +491,23 @@ class Player:
                     return
             except Exception:
                 continue
+
+    def _top_up_ammo(self, ct):
+        """Turn banked titanium into team ammunition.
+
+        Kept on the Core because it acts first every round, so the pool is filled before any turret
+        takes its turn. Wrapped so a pre-2.3 engine (where these methods do not exist) degrades
+        silently rather than deleting the Core with an uncaught exception (G23).
+        """
+        try:
+            held = ct.get_global_ammo()
+            if held >= AMMO_TARGET:
+                return
+            amount = min(AMMO_TARGET - held, ct.get_global_resources() - AMMO_FLOOR)
+            if amount > 0 and ct.can_convert_ammo(amount):
+                ct.convert_ammo(amount)
+        except Exception:
+            return
 
     def _spawn_tiles(self, ct, pos):
         """Candidate spawn tiles, best first.
