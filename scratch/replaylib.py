@@ -181,9 +181,9 @@ def summarize(path):
     # Whoever took ~500 and lost is the destroyed Core; order ids for stability.
     ordered = sorted(core_damage.items(), key=lambda kv: -kv[1])
 
-    # Ammunition actually delivered into turrets. For a siege bot this is the
-    # number that matters: damage is 5x the titanium a Gunner receives, so a
-    # Gunner with no inbound stacks is 20 Ti of decoration.
+    # Engine 2.3.3 feeds turrets from a global pool, so "stacks delivered into
+    # a turret" is always zero now and tells us nothing. Shots fired is the
+    # combat metric that survived the change.
     turret_tiles = {}
     for e in m["entities"].values():
         if e["type"] in ("gunner", "sentinel"):
