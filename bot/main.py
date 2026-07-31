@@ -57,16 +57,24 @@ ALL_DIRS = tuple(d for d in Direction if d != Direction.CENTRE)
 DIR_BY_NAME = {
     "NORTH": Direction.NORTH, "EAST": Direction.EAST,
     "SOUTH": Direction.SOUTH, "WEST": Direction.WEST,
+    "NORTHEAST": Direction.NORTHEAST, "SOUTHEAST": Direction.SOUTHEAST,
+    "SOUTHWEST": Direction.SOUTHWEST, "NORTHWEST": Direction.NORTHWEST,
 }
-# Index into siege.CDELTA / siege.DIR_NAMES, so a facing survives a trip through a store slot.
-DIR_BY_NAME_INDEX = {"NORTH": 0, "EAST": 1, "SOUTH": 2, "WEST": 3}
-DIR_DELTAS = ((0, -1), (1, 0), (0, 1), (-1, 0))
+# Index into siege.DELTA8 / siege.DIR_NAMES8, so a facing survives a trip through a store slot.
+# Cardinals keep indices 0-3, so the packing in S_RUSH_RAY is unchanged for them; the diagonals
+# need a third bit, and the ray they describe is two tiles long rather than three.
+DIR_BY_NAME_INDEX = {"NORTH": 0, "EAST": 1, "SOUTH": 2, "WEST": 3,
+                     "NORTHEAST": 4, "SOUTHEAST": 5, "SOUTHWEST": 6, "NORTHWEST": 7}
+DIR_DELTAS = ((0, -1), (1, 0), (0, 1), (-1, 0), (1, -1), (1, 1), (-1, 1), (-1, -1))
 
 # --- Communication store (16 slots, writes visible next round) ----------------
 S_CORE_X = 0
 S_CORE_Y = 1
 S_SPAWN_ORD = 2
-S_CONNECTED = 3
+# Slot 3 used to be a count of completed chains that nothing ever read. It is now the home alarm:
+# 1 once our own Core has been hit hard enough that mining more titanium into it is worth less
+# than keeping it standing (G01 -- titanium only scores while there is a Core footprint to land on).
+S_ALARM = 3
 S_CLAIM_0 = 4
 N_CLAIMS = 6
 # Packed enemy Core anchor. Bit 16 set = SIGHTED, not merely inferred -- a sighting is authoritative
@@ -94,6 +102,19 @@ S_RUSH_ACTIVE = 15    # 1 once the rusher owns an executable plan and the reserv
 # actually resembles the ladder. Before the nav fix this curve was flat and peaked at 4 -- extra
 # builders paid their cost scale but could not navigate well enough to deliver.
 BUILDERS = 6
+# Under sustained fire the cap lifts. A heal restores 4 HP for a flat 1 Ti and is NOT touched by
+# the global cost scale, while their Gunner spends 2 Ti to deal 10 damage and averages 5 damage a
+# round -- so one extra Builder standing on the Core very nearly cancels one extra turret, and
+# their titanium is spent for good while ours keeps the Core alive. Measured: every one of the 30
+# losses to `vanguard` is core_destroyed at a median turn of 62, and their five turrets put 76
+# hits a game into a 500 HP Core. Losing on a full treasury is the worst way to lose.
+SIEGE_BUILDERS = 10
+# Core HP below which the alarm is raised. A scratch is not a siege; one stray shot must not
+# recall the whole economy.
+ALARM_PERCENT = 88
+# Titanium the Core keeps back before buying an emergency builder, so a chain in flight still
+# completes (G02).
+ALARM_RESERVE = 60
 # Seeding map memory from the precomputed pool MEASURED WORSE: 17-13 with, 20-10 without, against the
 # deterministic starter_fixed. Theory (untested): with the atlas every builder immediately claims the
 # globally-nearest-to-Core ore and they walk past each other to distant tiles, whereas vision-discovery
@@ -122,6 +143,28 @@ CPU_BUDGET_US = 6000
 # to move; after the Gunner is up we are committed and only an explicit failure re-opens it.
 REPLAN_TILES = 24     # newly observed tiles that make the geometry worth recomputing
 REPLAN_ROUNDS = 10    # ...and a floor under it, so a stalled rusher still re-examines the board
+
+# Titanium left in the bank after buying a battery turret. The first Gunner is the one the race
+# turns on and the economy holds RUSH_RESERVE for it; the extras are opportunistic, so they only
+# ever come out of genuine surplus and never out of a chain in flight.
+BATTERY_RESERVE = 40
+
+# Home fortification. A Gunner's ray stops at the first building, so a 3 Ti Barrier on a Core ring
+# tile turns a point-blank snipe into a demolition job first: they spend 6 Ti of shooting to clear
+# 3 Ti of wall, and we can put it back. That exchange, and nothing else, is why `vanguard`'s Core
+# takes 40% of our shots while ours takes 88% of theirs.
+#
+# It only ever starts once our Core has actually been hit. Twelve Barriers are +12 percentage
+# points of permanent global cost scale (G07) and an economy matchup cannot afford that, so against
+# an opponent that never shoots the Core this is dead code that costs exactly nothing.
+FORTIFY_FROM = 8          # never before the Core has finished spawning onto its own ring
+# Ring tiles left unbricked. A conveyor chain SCORES ONLY by terminating on a tile orthogonally
+# adjacent to the footprint (G02), and a builder that cannot reach one delivers zero all match --
+# so the ring is never closed, only narrowed on the side they come from.
+FORTIFY_KEEP_OPEN = 5
+# Rounds between battery searches. The route is finished by then, so this is the rusher's only
+# remaining cost: one flood plus a handful of ray walks.
+BATTERY_EVERY = 3
 
 
 def cardinal_of(dx, dy):
@@ -209,6 +252,12 @@ class Player:
         self.plan_anchor = None        # enemy anchor the last plan ATTEMPT was made against
         self.plan_round = -999
         self.plan_tiles = -1
+
+        # Battery: extra turrets packed around the producer the first one is already fed by.
+        self.rush_feeder = None        # deposit the route's Harvester sits on
+        self.rush_base_len = 0         # length of the planned route, before any battery step
+        self.battery_n = 0
+        self.battery_round = -999
 
         self.errors = 0
 
@@ -306,7 +355,25 @@ class Player:
         ct.write_store(S_CORE_X, pos.x)
         ct.write_store(S_CORE_Y, pos.y)
 
-        if self.spawned >= BUILDERS or not self._can_act(ct):
+        # The Core is the one unit that can read its own hit points, so it is the one unit that
+        # can tell the team the base is being ground down. Once raised the alarm stays raised: an
+        # opponent that has walked a turret up to our footprint is not going to change its mind,
+        # and a flapping alarm would send the economy back and forth doing neither job.
+        hurt = False
+        try:
+            hurt = ct.get_hp() * 100 < ct.get_max_hp() * ALARM_PERCENT
+            if hurt or ct.read_store(S_ALARM) == 1:
+                ct.write_store(S_ALARM, 1)
+                hurt = True
+        except Exception:
+            hurt = False
+
+        cap = BUILDERS
+        reserve = CHAIN_RESERVE
+        if hurt:
+            cap = SIEGE_BUILDERS
+            reserve = ALARM_RESERVE
+        if self.spawned >= cap or not self._can_act(ct):
             return
         try:
             balance = ct.get_global_resources()
@@ -314,7 +381,7 @@ class Player:
         except Exception:
             return
         # Finishing a chain in flight always beats starting another builder (G02).
-        if balance < cost + CHAIN_RESERVE:
+        if balance < cost + reserve:
             return
         for target in self._spawn_tiles(ct, pos):
             try:
@@ -461,6 +528,12 @@ class Player:
         # 2. Range-0 sabotage -- the only attack a builder has (G14). Cuts every harvester upstream.
         if self._sabotage(ct, pos):
             return
+        # 2b. The base is under fire. Titanium only scores while there is a Core footprint for the
+        #     stacks to land on (G01), so once the Core is being ground down, holding it outranks
+        #     mining into it. Never interrupts a chain in flight -- an abandoned chain scores zero
+        #     (G02) -- so a builder finishes what it started first.
+        if self._hold_home(ct, pos):
+            return
         # 3. Phase work.
         if self.phase == "harvest" and self._try_harvester(ct, pos):
             return
@@ -591,11 +664,14 @@ class Player:
                 ct.write_store(S_RUSH_DONE, 1)      # release the economy's titanium reserve
             except Exception:
                 pass
-            if (pos.x, pos.y) in self.rush_ray and self._clear_ray(ct, pos):
+            if self._extend_battery(ct, pos):
+                route = self.rush_route             # a new turret to build -- fall through
+            else:
+                if (pos.x, pos.y) in self.rush_ray and self._clear_ray(ct, pos):
+                    return True
+                if self._heal(ct, pos):
+                    return True
                 return True
-            if self._heal(ct, pos):
-                return True
-            return True
 
         kind, bxy, facing, _stand = route[self.rush_i]
         bpos = Position(bxy[0], bxy[1])
@@ -608,6 +684,15 @@ class Player:
                 # it, or one of our own belts wandering into it. Advancing would leave us building
                 # a harvester to feed a Gunner that does not exist -- give the tile up and
                 # re-derive. Walking at it forever is how a siege spends 900 rounds on nothing.
+                self.rush_black.add(bxy)
+                self._drop_plan()
+                return True
+            if kind == "harvester" and not self._feeds_us(ct, bxy, occupant):
+                # Their producer on the deposit that was going to feed our turret, and not close
+                # enough to ours to feed it by accident. Stepping past it -- what this used to do
+                # -- leaves a Gunner that fires exactly zero times: measured on twins/a, the
+                # turret went up on round 28, the deposit was already vanguard's, and it sat
+                # unfed beside a full magazine of nothing until our Core fell on round 45.
                 self.rush_black.add(bxy)
                 self._drop_plan()
                 return True
@@ -653,6 +738,89 @@ class Player:
         except Exception:
             return False
 
+    def _feeds_us(self, ct, tile, entity_id):
+        """Does the building already on our deposit still supply the turret we built?
+
+        Ours does, obviously. So does THEIRS: a Harvester round-robins its stacks into every
+        orthogonally adjacent building regardless of team, so an enemy Harvester on the tile we
+        wanted is free ammunition rather than a lost plan -- provided our Gunner is actually
+        beside it. Anything else (a Barrier, a belt, a turret) delivers nothing and the plan is
+        dead.
+        """
+        if entity_id is None:
+            return False
+        try:
+            if ct.get_team(entity_id) == ct.get_team():
+                return True
+            if ct.get_entity_type(entity_id) != EntityType.HARVESTER:
+                return False
+        except Exception:
+            return False
+        if not self.rush_route:
+            return False
+        g = self.rush_route[0][1]
+        return abs(g[0] - tile[0]) + abs(g[1] - tile[1]) == 1
+
+    def _extend_battery(self, ct, pos):
+        """Pack another Gunner around the producer that already feeds the first one.
+
+        The route is finished and the rusher is otherwise idle for the rest of the match, so this
+        is the cheapest firepower on the board: a turret, no belt, no second walk. Only ever built
+        out of surplus, never out of the reserve the first Gunner depends on.
+        """
+        if siege is None or self.enemy_anchor is None or self.rush_feeder is None:
+            return False
+        if self.battery_n >= siege.MAX_BATTERY:
+            return False
+        try:
+            rnd = ct.get_current_round()
+        except Exception:
+            return False
+        if rnd - self.battery_round < BATTERY_EVERY:
+            return False
+        self.battery_round = rnd
+        # A producer that has been shot off its deposit feeds nothing, and a turret beside a hole
+        # in the ground is 12 Ti of permanent cost scale for zero damage.
+        feeder = Position(self.rush_feeder[0], self.rush_feeder[1])
+        if self._building_at(ct, feeder) is None:
+            try:
+                if ct.is_in_vision(feeder):
+                    return False
+            except Exception:
+                return False
+        try:
+            if ct.get_global_resources() < ct.get_gunner_cost() + BATTERY_RESERVE:
+                return False
+            w, h = ct.get_map_width(), ct.get_map_height()
+        except Exception:
+            return False
+        if not self._cpu_left(ct):
+            return False
+        walls = self.known_walls | self.pred_walls
+        ore = (self.known_ore | self.pred_ore) - self.known_walls
+        foot = set(siege.footprint(self.enemy_anchor))
+        blocked = walls | self.core_tiles | foot | self.enemy_core_tiles
+        buildings = (self.occupied - self.core_tiles) - self.enemy_core_tiles - foot
+        dist = self._flood(ct, (pos.x, pos.y), blocked | (buildings - {(pos.x, pos.y)}), w, h)
+        known = (self.seen | self.pred_seen) or None
+        try:
+            sites = siege.battery(w, h, self.enemy_anchor, (self.rush_feeder,), self.core_tiles,
+                                  walls, ore, buildings, self.rush_ray, dist,
+                                  known=known, blacklist=self.rush_black)
+        except Exception:
+            return False
+        if not sites:
+            return False
+        best = sites[0]
+        self.rush_route = tuple(self.rush_route) + (
+            ("gunner", best["gunner"], best["facing"], None),)
+        # Reserve the new lane too, so neither the next turret nor the rusher's own body ever
+        # ends up standing in it (G11).
+        self.rush_ray = frozenset(self.rush_ray) | best["ray"]
+        self.battery_n += 1
+        self.rush_dist = None
+        return True
+
     def _clear_ray(self, ct, pos):
         """Step off the firing lane. One round well spent: standing in it costs the whole match."""
         if not self._can_move_now(ct):
@@ -688,6 +856,10 @@ class Player:
         self.rush_i = 0
         self.rush_dist = None
         self.plan_round = -999
+        self.rush_feeder = None
+        self.rush_base_len = 0
+        self.battery_n = 0
+        self.battery_round = -999
 
     def _plan_rush(self, ct, pos):
         """Derive the firing geometry from what we have observed, and keep it current.
@@ -764,6 +936,10 @@ class Player:
         self.rush_ray = found["ray"]
         self.rush_i = 0
         self.rush_dist = None
+        self.rush_feeder = found["ore"]
+        self.rush_base_len = len(found["route"])
+        self.battery_n = 0
+        self.battery_round = -999
         try:
             g = found["gunner"]
             ct.write_store(S_RUSH_RAY,
@@ -807,9 +983,18 @@ class Player:
             # planner free to propose the same dead position again.
             if self.rush_stuck >= 12:
                 self.rush_stuck = 0
-                if self.rush_route:
+                if self.rush_route and self.rush_i >= self.rush_base_len > 0:
+                    # A battery turret we cannot walk to. Drop THAT step and keep the working
+                    # siege: throwing away a firing turret because its optional neighbour is
+                    # unreachable would be the worst trade on the board.
+                    self.rush_black.add(self.rush_route[self.rush_i][1])
+                    self.rush_route = self.rush_route[:self.rush_i]
+                    self.rush_dist = None
+                elif self.rush_route:
                     self.rush_black.add(self.rush_route[0][1])
-                self._drop_plan()
+                    self._drop_plan()
+                else:
+                    self._drop_plan()
             return True
         try:
             ct.move(step)
@@ -1086,9 +1271,10 @@ class Player:
         if g is None:
             self.rush_ray = frozenset()
             return
-        dx, dy = DIR_DELTAS[(raw >> 17) & 3]
+        idx = (raw >> 17) & 7
+        dx, dy = DIR_DELTAS[idx]
         self.rush_ray = frozenset(
-            (g[0] + k * dx, g[1] + k * dy) for k in range(1, siege.GUNNER_REACH + 1))
+            (g[0] + k * dx, g[1] + k * dy) for k in range(1, siege.REACH8[idx] + 1))
 
     # --- chain construction -------------------------------------------
 
@@ -1210,7 +1396,6 @@ class Player:
         self.phase = "seek"
         self.target_ore = None
         try:
-            ct.write_store(S_CONNECTED, ct.read_store(S_CONNECTED) + 1)
             ct.write_store(S_CLAIM_0 + (self.ordinal % N_CLAIMS), 0)
         except Exception:
             pass
@@ -1495,6 +1680,91 @@ class Player:
         return None
 
     # --- builder combat / upkeep ---------------------------------------
+
+    def _core_ring(self, ct):
+        """The twelve tiles that touch our 2x2 Core footprint, in bounds."""
+        if self.core_pos is None:
+            return ()
+        x0, y0 = self.core_pos.x, self.core_pos.y
+        foot = set(siege.footprint((x0, y0))) if siege is not None else set()
+        foot |= self.core_tiles
+        out = []
+        for dx in range(-1, 3):
+            for dy in range(-1, 3):
+                t = (x0 + dx, y0 + dy)
+                if t in foot or t in self.known_walls:
+                    continue
+                if not self._in_bounds(ct, Position(t[0], t[1])):
+                    continue
+                out.append(t)
+        return tuple(out)
+
+    def _hold_home(self, ct, pos):
+        """Heal and brick while the Core is under sustained fire. True if the round was spent.
+
+        Two things, in that order. Healing first because it is the cheapest damage-per-titanium
+        in the game and needs no build site: 4 HP for a flat 1 Ti, against a Gunner's 2 Ti for 10
+        damage on a turret that averages 5 damage a round. Bricking second because a Barrier on
+        the tile their turret needs costs 3 Ti and takes 6 Ti of shooting to clear -- and a
+        Gunner's ray stops at the FIRST building, so one wall shuts a whole lane.
+
+        The ring is deliberately never closed. A chain scores only by terminating on a tile
+        orthogonally adjacent to the footprint (G02); walling ourselves in would convert every
+        later harvester into a dead 20 Ti liability.
+        """
+        if self.rush_role is True or self.owed is not None or self.phase == "belt":
+            return False
+        try:
+            if ct.read_store(S_ALARM) != 1:
+                return False
+        except Exception:
+            return False
+        if self._heal(ct, pos):
+            return True
+        try:
+            if ct.get_current_round() < FORTIFY_FROM:
+                return False
+            cost = ct.get_barrier_cost()
+            if ct.get_global_resources() < cost + CHAIN_RESERVE:
+                return False
+        except Exception:
+            return False
+
+        ring = self._core_ring(ct)
+        free = [t for t in ring if self._building_at(ct, Position(t[0], t[1])) is None]
+        if len(free) <= FORTIFY_KEEP_OPEN:
+            return False
+        if self.enemy_anchor is not None:
+            ax, ay = self.enemy_anchor
+            free.sort(key=lambda t: ((t[0] - ax) ** 2 + (t[1] - ay) ** 2,
+                                     (t[0] - pos.x) ** 2 + (t[1] - pos.y) ** 2, t))
+        else:
+            free.sort(key=lambda t: ((t[0] - pos.x) ** 2 + (t[1] - pos.y) ** 2, t))
+        # Only the tiles on the side they actually walk in from are worth 3 Ti and a point of
+        # cost scale; the far half of the ring is where our own chains have to terminate.
+        for t in free[:len(free) - FORTIFY_KEEP_OPEN]:
+            target = Position(t[0], t[1])
+            if pos.distance_squared(target) == 1:
+                if not self._can_act(ct):
+                    return True
+                try:
+                    if ct.can_build_barrier(target):
+                        ct.build_barrier(target)
+                        return True
+                except Exception:
+                    pass
+                continue
+            if not self._can_move_now(ct):
+                return True
+            step = self._step_toward(ct, pos, target)
+            if step is None:
+                continue
+            try:
+                ct.move(step)
+                return True
+            except Exception:
+                continue
+        return False
 
     def _sabotage(self, ct, pos):
         """Fire at our own tile while standing on an enemy belt (G14) -- the only builder attack."""
