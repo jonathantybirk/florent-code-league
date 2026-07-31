@@ -142,7 +142,8 @@ Full field, all 15 maps, both sides, 180 games:
 | + more home harvesters | 157-23 (87%) |
 | + crowd-aware pathing, no home Gunner | 174-6 (97%) |
 | + heal triage, emergency repair crew, long belts | 175-5 (97%) |
-| + parasitise without owning a deposit; abandon denied tiles | **178-2 (99%)** |
+| + parasitise without owning a deposit; abandon denied tiles | 178-2 (99%) |
+| + shoot through destructible cover, spend idle bank, flank, econ 3 | **179-1 (99.4%)** |
 
 ## Two later corrections worth keeping
 
@@ -191,7 +192,190 @@ The whole field plays identically with `--tle 10` as without it, so the
 per-unit distance-field pathing is comfortably inside the server's 10 ms
 budget on this machine.
 
-## What still loses
+## Adversarial self-play: the measurement that was missing
+
+Every opponent on the branch attacks, and **none of them heals**. Since healing
+is what beats them, a 98% record against that field is partly a record against
+one blind spot. `bots/jon/probes/turtle` is Vanguard with the assault removed --
+barrier ring, repair crew, economy, and no Gunners at all. `strat1` cannot
+scratch it: zero Core damage in a full match.
+
+Vanguard beat it only **19-11**, with a Gunner in 57% of games arriving at
+round 39, and a median match length of 1000. That is the true measure of the
+siege, and it was invisible against the real field. Three changes took it to
+**30-0**, none of which the real field could have told us about.
+
+The cause: `_ray_to_core` demanded an *unobstructed* line, so a bricked Core
+ring made every firing position look illegal and the siege simply declined to
+exist. But a Barrier is 30 HP and a Gunner hits for 10 -- the wall is three
+shots, not immunity. Counting enemy buildings in the line as *cost* rather than
+as a veto (and preferring clear lines when they exist) moved it to **24-6**,
+ammunition delivered from 26.7 stacks to 56.8, first Gunner from round 39 to
+22, and median match length from 1000 to 124 -- with no change against the real
+field (178-2 either way).
+
+One ordering trap worth remembering: the Core is itself a building and sits in
+`solids`, so a blocker test written before the target test makes every ray stop
+dead on the thing it was aiming at.
+
+**Idle titanium is the most expensive thing on the board.** The Builder cap was
+only lifted when the Core was *under fire*, so against a passive opponent
+Vanguard banked titanium and stood still -- it fielded 4 Builders to the
+turtle's 8.9 and lost the tiebreak. Lifting the cap on a deep bank as well took
+the turtle match to **30-0** and doubled ammunition delivered again, 56.8
+stacks to 111.3. This is the same failure the Battlecode 2025 postmortems
+describe as "losing games despite having loads and loads of money".
+
+**Once the field is saturated, freeze a copy and play yourself.** At 178-2 and
+30-0 neither benchmark could resolve a further change. `bots/jon/probes/spar`
+is a frozen build, and self-play against it is exactly 15-15 by construction,
+so anything above 15 wins is a real improvement. That is how the last two
+changes were measured:
+
+| Change | vs frozen baseline |
+|---|---|
+| (calibration -- identical builds) | 15-15 |
+| flanking: successive attackers take opposite sides of the Core | 18-12 |
+| three of four opening Builders stay home | **19-11** |
+
+Flanking is the one idea taken from outside: Battlecode postmortems repeatedly
+note that a multi-angle assault splits the defence. Here it also defeats a
+specific denial -- attackers that all pick the same best tile queue behind one
+parked Builder.
+
+## Generalisation: maps nobody tuned against
+
+`maps/generated/` (Codex's generator) is the other half of the anti-overfitting
+story. All 24 pass a from-scratch check of every rule the specification
+actually states -- size 8..30, tiles in {empty, wall, ore}, terrain symmetric
+under one of the three allowed transforms, two 2x2 Cores that are counterparts
+under a symmetry the *terrain* also obeys, footprints clear and non-overlapping
+(`scratch/validate_maps.py`; the 15 competition maps pass too).
+
+They are **not** a representative sample, and the difference is the point:
+
+| | competition | generated |
+|---|---|---|
+| median area | 484 | 308 |
+| ore per 100 tiles | 2.75 | 2.53 |
+| median wall % | 5.0 | 7.1 |
+| median ore within 6 of own Core | 3.0 | 2.0 |
+| symmetry | 10 rot, 3 mirror-y, 1 mirror-x, 1 all | 6 rot, 10 mirror-y, 8 mirror-x |
+
+Smaller, wallier, less ore near the Cores, and the symmetry mix inverted. So
+92.9% there is a stress-test score, not a ladder prediction -- but it exposed
+two failures the competition maps never could:
+
+- **The assault had no "walk to the enemy" fallback.** With no forward deposit
+  and no visible enemy producer, attackers explored for a thousand rounds while
+  both economies idled to a third-tiebreak draw. They now close until the Core
+  is genuinely *in vision* -- a standoff measured in king moves parks a Builder
+  four tiles out, seeing none of the ring it came to shoot.
+- **A hard deposit cutoff gives up on maps with no ore near a Core.** Made
+  tiered instead: near deposits first, a far one as a last resort, and the far
+  tier suppressed entirely when the enemy already runs a producer we could
+  simply stand next to. Ungated, the far tier lured attackers away from
+  parasitism and cost 6 games of self-play.
+
+## Two latent bugs that only self-play exposed
+
+Neither changed the scoreboard much, and both would have been exploited by any
+stronger opponent:
+
+- **A state flag that latches and never clears.** The Core raised
+  `SLOT_HOME_UNDER_FIRE` below 85% health but never lowered it, and every
+  attacker without a battery converts to repair duty while it is set. One early
+  scratch therefore disabled the entire assault for the rest of the match --
+  which is exactly how a mirror match reaches round 1000 scoreless. Alarms need
+  hysteresis *and* an off switch.
+- **A Gunner cannot be built on the tile the Builder stands on.** Only Conveyors
+  and Splitters may share a tile with a Builder, and the tile an attacker walks
+  to in order to reach the Core ring is very often the tile it then wants to
+  shoot from. It has to step off first -- diagonally, because their barrier
+  ring routinely boxes it in on all four cardinals.
+
+`_extend_feed`, the conveyor creep meant to bridge a distant forward Harvester
+to a firing position, turned out to be **dead code**: zero conveyors built
+across five maps, because `_add_gunner` always "acted" first by taking one step
+toward a speculative parasite tile. Running the creep first does fire it, but
+it is worth about one conveyor a match and costs self-play, so the order stands
+and the creep remains the clearest piece of unfinished work.
+
+## Building a bot to beat Vanguard
+
+The most productive experiment of the session. Vanguard's siege needs exactly
+one thing: a free tile beside a producer with a firing line to the target Core.
+Two counters were built against that.
+
+**`probes/nemesis` -- deny the firing positions.** Mine our own nearby deposits
+first, brick every tile with a line to our Core (not just the twelve on the
+ring), repair at 4 HP a round against their 2, post Gunners, never attack. It
+does force the tiebreak -- median match length went from 101 to 256 rounds --
+but it loses the tiebreak, because wardens do not mine and its own belts feed
+the besieger anyway. **0-30.** Splitting Builders into miners and wardens, and
+buying more of them, both helped and neither was enough. Recorded as a
+negative result: pure denial cannot pay for itself here.
+
+**`probes/nemesis2` -- Vanguard plus the defensive Gunners it had deleted.**
+**16-14 against Vanguard**, and the diagnostics show it is not a defensive
+effect at all:
+
+| | nemesis2 | Vanguard |
+|---|---|---|
+| first Gunner | round 13, in 100% of games | round 42, in 50% |
+| ammunition delivered | 89.2 stacks | 34.7 |
+| Gunners built | 7.0 | 1.3 |
+
+Every attacker is a 40 HP Builder that **cannot shoot back**, so Gunners over
+the approach kill the enemy assault on arrival and *suppress their whole
+siege*. Our own then lands unopposed. The earlier measurement that removed
+these Gunners (51-9 without against 46-14 with) was taken against opponents
+whose assault was already dying to the barrier ring -- it measured a redundancy,
+not a weakness, and the conclusion did not survive an opponent built to punish
+it.
+
+The fix was ported back into Vanguard, which now beats its own previous build
+16-14 with the field and the generated maps unchanged. **The lesson is about
+method: a removal justified by measurement is only as good as the opponent that
+measured it. Re-test deletions against something purpose-built to exploit
+them.**
+
+## The counter loop, and the harness that makes it safe
+
+`scratch/gauntlet.py` scores a build against three groups at once, because the
+roster alone stopped being informative at 99%:
+
+- **roster** -- the seven real opponents;
+- **ancestors** -- every previous Vanguard, archived under `probes/vg_v*`.
+  Losing to your own last build is unambiguous in a way a saturated field
+  never is;
+- **counters** -- bots written specifically to beat the current build.
+
+Three counters were built, and two of them found real defects:
+
+| counter | idea | result | what it forced |
+|---|---|---|---|
+| `nemesis` | deny every firing position, never attack | 0-30 | nothing -- pure denial cannot pay for itself |
+| `reaver` | cut belts beyond the repair radius | 12-18 | `_scorch`, and `REPAIR_RADIUS` 4 to 7 |
+| `baiter` | plant Gunners beside producers with no line | **16-14** | relaxed Gunner placement |
+
+**`reaver`** exploited the fact that repairs stopped at four tiles while belts
+ran to twenty-one: a cut past that is severed for good. On aurora it took
+Vanguard's Conveyors for 3716 damage and out-delivered it 963 stacks to 256.
+Two fixes followed -- widening the radius, and **scorched earth**: destroy our
+own producer rather than let it feed a Gunner planted beside it, since a
+Harvester round-robins into every adjacent building regardless of owner.
+
+**`baiter`** then attacked that very fix -- a shotless Gunner beside our
+Harvester makes us burn a 20 Ti building for their 10. Tightening the trigger
+to "a Gunner that can actually reach the Core" did **not** recover the match,
+which was the useful part: the bait was never the edge. Baiter simply built
+8.1 Gunners to our 6.8 and delivered 79.4 ammunition stacks to our 59.9,
+because **a Gunner beside an enemy producer is worth building even with no
+line to the Core** -- it is fed by them, it shoots what walks past, and lines
+open as buildings die. Adopting that rule was the actual improvement.
+
+Each generation beats the last: v1 23-7, v2 20-10, v3 16-14.
 
 Two games out of 180, both Cores that eventually fall around round 240 after
 the siege has stalled. Remaining ideas, in rough order of expected value:

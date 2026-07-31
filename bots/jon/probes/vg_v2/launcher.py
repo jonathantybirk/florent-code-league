@@ -27,13 +27,6 @@ def run(player, ct: Controller) -> None:
 
 
 def _run(player, ct):
-    # ct.launch() does not check ownership: a Launcher can pick up an *enemy*
-    # Builder standing beside it and hurl it five tiles for no ammunition. Every
-    # bot here attacks with Builders on foot, so throwing one home costs them
-    # the entire walk back and costs us nothing. It outranks ferrying our own.
-    if _repel(ct):
-        player.idle = 0
-        return
     wanted = ct.read_store(SLOT_LAUNCH_ID)
     if not wanted:
         # A Launcher contributes 10% to the shared cost scale for as long as
@@ -68,31 +61,6 @@ def _run(player, ct):
         return
     ct.launch(origin, best[1])
     ct.write_store(SLOT_LAUNCH_ID, 0)
-
-
-def _repel(ct: Controller) -> bool:
-    """Throw an adjacent enemy Builder as far away as the arm reaches."""
-    mine = ct.get_team()
-    here = ct.get_position()
-    for unit in ct.get_nearby_units(2):
-        if ct.get_team(unit) == mine:
-            continue
-        origin = ct.get_position(unit)
-        best = None
-        for tile in ct.get_nearby_tiles(LAUNCH_RANGE_SQ):
-            try:
-                if not ct.can_launch(origin, tile):
-                    continue
-            except GameError:
-                continue
-            # Furthest from us; we are posted next to what we are defending.
-            score = (-tile.distance_squared(here), tile.x, tile.y)
-            if best is None or score < best[0]:
-                best = (score, tile)
-        if best is not None:
-            ct.launch(origin, best[1])
-            return True
-    return False
 
 
 def _destination(ct: Controller, here: Position) -> Position:

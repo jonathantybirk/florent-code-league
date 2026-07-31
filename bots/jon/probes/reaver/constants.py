@@ -58,10 +58,7 @@ FORTIFY_ROUND = 5
 
 
 # How far from our Core a damaged building is still worth a Builder's round.
-# A belt cut beyond the repair crew's reach is severed for good, and a
-# purpose-built raider (`probes/reaver`) exploited exactly that: it cut
-# lines past the old radius of 4 and out-delivered us four to one.
-REPAIR_RADIUS = 7
+REPAIR_RADIUS = 4
 
 # Below this share of its hit points the Core outranks everything else.
 CORE_PANIC_PERCENT = 55
@@ -86,6 +83,6 @@ SIEGE_LINE_MAX = 8
 # assault is Builders with no ranged attack.
 HOME_GUNNERS = 2
 
-# Their repair crew mends close to their Core, so a belt cut beyond this is
-# severed for good.
+# Their repair crew only mends within four tiles of their Core, so a belt
+# cut beyond this is severed for good.
 RAID_MIN_GAP = 5

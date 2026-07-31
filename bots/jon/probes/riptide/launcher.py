@@ -27,10 +27,8 @@ def run(player, ct: Controller) -> None:
 
 
 def _run(player, ct):
-    # ct.launch() does not check ownership: a Launcher can pick up an *enemy*
-    # Builder standing beside it and hurl it five tiles for no ammunition. Every
-    # bot here attacks with Builders on foot, so throwing one home costs them
-    # the entire walk back and costs us nothing. It outranks ferrying our own.
+    # Hurling a raider home outranks ferrying our own: it is free, it cannot
+    # miss, and it costs them the entire walk back.
     if _repel(ct):
         player.idle = 0
         return

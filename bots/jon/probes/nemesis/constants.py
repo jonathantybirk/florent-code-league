@@ -25,7 +25,7 @@ LAUNCH_RANGE_SQ = 26
 # Three of the first four Builders stay home. The siege is supply-rich
 # once a battery lands, so the marginal Builder is worth more mining and
 # repairing than queueing for a firing position.
-ECONOMY_BUILDERS = 3
+ECONOMY_BUILDERS = 99   # every Builder stays home
 
 SLOT_BUILDER_TICKET = 0
 CLAIM_SLOTS = range(1, 6)        # home ore claims
@@ -58,10 +58,7 @@ FORTIFY_ROUND = 5
 
 
 # How far from our Core a damaged building is still worth a Builder's round.
-# A belt cut beyond the repair crew's reach is severed for good, and a
-# purpose-built raider (`probes/reaver`) exploited exactly that: it cut
-# lines past the old radius of 4 and out-delivered us four to one.
-REPAIR_RADIUS = 7
+REPAIR_RADIUS = 4
 
 # Below this share of its hit points the Core outranks everything else.
 CORE_PANIC_PERCENT = 55
@@ -82,10 +79,13 @@ LONG_LINE_RESERVE = 250
 BLOCKED_TILE_PATIENCE = 6
 SIEGE_LINE_MAX = 8
 
-# Gunners posted over our own approach. Suppression, not defence: the enemy
-# assault is Builders with no ranged attack.
-HOME_GUNNERS = 2
+# Gunners posted over our own approach. Vanguard has none and cannot answer
+# them: a Builder only damages the tile it stands on.
+HOME_GUNNERS = 3
 
-# Their repair crew mends close to their Core, so a belt cut beyond this is
-# severed for good.
-RAID_MIN_GAP = 5
+# How far out to deny firing positions. A Gunner reaches r^2 = 13, so any tile
+# within four of the Core that has a clear line to it is a threat.
+DENIAL_RADIUS = 5
+
+# Builders dedicated purely to income; the rest are wardens.
+MINERS = 3

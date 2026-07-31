@@ -11,7 +11,11 @@ CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 # Every Builder adds 20% to the shared cost scale, which taxes every later
 # Conveyor, Gunner and Harvester alike. Four Builders already put a Gunner at
 # 18 Ti; a fifth would buy less siege than it costs.
-MAX_BUILDERS = 4
+# Nemesis buys no siege, so its titanium has nowhere else to go and the
+# cost scale only taxes Barriers at 3 Ti. Denial is a race against their
+# first Gunner at about round 30, and one warden cannot brick thirty
+# tiles in that time.
+MAX_BUILDERS = 8
 EMERGENCY_BUILDERS = 14
 RICH_BUILDERS = 8
 

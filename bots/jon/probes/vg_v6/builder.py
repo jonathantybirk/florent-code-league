@@ -38,7 +38,7 @@ from constants import (
 )
 from utils import pack_pos
 
-DEBUG = bool(os.environ.get("VANGUARD_DEBUG"))
+DEBUG = False  # archived build
 
 # A single trunk saturates at four Harvesters, but deposits far enough apart
 # get their own line into the Core, and once the barrier ring and the repair
