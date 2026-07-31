@@ -38,7 +38,7 @@ from constants import (
 )
 from utils import pack_pos
 
-DEBUG = bool(os.environ.get("VANGUARD_DEBUG"))
+DEBUG = False  # archived
 
 # A single trunk saturates at four Harvesters, but deposits far enough apart
 # get their own line into the Core, and once the barrier ring and the repair
@@ -743,27 +743,17 @@ def _add_gunner(p, ct, without_travel=False):
     a forward deposit and an optimistic True starves the whole siege.
     """
     core_tiles = set(world.footprint(p.enemy_core))
-    # Any tile with a firing line will do now. Under 2.2.0 a Gunner had to sit
-    # beside a producer, because ammunition was a physical stack somebody had
-    # to hand it; 2.3.3 feeds every turret from one team-wide pool, so the only
-    # question left is whether the tile can see the Core.
-    seats = set()
-    for tile in core_tiles:
-        for dx in range(-3, 4):
-            for dy in range(-3, 4):
-                spot = (tile[0] + dx, tile[1] + dy)
-                if world.dist_sq(spot, tile) <= GUNNER_RANGE_SQ:
-                    seats.add(spot)
     candidates = []
-    for spot in sorted(seats):
-        if True:
+    for feeder in _supply_tiles(p):
+        for delta in D4_DELTAS:
+            spot = (feeder[0] + delta[0], feeder[1] + delta[1])
             if not world.inside(p, spot) or spot in core_tiles:
                 continue
             if spot in p.blacklist or spot in p.gunners:
                 continue
             if spot in world.known_walls(p) or spot in world.known_ores(p):
                 continue
-            if spot not in world.known_seen(p):
+            if not _feeder_outputs_into(p, feeder, spot):
                 continue
             aim = _ray_to_core(p, spot, core_tiles)
             if aim is None:
