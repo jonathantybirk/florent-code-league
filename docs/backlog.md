@@ -20,7 +20,20 @@ memorised**, with zero core kills for us.
 | **D8** | **Store protocol v1** — single-writer Core slots, max-register merges | task 5.3 | Partially built; claims are ad hoc. |
 
 Correctly dropped after measurement (not debt): barrier denial, launcher relay for economy, magazine
-discipline, atlas ore-seeding, chain-length ore ranking.
+discipline, atlas ore-seeding, chain-length ore ranking, **exposure term in ore selection**, **home-line
+length cap**, **launcher ferry for our own rusher**, **danger-weighted Dijkstra**.
+
+### Why the two economy levers died, and the finding that killed them
+
+The premise — that our economy reaches into contested ground and arms their turrets — is **wrong**. A
+histogram of where the anchoring building actually sits on the our-Core→enemy-Core axis (0 = ours,
+1 = theirs) over 131 adjacencies: **mean 0.19, with 111 of 131 inside 0.3.** Our whole economy averages
+0.266 and even its furthest building averages 0.502 — we barely touch the midline.
+
+`vanguard` walks into **our** base and builds against the belts that must terminate on our own Core ring.
+Those tiles are forced by G02 (a chain one tile short scores zero), so **no ore-selection rule can move
+them**. The exposure term did exactly what it claimed — buildings past the midline −19% — and moved 0 games.
+The home-line cap was flat from 5 upward and cost real income at 4.
 
 ---
 
