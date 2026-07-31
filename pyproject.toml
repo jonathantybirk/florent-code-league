@@ -5,7 +5,7 @@ description = "Bot for the Florent Code League 2026"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "fcode==2.2.0",
+    "fcode==2.3.3",
 ]
 
 [tool.uv]
