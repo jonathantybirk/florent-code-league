@@ -1,7 +1,9 @@
 # Generated map testing
 
 The synthetic maps under `maps/generated/` are generalisation tests, not
-predictions of the competition's hand-authored map style.
+predictions of the competition's hand-authored map style. New profile corpora
+are written into new subdirectories; the legacy corpus is never moved during a
+benchmark.
 
 ## Known hard constraints
 
@@ -37,6 +39,25 @@ guarantees. Use `validate --rules-only` to check only the known hard
 constraints.
 
 ## Commands
+
+Generate both profiled corpora:
+
+```bash
+uv run python maps/generated/generate_profiles.py all
+```
+
+The profiles are:
+
+- `representative/`: two randomized variants of every official archetype,
+  preserving the pool's dimensions, Core anchors, symmetry class, wall and ore
+  counts, initially visible ore, and round-one symmetry ambiguity;
+- `stress/`: broad legal fuzz maps plus adversarial ambiguity cases.
+
+The adversarial cases are intentionally mirror-x maps where rotation and
+mirror-x both survive round one and imply the same enemy-Core anchor. Rotation
+is nevertheless false and predicts different unseen terrain. This is distinct
+from a genuinely dual-symmetric map: if two transforms are both real
+symmetries, they cannot disagree on the predicted terrain value.
 
 Generate the checked-in deterministic corpus:
 
