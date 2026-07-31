@@ -2,7 +2,7 @@
 
 from fcode import Controller, Direction, Environment, Position
 
-from constants import (ECONOMY_BUILDERS, OPENING_HOME_BUILDERS,
+from constants import (AMMO_FLOOR, AMMO_TARGET, ECONOMY_BUILDERS,
                        EMERGENCY_RESERVE,
                        HOME_ALARM_PERCENT, RICH_RESERVE,
                        SLOT_HOME_UNDER_FIRE)
@@ -59,7 +59,7 @@ def run(player, ct: Controller) -> None:
     if player.spawned >= cap:
         return
     cost = ct.get_builder_bot_cost()
-    reserve = 0 if player.spawned < OPENING_HOME_BUILDERS else 60
+    reserve = 0 if player.spawned < ECONOMY_BUILDERS else 60
     if ct.get_global_resources() < cost + reserve:
         return
 
@@ -77,14 +77,7 @@ def run(player, ct: Controller) -> None:
     player.spawned += 1
 
 
-def _away_from_home(ct: Controller) -> Position:
-    """Head for the far corner; the Builder refines this once it can see."""
-    anchor = ct.get_position()
-    return Position(ct.get_map_width() - 2 - anchor.x,
-                    ct.get_map_height() - 2 - anchor.y)
-
-
-def _keep_ammunition(ct) -> None:
+def _keep_ammunition(ct: Controller) -> None:
     """Turn titanium into ammunition, or no turret we own can fire at all.
 
     Engine 2.3.3 replaced 2.2.0's per-turret ammunition with a global pool the
@@ -93,10 +86,17 @@ def _keep_ammunition(ct) -> None:
     """
     try:
         held = ct.get_global_ammo()
-        if held >= 120:
+        if held >= AMMO_TARGET:
             return
-        amount = min(120 - held, ct.get_global_resources() - 60)
+        amount = min(AMMO_TARGET - held, ct.get_global_resources() - AMMO_FLOOR)
         if amount > 0 and ct.can_convert_ammo(amount):
             ct.convert_ammo(amount)
     except Exception:  # noqa: BLE001 - never let this kill the Core
         return
+
+
+def _away_from_home(ct: Controller) -> Position:
+    """Head for the far corner; the Builder refines this once it can see."""
+    anchor = ct.get_position()
+    return Position(ct.get_map_width() - 2 - anchor.x,
+                    ct.get_map_height() - 2 - anchor.y)
