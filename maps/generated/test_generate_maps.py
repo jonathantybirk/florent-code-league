@@ -8,6 +8,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import generate_maps as maps
+import generate_profiles as profiles
 
 
 class GeneratorTests(unittest.TestCase):
@@ -103,6 +104,51 @@ class GeneratorTests(unittest.TestCase):
         self.assertTrue(
             any("reachable ore" in error for error in maps.validate(game_map))
         )
+
+    def test_official_pool_features_and_symmetry_mix(self):
+        official = sorted(profiles.OFFICIAL.glob("*.map26"))
+        extracted = [profiles.features(path) for path in official]
+        self.assertEqual(15, len(extracted))
+        symmetry_counts = {
+            symmetry: sum(
+                item.symmetries == (symmetry,) for item in extracted
+            )
+            for symmetry in maps.Symmetry
+        }
+        self.assertEqual(10, symmetry_counts[maps.Symmetry.ROTATIONAL])
+        self.assertEqual(1, symmetry_counts[maps.Symmetry.HORIZONTAL])
+        self.assertEqual(3, symmetry_counts[maps.Symmetry.VERTICAL])
+        self.assertEqual(
+            1, sum(len(item.symmetries) > 1 for item in extracted)
+        )
+
+    def test_adversarial_anchor_ambiguity_is_real(self):
+        game_map = profiles.generate_adversarial_ambiguity(
+            random.Random(117), 0
+        )
+        self.assertEqual(
+            [maps.Symmetry.HORIZONTAL],
+            maps.matching_symmetries(game_map),
+        )
+        for team in (0, 1):
+            survivors = profiles.surviving_round_one(game_map, team)
+            self.assertIn(maps.Symmetry.ROTATIONAL, survivors)
+            self.assertIn(maps.Symmetry.HORIZONTAL, survivors)
+            core = next(core for core in game_map.cores if core.team == team)
+            self.assertEqual(
+                maps.transform_core_anchor(
+                    core.anchor,
+                    game_map.width,
+                    game_map.height,
+                    maps.Symmetry.ROTATIONAL,
+                ),
+                maps.transform_core_anchor(
+                    core.anchor,
+                    game_map.width,
+                    game_map.height,
+                    maps.Symmetry.HORIZONTAL,
+                ),
+            )
 
 
 if __name__ == "__main__":
