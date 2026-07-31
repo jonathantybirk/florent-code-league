@@ -294,6 +294,7 @@ class Player:
         self.vaults = 0
         self.vault_wait = 0
         self.thrown = set()            # ids this Launcher has already ferried -- see _run_launcher
+        self.threat = False            # latched: somebody has actually come for us
 
         self.errors = 0
 
@@ -397,12 +398,21 @@ class Player:
         # can tell the team the base is being ground down. Once raised the alarm stays raised: an
         # opponent that has walked a turret up to our footprint is not going to change its mind,
         # and a flapping alarm would send the economy back and forth doing neither job.
+        # Slot 3 now carries two levels, and the old test (`== 1`) still means exactly what it
+        # meant. 1 = the Core is below ALARM_PERCENT and the economy should come home. 2 = the Core
+        # has taken ANY damage at all. Level 2 exists because a Builder Bot cannot damage a Builder
+        # Bot or a Core -- it has no attack except range-0 on its own tile (G13/G14) -- so a single
+        # hit point off our Core PROVES the enemy already has a fed turret bearing on us. Zero false
+        # positives, and it fires many rounds before the 12% threshold does.
         hurt = False
         try:
-            hurt = ct.get_hp() * 100 < ct.get_max_hp() * ALARM_PERCENT
-            if hurt or ct.read_store(S_ALARM) == 1:
+            cur = ct.read_store(S_ALARM)
+            hp, full = ct.get_hp(), ct.get_max_hp()
+            hurt = hp * 100 < full * ALARM_PERCENT or cur == 1
+            if hurt:
                 ct.write_store(S_ALARM, 1)
-                hurt = True
+            elif hp < full or cur >= 1:
+                ct.write_store(S_ALARM, 2)
         except Exception:
             hurt = False
 
@@ -883,6 +893,8 @@ class Player:
         """
         if self.enemy_anchor is None or goal is None:
             return False
+        if not self._under_attack(ct, pos):
+            return False
         if abs(pos.x - goal[0]) + abs(pos.y - goal[1]) < VAULT_MIN_GAP:
             return False
         if self._launcher_adjacent(ct, pos):
@@ -921,6 +933,63 @@ class Player:
             return False
         self.vaults += 1
         return True
+
+    def _under_attack(self, ct, pos):
+        """Has anyone actually come for us? Latches True; the answer never becomes False again.
+
+        The relay is not free. Three Launchers are ~80 Ti and +30 points of PERMANENT global cost
+        scale (G07), and that bill is why the unconditional version is +9 against `lockin` and
+        MINUS SIX against `jonbot` on the same fifteen maps -- against an opponent that never
+        walks a turret at us we buy tempo we have no use for and hand back the economy. So the
+        relay is armed by evidence, not by hope.
+
+        Three tells, cheapest first, and none of them can fire on an opponent that is not attacking:
+
+        1. Our Core has lost a hit point. A Builder Bot has no attack except range-0 on its own
+           tile (G13/G14), so it cannot scratch a Core or another builder -- any damage at all
+           PROVES a fed turret already bears on us. Zero false positives.
+        2. This builder has lost a hit point, for the same reason.
+        3. An enemy Builder Bot standing strictly on OUR half. Their economy has no reason to be
+           there; a builder crossing the midline is the classic rush tell, and it fires long
+           before the first shot lands.
+        """
+        if self.threat:
+            return True
+        try:
+            if ct.read_store(S_ALARM) >= 1:
+                self.threat = True
+                return True
+        except Exception:
+            pass
+        try:
+            if ct.get_hp() < ct.get_max_hp():
+                self.threat = True
+                return True
+        except Exception:
+            pass
+        if self.core_pos is None or self.enemy_anchor is None:
+            return False
+        if not self._cpu_left(ct):
+            return False
+        try:
+            units = ct.get_nearby_units()
+        except Exception:
+            return False
+        cx, cy = self.core_pos.x, self.core_pos.y
+        ex, ey = self.enemy_anchor
+        for uid in units:
+            try:
+                if ct.get_team(uid) == ct.get_team():
+                    continue
+                if ct.get_entity_type(uid) != EntityType.BUILDER_BOT:
+                    continue
+                p = ct.get_position(uid)
+            except Exception:
+                continue
+            if ((p.x - cx) ** 2 + (p.y - cy) ** 2) < ((p.x - ex) ** 2 + (p.y - ey) ** 2):
+                self.threat = True
+                return True
+        return False
 
     def _launcher_adjacent(self, ct, pos):
         for dx in (-1, 0, 1):
