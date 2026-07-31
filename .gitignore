@@ -4,5 +4,3 @@ __pycache__/
 .DS_Store
 *.replay26
 .vscode/
-/analysis/
-/scripts/
