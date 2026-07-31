@@ -296,7 +296,15 @@ def bfs_step(p, source, goals, treat_unseen_as_open=True):
 
 
 def distance_field(p, goals):
-    """Walk distance from every reachable tile to the nearest goal."""
+    """Walk distance from every reachable tile to the nearest goal.
+
+    Deliberately eight-connected even though 2.3.3 moves are cardinal-only, so
+    a diagonal really costs two. Making the field four-connected -- the
+    "correct" version -- measured worse, 24-18 against 28-14. The optimistic
+    field seems to give a smoother gradient with fewer plateaus for the
+    sidestep rule to get stuck on; the move loop only ever emits legal cardinal
+    moves either way.
+    """
     blocked = blocked_tiles(p)
     dist = {g: 0 for g in goals if inside(p, g)}
     queue = deque(dist)

@@ -89,3 +89,7 @@ HOME_GUNNERS = 2
 # Their repair crew mends close to their Core, so a belt cut beyond this is
 # severed for good.
 RAID_MIN_GAP = 5
+
+# Ammunition is a global pool the Core fills from titanium 1:1, once a turn.
+AMMO_TARGET = 120
+AMMO_FLOOR = 60
