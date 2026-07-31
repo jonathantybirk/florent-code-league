@@ -163,6 +163,14 @@ CPU_BUDGET_US = 6000
 REPLAN_TILES = 24     # newly observed tiles that make the geometry worth recomputing
 REPLAN_ROUNDS = 10    # ...and a floor under it, so a stalled rusher still re-examines the board
 
+# Rounds a rusher will stand on a LEGAL, orthogonally adjacent build tile whose `can_build_*`
+# keeps answering False before it gives that step up. Deliberately long: the usual cause is that
+# the economy has not banked the turret's cost yet, and abandoning a firing position over a
+# temporary shortfall costs far more than waiting it out. It exists only so that a build which is
+# PERMANENTLY illegal -- MAX_TEAM_UNITS reached, or a Builder Bot parked on the target tile --
+# cannot silently freeze the rusher for the remaining nine hundred rounds.
+BUILD_PATIENCE = 45
+
 # Titanium left in the bank after buying a battery turret. Was 40, which on 2.3.3 was the single
 # thing stopping the battery ever being built: with the route down to one Gunner the economy is
 # released the moment it goes up and immediately spends the bank on harvesters, so 40 Ti of
@@ -330,6 +338,7 @@ class Player:
         self.rush_ray = frozenset()
         self.rush_target = None        # enemy anchor the current route was planned against
         self.rush_black = set()        # firing tiles we walked at and could not take
+        self.build_wait = 0            # rounds spent beside a build `can_build_*` keeps refusing
         self.plan_anchor = None        # enemy anchor the last plan ATTEMPT was made against
         self.plan_round = -999
         self.plan_tiles = -1
@@ -374,33 +383,6 @@ class Player:
     # ------------------------------------------------------------------
     # Guarded controller access
     # ------------------------------------------------------------------
-
-    def _home_from_store(self, ct):
-        """Our own Core anchor as published by the Core, or None if it has not published yet.
-
-        THE SENTINEL USED TO BE ZERO. `_run_core` wrote `pos.x` and `pos.y` raw and every reader
-        accepted them only `if x > 0 or y > 0` -- so a Core anchored at literal (0, 0) published
-        a pair the readers could not tell apart from an empty store, and `self.core_pos` stayed
-        None for the whole match.
-
-        On the 15-map pool no Core was ever within two tiles of a border and that was free. Three
-        of the six NEW maps anchor Team A's Core at exactly (0, 0) -- jackpot, sweden and vase
-        (G64a) -- and on those the consequence is total, because `core_pos is None` is the first
-        line of `_is_rusher`: no builder ever claims the rush, `_infer_enemy_core` returns
-        immediately, no plan is ever made and NOT ONE GUNNER IS EVER BUILT. Measured with a
-        debug build that resigns from the rusher at round 45: on jackpot/a, sweden/a and vase/a
-        it never fired, because there was no rusher; on all nine other new-map orientations it
-        did. In the 42-game sweeps those three games run the full 1000 rounds with zero shots.
-
-        The Core now publishes anchor+1 and this is the only place that decodes it.
-        """
-        try:
-            x, y = ct.read_store(S_CORE_X), ct.read_store(S_CORE_Y)
-        except Exception:
-            return None
-        if x <= 0 or y <= 0:
-            return None
-        return (x - 1, y - 1)
 
     def _in_bounds(self, ct, pos):
         try:
@@ -467,12 +449,8 @@ class Player:
     def _run_core(self, ct):
         pos = ct.get_position()
         self.core_pos = pos
-        # BIASED BY ONE. The store is u32 and 0 is the "nothing written yet" value, so a raw
-        # coordinate of 0 is indistinguishable from an empty slot -- and on the 21-map pool
-        # `jackpot`, `sweden` and `vase` all anchor Team A's Core at literal (0, 0) (G64a). See
-        # `_home_from_store`, which is where that cost us the entire offence on three maps.
-        ct.write_store(S_CORE_X, pos.x + 1)
-        ct.write_store(S_CORE_Y, pos.y + 1)
+        ct.write_store(S_CORE_X, pos.x)
+        ct.write_store(S_CORE_Y, pos.y)
         self._top_up_ammo(ct)
 
         # The Core is the one unit that can read its own hit points, so it is the one unit that
@@ -647,9 +625,12 @@ class Player:
             except Exception:
                 self.ordinal = 0
         if self.core_pos is None:
-            home = self._home_from_store(ct)
-            if home is not None:
-                self.core_pos = Position(home[0], home[1])
+            try:
+                x, y = ct.read_store(S_CORE_X), ct.read_store(S_CORE_Y)
+                if x > 0 or y > 0:
+                    self.core_pos = Position(x, y)
+            except Exception:
+                pass
         self._load_atlas(ct)
 
         self._observe(ct, pos)
@@ -912,17 +893,28 @@ class Player:
                 self.rush_i += 1
                 self.rush_dist = None
                 self.rush_stuck = 0
-            # NOT GIVEN UP ON. `can_build_*` refusing from a legal tile is nearly always "not
-            # enough titanium yet" -- the normal state of a rusher that has walked ahead of its
-            # funding, and one it must be allowed to wait out, because the economy is holding
-            # RUSH_RESERVE for exactly this purchase. A bounded give-up was written for this
-            # branch (BUILD_PATIENCE = 45 rounds, then blacklist the tile and re-plan) because
-            # the branch spends the round either way and never touches `rush_stuck`, so a
-            # permanently illegal build -- MAX_TEAM_UNITS = 50 reached, or a Builder Bot parked
-            # on the target tile -- would freeze the rusher exactly the way the diagonal bug did.
-            # It MEASURED WORSE: 29-13 against 31-11 over 42 mirrored games vs `vanguard`, same
-            # 28 core kills, 112 fewer shots delivered. It was abandoning firing positions that
-            # were only waiting to be paid for. Left out, and left documented.
+                self.build_wait = 0
+            else:
+                # `can_build_*` refused from a LEGAL tile. Nearly always "not enough titanium
+                # yet" -- the normal state of a rusher that has walked ahead of its funding, and
+                # a state it must be allowed to wait out, because the economy is holding
+                # RUSH_RESERVE for exactly this purchase.
+                #
+                # But it is not always temporary, and this branch spends the round either way,
+                # never touching `rush_stuck`, so nothing else can ever notice. `can_build_*`
+                # also gates on MAX_TEAM_UNITS = 50 -- which a bot laying conveyors reaches --
+                # and returns False whenever a Builder Bot is standing on the target tile, ours
+                # or theirs. A rusher waiting on either of those has deleted itself for the rest
+                # of the match, which is exactly the shape the diagonal bug had. Generous, so a
+                # funding wait is never mistaken for a permanent one, but bounded.
+                self.build_wait += 1
+                if self.build_wait >= BUILD_PATIENCE:
+                    self.build_wait = 0
+                    if self.rush_i > 0:
+                        self._abort_segment(bxy)
+                    else:
+                        self.rush_black.add(bxy)
+                        self._drop_plan()
             return True
 
         # Still in transit to the firing tile: a Launcher hop buys six tiles for two rounds.
@@ -1202,7 +1194,13 @@ class Player:
         around while our builder stands beside it waiting has traded six of our tiles for five of
         theirs, at a loss.
         """
-        home = self._home_from_store(ct)
+        home = None
+        try:
+            hx, hy = ct.read_store(S_CORE_X), ct.read_store(S_CORE_Y)
+            if hx > 0 or hy > 0:
+                home = (hx, hy)
+        except Exception:
+            home = None
         if home is None:
             return False
         foe = None
@@ -2244,9 +2242,7 @@ class Player:
         never landed a shot, and because the loop committed to the single best candidate and
         returned False when `can_fire` refused it, one enemy builder standing beside our parked
         rusher SHADOWED the enemy Core on the other side of it, every round, for the rest of the
-        match. Measured over 42 games against `vanguard`, which swarms builders around its own
-        Core: this method fired ZERO times a game. Candidates are now tried in order until one is
-        legal.
+        match. Candidates are now tried in order until one is legal.
 
         Targets in priority order:
           1. an enemy CONVEYOR or SPLITTER. 20 HP, and cutting one makes every harvester upstream
@@ -2270,6 +2266,11 @@ class Player:
             t = pos.add(d)
             if not self._in_bounds(ct, t):
                 continue
+            # A BUILDING is the only thing a Builder Bot's shot can touch. Probed live on
+            # `showdown` with `bots/probes/botshot` against a parked enemy builder standing on
+            # bare ground: `canfire=False`, `fire` -> `GameError: Cannot fire`, target HP 40
+            # unchanged. The engine docstring means exactly what it says -- "only damage the
+            # building on it" -- so an enemy Builder Bot is not a target, it is a bystander.
             eid = self._building_at(ct, t)
             if not self._is_enemy(ct, eid):
                 continue
@@ -2281,6 +2282,8 @@ class Player:
             if (t.x, t.y) in self.enemy_core_tiles or kind == EntityType.CORE:
                 rank = 3
             elif kind == EntityType.CONVEYOR or kind == EntityType.SPLITTER:
+                # 20 HP, and cutting it zeroes every harvester upstream of it for the rest of the
+                # match (G02). Nothing else this shot can reach returns anything like that.
                 rank = 0
             elif kind == EntityType.HARVESTER:
                 rank = 1
@@ -2290,9 +2293,10 @@ class Player:
         if not cands:
             return False
         cands.sort()
-        # Tried in order rather than committing to the head of the list: `can_fire` can refuse the
-        # best candidate for reasons this side cannot see, and returning False there silently
-        # skips targets that ARE legal.
+        # Try them in order rather than committing to the best one. `can_fire` can refuse the
+        # head of the list for reasons this side cannot see, and returning False there would
+        # silently skip a target that IS legal -- which is how the old bot-first ordering
+        # shadowed the enemy Core with an adjacent enemy builder every round it stood beside one.
         for _rank, _x, _y, t in cands:
             try:
                 if not ct.can_fire(t):
