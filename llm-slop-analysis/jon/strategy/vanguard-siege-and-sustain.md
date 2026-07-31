@@ -394,3 +394,98 @@ the rest are reproducible. Vanguard itself was made deterministic by
 tie-breaking every sort and `min()` on coordinates -- the engine does not
 promise an order for its `get_nearby_*` queries, and relying on one made whole
 matches irreproducible.
+
+## Mechanics probed directly (rather than reasoned about)
+
+Three were confirmed against the engine with throwaway probe bots. Only one of
+them pays, which is exactly why they are written down: "it is in the rulebook,
+so it must be good" is how the Sentinel mistake happened twice.
+
+**Launchers throw *enemy* Builders.** `ct.launch()` does not check ownership. A
+Launcher planted beside an enemy Builder reported 61 legal destinations and
+hurled it five tiles, for no ammunition and a one-round cooldown. Every bot in
+this repository attacks by walking Builders in -- they *are* the delivery
+mechanism for the whole siege -- so a Launcher on the approach deletes the
+assault. **Kept.** Vanguard repels with the Launchers it already builds for its
+own ferry, which costs nothing extra.
+
+**Sentinels pierce buildings.** With a Barrier occupying the tile at +1,
+`can_fire_from` reports that a Gunner cannot reach +2 or +3 and a Sentinel
+reaches both. A Sentinel also covers **17 tiles to a Gunner's 3** and can fire
+at empty tiles, where a Gunner needs an occupant. The earlier dismissal on
+damage-per-titanium (1.8 against 5) was simply the wrong calculation -- it
+ignored geometry.
+
+*Not* kept: at 30 Ti and 10 ammunition a shot it lost 7 games against the
+roster (jonbot 29-1 to 24-6) and gained nothing against the strongest opponent.
+**But the strategic consequence stands: a Barrier ring does not protect a Core
+from Sentinels.** Our entire defence assumes rays stop at the first building.
+Nobody currently builds Sentinels; the day someone does, the ring is worthless.
+
+**A Conveyor beside an enemy Harvester collects their titanium.** A tap planted
+next to a `strat1` Harvester held `ResourceType.TITANIUM` within four rounds. It
+generalises parasitism: a tap can carry their output to a Gunner placed
+anywhere a line exists, instead of needing a firing position adjacent to the
+Harvester itself. *Not* kept -- 12-18 with long taps and 13-17 with taps capped
+at three tiles, against 14-16 without. Every tile of such a belt sits inside
+their base, under their Gunners, repaired by nobody.
+
+## An interaction bug worth more than any strategy this session
+
+Launchers self-destruct once their ferry queue empties, to hand back the 10%
+they add to the shared cost scale. That rule was written before Launchers could
+repel, and it silently threw the new capability away: the Launcher standing
+exactly where enemy Builders walk is the one that looks idle.
+
+Suppressing the scrap while any enemy is in sight took the gauntlet from
+435-105 to **471-99**, with the counters group going from 76.7% to 83.3%.
+
+**When a unit gains a second role, re-check every rule written for its first
+one.** No amount of strategy reasoning finds that; only the scoreboard does.
+
+## Ideas measured neutral, recorded so they are not re-derived
+
+- **Delayed aggression** (undertow's: hold the assault until the bank reaches
+  300 Ti). Swept 120 / 200 / 300 against a frozen Vanguard and undertow: 28, 24
+  and 27 wins from 60, against 27 for no delay. Our attackers already wait on
+  affordability at each individual build.
+- **Disabling long belts** to reduce raid surface: 10-20 and 11-19, worse both
+  ways. Long belts earn their keep.
+
+## Where Vanguard currently loses: the raid war
+
+`undertow` (Codex) beats Vanguard on both corpora -- 19-11 on the competition
+maps and 22-38 on the 30-map representative set -- so it is a real strength,
+not a competition-map artefact. How it wins is the surprising part:
+
+| | Vanguard | undertow |
+|---|---|---|
+| Gunners | 7.0, first round 11, in 100% of games | 2.4, round 82, in 52% |
+| ammunition delivered | 41.6 stacks | 49.5 |
+| Launchers | 3.6 | 7.1 |
+
+It barely fights. It picket-spams Launchers, throws our attackers home before
+the battery can be maintained, and takes the round-1000 tiebreak on titanium.
+In one representative match **neither Core took a single point of damage**, our
+five Gunners fired twenty shots -- all beside our *own* base -- and the game was
+decided by belts: ours took 3670 damage to its 1832.
+
+The gap is not siege power, which we have more of. Our supply is twice as easy
+to cut as theirs.
+
+Fixes tried, each measured against the strongest opponent *and* our own
+previous build:
+
+| change | vs undertow | vs vg_v7 | verdict |
+|---|---|---|---|
+| disable long belts | 10-20 | 11-19 | worse both ways |
+| `HOME_GUNNERS` 2 -> 4 | 14-16 | **13-17** | rejected |
+| `HOME_GUNNERS` 2 -> 6 | 14-16 | 13-17 | rejected |
+
+More home Gunners genuinely help against undertow and genuinely hurt against a
+strong generic opponent. **Losing to your own previous build overrules a good
+head-to-head** -- tuning to one opponent is how a bot reaches the ladder
+overfitted. Left at two.
+
+Open problem: cut their supply faster than they cut ours, without spending the
+titanium the tiebreak is scored on.
