@@ -95,7 +95,7 @@ EXPOSURE_PENALTY = 1
 # turrets are NOT splitting a producer's output the way they were on 2.2.0 -- each one is a flat
 # 2 Ti a round of income against 10 more damage a round. The binding constraint is titanium
 # income (passive alone is 2.5/round, one connected chain another 2.5), not logistics.
-MAX_BATTERY = 6
+MAX_BATTERY = 3
 
 EMPTY, WALL, ORE = 0, 1, 2
 

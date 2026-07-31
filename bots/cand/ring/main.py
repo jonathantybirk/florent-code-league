@@ -4,27 +4,17 @@ Design rules, every one derived from a measured engine fact (docs/ground-truth.m
 
   G01/G02  titanium_collected counts ONLY stacks landing on a Core footprint tile. An unconnected
            harvester, or a chain that dead-ends one tile short, scores exactly zero.
+  G05      Never route an economy chain into a turret: it eats one 10 Ti stack, scores 0, and jams the
+           chain permanently. Ammo logistics is a separate branch.
   G07      Cost scaling is ONE GLOBAL scale over all entity types. A builder is +20 percentage points
            forever, so builders are rationed hard.
   G10/G11  Every turret API is team-blind. get_gunner_target() happily returns a friendly, can_fire()
            returns True on it, and firing destroys it. Check the occupant's team before every shot.
-           MORE dangerous on 2.3.3 than on 2.2.0: our turrets used to sit inert for lack of ammo,
-           and with a global pool they actually shoot -- observed grinding down our own barrier.
+  G14      Builders cannot attack an adjacent tile at all, but CAN fire at their own tile while standing
+           on an enemy conveyor/splitter. That is the only sabotage that exists.
   G23      get_tile_env() raises outside vision and an uncaught exception PERMANENTLY deletes the unit.
   G20      Units do not share module globals. Cross-unit state is the 16 store slots (1-round lag) only;
            per-unit `self` persists all 1000 rounds, so each unit carries its own map memory for free.
-  G52/G53  Ammunition is a TEAM-WIDE POOL, filled only by convert_ammo() at the Core, 1:1 with
-           titanium. Turrets accept nothing from a conveyor -- a belt pointed into one jams
-           permanently. This supersedes the old G05 ("a turret eats one 10 Ti stack"): it eats zero.
-  G57      A forward Gunner killed a 500 HP Core on an arena with ZERO ore tiles, funded entirely
-           by convert_ammo. Ore adjacency buys the siege nothing; see `siege.py`.
-  G59      A Builder Bot's WHOLE action set -- build, attack, heal, destroy -- is the four
-           ORTHOGONAL neighbours, never a diagonal and never its own tile. This reverses G50.
-  G13/G14  Inverted from 2.2.0. The range-0 own-tile shot is GONE (fire(own_pos) raises); in its
-           place a builder hits an orthogonally adjacent tile for 2 damage at 2 Ti.
-  G63/G64  A Core's spawn ring is the full 12-tile ring around its 2x2 footprint -- and on the
-           21-map pool five of the six new maps put a Core flush against a border, so every
-           neighbourhood scan MUST bounds-check. See `_ring_tiles`.
 
 CHAIN CONSTRUCTION (the thing that actually wins games)
 
@@ -39,10 +29,9 @@ travelled -- no guessing, no broken bends:
 
 THE SIEGE IS COMPUTED, NOT LOOKED UP
 
-Everything about the forward-gunner kill -- where the enemy Core is and which tile bears on it --
-is derived at match time from observed terrain by `siege`. On 2.2.0 the plan also had to say which
-deposit fed the turret and how the belt ran; on 2.3.3 ammunition is global and the whole route is
-one Gunner. The bot carried a precomputed table for the fifteen published maps instead, and
+Everything about the forward-gunner kill -- where the enemy Core is, which tile bears on it, which
+deposit feeds the turret, what to build in what order -- is derived at match time from observed
+terrain by `siege`. The bot carried a precomputed table for the fifteen published maps instead, and
 on any map outside that table `atlas.identify()` returned None and the entire attack silently
 switched itself off: measured ZERO core kills on every unseen map. The runtime path is now the only
 path, so it is exercised on every map and cannot rot. The atlas is a pure accelerator -- it seeds
@@ -150,7 +139,7 @@ CHAIN_RESERVE = 45
 # bank down to 0-16 Ti and it could not afford a 22 Ti Gunner. The match is a race decided in single
 # turns, so a turret that cannot be paid for is the most expensive thing on the board. Worth roughly
 # 30 turns of kill time across the 30 oriented games; worth +1 win against lockin and 0 elsewhere.
-RUSH_RESERVE = 40
+RUSH_RESERVE = 80
 # If the rusher dies the store slot never flips, so stop holding the reserve once the race is over.
 RUSH_RESERVE_UNTIL = 200
 # Budget 3ms locally against the ladder's 10ms. Reads 0 on Windows (G21), where this is advisory only.
@@ -163,13 +152,10 @@ CPU_BUDGET_US = 6000
 REPLAN_TILES = 24     # newly observed tiles that make the geometry worth recomputing
 REPLAN_ROUNDS = 10    # ...and a floor under it, so a stalled rusher still re-examines the board
 
-# Titanium left in the bank after buying a battery turret. Was 40, which on 2.3.3 was the single
-# thing stopping the battery ever being built: with the route down to one Gunner the economy is
-# released the moment it goes up and immediately spends the bank on harvesters, so 40 Ti of
-# headroom on top of a ~25 Ti Gunner almost never existed. Measured vs `vanguard` over 42 games,
-# 40 -> 0 moved the median kill turn from 141 to 74 -- the extra turrets went from theoretical to
-# actually built. 20 keeps enough back that a chain in flight still completes (G02).
-BATTERY_RESERVE = 20
+# Titanium left in the bank after buying a battery turret. The first Gunner is the one the race
+# turns on and the economy holds RUSH_RESERVE for it; the extras are opportunistic, so they only
+# ever come out of genuine surplus and never out of a chain in flight.
+BATTERY_RESERVE = 40
 
 # Home fortification. A Gunner's ray stops at the first building, so a 3 Ti Barrier on a Core ring
 # tile turns a point-blank snipe into a demolition job first: they spend 6 Ti of shooting to clear
@@ -242,10 +228,6 @@ VAULT_GAIN = 4
 # to us: ZERO core kills across 42 games on 2.3.3 while every gunner we built sat loaded with nothing.
 AMMO_TARGET = 120     # stop converting once the pool holds this much
 AMMO_FLOOR = 60       # titanium held back so converting never starves a chain in progress (G02)
-# Bank below which the rusher stops spending 2 Ti a round on its own 2-damage shot. Set above
-# AMMO_FLOOR on purpose: the builder's attack and the Core's ammunition come out of the same
-# treasury, and a Gunner buys 10 damage with the 2 Ti that buys the builder 2.
-SNIPE_FLOOR = 90
 
 
 def cardinal_of(dx, dy):
@@ -670,10 +652,9 @@ class Player:
         #    reaches the Core, so finishing always outranks starting (G02).
         if self._settle_owed(ct, pos):
             return
-        # 2. The range-0 own-tile sabotage that used to live here is GONE on 2.3.3: `fire(own_pos)`
-        #    raises and `can_fire(own_tile)` is False (G14 refuted). Its replacement -- the
-        #    orthogonally adjacent 2 dmg / 2 Ti shot of G13 -- is given only to the rusher, in
-        #    `_snipe`, because an economy builder that stops to shoot is a chain not built.
+        # 2. Range-0 sabotage -- the only attack a builder has (G14). Cuts every harvester upstream.
+        if self._sabotage(ct, pos):
+            return
         # 2b. The base is under fire. Titanium only scores while there is a Core footprint for the
         #     stacks to land on (G01), so once the Core is being ground down, holding it outranks
         #     mining into it. Never interrupts a chain in flight -- an abandoned chain scores zero
@@ -843,11 +824,7 @@ class Player:
             else:
                 if (pos.x, pos.y) in self.rush_ray and self._clear_ray(ct, pos):
                     return True
-                # Heal before shooting: 4 HP for 1 Ti keeps alive the turret that deals 10 damage
-                # a round, and this builder's own shot deals a fifth of that for twice the price.
                 if self._heal(ct, pos):
-                    return True
-                if self._snipe(ct, pos):
                     return True
                 return True
 
@@ -2214,58 +2191,16 @@ class Player:
                 continue
         return False
 
-    def _snipe(self, ct, pos):
-        """Shoot whatever enemy is orthogonally adjacent. True if the round was spent.
-
-        BOTH halves of the 2.2.0 builder-combat claim are inverted on 2.3.3. The range-0 own-tile
-        shot this method used to make is gone -- `fire(own_position)` RAISES and `can_fire` on our
-        own tile is False (G14 refuted) -- and in its place a builder can fire at an ORTHOGONALLY
-        ADJACENT tile for BUILDER_BOT_ATTACK_DAMAGE = 2 at BUILDER_BOT_ATTACK_COST = 2 titanium
-        (G13 reversed). So the builder has a real weapon for the first time and we were using
-        none of it, because the code was written when it did not exist.
-
-        Given only to the RUSHER, and only once its route is finished. That unit provably has
-        nothing else to do -- it stands beside its own turret for the rest of the match, healing
-        -- whereas an economy builder that stops to shoot an enemy belt for ten rounds is ten
-        rounds of a chain not built, and a chain is worth ~2470 collected (G04).
-
-        Targets in priority order:
-          1. an enemy BUILDER BOT. It is the only thing that can take a forward Gunner down now:
-             2 damage a round into 40 HP, inside the ~50 rounds the Gunner needs for a Core. We
-             out-trade it comfortably -- our heal is 4 HP for 1 Ti against its 2 damage for 2 Ti --
-             but shooting back ends the exchange instead of subsidising it.
-          2. any enemy BUILDING: a Barrier bricking our lane, a turret shooting our Gunner, or a
-             conveyor whose entire chain upstream scores zero the moment it is cut (G02).
-          3. the enemy CORE, which is what we came for.
-        Never below SNIPE_FLOOR. Every 2 Ti spent here is 2 Ti the Core does not turn into
-        ammunition, and a Gunner buys 10 damage with the same 2 Ti -- five times the trade.
-        """
-        if not self._can_act(ct):
+    def _sabotage(self, ct, pos):
+        """Fire at our own tile while standing on an enemy belt (G14) -- the only builder attack."""
+        bid = self._building_at(ct, pos)
+        if not self._is_enemy(ct, bid) or not self._can_act(ct):
             return False
         try:
-            if ct.get_global_resources() < SNIPE_FLOOR:
+            if ct.get_global_resources() < 6:
                 return False
-        except Exception:
-            return False
-        best = None
-        for d in CARDINALS:
-            t = pos.add(d)
-            if not self._in_bounds(ct, t):
-                continue
-            rank = 0
-            eid = self._bot_at(ct, t)
-            if not self._is_enemy(ct, eid):
-                eid = self._building_at(ct, t)
-                if not self._is_enemy(ct, eid):
-                    continue
-                rank = 2 if (t.x, t.y) in self.enemy_core_tiles else 1
-            if best is None or rank < best[0]:
-                best = (rank, t)
-        if best is None:
-            return False
-        try:
-            if ct.can_fire(best[1]):
-                ct.fire(best[1])
+            if ct.can_fire(pos):
+                ct.fire(pos)
                 return True
         except Exception:
             return False
@@ -2311,12 +2246,8 @@ class Player:
             return
 
     def _run_sentinel(self, ct):
-        """No get_sentinel_target() exists, so walk get_attackable_tiles() ourselves.
-
-        The pattern is NOT the 3-row 17-tile band of the 2.2.0 register -- G15 is refuted: it is a
-        single-tile line of 5 at r^2 <= 32, the same width as a Gunner's. Either way a Sentinel
-        shot costs 10 ammunition out of the team pool against a Gunner's 2 (G55), so it only ever
-        fires at a confirmed ENEMY occupant, never at empty air and never at one of ours (G10)."""
+        """No get_sentinel_target() exists; the pattern is a 3-row band (G15) and it will burn a 10 Ti
+        magazine on empty air. Only ever fire at a confirmed enemy occupant."""
         try:
             tiles = ct.get_attackable_tiles()
         except Exception:
