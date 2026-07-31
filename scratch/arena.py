@@ -89,6 +89,7 @@ def main():
                 born = summary["first"].get((team, "gunner"))
                 stats[who]["first_gunner"].append(9999 if born is None else born)
                 stats[who]["fed"].append(summary["fed"].get(team, 0))
+                stats[who]["shots"].append(summary["shots"])
             stats["a"]["turn"].append(result["turn"])
 
     if args.v:
@@ -106,8 +107,9 @@ def main():
             values = stats[who][kind]
             parts.append(f"{kind[:4]}={statistics.mean(values):4.1f}"
                          if values else f"{kind[:4]}=   -")
-        feeds = stats[who]["fed"]
-        parts.append(f"ammo={statistics.mean(feeds):5.1f}" if feeds else "ammo= -")
+        shots = stats[who]["shots"]
+        parts.append(f"shots={statistics.mean(shots):5.1f}" if shots
+                     else "shots=    -")
         got = [v for v in stats[who]["first_gunner"] if v < 9999]
         share = 100 * len(got) / max(len(stats[who]["first_gunner"]), 1)
         parts.append(f"gun1@r{statistics.median(got):.0f}" if got else "gun1@ -")

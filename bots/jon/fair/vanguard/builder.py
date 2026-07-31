@@ -391,7 +391,7 @@ def _repair(p, ct):
     if ask(ct.can_heal, target):
         ct.heal(target)
         return True
-    spots = world.adjacent8(p, tile) - world.blocked_tiles(p)
+    spots = world.adjacent4(p, tile) - world.blocked_tiles(p)
     return _step(p, ct, spots)
 
 
@@ -584,10 +584,8 @@ def _raid(p, ct):
         key=lambda t: (0 if world.cheb(t, p.enemy_core) > RAID_MIN_GAP else 1,
                        world.cheb(t, here), t))
     for tile in targets[:3]:
-        if here == tile:
-            position = Position(*tile)
-            if ask(ct.can_fire, position):
-                ct.fire(position)
+        if ask(ct.can_fire, Position(*tile)):
+            ct.fire(Position(*tile))
             p.stalls, p.clear_target = 0, None
             return
         if p.clear_target != tile:
@@ -958,10 +956,11 @@ def _clear_tile(p, ct, tile):
     battery, so the blockade only costs them the tile they are standing on.
     """
     here = (ct.get_position().x, ct.get_position().y)
-    if here == tile:
-        position = Position(*tile)
-        if ask(ct.can_fire, position):
-            ct.fire(position)
+    # 2.3.3 inverted the attack rule: a Builder may only damage an orthogonally
+    # adjacent tile, never the one it stands on. can_fire() enforces that, so
+    # ask it rather than reimplementing the geometry.
+    if ask(ct.can_fire, Position(*tile)):
+        ct.fire(Position(*tile))
         p.stalls, p.clear_target = 0, None
         return True
     # Count rounds spent wanting this tile, not failed moves: a Builder denied
@@ -1021,10 +1020,8 @@ def _harass(p, ct):
         _explore(p, ct)
         return
     target = targets[0]
-    if here == target:
-        position = Position(*here)
-        if ask(ct.can_fire, position):
-            ct.fire(position)
+    if ask(ct.can_fire, Position(*target)):
+        ct.fire(Position(*target))
         return
     if not _step(p, ct, {target}):
         _explore(p, ct)
