@@ -628,11 +628,36 @@ class Player:
             self.spawn_order = ()
         return self.spawn_order
 
-    # `_builder_target` lived here -- an ore-count-scaled builder cap that nothing ever called.
-    # It was dead code with a live NameError inside it: MIN_BUILDERS and MAX_BUILDERS are not
-    # defined anywhere in this module, so the first caller would have taken a NameError straight
-    # into the blanket handler in `run()`, and on the Core that is one silently lost turn per
-    # round for the rest of the match. Removed rather than left as a trap.
+    def _builder_target(self, ct):
+        """One builder per ore tile we could still chain, clamped -- never a flat constant.
+
+        Each builder is +20 percentage points of permanent global cost scale, so an idle one is pure tax;
+        but each builder that completes a chain returns ~2470 collected. The binding resource is ore, so
+        size the workforce to the ore actually available on our half of the map.
+        """
+        ore_count = None
+        if atlas is not None:
+            try:
+                tag = "a" if ct.get_team() == Team.A else "b"
+                rec = atlas.identify(ct.get_map_width(), ct.get_map_height(),
+                                     (self.core_pos.x, self.core_pos.y), tag)
+                if rec is not None:
+                    own = rec["own_core"]
+                    ore_count = sum(
+                        1 for o in rec["ore"]
+                        if (o[0] - own[0]) ** 2 + (o[1] - own[1]) ** 2
+                        <= (o[0] - rec["enemy_core"][0]) ** 2 + (o[1] - rec["enemy_core"][1]) ** 2
+                    )
+            except Exception:
+                ore_count = None
+        if ore_count is None:
+            return MIN_BUILDERS + 1
+        target = (ore_count + 1) // 2
+        if target < MIN_BUILDERS:
+            return MIN_BUILDERS
+        if target > MAX_BUILDERS:
+            return MAX_BUILDERS
+        return target
 
     # ------------------------------------------------------------------
     # Builder
@@ -912,17 +937,6 @@ class Player:
                 self.rush_i += 1
                 self.rush_dist = None
                 self.rush_stuck = 0
-            # NOT GIVEN UP ON. `can_build_*` refusing from a legal tile is nearly always "not
-            # enough titanium yet" -- the normal state of a rusher that has walked ahead of its
-            # funding, and one it must be allowed to wait out, because the economy is holding
-            # RUSH_RESERVE for exactly this purchase. A bounded give-up was written for this
-            # branch (BUILD_PATIENCE = 45 rounds, then blacklist the tile and re-plan) because
-            # the branch spends the round either way and never touches `rush_stuck`, so a
-            # permanently illegal build -- MAX_TEAM_UNITS = 50 reached, or a Builder Bot parked
-            # on the target tile -- would freeze the rusher exactly the way the diagonal bug did.
-            # It MEASURED WORSE: 29-13 against 31-11 over 42 mirrored games vs `vanguard`, same
-            # 28 core kills, 112 fewer shots delivered. It was abandoning firing positions that
-            # were only waiting to be paid for. Left out, and left documented.
             return True
 
         # Still in transit to the firing tile: a Launcher hop buys six tiles for two rounds.
@@ -1456,7 +1470,7 @@ class Player:
         return True
 
     def _bfs_step(self, ct, pos, goal):
-        """First step of a shortest path to any tile ORTHOGONALLY adjacent to `goal`.
+        """First step of a shortest path to any tile in `goal`'s EIGHT-neighbourhood.
 
         Multi-source BFS from the goal ring outward over the STATIC wall set (which the atlas gives us
         in full), cached per goal. ~w*h cheap integer ops, recomputed only when the goal changes.
@@ -2237,24 +2251,14 @@ class Player:
         -- whereas an economy builder that stops to shoot an enemy belt for ten rounds is ten
         rounds of a chain not built, and a chain is worth ~2470 collected (G04).
 
-        A BUILDER BOT IS NOT A TARGET. `can_fire`'s "only damage the building on it" is literal:
-        probed on 2.3.3 with `bots/probes/botshot` against a parked enemy builder standing on bare
-        ground, `can_fire` is False and `fire` raises `GameError: Cannot fire` with the target's
-        40 HP untouched. Ranking an enemy bot FIRST therefore did two bad things at once -- it
-        never landed a shot, and because the loop committed to the single best candidate and
-        returned False when `can_fire` refused it, one enemy builder standing beside our parked
-        rusher SHADOWED the enemy Core on the other side of it, every round, for the rest of the
-        match. Measured over 42 games against `vanguard`, which swarms builders around its own
-        Core: this method fired ZERO times a game. Candidates are now tried in order until one is
-        legal.
-
         Targets in priority order:
-          1. an enemy CONVEYOR or SPLITTER. 20 HP, and cutting one makes every harvester upstream
-             of it score zero for the rest of the match (G02) -- by far the best return here.
-          2. an enemy HARVESTER, the same argument one link back.
-          3. any other enemy building: a Barrier bricking our lane, or a turret shooting our own.
-          4. the enemy CORE, which is what we came for, but which a Gunner grinds five times
-             faster for the same titanium.
+          1. an enemy BUILDER BOT. It is the only thing that can take a forward Gunner down now:
+             2 damage a round into 40 HP, inside the ~50 rounds the Gunner needs for a Core. We
+             out-trade it comfortably -- our heal is 4 HP for 1 Ti against its 2 damage for 2 Ti --
+             but shooting back ends the exchange instead of subsidising it.
+          2. any enemy BUILDING: a Barrier bricking our lane, a turret shooting our Gunner, or a
+             conveyor whose entire chain upstream scores zero the moment it is cut (G02).
+          3. the enemy CORE, which is what we came for.
         Never below SNIPE_FLOOR. Every 2 Ti spent here is 2 Ti the Core does not turn into
         ammunition, and a Gunner buys 10 damage with the same 2 Ti -- five times the trade.
         """
@@ -2265,42 +2269,28 @@ class Player:
                 return False
         except Exception:
             return False
-        cands = []
+        best = None
         for d in CARDINALS:
             t = pos.add(d)
             if not self._in_bounds(ct, t):
                 continue
-            eid = self._building_at(ct, t)
+            rank = 0
+            eid = self._bot_at(ct, t)
             if not self._is_enemy(ct, eid):
-                continue
-            kind = None
-            try:
-                kind = ct.get_entity_type(eid)
-            except Exception:
-                kind = None
-            if (t.x, t.y) in self.enemy_core_tiles or kind == EntityType.CORE:
-                rank = 3
-            elif kind == EntityType.CONVEYOR or kind == EntityType.SPLITTER:
-                rank = 0
-            elif kind == EntityType.HARVESTER:
-                rank = 1
-            else:
-                rank = 2
-            cands.append((rank, t.x, t.y, t))
-        if not cands:
-            return False
-        cands.sort()
-        # Tried in order rather than committing to the head of the list: `can_fire` can refuse the
-        # best candidate for reasons this side cannot see, and returning False there silently
-        # skips targets that ARE legal.
-        for _rank, _x, _y, t in cands:
-            try:
-                if not ct.can_fire(t):
+                eid = self._building_at(ct, t)
+                if not self._is_enemy(ct, eid):
                     continue
-                ct.fire(t)
+                rank = 2 if (t.x, t.y) in self.enemy_core_tiles else 1
+            if best is None or rank < best[0]:
+                best = (rank, t)
+        if best is None:
+            return False
+        try:
+            if ct.can_fire(best[1]):
+                ct.fire(best[1])
                 return True
-            except Exception:
-                continue
+        except Exception:
+            return False
         return False
 
     def _heal(self, ct, pos):

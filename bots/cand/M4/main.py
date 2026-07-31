@@ -163,6 +163,15 @@ CPU_BUDGET_US = 6000
 REPLAN_TILES = 24     # newly observed tiles that make the geometry worth recomputing
 REPLAN_ROUNDS = 10    # ...and a floor under it, so a stalled rusher still re-examines the board
 
+# Rounds a rusher will stand on a LEGAL, orthogonally adjacent build tile whose `can_build_*`
+# keeps answering False before it gives that step up. Deliberately long: the usual cause is that
+# the economy has not banked the turret's cost yet, and abandoning a firing position over a
+# temporary shortfall costs far more than waiting it out. It exists only so that a build which is
+# PERMANENTLY illegal -- MAX_TEAM_UNITS = 50 reached, or a Builder Bot parked on the target tile
+# -- cannot silently freeze the rusher for the remaining nine hundred rounds, which is the exact
+# shape the diagonal-build bug had.
+BUILD_PATIENCE = 45
+
 # Titanium left in the bank after buying a battery turret. Was 40, which on 2.3.3 was the single
 # thing stopping the battery ever being built: with the route down to one Gunner the economy is
 # released the moment it goes up and immediately spends the bank on harvesters, so 40 Ti of
@@ -330,6 +339,7 @@ class Player:
         self.rush_ray = frozenset()
         self.rush_target = None        # enemy anchor the current route was planned against
         self.rush_black = set()        # firing tiles we walked at and could not take
+        self.build_wait = 0            # rounds spent beside a build `can_build_*` keeps refusing
         self.plan_anchor = None        # enemy anchor the last plan ATTEMPT was made against
         self.plan_round = -999
         self.plan_tiles = -1
@@ -912,17 +922,28 @@ class Player:
                 self.rush_i += 1
                 self.rush_dist = None
                 self.rush_stuck = 0
-            # NOT GIVEN UP ON. `can_build_*` refusing from a legal tile is nearly always "not
-            # enough titanium yet" -- the normal state of a rusher that has walked ahead of its
-            # funding, and one it must be allowed to wait out, because the economy is holding
-            # RUSH_RESERVE for exactly this purchase. A bounded give-up was written for this
-            # branch (BUILD_PATIENCE = 45 rounds, then blacklist the tile and re-plan) because
-            # the branch spends the round either way and never touches `rush_stuck`, so a
-            # permanently illegal build -- MAX_TEAM_UNITS = 50 reached, or a Builder Bot parked
-            # on the target tile -- would freeze the rusher exactly the way the diagonal bug did.
-            # It MEASURED WORSE: 29-13 against 31-11 over 42 mirrored games vs `vanguard`, same
-            # 28 core kills, 112 fewer shots delivered. It was abandoning firing positions that
-            # were only waiting to be paid for. Left out, and left documented.
+                self.build_wait = 0
+            else:
+                # `can_build_*` refused from a LEGAL tile. Nearly always "not enough titanium
+                # yet" -- the normal state of a rusher that has walked ahead of its funding, and
+                # a state it must be allowed to wait out, because the economy is holding
+                # RUSH_RESERVE for exactly this purchase.
+                #
+                # But it is not always temporary, and this branch spends the round either way,
+                # never touching `rush_stuck`, so nothing else can ever notice. `can_build_*`
+                # also gates on MAX_TEAM_UNITS = 50 -- which a bot laying conveyors reaches --
+                # and refuses whenever a Builder Bot is standing on the target tile, ours or
+                # theirs. A rusher waiting on either of those has deleted itself for the rest of
+                # the match. Generous, so a funding wait is never mistaken for a permanent one,
+                # but bounded.
+                self.build_wait += 1
+                if self.build_wait >= BUILD_PATIENCE:
+                    self.build_wait = 0
+                    if self.rush_i > 0:
+                        self._abort_segment(bxy)
+                    else:
+                        self.rush_black.add(bxy)
+                        self._drop_plan()
             return True
 
         # Still in transit to the firing tile: a Launcher hop buys six tiles for two rounds.
@@ -2265,31 +2286,25 @@ class Player:
                 return False
         except Exception:
             return False
-        cands = []
+        # M4: the original bot-first, commit-to-one ordering is restored on purpose, so this
+        # variant carries ONLY the core-origin fix and BUILD_PATIENCE.
+        best = None
         for d in CARDINALS:
             t = pos.add(d)
             if not self._in_bounds(ct, t):
                 continue
-            eid = self._building_at(ct, t)
+            rank = 0
+            eid = self._bot_at(ct, t)
             if not self._is_enemy(ct, eid):
-                continue
-            kind = None
-            try:
-                kind = ct.get_entity_type(eid)
-            except Exception:
-                kind = None
-            if (t.x, t.y) in self.enemy_core_tiles or kind == EntityType.CORE:
-                rank = 3
-            elif kind == EntityType.CONVEYOR or kind == EntityType.SPLITTER:
-                rank = 0
-            elif kind == EntityType.HARVESTER:
-                rank = 1
-            else:
-                rank = 2
-            cands.append((rank, t.x, t.y, t))
-        if not cands:
+                eid = self._building_at(ct, t)
+                if not self._is_enemy(ct, eid):
+                    continue
+                rank = 2 if (t.x, t.y) in self.enemy_core_tiles else 1
+            if best is None or rank < best[0]:
+                best = (rank, t)
+        if best is None:
             return False
-        cands.sort()
+        cands = [(best[0], best[1].x, best[1].y, best[1])]
         # Tried in order rather than committing to the head of the list: `can_fire` can refuse the
         # best candidate for reasons this side cannot see, and returning False there silently
         # skips targets that ARE legal.

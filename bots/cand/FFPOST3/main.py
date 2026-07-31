@@ -86,10 +86,22 @@ LEGACY_RING = ((0, -1), (1, -1), (-1, 1), (-1, 0), (-1, -1))
 S_CORE_X = 0
 S_CORE_Y = 1
 S_SPAWN_ORD = 2
-# Slot 3 used to be a count of completed chains that nothing ever read. It is now the home alarm:
-# 1 once our own Core has been hit hard enough that mining more titanium into it is worth less
-# than keeping it standing (G01 -- titanium only scores while there is a Core footprint to land on).
-S_ALARM = 3
+# Slot 3 used to be a count of completed chains that nothing ever read, then the home alarm.
+# It is now the Core's published STATE WORD, of which the alarm is bit 0 with exactly its old
+# meaning: 1 once our own Core has been hit hard enough that mining more titanium into it is
+# worth less than keeping it standing (G01 -- titanium only scores while there is a Core
+# footprint for the stacks to land on).
+#
+# There was no sixteenth slot to take. Every one of the 16 is spoken for -- N_CLAIMS was already
+# cut to 5 to free slot 9 for the second attacker -- so the posture had to go somewhere that
+# already existed. Slot 3 is the right somewhere: it is the ONLY slot with a single writer that
+# is the Core, and the Core is the natural arbiter (it acts first every round and never moves).
+# Folding the posture in beside the alarm also avoids the failure the brief warned about, of two
+# independent mechanisms both deciding the base is in trouble and disagreeing.
+S_STATE = 3
+S_ALARM = S_STATE          # legacy name: the alarm is bit 0 of the same word
+ALARM_BIT = 1
+POSTURE_SHIFT = 1          # bits 1-2 carry the posture
 S_CLAIM_0 = 4
 # One slot fewer than before: slot 9 now carries the SECOND attacker's claim. With two of the six
 # Builders on the siege there are only four economy Builders left to claim ore with, so five claim
@@ -104,6 +116,28 @@ SIGHTED = 1 << 16
 # builder walking past a wall settles the map for the whole team. Rejections are monotone, so a
 # lost write only costs a round.
 S_SYMMETRY = 11
+# ...and the same slot carries the ARCHETYPE EVIDENCE in the bits above it. The symmetry mask is
+# three bits wide (siege.ALL_REJECTED == 0b111) and every reader of it already masks, so the top
+# 29 bits of slot 11 were dead space. The two fields share a slot because they share a protocol
+# exactly: both are MONOTONE -- a rejected symmetry is never un-rejected and an archetype never
+# un-happens -- so the read-or-write merge that makes the symmetry mask safe against a lost write
+# makes the evidence safe for free. Same writers (Builder Bots only), same rounds, same merge.
+#
+# The Core READS this slot and never writes it. That matters: a writer that does not maintain the
+# symmetry mask would clobber three bits of it back to their previous round's value every time it
+# published, which is a real regression for one line of convenience.
+S_FLAGS = S_SYMMETRY
+EV_MASK = 0xFFFFFFF8
+
+EV_HURT = 1 << 3           # a unit of ours has lost hit points -- PROVES a fed enemy turret
+EV_ECON_HIT = 1 << 4       # a belt of ours has been destroyed where we could see it
+EV_INTRUDER = 1 << 5       # an enemy Builder Bot seen at or inside the midline
+EV_DEEP = 1 << 6           # ...and seen in the near third of the core-to-core axis
+EV_FOE_TURRET = 1 << 7     # at least one enemy turret seen standing
+EV_FOE_TURRET2 = 1 << 8    # at least FOE_TURRETS_MANY of them
+EV_FOE_ECON = 1 << 9       # at least FOE_HARVESTERS_MANY enemy producers seen standing
+EV_BITS = (EV_HURT, EV_ECON_HIT, EV_INTRUDER, EV_DEEP,
+           EV_FOE_TURRET, EV_FOE_TURRET2, EV_FOE_ECON)
 S_RUSHER = 12         # id+1 of the builder that owns the rush; 0 = unclaimed
 S_RUSH_DONE = 13      # 1 once the rusher has built its whole route; 0 while it still needs money
 # Packed Gunner tile | facing index << 17. Publishes the firing lane so no economy builder ever
@@ -248,6 +282,108 @@ AMMO_FLOOR = 60       # titanium held back so converting never starves a chain i
 SNIPE_FLOOR = 90
 
 
+# --- Posture ------------------------------------------------------------------
+# One enum, owned by the Core, published through the store, read by every unit. Store writes are
+# visible next round (G20), so this is a TEN-ROUND-TIMESCALE decision and never a same-round
+# tactical one -- which is exactly what it should be. A posture is a claim about the opponent's
+# archetype, and archetypes do not change mid-match.
+#
+# RUSH is the default and RUSH is today's whole behaviour, verbatim. That is deliberate: the
+# refactor has to be provably free before any of it is allowed to be clever, so the shipped build
+# gives all three rows identical values and the switch is exercised without changing an action.
+POSTURE_RUSH = 0
+POSTURE_DEFENCE = 1
+POSTURE_ECONOMY = 2
+POSTURE_NAMES = ("RUSH", "DEFENCE", "ECONOMY")
+
+# Rungs of the builder's priority ladder, as data. The ORDER is a posture parameter; the rungs
+# themselves are the same code in every posture, which is the point -- three specialists can
+# disagree about what to try first without any of them forking a step.
+STEP_OWED = 0
+# STEP_SABOTAGE is GONE on 2.3.3. It called `_sabotage`, the range-0 own-tile shot of the old
+# G14, and `fire(own_position)` now raises -- so bot/ deleted the method and the rung with it.
+# The rung id is left unallocated rather than renumbered, so a posture row written against the
+# 2.2.0 ladder cannot silently reinterpret one rung as another.
+STEP_HOLD = 2
+STEP_PHASE = 3
+STEP_REPAIR = 4
+STEP_SEEK = 5
+STEP_HEAL = 6
+ORDER_TODAY = (STEP_OWED, STEP_HOLD, STEP_PHASE,
+               STEP_REPAIR, STEP_SEEK, STEP_HEAL)
+
+# Evidence weights. EV_HURT is worth double because it is the only bit here with ZERO false
+# positives -- see Player._sense.
+EV_WEIGHTS = ((EV_HURT, 2), (EV_ECON_HIT, 1), (EV_INTRUDER, 1),
+              (EV_DEEP, 2), (EV_FOE_TURRET2, 1))
+ALARM_WEIGHT = 3
+# Points needed to leave the default at all, and the level it has to fall back below before the
+# default is resumed. A Schmitt trigger: the gap is what stops a single flickering bit flapping
+# the whole team's economy. In practice evidence is latched, so DEFENCE is a one-way door -- the
+# release path exists for a future specialist that fields decaying evidence, not for today.
+POSTURE_CONFIDENCE = 3
+POSTURE_RELEASE = 1
+# Minimum rounds between two CHANGES of posture. The first change is deliberately not gated:
+# there is nothing yet to oscillate against, and the bits worth acting on early are the ones that
+# fire on contact. Every change after that waits. (On 2.2.0 the justification given here was that
+# the early bit had zero false positives; on 2.3.3 none of them do -- see apply_detector_2_3_3.py
+# -- so the reason to leave the first change ungated is only that there is nothing to flap yet.)
+POSTURE_DWELL = 60
+POSTURE_FIRST_DWELL = 0
+# Round by which a total absence of evidence means the opponent is not contesting the middle at
+# all and a greedy economy is simply correct. Late on purpose: silence before this is much more
+# likely to mean we have not looked than that there is nothing to see.
+ECONOMY_FROM = 150
+# Census thresholds, as fractions of what a real opponent fields: `vanguard` runs ~4.9 turrets a
+# game against our ~1.3, and an economy bot runs neither.
+FOE_TURRETS_MANY = 2
+FOE_HARVESTERS_MANY = 3
+# Where "our half" ends, as hundredths of the core-to-core axis (0 = our Core, 100 = theirs).
+# A fraction rather than a tile count because the pool runs from 8x15 to 30x30.
+INTRUDER_HALF = 50
+INTRUDER_DEEP = 30
+
+# THE SEAM. Every constant a posture specialist might want to disagree about is looked up here
+# instead of read off the module. `None` means "whatever the subsystem's own default is", so a
+# row never has to duplicate a number that lives in `siege`.
+_BASE_ROW = {
+    "builders": BUILDERS,
+    "siege_builders": SIEGE_BUILDERS,
+    "attackers": ATTACKERS,
+    # "forward_deposits" is GONE. It tuned how many harvesters the rusher planted next to the
+    # firing position to feed the Gunner's magazine, and on 2.3.3 a Gunner has no magazine to
+    # feed: ammunition is a team-wide pool filled only by convert_ammo at the Core (G52/G53), and
+    # a forward Gunner kills a Core with no ore, no harvester and no conveyor anywhere on the map
+    # (G57). bot/ deleted FORWARD_DEPOSITS and DEPOSIT_DRY with the doctrine, so the seam has
+    # nothing left to parameterise.
+    "chain_reserve": CHAIN_RESERVE,
+    "alarm_reserve": ALARM_RESERVE,
+    "rush_reserve": RUSH_RESERVE,
+    "battery_reserve": BATTERY_RESERVE,
+    "max_battery": None,            # None -> siege.MAX_BATTERY
+    "fortify_from": FORTIFY_FROM,
+    "fortify_keep_open": FORTIFY_KEEP_OPEN,
+    "hold_on_posture": False,       # come home on the posture, not only on the Core alarm
+    "fire_only": None,              # None -> a turret shoots whatever the engine offers it
+    "order": ORDER_TODAY,
+}
+
+# Filled in by a specialist. Empty here, and that emptiness is the acceptance criterion: with
+# nothing in these two dicts the refactored bot must measure identically to the unrefactored one,
+# game for game, which is what proves the seams cost nothing.
+DEFENCE_OVERRIDES = {}
+ECONOMY_OVERRIDES = {}
+
+
+def _row(over):
+    row = dict(_BASE_ROW)
+    row.update(over)
+    return row
+
+
+POSTURE_PARAMS = (_row({}), _row(DEFENCE_OVERRIDES), _row(ECONOMY_OVERRIDES))
+
+
 def cardinal_of(dx, dy):
     """Snap a delta to the cardinal direction that dominates it."""
     if abs(dx) >= abs(dy):
@@ -345,6 +481,21 @@ class Player:
         self.vault_wait = 0
         self.thrown = set()            # ids this Launcher has already ferried -- see _run_launcher
 
+        # Posture. Every unit carries the team posture; only the Core decides it.
+        self.posture = POSTURE_RUSH
+        self.alarm = False
+        self.state = 0                 # the Core's own copy of what it last published
+        self.posture_round = 0
+        self.switches = 0
+        self.score = 0
+
+        # Archetype evidence. Monotone and latched forever -- an archetype does not un-happen.
+        self.evidence = 0
+        self.core_ev = 0               # evidence only the Core can see (its own hit points)
+        self.ev_round = {}             # bit -> round the TEAM first held it (Core only)
+        self.foe_turrets = set()       # enemy turret tiles this unit has seen
+        self.foe_harvesters = set()    # enemy producer tiles this unit has seen
+
         self.errors = 0
 
     # ------------------------------------------------------------------
@@ -374,33 +525,6 @@ class Player:
     # ------------------------------------------------------------------
     # Guarded controller access
     # ------------------------------------------------------------------
-
-    def _home_from_store(self, ct):
-        """Our own Core anchor as published by the Core, or None if it has not published yet.
-
-        THE SENTINEL USED TO BE ZERO. `_run_core` wrote `pos.x` and `pos.y` raw and every reader
-        accepted them only `if x > 0 or y > 0` -- so a Core anchored at literal (0, 0) published
-        a pair the readers could not tell apart from an empty store, and `self.core_pos` stayed
-        None for the whole match.
-
-        On the 15-map pool no Core was ever within two tiles of a border and that was free. Three
-        of the six NEW maps anchor Team A's Core at exactly (0, 0) -- jackpot, sweden and vase
-        (G64a) -- and on those the consequence is total, because `core_pos is None` is the first
-        line of `_is_rusher`: no builder ever claims the rush, `_infer_enemy_core` returns
-        immediately, no plan is ever made and NOT ONE GUNNER IS EVER BUILT. Measured with a
-        debug build that resigns from the rusher at round 45: on jackpot/a, sweden/a and vase/a
-        it never fired, because there was no rusher; on all nine other new-map orientations it
-        did. In the 42-game sweeps those three games run the full 1000 rounds with zero shots.
-
-        The Core now publishes anchor+1 and this is the only place that decodes it.
-        """
-        try:
-            x, y = ct.read_store(S_CORE_X), ct.read_store(S_CORE_Y)
-        except Exception:
-            return None
-        if x <= 0 or y <= 0:
-            return None
-        return (x - 1, y - 1)
 
     def _in_bounds(self, ct, pos):
         try:
@@ -461,18 +585,152 @@ class Player:
             return True
 
     # ------------------------------------------------------------------
+    # Posture -- the switch, the detector, and the seam every subsystem reads
+    # ------------------------------------------------------------------
+
+    def _pv(self, key):
+        """This posture's value for a tuned parameter. THE seam.
+
+        Every subsystem that used to read a module constant reads this instead: the spawn budget,
+        the economy/attacker split, the turret policy, the builder's priority ordering. In the
+        shipped build all three rows hold identical values, so the indirection is provably free --
+        and the moment a specialist is written, exactly one number moves and nothing else does.
+        """
+        return POSTURE_PARAMS[self.posture][key]
+
+    def _sync_state(self, ct):
+        """Read the Core's published state word. One slot, one writer, everybody reads it.
+
+        The alarm is bit 0 with exactly its old meaning, so `self.alarm` here is bit-for-bit the
+        `read_store(S_ALARM) != 1` test it replaces, including on a failed read.
+        """
+        self.alarm = False
+        try:
+            raw = ct.read_store(S_STATE)
+        except Exception:
+            return
+        self.alarm = (raw & ALARM_BIT) == ALARM_BIT
+        p = (raw >> POSTURE_SHIFT) & 3
+        self.posture = p if p < len(POSTURE_PARAMS) else POSTURE_RUSH
+
+    def _sense(self, ct):
+        """Fold this round's observations into the latched evidence word.
+
+        EV_HURT is the bit that matters and it has ZERO false positives, which is why it is the
+        only one weighted double. A Builder Bot cannot attack any adjacent tile at all -- can_fire
+        is False and fire() raises against an adjacent Core, Barrier, Conveyor, Harvester and
+        Builder Bot, verified byte-identically on two platforms (G13) -- and the only attack a
+        builder has is the range-0 shot at its OWN tile, which damages the building under it and
+        nothing else (G14). Our own turrets check the occupant's team before every shot, so no
+        friendly fire either. Therefore: one hit point of damage anywhere on our side PROVES the
+        enemy has a turret and is feeding it. Nothing else in this detector is that clean, and it
+        is latched forever the moment it fires.
+
+        The other bits are TELLS, not proofs, and are priced accordingly.
+        """
+        try:
+            self.evidence = self.evidence | (ct.read_store(S_FLAGS) & EV_MASK)
+        except Exception:
+            pass
+        if not (self.evidence & EV_HURT):
+            try:
+                if ct.get_hp() < ct.get_max_hp():
+                    self.evidence = self.evidence | EV_HURT
+            except Exception:
+                pass
+        n = len(self.foe_turrets)
+        if n >= 1:
+            self.evidence = self.evidence | EV_FOE_TURRET
+        if n >= FOE_TURRETS_MANY:
+            self.evidence = self.evidence | EV_FOE_TURRET2
+        if len(self.foe_harvesters) >= FOE_HARVESTERS_MANY:
+            self.evidence = self.evidence | EV_FOE_ECON
+
+    def _scan_intruder(self, ct, tile, key):
+        """Latch how deep into OUR half an enemy Builder Bot has been seen.
+
+        Measured as a fraction of the core-to-core axis (0 = our Core, 100 = theirs), because a
+        tile count means nothing across a pool that runs from 8x15 to 30x30. The axis comes free:
+        `siege` already infers the enemy Core anchor from symmetry and every builder already
+        holds it.
+
+        A tell, not a proof -- an economy bot's builder can wander -- so it is worth one point,
+        and only the near third is worth two.
+        """
+        bid = self._bot_at(ct, tile)
+        if bid is None or not self._is_enemy(ct, bid):
+            return
+        ax = self.enemy_anchor[0] - self.core_pos.x
+        ay = self.enemy_anchor[1] - self.core_pos.y
+        norm = ax * ax + ay * ay
+        if norm <= 0:
+            return
+        f = ((key[0] - self.core_pos.x) * ax + (key[1] - self.core_pos.y) * ay) * 100 // norm
+        if f <= INTRUDER_HALF:
+            self.evidence = self.evidence | EV_INTRUDER
+        if f <= INTRUDER_DEEP:
+            self.evidence = self.evidence | EV_DEEP
+
+    def _arbitrate(self, ct, rnd):
+        """Decide the team posture. Core only.
+
+        A ratchet with a Schmitt trigger on top, not a controller: the evidence it reads is
+        monotone, so this can only climb until something releases it, and the release exists for a
+        future specialist rather than for today.
+
+        BE HONEST ABOUT THE CLOCK. A posture decided at round R is published at R+1, read by a
+        builder at R+2, and whatever it buys is standing perhaps twenty rounds after that. So the
+        postures may differ in SCALE and must never differ in EXISTENCE: the minimum viable
+        version of every subsystem is built unconditionally, and the posture only ever says how
+        much more of it to buy. A defence that only exists once the detector has fired is a
+        defence that arrives after the Core has.
+        """
+        try:
+            self.evidence = self.evidence | (ct.read_store(S_FLAGS) & EV_MASK)
+        except Exception:
+            pass
+        self.evidence = self.evidence | self.core_ev
+        for bit in EV_BITS:
+            if (self.evidence & bit) and bit not in self.ev_round:
+                self.ev_round[bit] = rnd
+
+        score = 0
+        for bit, weight in EV_WEIGHTS:
+            if self.evidence & bit:
+                score += weight
+        if self.alarm:
+            score += ALARM_WEIGHT
+        self.score = score
+
+        want = self.posture
+        if score >= POSTURE_CONFIDENCE:
+            want = POSTURE_DEFENCE
+        elif rnd >= ECONOMY_FROM and self.evidence == 0:
+            # Nobody has touched us, nobody has been seen, nothing of ours has been shot. The
+            # only remaining question is who banks more, and that is a tiebreak we win by
+            # building chains rather than turrets (G01/G03).
+            want = POSTURE_ECONOMY
+        elif score <= POSTURE_RELEASE:
+            want = POSTURE_RUSH
+        if want == self.posture:
+            return self.posture
+        dwell = POSTURE_DWELL if self.switches else POSTURE_FIRST_DWELL
+        if rnd - self.posture_round < dwell:
+            return self.posture
+        self.posture = want
+        self.posture_round = rnd
+        self.switches += 1
+        return self.posture
+
+    # ------------------------------------------------------------------
     # Core
     # ------------------------------------------------------------------
 
     def _run_core(self, ct):
         pos = ct.get_position()
         self.core_pos = pos
-        # BIASED BY ONE. The store is u32 and 0 is the "nothing written yet" value, so a raw
-        # coordinate of 0 is indistinguishable from an empty slot -- and on the 21-map pool
-        # `jackpot`, `sweden` and `vase` all anchor Team A's Core at literal (0, 0) (G64a). See
-        # `_home_from_store`, which is where that cost us the entire offence on three maps.
-        ct.write_store(S_CORE_X, pos.x + 1)
-        ct.write_store(S_CORE_Y, pos.y + 1)
+        ct.write_store(S_CORE_X, pos.x)
+        ct.write_store(S_CORE_Y, pos.y)
         self._top_up_ammo(ct)
 
         # The Core is the one unit that can read its own hit points, so it is the one unit that
@@ -481,18 +739,41 @@ class Player:
         # and a flapping alarm would send the economy back and forth doing neither job.
         hurt = False
         try:
-            hurt = ct.get_hp() * 100 < ct.get_max_hp() * ALARM_PERCENT
-            if hurt or ct.read_store(S_ALARM) == 1:
-                ct.write_store(S_ALARM, 1)
+            hp, mx = ct.get_hp(), ct.get_max_hp()
+            # ANY damage at all on the Core proves a fed enemy turret exists, tens of rounds
+            # before the 88% alarm below is willing to say so. Same argument as _sense: a Builder
+            # Bot cannot attack an adjacent tile (G13) and our own turrets never fire on our own
+            # team, so nothing else on the board can have done it.
+            if hp < mx:
+                self.core_ev = self.core_ev | EV_HURT
+            hurt = hp * 100 < mx * ALARM_PERCENT
+            if hurt or (self.state & ALARM_BIT):
                 hurt = True
         except Exception:
             hurt = False
-
-        cap = BUILDERS
-        reserve = CHAIN_RESERVE
         if hurt:
-            cap = SIEGE_BUILDERS
-            reserve = ALARM_RESERVE
+            self.alarm = True
+
+        # Arbitrate, then publish. The Core is the only writer of this slot, so the value it
+        # reads back next round is the value it wrote -- which is why the alarm latch above can
+        # be read out of `self.state` instead of out of the store.
+        rnd = 0
+        try:
+            rnd = ct.get_current_round()
+        except Exception:
+            rnd = 0
+        self._arbitrate(ct, rnd)
+        self.state = (ALARM_BIT if self.alarm else 0) | (self.posture << POSTURE_SHIFT)
+        try:
+            ct.write_store(S_STATE, self.state)
+        except Exception:
+            pass
+
+        cap = self._pv("builders")
+        reserve = self._pv("chain_reserve")
+        if hurt:
+            cap = self._pv("siege_builders")
+            reserve = self._pv("alarm_reserve")
         if self.spawned >= cap or not self._can_act(ct):
             return
         try:
@@ -539,7 +820,7 @@ class Player:
         builder the ring tile with the shortest walk to its first build site; every later builder
         keeps the legacy order, so the economy is untouched.
         """
-        if self.spawned < ATTACKERS:
+        if self.spawned < self._pv("attackers"):
             order = self._rush_spawn_order(ct, pos)
             if order:
                 return order
@@ -628,11 +909,36 @@ class Player:
             self.spawn_order = ()
         return self.spawn_order
 
-    # `_builder_target` lived here -- an ore-count-scaled builder cap that nothing ever called.
-    # It was dead code with a live NameError inside it: MIN_BUILDERS and MAX_BUILDERS are not
-    # defined anywhere in this module, so the first caller would have taken a NameError straight
-    # into the blanket handler in `run()`, and on the Core that is one silently lost turn per
-    # round for the rest of the match. Removed rather than left as a trap.
+    def _builder_target(self, ct):
+        """One builder per ore tile we could still chain, clamped -- never a flat constant.
+
+        Each builder is +20 percentage points of permanent global cost scale, so an idle one is pure tax;
+        but each builder that completes a chain returns ~2470 collected. The binding resource is ore, so
+        size the workforce to the ore actually available on our half of the map.
+        """
+        ore_count = None
+        if atlas is not None:
+            try:
+                tag = "a" if ct.get_team() == Team.A else "b"
+                rec = atlas.identify(ct.get_map_width(), ct.get_map_height(),
+                                     (self.core_pos.x, self.core_pos.y), tag)
+                if rec is not None:
+                    own = rec["own_core"]
+                    ore_count = sum(
+                        1 for o in rec["ore"]
+                        if (o[0] - own[0]) ** 2 + (o[1] - own[1]) ** 2
+                        <= (o[0] - rec["enemy_core"][0]) ** 2 + (o[1] - rec["enemy_core"][1]) ** 2
+                    )
+            except Exception:
+                ore_count = None
+        if ore_count is None:
+            return MIN_BUILDERS + 1
+        target = (ore_count + 1) // 2
+        if target < MIN_BUILDERS:
+            return MIN_BUILDERS
+        if target > MAX_BUILDERS:
+            return MAX_BUILDERS
+        return target
 
     # ------------------------------------------------------------------
     # Builder
@@ -647,12 +953,17 @@ class Player:
             except Exception:
                 self.ordinal = 0
         if self.core_pos is None:
-            home = self._home_from_store(ct)
-            if home is not None:
-                self.core_pos = Position(home[0], home[1])
+            try:
+                x, y = ct.read_store(S_CORE_X), ct.read_store(S_CORE_Y)
+                if x > 0 or y > 0:
+                    self.core_pos = Position(x, y)
+            except Exception:
+                pass
         self._load_atlas(ct)
 
+        self._sync_state(ct)
         self._observe(ct, pos)
+        self._sense(ct)
         self._infer_enemy_core(ct)
         self._read_ray(ct)
 
@@ -669,40 +980,56 @@ class Player:
         if self._is_rusher(ct) and self._run_rush(ct, pos):
             return
 
-        # 1. Settle the belt we owe. Highest-value action in the game: nothing scores until the chain
-        #    reaches the Core, so finishing always outranks starting (G02).
-        if self._settle_owed(ct, pos):
-            return
-        # 2. The range-0 own-tile sabotage that used to live here is GONE on 2.3.3: `fire(own_pos)`
-        #    raises and `can_fire(own_tile)` is False (G14 refuted). Its replacement -- the
-        #    orthogonally adjacent 2 dmg / 2 Ti shot of G13 -- is given only to the rusher, in
-        #    `_snipe`, because an economy builder that stops to shoot is a chain not built.
-        # 2b. The base is under fire. Titanium only scores while there is a Core footprint for the
-        #     stacks to land on (G01), so once the Core is being ground down, holding it outranks
-        #     mining into it. Never interrupts a chain in flight -- an abandoned chain scores zero
-        #     (G02) -- so a builder finishes what it started first.
-        if self._hold_home(ct, pos):
-            return
-        # 3. Phase work.
-        if self.phase == "harvest" and self._try_harvester(ct, pos):
-            return
-        if self.phase == "belt" and self._belt_step(ct, pos):
-            return
-        # A cut belt makes the ENTIRE chain upstream of it score zero (G02), and an enemy builder can
-        # destroy a 20 HP conveyor for 20 Ti using the range-0 attack. Repairing one link costs ~3 Ti and
-        # restores ~2.5 collected per round, so it outranks starting anything new.
-        if self.phase == "seek" and self._repair_chain(ct, pos):
-            return
-
-        if self.phase == "seek":
-            self._seek(ct, pos)
-            if self.phase == "harvest" and self._try_harvester(ct, pos):
+        # 1-7. The priority ladder, in the order THIS POSTURE wants it. `ORDER_TODAY` is the
+        #      ladder that used to be written out inline here, rung for rung and in the same
+        #      order, and it is what all three postures currently use. Making the order data is
+        #      the second seam: a DEFENCE specialist that wants healing ahead of prospecting, or
+        #      an ECONOMY one that never bricks, changes a tuple instead of this function.
+        for step in self._pv("order"):
+            if self._step(ct, pos, step):
                 return
-        # 4. Repair anything friendly and damaged beside us.
-        if self._heal(ct, pos):
-            return
-        # 5. Otherwise walk.
+        # 8. Otherwise walk.
         self._walk(ct, pos)
+
+    def _step(self, ct, pos, step):
+        """One rung of the builder's priority ladder. True if the round was spent.
+
+        Every rung is the code that used to sit inline in `_run_builder`, moved verbatim.
+        """
+        if step == STEP_OWED:
+            # Settle the belt we owe. Highest-value action in the game: nothing scores until the
+            # chain reaches the Core, so finishing always outranks starting (G02).
+            return self._settle_owed(ct, pos)
+        if step == STEP_HOLD:
+            # The base is under fire. Titanium only scores while there is a Core footprint for the
+            # stacks to land on (G01), so once the Core is being ground down, holding it outranks
+            # mining into it. Never interrupts a chain in flight -- an abandoned chain scores zero
+            # (G02) -- so a builder finishes what it started first.
+            return self._hold_home(ct, pos)
+        if step == STEP_PHASE:
+            if self.phase == "harvest" and self._try_harvester(ct, pos):
+                return True
+            if self.phase == "belt" and self._belt_step(ct, pos):
+                return True
+            return False
+        if step == STEP_REPAIR:
+            # A cut belt makes the ENTIRE chain upstream of it score zero (G02), and an enemy
+            # builder can destroy a 20 HP conveyor for 20 Ti using the range-0 attack. Repairing
+            # one link costs ~3 Ti and restores ~2.5 collected per round, so it outranks starting
+            # anything new.
+            if self.phase == "seek":
+                return self._repair_chain(ct, pos)
+            return False
+        if step == STEP_SEEK:
+            if self.phase == "seek":
+                self._seek(ct, pos)
+                if self.phase == "harvest" and self._try_harvester(ct, pos):
+                    return True
+            return False
+        if step == STEP_HEAL:
+            # Repair anything friendly and damaged beside us.
+            return self._heal(ct, pos)
+        return False
 
     def _load_atlas(self, ct):
         """Pure accelerator: seed the enemy Core and the static wall set when the map is known.
@@ -785,7 +1112,7 @@ class Player:
                     return False
                 if claim == mine:
                     self.rush_role = True
-                elif ATTACKERS < 2:
+                elif self._pv("attackers") < 2:
                     self.rush_role = False
                 else:
                     # Seat two is claimed the same way, one round later. Two builders can write
@@ -912,17 +1239,6 @@ class Player:
                 self.rush_i += 1
                 self.rush_dist = None
                 self.rush_stuck = 0
-            # NOT GIVEN UP ON. `can_build_*` refusing from a legal tile is nearly always "not
-            # enough titanium yet" -- the normal state of a rusher that has walked ahead of its
-            # funding, and one it must be allowed to wait out, because the economy is holding
-            # RUSH_RESERVE for exactly this purchase. A bounded give-up was written for this
-            # branch (BUILD_PATIENCE = 45 rounds, then blacklist the tile and re-plan) because
-            # the branch spends the round either way and never touches `rush_stuck`, so a
-            # permanently illegal build -- MAX_TEAM_UNITS = 50 reached, or a Builder Bot parked
-            # on the target tile -- would freeze the rusher exactly the way the diagonal bug did.
-            # It MEASURED WORSE: 29-13 against 31-11 over 42 mirrored games vs `vanguard`, same
-            # 28 core kills, 112 fewer shots delivered. It was abandoning firing positions that
-            # were only waiting to be paid for. Left out, and left documented.
             return True
 
         # Still in transit to the firing tile: a Launcher hop buys six tiles for two rounds.
@@ -984,7 +1300,12 @@ class Player:
         """
         if siege is None or self.enemy_anchor is None:
             return False
-        if self.battery_n >= siege.MAX_BATTERY:
+        # `None` in the row means "whatever siege thinks", so the table never duplicates a
+        # constant that already has a home.
+        cap = self._pv("max_battery")
+        if cap is None:
+            cap = siege.MAX_BATTERY
+        if self.battery_n >= cap:
             return False
         try:
             rnd = ct.get_current_round()
@@ -994,7 +1315,7 @@ class Player:
             return False
         self.battery_round = rnd
         try:
-            if ct.get_global_resources() < ct.get_gunner_cost() + BATTERY_RESERVE:
+            if ct.get_global_resources() < ct.get_gunner_cost() + self._pv("battery_reserve"):
                 return False
             w, h = ct.get_map_width(), ct.get_map_height()
         except Exception:
@@ -1202,7 +1523,13 @@ class Player:
         around while our builder stands beside it waiting has traded six of our tiles for five of
         theirs, at a loss.
         """
-        home = self._home_from_store(ct)
+        home = None
+        try:
+            hx, hy = ct.read_store(S_CORE_X), ct.read_store(S_CORE_Y)
+            if hx > 0 or hy > 0:
+                home = (hx, hy)
+        except Exception:
+            home = None
         if home is None:
             return False
         foe = None
@@ -1456,7 +1783,7 @@ class Player:
         return True
 
     def _bfs_step(self, ct, pos, goal):
-        """First step of a shortest path to any tile ORTHOGONALLY adjacent to `goal`.
+        """First step of a shortest path to any tile in `goal`'s EIGHT-neighbourhood.
 
         Multi-source BFS from the goal ring outward over the STATIC wall set (which the atlas gives us
         in full), cached per goal. ~w*h cheap integer ops, recomputed only when the goal changes.
@@ -1545,6 +1872,11 @@ class Player:
             self.sym_mask = siege.seed_mask(w, h, (self.core_pos.x, self.core_pos.y))
             for key, code in self.terrain.items():
                 self.sym_mask = siege.reject_by_tile(w, h, self.sym_mask, self.terrain, key, code)
+        # An enemy Builder Bot inside our half is the second-cheapest archetype tell there is,
+        # and unlike the census it is only worth paying for until it fires: the bit is latched
+        # forever, so the scan switches itself off the moment it lands.
+        scan_bots = (not (self.evidence & EV_DEEP)
+                     and self.core_pos is not None and self.enemy_anchor is not None)
         for tile in tiles:
             key = (tile.x, tile.y)
             # Occupancy memory. The rush BFS must route AROUND buildings, not through them: the
@@ -1565,17 +1897,32 @@ class Player:
                     # Learn both Cores' real 2x2 footprints from vision rather than guessing an
                     # anchor. A sighted enemy Core settles the symmetry outright and outranks every
                     # inference -- it is the one observation that cannot be wrong.
+                    #
+                    # The same entity-type read also runs the ENEMY CENSUS -- how many turrets and
+                    # how many producers they have standing. It costs one extra get_team() on a
+                    # tile we were already interrogating, and it is the only signal that
+                    # distinguishes a greedy economy from an anti-rush before either has touched
+                    # us.
                     try:
-                        if ct.get_entity_type(occ) == EntityType.CORE:
-                            if ct.get_team(occ) == ct.get_team():
+                        et = ct.get_entity_type(occ)
+                        mine = ct.get_team(occ) == ct.get_team()
+                        if et == EntityType.CORE:
+                            if mine:
                                 self.core_tiles.add(key)
                             else:
                                 self.enemy_core_tiles.add(key)
                                 seen_at = ct.get_position(occ)
                                 self.enemy_anchor = (seen_at.x, seen_at.y)
                                 self.enemy_sighted = True
+                        elif not mine:
+                            if et == EntityType.GUNNER or et == EntityType.SENTINEL:
+                                self.foe_turrets.add(key)
+                            elif et == EntityType.HARVESTER:
+                                self.foe_harvesters.add(key)
                     except Exception:
                         pass
+            if scan_bots:
+                self._scan_intruder(ct, tile, key)
             if key in self.seen:
                 continue
             env = self._env(ct, tile)
@@ -1660,7 +2007,10 @@ class Player:
                 return
 
         try:
-            ct.write_store(S_SYMMETRY, self.sym_mask)
+            # Slot 11 carries two monotone bitfields at once: the symmetry rejection mask in bits
+            # 0-2 and the archetype evidence above it. Same writer, same round, same merge -- and
+            # every reader of either field masks, so neither can see the other.
+            ct.write_store(S_SYMMETRY, self.sym_mask | self.evidence)
             if self.enemy_anchor is not None:
                 value = pack(Position(self.enemy_anchor[0], self.enemy_anchor[1]))
                 if self.enemy_sighted:
@@ -1886,6 +2236,10 @@ class Player:
                 except Exception:
                     continue
                 if self._building_at(ct, tile) is None:
+                    # A belt of ours we can SEE is gone. Nothing friendly removes it -- our own
+                    # turrets never fire on our own team -- so this is either their gunner or a
+                    # builder standing on it with the range-0 attack (G14). The saboteur tell.
+                    self.evidence = self.evidence | EV_ECON_HIT
                     self.repair_target = (tile, facing)
                     break
             if self.repair_target is None:
@@ -1950,7 +2304,7 @@ class Player:
         try:
             need = ct.get_harvester_cost()
             if not self._rush_funded(ct):
-                need += RUSH_RESERVE
+                need += self._pv("rush_reserve")
             if ct.get_global_resources() < need:
                 return False
             if ct.can_build_harvester(ore):
@@ -2170,25 +2524,29 @@ class Player:
         """
         if self.rush_role is True or self.owed is not None or self.phase == "belt":
             return False
-        try:
-            if ct.read_store(S_ALARM) != 1:
-                return False
-        except Exception:
+        # Two ways in. The alarm is the measured one -- our own Core below ALARM_PERCENT, and
+        # `self.alarm` is bit-for-bit the store read it replaces. The posture gate is the seam: a
+        # DEFENCE specialist comes home on the fed-turret bit, which latches tens of rounds before
+        # the Core has lost 12% of itself. RUSH leaves it off, so this is exactly today's
+        # condition in the shipped build.
+        if not (self.alarm or (self._pv("hold_on_posture")
+                               and self.posture == POSTURE_DEFENCE)):
             return False
         if self._heal(ct, pos):
             return True
         try:
-            if ct.get_current_round() < FORTIFY_FROM:
+            if ct.get_current_round() < self._pv("fortify_from"):
                 return False
             cost = ct.get_barrier_cost()
-            if ct.get_global_resources() < cost + CHAIN_RESERVE:
+            if ct.get_global_resources() < cost + self._pv("chain_reserve"):
                 return False
         except Exception:
             return False
 
+        keep_open = self._pv("fortify_keep_open")
         ring = self._core_ring(ct)
         free = [t for t in ring if self._building_at(ct, Position(t[0], t[1])) is None]
-        if len(free) <= FORTIFY_KEEP_OPEN:
+        if len(free) <= keep_open:
             return False
         if self.enemy_anchor is not None:
             ax, ay = self.enemy_anchor
@@ -2198,7 +2556,7 @@ class Player:
             free.sort(key=lambda t: ((t[0] - pos.x) ** 2 + (t[1] - pos.y) ** 2, t))
         # Only the tiles on the side they actually walk in from are worth 3 Ti and a point of
         # cost scale; the far half of the ring is where our own chains have to terminate.
-        for t in free[:len(free) - FORTIFY_KEEP_OPEN]:
+        for t in free[:len(free) - keep_open]:
             target = Position(t[0], t[1])
             if pos.distance_squared(target) == 1:
                 if not self._can_act(ct):
@@ -2237,24 +2595,14 @@ class Player:
         -- whereas an economy builder that stops to shoot an enemy belt for ten rounds is ten
         rounds of a chain not built, and a chain is worth ~2470 collected (G04).
 
-        A BUILDER BOT IS NOT A TARGET. `can_fire`'s "only damage the building on it" is literal:
-        probed on 2.3.3 with `bots/probes/botshot` against a parked enemy builder standing on bare
-        ground, `can_fire` is False and `fire` raises `GameError: Cannot fire` with the target's
-        40 HP untouched. Ranking an enemy bot FIRST therefore did two bad things at once -- it
-        never landed a shot, and because the loop committed to the single best candidate and
-        returned False when `can_fire` refused it, one enemy builder standing beside our parked
-        rusher SHADOWED the enemy Core on the other side of it, every round, for the rest of the
-        match. Measured over 42 games against `vanguard`, which swarms builders around its own
-        Core: this method fired ZERO times a game. Candidates are now tried in order until one is
-        legal.
-
         Targets in priority order:
-          1. an enemy CONVEYOR or SPLITTER. 20 HP, and cutting one makes every harvester upstream
-             of it score zero for the rest of the match (G02) -- by far the best return here.
-          2. an enemy HARVESTER, the same argument one link back.
-          3. any other enemy building: a Barrier bricking our lane, or a turret shooting our own.
-          4. the enemy CORE, which is what we came for, but which a Gunner grinds five times
-             faster for the same titanium.
+          1. an enemy BUILDER BOT. It is the only thing that can take a forward Gunner down now:
+             2 damage a round into 40 HP, inside the ~50 rounds the Gunner needs for a Core. We
+             out-trade it comfortably -- our heal is 4 HP for 1 Ti against its 2 damage for 2 Ti --
+             but shooting back ends the exchange instead of subsidising it.
+          2. any enemy BUILDING: a Barrier bricking our lane, a turret shooting our Gunner, or a
+             conveyor whose entire chain upstream scores zero the moment it is cut (G02).
+          3. the enemy CORE, which is what we came for.
         Never below SNIPE_FLOOR. Every 2 Ti spent here is 2 Ti the Core does not turn into
         ammunition, and a Gunner buys 10 damage with the same 2 Ti -- five times the trade.
         """
@@ -2265,42 +2613,28 @@ class Player:
                 return False
         except Exception:
             return False
-        cands = []
+        best = None
         for d in CARDINALS:
             t = pos.add(d)
             if not self._in_bounds(ct, t):
                 continue
-            eid = self._building_at(ct, t)
+            rank = 0
+            eid = self._bot_at(ct, t)
             if not self._is_enemy(ct, eid):
-                continue
-            kind = None
-            try:
-                kind = ct.get_entity_type(eid)
-            except Exception:
-                kind = None
-            if (t.x, t.y) in self.enemy_core_tiles or kind == EntityType.CORE:
-                rank = 3
-            elif kind == EntityType.CONVEYOR or kind == EntityType.SPLITTER:
-                rank = 0
-            elif kind == EntityType.HARVESTER:
-                rank = 1
-            else:
-                rank = 2
-            cands.append((rank, t.x, t.y, t))
-        if not cands:
-            return False
-        cands.sort()
-        # Tried in order rather than committing to the head of the list: `can_fire` can refuse the
-        # best candidate for reasons this side cannot see, and returning False there silently
-        # skips targets that ARE legal.
-        for _rank, _x, _y, t in cands:
-            try:
-                if not ct.can_fire(t):
+                eid = self._building_at(ct, t)
+                if not self._is_enemy(ct, eid):
                     continue
-                ct.fire(t)
+                rank = 2 if (t.x, t.y) in self.enemy_core_tiles else 1
+            if best is None or rank < best[0]:
+                best = (rank, t)
+        if best is None:
+            return False
+        try:
+            if ct.can_fire(best[1]):
+                ct.fire(best[1])
                 return True
-            except Exception:
-                continue
+        except Exception:
+            return False
         return False
 
     def _heal(self, ct, pos):
@@ -2336,11 +2670,33 @@ class Player:
             # Friendly or unknown in the ray. Firing destroys our own unit, and the engine keeps
             # offering this same target forever (G11) -- hold fire rather than shoot through it.
             return
+        if not self._may_fire(ct, occupant):
+            return
         try:
             if ct.can_fire(target):
                 ct.fire(target)
         except Exception:
             return
+
+    def _may_fire(self, ct, occupant):
+        """Posture hook on turret policy. True in every posture today.
+
+        The seam is here because this is precisely where a DEFENCE specialist differs, and the
+        2.3.3 ammunition model makes the argument STRONGER rather than weaker. Ammunition is one
+        team-wide pool filled only by convert_ammo at the Core (G52), so every turret we own draws
+        on the same purse: 2 Ti of it spent by a forward Gunner on the enemy conveyor that happens
+        to be nearer in its lane is 2 Ti that is not there for the turret covering our own Core
+        when their Builder Bot arrives. On 2.2.0 that waste was local to one magazine; now it is
+        charged to the whole team.
+        """
+        self._sync_state(ct)
+        want = self._pv("fire_only")
+        if want is None:
+            return True
+        try:
+            return ct.get_entity_type(occupant) in want
+        except Exception:
+            return True
 
     def _run_sentinel(self, ct):
         """No get_sentinel_target() exists, so walk get_attackable_tiles() ourselves.
