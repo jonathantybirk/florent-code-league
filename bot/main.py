@@ -125,6 +125,17 @@ USE_ATLAS_ORE = False
 
 # Keep enough banked to finish a chain in flight -- a half-built chain delivers exactly zero.
 CHAIN_RESERVE = 45
+
+# Spare harvester faces to brick. A harvester round-robins its 10 Ti/4 rounds to EVERY adjacent
+# building, so an enemy turret parked beside ours is fed by ours. Measured on a synthetic map where the
+# deposit touches our own Core, so `collected` is exactly that harvester's output over 1000 rounds:
+#     spare face empty          2500      BARRIER on it   2500   (a Barrier takes ZERO share)
+#     idle GUNNER on it         2490      CONVEYOR on it  2490
+# So the arming is real only for a turret that is actually FIRING (it empties every ~5 rounds and comes
+# back for more); an idle one takes a single 10 Ti stack and then sits full. Bricking is free for our own
+# delivery, which is what makes this worth doing at all. One face: the second brick buys a tile nobody
+# wanted plus a permanent point of global cost scale (G07). Swept 0 -> 62, 1 -> 66, 2 -> 62.
+SEAL_FACES = 1
 # Titanium the economy must leave unspent until the rush route is finished. Traced against an inert
 # opponent, the rusher reached its firing tile on aurora/a at round 39 -- the exact round the plan
 # predicts -- and then sat there for SEVENTEEN rounds because five economy builders had ground the
@@ -257,6 +268,7 @@ class Player:
 
         # Every belt this builder has laid, so it can notice one going missing and put it back.
         self.built_belts = []
+        self.seal_queue = []
         self.repair_target = None
 
         # Navigation. Buildings block movement and are NOT walls, so they need their own set --
@@ -564,6 +576,8 @@ class Player:
         if self._settle_owed(ct, pos):
             return
         # 2. Range-0 sabotage -- the only attack a builder has (G14). Cuts every harvester upstream.
+        if self._seal(ct, pos):
+            return
         if self._sabotage(ct, pos):
             return
         # 2b. The base is under fire. Titanium only scores while there is a Core footprint for the
@@ -1708,6 +1722,67 @@ class Player:
         self.owed_is_final = False
         self.stuck = 0
 
+    def _queue_seal(self, ct, pos, ore):
+        """Remember the producer's spare faces, most exposed first.
+
+        The face the belt is about to take is skipped -- that is the one output we WANT. Ore, walls,
+        our own Core and the rusher's firing lane are all skipped as well: a Barrier in a friendly
+        Gunner's ray becomes its target and jams it permanently (G11).
+        """
+        if self.enemy_anchor is None:
+            return
+        ax, ay = self.enemy_anchor
+        out = []
+        for d in CARDINALS:
+            n = ore.add(d)
+            key = (n.x, n.y)
+            if key == (pos.x, pos.y) or not self._in_bounds(ct, n):
+                continue
+            if key in self.known_walls or key in self.known_ore or key in self.core_tiles:
+                continue
+            if key in self.rush_ray or key in self.enemy_core_tiles:
+                continue
+            out.append(((key[0] - ax) ** 2 + (key[1] - ay) ** 2, key))
+        out.sort()
+        for _, key in out[:SEAL_FACES]:
+            if key not in self.seal_queue:
+                self.seal_queue.append(key)
+
+    def _seal(self, ct, pos):
+        """Brick a queued producer face, but only from where we already stand.
+
+        Never moves and never waits: if the round would otherwise have been spent laying chain, the
+        chain wins. A builder that detours for masonry is a builder not completing a chain, and an
+        incomplete chain scores exactly zero (G02).
+        """
+        if not SEAL_FACES or not self.seal_queue or self.owed is not None:
+            return False
+        if not self._can_act(ct):
+            return False
+        try:
+            need = ct.get_barrier_cost() + CHAIN_RESERVE
+            if not self._rush_funded(ct):
+                need += RUSH_RESERVE
+            if ct.get_global_resources() < need:
+                return False
+        except Exception:
+            return False
+        for key in tuple(self.seal_queue):
+            target = Position(key[0], key[1])
+            if pos.distance_squared(target) != 1:
+                continue
+            if self._building_at(ct, target) is not None:
+                self.seal_queue.remove(key)     # somebody took the tile; nothing left to deny
+                continue
+            try:
+                if ct.can_build_barrier(target):
+                    ct.build_barrier(target)
+                    self.seal_queue.remove(key)
+                    return True
+            except Exception:
+                self.seal_queue.remove(key)
+        return False
+
     def _repair_chain(self, ct, pos):
         """Put back any belt of ours that has gone missing. Returns True if we acted or moved.
 
@@ -1795,6 +1870,8 @@ class Player:
                 return False
             if ct.can_build_harvester(ore):
                 ct.build_harvester(ore)
+                if SEAL_FACES:
+                    self._queue_seal(ct, pos, ore)
                 # A harvester orthogonally adjacent to the Core footprint already delivers straight
                 # into it -- the chain is complete with zero conveyors. Building one anyway would add
                 # a second output and split the harvester's fixed 10 Ti/4 rounds round-robin.
