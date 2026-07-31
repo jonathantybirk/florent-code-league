@@ -56,6 +56,7 @@ Status: `VERIFIED-LINUX` > `VERIFIED-WIN` > `ASSERTED` > `REFUTED`
 | G33 | The Core's `get_position()` is the **top-left anchor** of its 2×2 footprint, and `(width, height, own_core_pos)` is a **unique fingerprint** across all 15 maps. | `VERIFIED-WIN` | Probed `get_tile_building_id` at all four offsets in-engine on 15 maps × both sides, 30/30. Enables round-0 map identification with zero scouting (~0.23 µs per lookup). |
 | G34 | `get_attackable_tiles_from()` is callable from a **Builder Bot**, not only from a turret. | `VERIFIED-WIN` | Probe-verified. Lets a builder evaluate turret geometry before committing to a build site. |
 | G35 | `import heapq` **works inside the bot sandbox**, despite numpy failing (G28). | `VERIFIED-WIN` | Pure-Python stdlib modules import fine; the G28 failure is specific to single-phase-init C extensions. |
+| G42 | **Harvesters DO block movement.** `docs/game-rules/game-rules-reference.md` says "Blocks movement: No" — **wrong**. | `VERIFIED-WIN` | `bots/probes/passability`: on sprint and duel, immediately after building a harvester on an adjacent ore tile, `is_tile_passable=False`, `is_tile_empty=False`, and `can_move()` toward it returns `False`. **A harvester placed in your own corridor walls off your own builders** — a real hazard for any auto-build policy, and a reason a chokepoint ore tile may be worth leaving unbuilt. |
 
 ## Measurement methodology
 
@@ -74,7 +75,7 @@ Status: `VERIFIED-LINUX` > `VERIFIED-WIN` > `ASSERTED` > `REFUTED`
 | G16 | Forward-gunner Core kill at turn 77 / 13-of-15 ore-adjacent firing positions | **P0** — the offence doctrine rests entirely on this |
 | G40 | Turret ammo magazine only refills at exactly 0 (inverts fire discipline) | P1 |
 | G41 | Launcher mechanics: can a thrown bot act on landing? chainable? enemy bots throwable? | P1 |
-| G42 | Harvesters block movement (contradicts the reference table) | P1 |
+| ~~G42~~ | *resolved — see below* | — |
 | G43 | Harvester output splitting / parasite-conveyor denial | P2 |
 | G44 | Anything at all on Graviton3/ARM | P1 — no claim here is ARM-confirmed |
 
