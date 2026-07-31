@@ -30,7 +30,6 @@ from constants import (
     SLOT_LAUNCH_ID,
     SIEGE_ORE_RADIUS,
     SIEGE_ORE_FAR,
-    RAID_MIN_GAP,
     SIEGE_LINE_MAX,
     SIEGE_SLOTS,
     SLOT_SYMMETRY_A,
@@ -38,7 +37,7 @@ from constants import (
 )
 from utils import pack_pos
 
-DEBUG = bool(os.environ.get("VANGUARD_DEBUG"))
+DEBUG = False  # archived build
 
 # A single trunk saturates at four Harvesters, but deposits far enough apart
 # get their own line into the Core, and once the barrier ring and the repair
@@ -81,9 +80,7 @@ def _run(p, ct):
         # An attacker with no battery is contributing nothing, while at home
         # its heals are worth more titanium-for-titanium than their Gunners.
         p.attacker = False
-    if p.attacker and p.raider:
-        _raid(p, ct)
-    elif p.attacker:
+    if p.attacker:
         _siege(p, ct)
     else:
         _economy(p, ct)
@@ -98,11 +95,6 @@ def _init(p, ct):
     # siege is not going to arrive in time to matter.
     p.attacker = (p.ticket >= ECONOMY_BUILDERS
                   and not ct.read_store(SLOT_HOME_UNDER_FIRE))
-    # The first attacker builds the battery; later ones raid instead of
-    # queueing behind it. A standalone raider probe (`probes/reaver`) won an
-    # economy 963 stacks to 256 by cutting belts beyond the enemy repair
-    # radius, and one battery already saturates a forward Harvester.
-    p.raider = p.attacker and p.ticket >= ECONOMY_BUILDERS + 2
     p.job = None            # claimed ore
     p.line = None           # planned conveyor chain
     p.phase = "idle"
@@ -577,38 +569,6 @@ def _support(p, ct):
 # adjacent building, which makes "Harvester on a forward deposit, Gunners
 # packed around it" the cheapest 12.5 damage/round in the game -- no conveyor,
 # no splitter, nothing for the defender to cut.
-
-
-def _raid(p, ct):
-    """Cut their supply where their repair crew will never reach it."""
-    if p.enemy_core is None:
-        _explore(p, ct)
-        return
-    if _ferry(p, ct):
-        return
-    here = (ct.get_position().x, ct.get_position().y)
-    targets = sorted(
-        (t for t, kind in p.enemy_buildings.items()
-         if kind in WALKABLE_BUILDINGS and t not in p.blacklist),
-        key=lambda t: (0 if world.cheb(t, p.enemy_core) > RAID_MIN_GAP else 1,
-                       world.cheb(t, here), t))
-    for tile in targets[:3]:
-        if here == tile:
-            position = Position(*tile)
-            if ask(ct.can_fire, position):
-                ct.fire(position)
-            p.stalls, p.clear_target = 0, None
-            return
-        if p.clear_target != tile:
-            p.clear_target, p.stalls = tile, 0
-        p.stalls += 1
-        if p.stalls > BLOCKED_TILE_PATIENCE:
-            p.stalls, p.clear_target = 0, None
-            p.blacklist.add(tile)
-            continue
-        if _step(p, ct, {tile}):
-            return
-    _assist(p, ct)
 
 
 def _siege(p, ct):

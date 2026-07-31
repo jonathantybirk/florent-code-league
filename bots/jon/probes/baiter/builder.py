@@ -30,7 +30,6 @@ from constants import (
     SLOT_LAUNCH_ID,
     SIEGE_ORE_RADIUS,
     SIEGE_ORE_FAR,
-    RAID_MIN_GAP,
     SIEGE_LINE_MAX,
     SIEGE_SLOTS,
     SLOT_SYMMETRY_A,
@@ -81,9 +80,7 @@ def _run(p, ct):
         # An attacker with no battery is contributing nothing, while at home
         # its heals are worth more titanium-for-titanium than their Gunners.
         p.attacker = False
-    if p.attacker and p.raider:
-        _raid(p, ct)
-    elif p.attacker:
+    if p.attacker:
         _siege(p, ct)
     else:
         _economy(p, ct)
@@ -98,11 +95,6 @@ def _init(p, ct):
     # siege is not going to arrive in time to matter.
     p.attacker = (p.ticket >= ECONOMY_BUILDERS
                   and not ct.read_store(SLOT_HOME_UNDER_FIRE))
-    # The first attacker builds the battery; later ones raid instead of
-    # queueing behind it. A standalone raider probe (`probes/reaver`) won an
-    # economy 963 stacks to 256 by cutting belts beyond the enemy repair
-    # radius, and one battery already saturates a forward Harvester.
-    p.raider = p.attacker and p.ticket >= ECONOMY_BUILDERS + 2
     p.job = None            # claimed ore
     p.line = None           # planned conveyor chain
     p.phase = "idle"
@@ -110,7 +102,6 @@ def _init(p, ct):
     p.siege_ore = None
     p.feeders = set()        # our producers near the enemy Core
     p.gunners = set()
-    p.sentinel_plan = set()
     p.rejected_ores = set()
     p.stalls = 0
     p.clear_target = None
@@ -320,18 +311,10 @@ def _scorch(p, ct):
     for tile in sorted(set(p.my_harvesters) | set(p.conveyors)):
         if world.cheb(tile, p.core) > REPAIR_RADIUS + 3:
             continue
-        # Only burn for a Gunner that can actually reach the Core. "Any Gunner
-        # beside our Harvester" is baitable: a purpose-built opponent
-        # (`probes/baiter`) plants shotless Gunners next to our producers and
-        # makes us destroy a 20 Ti building and its income for their 10 Ti. It
-        # beat us 16-14 doing exactly that.
         armed = False
         for neighbour in world.adjacent4(p, tile):
-            if p.enemy_buildings.get(neighbour) not in (EntityType.GUNNER,
-                                                        EntityType.SENTINEL):
-                continue
-            if any(world.dist_sq(neighbour, seat) <= GUNNER_RANGE_SQ
-                   for seat in p.foot):
+            if p.enemy_buildings.get(neighbour) in (EntityType.GUNNER,
+                                                    EntityType.SENTINEL):
                 armed = True
                 break
         if not armed:
@@ -415,8 +398,6 @@ def _home_gunner(p, ct):
     if ct.get_global_resources() < ct.get_gunner_cost() + 40:
         return False
     occupied = p.solids | set(p.conveyors) | set(p.enemy_buildings)
-    guarded = {tile for tile in p.conveyors
-               if world.cheb(tile, p.core) <= REPAIR_RADIUS}
     best = None
     for harvester in sorted(p.my_harvesters):
         for delta in D4_DELTAS:
@@ -425,20 +406,10 @@ def _home_gunner(p, ct):
                 continue
             if spot in world.known_walls(p) or spot in world.known_ores(p):
                 continue
-            # Aim down our own belt by preference. It is a trap, not friendly
-            # fire: a Gunner holds fire while the tile is merely a Conveyor,
-            # and a raider has to *stand on* that tile to chip it, at which
-            # point the Builder soaks the shot instead. Opponents now win by
-            # cutting supply -- 1918 damage to our belts in one match -- and
-            # this is the only thing that punishes it.
-            facing = _ray_onto(p, spot, guarded, occupied)
-            if facing is not None:
-                score = (0, world.dist_sq(spot, p.enemy_core), spot)
-            else:
-                facing = _open_ray_toward(p, spot, p.enemy_core, occupied)
-                if facing is None:
-                    continue
-                score = (1, world.dist_sq(spot, p.enemy_core), spot)
+            facing = _open_ray_toward(p, spot, p.enemy_core, occupied)
+            if facing is None:
+                continue
+            score = (world.dist_sq(spot, p.enemy_core), spot)
             if best is None or score < best[0]:
                 best = (score, spot, facing)
     if best is None:
@@ -447,14 +418,6 @@ def _home_gunner(p, ct):
     target = Position(*spot)
 
     def attempt():
-        if facing in p.sentinel_plan:
-            if (ct.get_global_resources() > ct.get_sentinel_cost() + 40
-                    and ask(ct.can_build_sentinel, target, facing)):
-                ct.build_sentinel(target, facing)
-                p.solids.add(spot)
-                p.gunners.add(spot)
-                log(ct, f"siege t{p.ticket} sentinel {spot} {facing}")
-                return True
         if ask(ct.can_build_gunner, target, facing):
             ct.build_gunner(target, facing)
             p.solids.add(spot)
@@ -466,22 +429,6 @@ def _home_gunner(p, ct):
     if _build_from(p, ct, spot, attempt):
         return True
     return world.cheb((ct.get_position().x, ct.get_position().y), spot) > 1
-
-
-def _ray_onto(p, spot, wanted, occupied):
-    """A facing whose ray stops exactly on one of `wanted`, nothing between."""
-    if not wanted:
-        return None
-    for delta, facing in FACING8.items():
-        for step in range(1, 4):
-            tile = (spot[0] + delta[0] * step, spot[1] + delta[1] * step)
-            if not world.inside(p, tile) or tile in world.known_walls(p):
-                break
-            if tile in wanted:
-                return facing
-            if tile in occupied or tile in p.foot:
-                break
-    return None
 
 
 def _open_ray_toward(p, spot, threat, occupied):
@@ -577,38 +524,6 @@ def _support(p, ct):
 # adjacent building, which makes "Harvester on a forward deposit, Gunners
 # packed around it" the cheapest 12.5 damage/round in the game -- no conveyor,
 # no splitter, nothing for the defender to cut.
-
-
-def _raid(p, ct):
-    """Cut their supply where their repair crew will never reach it."""
-    if p.enemy_core is None:
-        _explore(p, ct)
-        return
-    if _ferry(p, ct):
-        return
-    here = (ct.get_position().x, ct.get_position().y)
-    targets = sorted(
-        (t for t, kind in p.enemy_buildings.items()
-         if kind in WALKABLE_BUILDINGS and t not in p.blacklist),
-        key=lambda t: (0 if world.cheb(t, p.enemy_core) > RAID_MIN_GAP else 1,
-                       world.cheb(t, here), t))
-    for tile in targets[:3]:
-        if here == tile:
-            position = Position(*tile)
-            if ask(ct.can_fire, position):
-                ct.fire(position)
-            p.stalls, p.clear_target = 0, None
-            return
-        if p.clear_target != tile:
-            p.clear_target, p.stalls = tile, 0
-        p.stalls += 1
-        if p.stalls > BLOCKED_TILE_PATIENCE:
-            p.stalls, p.clear_target = 0, None
-            p.blacklist.add(tile)
-            continue
-        if _step(p, ct, {tile}):
-            return
-    _assist(p, ct)
 
 
 def _siege(p, ct):
@@ -766,12 +681,8 @@ def _add_gunner(p, ct, without_travel=False):
                 continue
             aim = _ray_to_core(p, spot, core_tiles)
             if aim is None:
-                continue
-                # No line to the Core yet -- still worth taking if the tile sits
-                # on one of *their* producers. It gets fed by them, it shoots
-                # whatever walks past, and buildings die and open lines as the
-                # match goes on. A counter built on this rule (`probes/baiter`)
-                # fielded 8.1 Gunners to our 6.8 and beat us 16-14.
+                # No shot: plant it anyway if it sits on one of their
+                # producers. Either they burn the producer or they feed us.
                 if feeder not in p.enemy_output:
                     continue
                 towards = (p.enemy_core[0] - spot[0], p.enemy_core[1] - spot[1])
@@ -824,14 +735,6 @@ def _add_gunner(p, ct, without_travel=False):
                 return True
             p.blacklist.add(spot)
             continue
-        if facing in p.sentinel_plan:
-            if (ct.get_global_resources() > ct.get_sentinel_cost() + 40
-                    and ask(ct.can_build_sentinel, target, facing)):
-                ct.build_sentinel(target, facing)
-                p.solids.add(spot)
-                p.gunners.add(spot)
-                log(ct, f"siege t{p.ticket} sentinel {spot} {facing}")
-                return True
         if ask(ct.can_build_gunner, target, facing):
             ct.build_gunner(target, facing)
             p.solids.add(spot)
@@ -866,25 +769,6 @@ def _flank_bias(p, spot):
     rank = max(0, p.ticket - ECONOMY_BUILDERS)
     side = (spot[0] - p.enemy_core[0]) + (spot[1] - p.enemy_core[1]) >= 0
     return 0 if side == (rank % 2 == 0) else 1
-
-
-def _sentinel_aim(p, ct, spot, core_tiles):
-    """A facing from which a Sentinel at `spot` could hit the Core.
-
-    ct.can_fire_from() is evaluated by the engine against the real board, so
-    this asks rather than assumes -- including whether the line pierces the
-    Barriers in the way.
-    """
-    position = Position(*spot)
-    if not ct.is_in_vision(position):
-        return None
-    for facing in FACING8.values():
-        for tile in sorted(core_tiles):
-            if ask(ct.can_fire_from, position, facing, EntityType.SENTINEL,
-                   Position(*tile)):
-                p.sentinel_plan.add(facing)
-                return facing
-    return None
 
 
 def _feeder_outputs_into(p, feeder, spot):
@@ -942,11 +826,6 @@ def _extend_feed(p, ct):
     ring = {t for tile in core_tiles for t in world.adjacent8(p, tile)
             if t not in core_tiles and t not in world.known_walls(p)
             and t not in world.known_ores(p)}
-    # Their Harvesters are deliberately not tapped here. A Conveyor of ours
-    # beside one does collect their titanium (probed and confirmed), but belting
-    # it anywhere useful means laying tiles inside their base that nobody
-    # repairs, and it measured worse both long and short: 12-18 and 13-17
-    # against undertow, from 14-16. The mechanic is real; this use of it is not.
     best = None
     for feeder in p.feeders:
         if p.conveyors.get(feeder) is not None:

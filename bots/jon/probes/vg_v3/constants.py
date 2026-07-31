@@ -85,7 +85,3 @@ SIEGE_LINE_MAX = 8
 # Gunners posted over our own approach. Suppression, not defence: the enemy
 # assault is Builders with no ranged attack.
 HOME_GUNNERS = 2
-
-# Their repair crew mends close to their Core, so a belt cut beyond this is
-# severed for good.
-RAID_MIN_GAP = 5

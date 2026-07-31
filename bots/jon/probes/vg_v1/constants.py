@@ -22,10 +22,7 @@ WALKABLE_BUILDINGS = (EntityType.CONVEYOR, EntityType.SPLITTER)
 GUNNER_RANGE_SQ = 13
 LAUNCH_RANGE_SQ = 26
 
-# Three of the first four Builders stay home. The siege is supply-rich
-# once a battery lands, so the marginal Builder is worth more mining and
-# repairing than queueing for a firing position.
-ECONOMY_BUILDERS = 3
+ECONOMY_BUILDERS = 2
 
 SLOT_BUILDER_TICKET = 0
 CLAIM_SLOTS = range(1, 6)        # home ore claims
@@ -44,8 +41,6 @@ SLOT_HOME_UNDER_FIRE = 15
 # feeder, so a forward deposit further out than this can never supply one
 # directly and only earns its cost through a conveyor creep.
 SIEGE_ORE_RADIUS = 4
-# Fallback reach when nothing sits close to their Core at all.
-SIEGE_ORE_FAR = 10
 
 # Launcher hops per attacker, and the range at which walking is faster than
 # paying 20 Ti to be thrown.
@@ -58,10 +53,7 @@ FORTIFY_ROUND = 5
 
 
 # How far from our Core a damaged building is still worth a Builder's round.
-# A belt cut beyond the repair crew's reach is severed for good, and a
-# purpose-built raider (`probes/reaver`) exploited exactly that: it cut
-# lines past the old radius of 4 and out-delivered us four to one.
-REPAIR_RADIUS = 7
+REPAIR_RADIUS = 4
 
 # Below this share of its hit points the Core outranks everything else.
 CORE_PANIC_PERCENT = 55
@@ -72,20 +64,9 @@ HOME_ALARM_PERCENT = 85
 # Bank above which the Core buys emergency repair crew without hesitation.
 EMERGENCY_RESERVE = 120
 
-# Bank above which standing still costs more than the cost scale does.
-RICH_RESERVE = 400
-
 # Bank above which a Builder may pay for a long home supply belt.
 LONG_LINE_RESERVE = 250
 
 # Rounds spent failing to reach a firing position before trying another.
 BLOCKED_TILE_PATIENCE = 6
 SIEGE_LINE_MAX = 8
-
-# Gunners posted over our own approach. Suppression, not defence: the enemy
-# assault is Builders with no ranged attack.
-HOME_GUNNERS = 2
-
-# Their repair crew mends close to their Core, so a belt cut beyond this is
-# severed for good.
-RAID_MIN_GAP = 5
