@@ -489,3 +489,45 @@ overfitted. Left at two.
 
 Open problem: cut their supply faster than they cut ours, without spending the
 titanium the tiebreak is scored on.
+
+## How close are Vanguard and Undertow?
+
+Undertow is a fork of Vanguard, and most of it still is Vanguard: `gunner.py`
+and `plan.py` are byte-identical, `world.py` differs by 4 lines of 370 and
+`core.py` by 5 of 82. All the symmetry inference, terrain mirroring, pathing,
+conveyor planning, parasitism and siege machinery is shared. The divergence is
+about 24% of `builder.py` and 44% of `launcher.py` -- small, but pointed in
+opposite directions:
+
+| | Vanguard | Undertow |
+|---|---|---|
+| home defence | 2 fed Gunners, aimed down our own belts | 2 dedicated picket Launchers |
+| trigger | prepaid | reactive, radius 10 |
+| raiding | cuts belts beyond their repair reach | none |
+| belts | long ones allowed (`LONG_LINE_RESERVE = 250`) | banned (`100000`) |
+
+So we did not converge; we forked and made opposite bets. Vanguard bet on
+offence -- raiders, more Gunners, long belts. Undertow bet on cheap denial and
+takes the tiebreak.
+
+**Their defining idea does not transfer to us.** A picket Launcher looks
+strictly cheaper than a fed Gunner -- 20 Ti and *no* ammunition, against 20 Ti
+plus a permanent supply competing with the siege for the same belts, and a
+thrown raider leaves the board entirely rather than dying slowly. It measured
+worse anyway, at every setting:
+
+| configuration | vs vg_v7 | vs undertow |
+|---|---|---|
+| no pickets (current) | **15-15** | **14-16** |
+| pickets + 2 Gunners | 13-17 | 11-19 |
+| pickets + 1 Gunner | 14-16 | 9-21 |
+| pickets, no Gunners | 11-19 | 10-20 |
+
+The reason is architectural: our ferry Launchers already repel, and our home
+Gunners already double as belt traps, so a dedicated picket is a third payment
+for a job already done -- and the 20% it adds to the cost scale is charged to
+the siege. Undertow needs pickets because it has neither.
+
+**The same mechanic is worth different amounts in different bots.** Copying a
+rival's headline idea without their architecture is how you buy the cost and
+miss the benefit.
