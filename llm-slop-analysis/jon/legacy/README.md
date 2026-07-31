@@ -1,24 +1,25 @@
-# Legacy analysis: engine 2.2.0
+# Legacy analysis — everything written before engine 2.3.3
 
-`vanguard-siege-and-sustain.md` documents the bot that won 99% of a 180-game
-field under engine 2.2.0. Its central premise -- *damage = 5 x titanium
-physically delivered into Gunners* -- was deleted by 2.3.3, which replaced
-per-turret ammunition with a global pool the Core fills by conversion. Read it
-for the method, not the conclusions.
+**Default assumption: the conclusions in here are wrong until re-tested.**
 
-What still holds:
+Engine 2.3.3 changed three rules that most of this material was reasoned on:
 
-- Barrier rings block Gunner rays; Sentinels pierce buildings and cover 17
-  tiles to a Gunner's 3.
-- `ct.launch()` does not check ownership -- a Launcher throws enemy Builders,
-  and needs no ammunition, so this is the one weapon unaffected by the change.
-- Healing is 4 HP for 1 Ti and is not touched by the cost scale.
-- Matches are deterministic except against opponents that call `random`.
-- Method notes: freeze ancestors and play yourself once the field saturates;
-  build counters on purpose; a removal justified by measurement is only as good
-  as the opponent that measured it.
+- ammunition became a global pool the Core fills with `convert_ammo()`, instead
+  of a physical stack delivered to each turret;
+- Builder build/heal/attack became orthogonally-adjacent-only, and a Builder
+  can no longer act on its **own** tile -- the attack rule is an outright
+  inversion of 2.2.0;
+- Builder movement became cardinal-only.
 
-What is dead: parasitism (Gunners beside enemy Harvesters), forward Harvesters
-as feeders, conveyor taps, `_extend_feed`, and the whole logistics-race framing.
+Anything resting on "damage is titanium delivered into Gunners" -- parasitism,
+forward Harvesters as feeders, conveyor taps, splitter batteries, belt cutting
+by standing on a belt -- is dead. Anything resting on eight-way movement or
+own-tile attacks is dead.
 
-See `../reference/engine-2.3.3-changes.md` for the current rules.
+Treat every file here as **inspiration, not evidence**. A claim graduates out of
+this folder by being measured again on 2.3.3, not by sounding plausible.
+
+The current rules live in `../reference/engine-2.3.3-changes.md`, which was
+written by diffing both engine versions and probing the running engine.
+
+`undertow.md` is Codex's, moved here only to keep the quarantine uniform.
