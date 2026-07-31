@@ -322,7 +322,7 @@ def _spread(w, h, g, rayset, walls, ore, buildings, own, known):
 
 
 def plan(w, h, enemy_anchor, own_core_tiles, walls, ore, buildings, dist,
-         blacklist=(), known=None):
+         blacklist=(), known=None, lanes=()):
     """Best forward-gunner plan against ``enemy_anchor``, or None.
 
     ``walls`` / ``ore``  terrain believed -- observed, or mirrored off our own half
@@ -334,6 +334,12 @@ def plan(w, h, enemy_anchor, own_core_tiles, walls, ore, buildings, dist,
                          check. Unknown ground is not permission to spend titanium: the turret,
                          its lane, its belt and its deposit must all be on ground we can account
                          for, or the siege buys a wall it cannot see.
+    ``lanes``            tiles already reserved as one of OUR firing lines. Nothing this plan
+                         builds -- turret, belt or deposit -- may stand on one. A friendly
+                         building in a Gunner's ray becomes its target and jams it for the rest of
+                         the match (G11), so a second battery sited across the first one's lane
+                         does not add throughput, it deletes throughput. Empty for the first plan,
+                         where there are no lanes yet, so this changes nothing for it.
 
     Returns a dict with ``route`` in the executor's format, plus ``ray``, ``gunner``, ``facing``,
     ``ore``, ``range``, ``conveyors`` and ``score``.
@@ -341,7 +347,10 @@ def plan(w, h, enemy_anchor, own_core_tiles, walls, ore, buildings, dist,
     foot = frozenset(footprint(enemy_anchor))
     own = frozenset(own_core_tiles)
     stoppers = frozenset(buildings) | own
-    blacklist = frozenset(blacklist)
+    # A lane is not an obstacle to a SHOT -- two rays may cross freely, only a body in one blocks
+    # it -- so lanes are folded into the blacklist (siting) and never into `stoppers` (ballistics).
+    blacklist = frozenset(blacklist) | frozenset(lanes)
+    lanes = frozenset(lanes)
 
     def stand_cost(tile, extra=()):
         """Cheapest walk to a tile we could build ``tile`` from, or None."""
@@ -424,7 +433,7 @@ def plan(w, h, enemy_anchor, own_core_tiles, walls, ore, buildings, dist,
             # case where a deposit already touches a good bead.
             if cut is not None and approach + 3 >= cut:
                 continue
-            reach = _spread(w, h, g, rayset, walls, ore, buildings, own, known)
+            reach = _spread(w, h, g, rayset, walls, ore, frozenset(buildings) | lanes, own, known)
             best_o = None
             for o in ore:
                 if o in blacklist:
