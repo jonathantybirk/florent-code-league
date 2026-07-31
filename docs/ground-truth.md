@@ -56,6 +56,7 @@ Status: `VERIFIED-LINUX` > `VERIFIED-WIN` > `ASSERTED` > `REFUTED`
 | G33 | The Core's `get_position()` is the **top-left anchor** of its 2×2 footprint, and `(width, height, own_core_pos)` is a **unique fingerprint** across all 15 maps. | `VERIFIED-WIN` | Probed `get_tile_building_id` at all four offsets in-engine on 15 maps × both sides, 30/30. Enables round-0 map identification with zero scouting (~0.23 µs per lookup). |
 | G34 | `get_attackable_tiles_from()` is callable from a **Builder Bot**, not only from a turret. | `VERIFIED-WIN` | Probe-verified. Lets a builder evaluate turret geometry before committing to a build site. |
 | G35 | `import heapq` **works inside the bot sandbox**, despite numpy failing (G28). | `VERIFIED-WIN` | Pure-Python stdlib modules import fine; the G28 failure is specific to single-phase-init C extensions. |
+| G45 | Under enforced per-turn CPU limits on Linux, **AutistimusPrime is completely clean** (23–7 both ways, zero divergent maps). `lockin` is −3 and `luc1` is −2, on 3–4 maps each — real but at/inside the noise floor. **No bot collapses; the standings do not reorder.** | `VERIFIED-LINUX` | `tools/tle_audit.py`, WSL x86_64, full 15-map × 2-side sweep at `tle=0` vs `tle=10`. **Run ONE bot per process:** auditing two bots in a single process accumulates enough CPU to trip the engine's process-wide nsjail limit (`Process CPU time 784.0s approaching nsjail limit, ending game at turn 50`), which truncates games and fabricated an apparent −23 collapse for `lockin` that does not exist. Not yet confirmed on Graviton3/ARM. |
 | G42 | **Harvesters DO block movement.** `docs/game-rules/game-rules-reference.md` says "Blocks movement: No" — **wrong**. | `VERIFIED-WIN` | `bots/probes/passability`: on sprint and duel, immediately after building a harvester on an adjacent ore tile, `is_tile_passable=False`, `is_tile_empty=False`, and `can_move()` toward it returns `False`. **A harvester placed in your own corridor walls off your own builders** — a real hazard for any auto-build policy, and a reason a chokepoint ore tile may be worth leaving unbuilt. |
 
 ## Measurement methodology
@@ -78,6 +79,7 @@ Status: `VERIFIED-LINUX` > `VERIFIED-WIN` > `ASSERTED` > `REFUTED`
 | ~~G42~~ | *resolved — see below* | — |
 | G43 | Harvester output splitting / parasite-conveyor denial | P2 |
 | G44 | Anything at all on Graviton3/ARM | P1 — no claim here is ARM-confirmed |
+| G45 | Do rival bots exceed the per-turn CPU budget under enforcement? | **RESOLVED — see below** |
 
 ---
 
