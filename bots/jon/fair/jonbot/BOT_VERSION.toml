@@ -1,4 +1,4 @@
-source_commit = "8ba9f9d4ae13cbce12ae2314c6b23f274e70571d"
+source_commit = "e6a1b0b964c433fede8c1546ae1b37bb75da48bc"
 source_path = "bots/jon/fair/jonbot"
 engine = "2.3.3"
 status = "current"
