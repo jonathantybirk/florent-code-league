@@ -99,6 +99,10 @@ class StuckBuilderController:
     def can_build_gunner(self, position: Position, facing) -> bool:
         return True
 
+    def can_fire_from(self, position: Position, facing, entity_type,
+                      target: Position) -> bool:
+        return True
+
     def build_gunner(self, position: Position, facing) -> int:
         self.gunners.append((position, facing))
         return 200 + len(self.gunners)
@@ -109,6 +113,9 @@ class StuckBuilderController:
     def write_store(self, slot: int, value: int) -> None:
         self.store[slot] = value
 
+    def read_store(self, slot: int) -> int:
+        return self.store.get(slot, 0)
+
 
 def stuck_player(width: int = 20):
     return SimpleNamespace(
@@ -118,12 +125,17 @@ def stuck_player(width: int = 20):
         foot=set(),
         solids=set(),
         bot_occupied=set(),
+        enemy_launchers=set(),
         enemy_launcher_danger=set(),
         ores=set(),
         seen={(x, y) for x in range(10) for y in range(10)},
         path_failures=0,
         awaiting_launch=0,
         launch_origin=None,
+        launch_blocked=False,
+        launch_blocking_launchers=set(),
+        launcher_breakers=set(),
+        attack_gunners_built=0,
         next_blocker_gunner_round=0,
         atlas=object(),
         builder_index=builder.ECONOMY_BUILDERS,
@@ -137,7 +149,7 @@ def launch_request(player, ct):
     ]
     value = ct.store[slot]
     passenger = value >> builder.LAUNCH_DIRECTION_BITS
-    direction_index = value & builder.LAUNCH_DIRECTION_MASK
+    direction_index = value & launcher.LAUNCH_DIRECTION_MASK
     return slot, passenger, builder.D8[direction_index - 1]
 
 
@@ -285,6 +297,43 @@ class LauncherFallbackTests(unittest.TestCase):
         self.assertEqual(passenger, 42)
         self.assertEqual(direction.delta(), (1, 0))
 
+    def test_rejected_launch_switches_attacker_to_gunners(self) -> None:
+        player = stuck_player()
+        ct = StuckBuilderController()
+        slot = builder.LAUNCH_REQUEST_SLOTS[
+            player.builder_index % len(builder.LAUNCH_REQUEST_SLOTS)
+        ]
+        ct.store[slot] = (
+            builder.LAUNCH_REJECTION_FLAG
+            | (ct.get_id() << builder.LAUNCH_REJECTION_POSITION_BITS)
+            | builder.pack_pos((3, 5))
+        )
+
+        self.assertFalse(builder._opening_ferry(player, ct, (12, 5)))
+
+        self.assertTrue(player.launch_blocked)
+        self.assertEqual(player.enemy_launchers, {(3, 5)})
+        self.assertEqual(player.launch_blocking_launchers, {(3, 5)})
+        self.assertEqual(ct.store[slot], 0)
+
+    def test_unreachable_core_falls_back_to_enemy_launcher_gunner(self) -> None:
+        player = stuck_player()
+        player.solids = {(1, 2)}
+        player.enemy_launchers = {(1, 2)}
+        player.enemy_launcher_danger = {
+            (x, y) for x in range(0, 3) for y in range(1, 4)
+            if (x, y) != (1, 2)
+        }
+        ct = StuckBuilderController()
+
+        self.assertTrue(builder._build_basic_gunner(player, ct, (12, 5)))
+
+        self.assertEqual(len(ct.gunners), 1)
+        position, facing = ct.gunners[0]
+        self.assertEqual(position, Position(1, 4))
+        self.assertEqual(facing.delta(), (0, -1))
+        self.assertEqual(player.launcher_breakers, {(1, 2)})
+
 
 class LauncherController:
     def __init__(self, direction_delta: tuple[int, int] = (1, 0)) -> None:
@@ -299,6 +348,7 @@ class LauncherController:
             launcher.SLOT_OWN_CORE: builder.pack_pos((0, 5)),
         }
         self.launched: tuple[Position, Position] | None = None
+        self.enemy_launchers: dict[int, Position] = {}
 
     def read_store(self, slot: int) -> int:
         return self.store.get(slot, 0)
@@ -310,10 +360,18 @@ class LauncherController:
         return [42]
 
     def get_team(self, entity_id: int | None = None) -> Team:
-        return Team.A
+        return Team.B if entity_id in self.enemy_launchers else Team.A
 
     def get_position(self, entity_id: int | None = None) -> Position:
+        if entity_id in self.enemy_launchers:
+            return self.enemy_launchers[entity_id]
         return Position(1, 5) if entity_id is not None else Position(0, 5)
+
+    def get_nearby_buildings(self) -> list[int]:
+        return list(self.enemy_launchers)
+
+    def get_entity_type(self, entity_id: int) -> EntityType:
+        return EntityType.LAUNCHER
 
     def get_nearby_tiles(self, dist_sq: int) -> list[Position]:
         return [Position(2, 5), Position(5, 5), Position(1, 1)]
@@ -354,6 +412,30 @@ class LauncherBehaviorTests(unittest.TestCase):
 
         self.assertIsNone(ct.launched)
         self.assertNotEqual(ct.store[ct.request_slot], 0)
+
+    def test_uses_shorter_safe_landing_outside_enemy_launcher_range(self) -> None:
+        ct = LauncherController()
+        ct.enemy_launchers[88] = Position(4, 5)
+        ct.get_nearby_tiles = lambda dist_sq: [Position(2, 5), Position(5, 5)]
+
+        launcher._run(SimpleNamespace(), ct)
+
+        self.assertEqual(ct.launched, (Position(1, 5), Position(2, 5)))
+
+    def test_rejects_request_when_every_forward_landing_is_unsafe(self) -> None:
+        ct = LauncherController()
+        ct.enemy_launchers = {88: Position(3, 5), 89: Position(4, 5)}
+        ct.get_nearby_tiles = lambda dist_sq: [Position(2, 5), Position(5, 5)]
+
+        launcher._run(SimpleNamespace(), ct)
+
+        self.assertIsNone(ct.launched)
+        self.assertEqual(
+            ct.store[ct.request_slot],
+            (launcher.LAUNCH_REJECTION_FLAG
+             | (42 << launcher.LAUNCH_REJECTION_POSITION_BITS)
+             | builder.pack_pos((3, 5))),
+        )
 
     def test_launcher_throws_enemy_maximally_away_from_home_first(self) -> None:
         ct = LauncherController()

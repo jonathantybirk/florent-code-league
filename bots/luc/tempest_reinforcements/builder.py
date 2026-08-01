@@ -16,7 +16,9 @@ from constants import (
     FACING,
     LAUNCHER_BUILDER_INDEX,
     LAUNCH_DIRECTION_BITS,
-    LAUNCH_DIRECTION_MASK,
+    LAUNCH_REJECTION_FLAG,
+    LAUNCH_REJECTION_POSITION_BITS,
+    LAUNCH_REJECTION_POSITION_MASK,
     LAUNCH_REQUEST_SLOTS,
     SLOT_BUILDER_HEARTBEAT,
     SLOT_BUILDER_TICKET,
@@ -82,6 +84,9 @@ def _run(p, ct):
         p.path_failures = 0
         p.awaiting_launch = 0
         p.launch_origin = None
+        p.launch_blocked = False
+        p.launch_blocking_launchers = set()
+        p.launcher_breakers = set()
         p.next_blocker_gunner_round = 0
         own_core = unpack_pos(ct.read_store(SLOT_OWN_CORE))
         p.atlas = (identify_visible(ct, own_core) if own_core is not None
@@ -191,6 +196,11 @@ def _sense(p, ct):
         for dx, dy in (direction.delta() for direction in D8)
         if _inside(p, (launcher[0] + dx, launcher[1] + dy))
     }
+    p.launcher_breakers.intersection_update(p.enemy_launchers)
+    if (p.launch_blocked and p.launch_blocking_launchers
+            and not p.launch_blocking_launchers & p.enemy_launchers):
+        p.launch_blocked = False
+        p.launch_blocking_launchers.clear()
 
 
 def _pick(p, ct):
@@ -432,6 +442,7 @@ def _done(p, ct):
 
 def _step(p, ct, target, exact, allow_launcher=True):
     source = ct.get_position()
+    launch_rejected = _consume_launch_rejection(p, ct)
     if p.awaiting_launch:
         if tuple(source) != p.launch_origin:
             # The Launcher moved us. Resume the original task immediately.
@@ -464,7 +475,7 @@ def _step(p, ct, target, exact, allow_launcher=True):
         return False
 
     p.path_failures += 1
-    if (allow_launcher
+    if (allow_launcher and not launch_rejected and not p.launch_blocked
             and p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
             and _build_escape_launcher(p, ct, target)):
         return True
@@ -606,6 +617,33 @@ def _announce_launch(p, ct, target, launcher_position):
     slot = LAUNCH_REQUEST_SLOTS[p.builder_index % len(LAUNCH_REQUEST_SLOTS)]
     request = (ct.get_id() << LAUNCH_DIRECTION_BITS) | direction_index
     ct.write_store(slot, request)
+
+
+def _consume_launch_rejection(p, ct):
+    """Consume a rejection and remember the Launcher blocking safe landings."""
+    slot = LAUNCH_REQUEST_SLOTS[p.builder_index % len(LAUNCH_REQUEST_SLOTS)]
+    value = ct.read_store(slot)
+    if not value & LAUNCH_REJECTION_FLAG:
+        return False
+    payload = value & (LAUNCH_REJECTION_FLAG - 1)
+    passenger = payload >> LAUNCH_REJECTION_POSITION_BITS
+    if passenger != ct.get_id():
+        return False
+    blocker = unpack_pos(payload & LAUNCH_REJECTION_POSITION_MASK)
+    if blocker is not None:
+        p.enemy_launchers.add(blocker)
+        p.solids.add(blocker)
+        p.enemy_launcher_danger.update(
+            (blocker[0] + dx, blocker[1] + dy)
+            for dx, dy in (direction.delta() for direction in D8)
+            if _inside(p, (blocker[0] + dx, blocker[1] + dy))
+        )
+    ct.write_store(slot, 0)
+    p.awaiting_launch = 0
+    p.launch_origin = None
+    p.launch_blocked = True
+    p.launch_blocking_launchers = set(p.enemy_launchers)
+    return True
 
 
 def _sign(value):
@@ -888,6 +926,9 @@ def _opening_ferry(p, ct, enemy_core):
     if p.atlas is None:
         return False
 
+    if _consume_launch_rejection(p, ct) or p.launch_blocked:
+        return False
+
     here = tuple(ct.get_position())
     if (_chebyshev(p.core, enemy_core) <= RELAY_STOP_DISTANCE
             or _chebyshev(here, enemy_core) <= RELAY_STOP_DISTANCE):
@@ -938,7 +979,12 @@ def _build_basic_gunner(p, ct, enemy_core):
                         or spot in p.walls or spot in p.ores or spot in p.solids):
                     continue
                 facing = _ray_direction(spot, core_tile)
-                if facing is None or _distance_sq(spot, core_tile) > GUNNER_RANGE_SQ:
+                if (facing is None
+                        or _distance_sq(spot, core_tile) > GUNNER_RANGE_SQ
+                        or not ct.can_fire_from(
+                            Position(*spot), facing, EntityType.GUNNER,
+                            Position(*core_tile),
+                        )):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
                          - _launcher_hazards(p))
@@ -946,6 +992,8 @@ def _build_basic_gunner(p, ct, enemy_core):
                 if distance is not None:
                     choices.append((distance, spot, D8.index(facing), facing))
     if not choices:
+        if _build_launcher_breaker_gunner(p, ct):
+            return True
         _explore(p, ct)
         return True
     _, spot, _, facing = min(choices)
@@ -960,6 +1008,55 @@ def _build_basic_gunner(p, ct, enemy_core):
         ct.build_gunner(position, facing)
         p.solids.add(spot)
         p.attack_gunners_built += 1
+    return True
+
+
+def _build_launcher_breaker_gunner(p, ct):
+    """Reach a safe build tile and place a Gunner aimed at a blocking Launcher."""
+    me = tuple(ct.get_position())
+    choices = []
+    for launcher_position in sorted(p.enemy_launchers):
+        if launcher_position in p.launcher_breakers:
+            continue
+        for dx in range(-3, 4):
+            for dy in range(-3, 4):
+                spot = launcher_position[0] + dx, launcher_position[1] + dy
+                if (not _inside(p, spot) or spot in p.foot or spot in p.walls
+                        or spot in p.ores or spot in p.solids):
+                    continue
+                facing = _ray_direction(spot, launcher_position)
+                if (facing is None
+                        or _distance_sq(spot, launcher_position) > GUNNER_RANGE_SQ
+                        or not ct.can_fire_from(
+                            Position(*spot), facing, EntityType.GUNNER,
+                            Position(*launcher_position),
+                        )):
+                    continue
+                goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
+                         - p.bot_occupied - _launcher_hazards(p))
+                distance = _distance(p, me, goals)
+                if distance is not None:
+                    choices.append((
+                        distance,
+                        _distance_sq(spot, launcher_position),
+                        launcher_position,
+                        spot,
+                        D8.index(facing),
+                        facing,
+                    ))
+    if not choices:
+        return False
+
+    _, _, launcher_position, spot, _, facing = min(choices)
+    position = Position(*spot)
+    if _cardinal_distance(me, spot) != 1:
+        _move_cardinal_adjacent(p, ct, spot)
+        return True
+    if ct.can_build_gunner(position, facing):
+        ct.build_gunner(position, facing)
+        p.solids.add(spot)
+        p.attack_gunners_built += 1
+        p.launcher_breakers.add(launcher_position)
     return True
 
 

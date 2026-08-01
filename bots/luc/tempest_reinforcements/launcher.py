@@ -1,10 +1,12 @@
 """Launcher relay and active enemy-displacement screen."""
 
-from fcode import Controller, GameError, Position
+from fcode import Controller, EntityType, GameError, Position
 
 from constants import (D8, LAUNCH_DIRECTION_BITS, LAUNCH_DIRECTION_MASK,
-                       LAUNCH_RANGE_SQ, LAUNCH_REQUEST_SLOTS, SLOT_OWN_CORE)
-from utils import unpack_pos
+                       LAUNCH_RANGE_SQ, LAUNCH_REJECTION_FLAG,
+                       LAUNCH_REJECTION_POSITION_BITS,
+                       LAUNCH_REQUEST_SLOTS, SLOT_OWN_CORE)
+from utils import pack_pos, unpack_pos
 
 
 def run(player, ct: Controller) -> None:
@@ -24,6 +26,8 @@ def _run(player, ct):
     requests = []
     for slot in LAUNCH_REQUEST_SLOTS:
         value = ct.read_store(slot)
+        if value & LAUNCH_REJECTION_FLAG:
+            continue
         direction_index = value & LAUNCH_DIRECTION_MASK
         passenger_id = value >> LAUNCH_DIRECTION_BITS
         if passenger_id and 1 <= direction_index <= len(D8):
@@ -47,9 +51,11 @@ def _run(player, ct):
     origin = ct.get_position(passenger)
     launcher = ct.get_position()
     dx, dy = D8[direction_index - 1].delta()
+    enemy_launchers = _visible_enemy_launchers(ct)
+    unsafe_landings = _enemy_launcher_hazards(enemy_launchers)
     choices = []
     for tile in ct.get_nearby_tiles(LAUNCH_RANGE_SQ):
-        if not ct.can_launch(origin, tile):
+        if not ct.can_launch(origin, tile) or tuple(tile) in unsafe_landings:
             continue
         offset_x, offset_y = tile.x - launcher.x, tile.y - launcher.y
         projection = offset_x * dx + offset_y * dy
@@ -59,6 +65,17 @@ def _run(player, ct):
         choices.append((-projection, deviation, -tile.distance_squared(launcher),
                         tile.x, tile.y, tile))
     if not choices:
+        # Return the nearest visible blocking Launcher to the passenger in the
+        # same request slot, so it can stop waiting and build a demolition
+        # Gunner instead of re-announcing forever.
+        blocker = min(enemy_launchers, key=lambda position: (
+            position.distance_squared(launcher), position.x, position.y,
+        ), default=None)
+        packed_blocker = pack_pos(tuple(blocker)) if blocker is not None else 0
+        rejection = (LAUNCH_REJECTION_FLAG
+                     | (passenger << LAUNCH_REJECTION_POSITION_BITS)
+                     | packed_blocker)
+        ct.write_store(slot, rejection)
         return
 
     *_, destination = min(choices)
@@ -66,6 +83,25 @@ def _run(player, ct):
     thrown.add(passenger)
     player.thrown = thrown
     ct.write_store(slot, 0)
+
+
+def _visible_enemy_launchers(ct):
+    """Return positions of enemy Launchers visible to this ferry."""
+    return [ct.get_position(entity_id) for entity_id in ct.get_nearby_buildings()
+            if ct.get_team(entity_id) != ct.get_team()
+            and ct.get_entity_type(entity_id) == EntityType.LAUNCHER]
+
+
+def _enemy_launcher_hazards(launchers):
+    """Tiles from which the visible enemy Launchers could pick up a passenger."""
+    hazards = set()
+    for position in launchers:
+        hazards.add(tuple(position))
+        hazards.update(
+            (position.x + dx, position.y + dy)
+            for dx, dy in (direction.delta() for direction in D8)
+        )
+    return hazards
 
 
 def _launch_enemy_away(ct):
