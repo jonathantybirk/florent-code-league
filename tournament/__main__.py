@@ -51,6 +51,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     planner.add_argument(
+        "--dedupe-from",
+        default=None,
+        help=(
+            "comma list of finished tournament ids. Bots already shown to play identically are "
+            "pruned to one representative, so a challenger is not run against four copies of the "
+            "same bot for four times the compute"
+        ),
+    )
+    planner.add_argument(
         "--maps", default="official", help="official | generated | all | screen | comma list"
     )
     planner.add_argument("--seeds", default="1", help="comma list of engine seeds")
@@ -175,11 +184,48 @@ def cmd_bots(args) -> int:
     return 0
 
 
+def _known_duplicates(tids: str):
+    """Behaviour groups from finished tournaments, plus code-identical groups from git."""
+    from tournament import duplicates
+    from tournament.merge import read
+
+    rows: list[dict] = []
+    seen: set[str] = set()
+    for tid in (part.strip() for part in tids.split(",")):
+        if not tid:
+            continue
+        for row in read(planning.run_dir(tid)):
+            if row["match_id"] not in seen:
+                seen.add(row["match_id"])
+                rows.append(row)
+    return duplicates.behaviour_groups(rows) if rows else []
+
+
 def cmd_plan(args) -> int:
+    from tournament import duplicates
+
     roster = registry.load()
     specs = registry.select(roster, args.bots)
     versus = registry.select(roster, args.vs) if args.vs else None
     seeds = tuple(int(part) for part in args.seeds.split(",") if part.strip())
+
+    if args.dedupe_from:
+        groups = _known_duplicates(args.dedupe_from) + duplicates.code_groups(roster)
+        target = versus if versus is not None else specs
+        # Never prune a bot the user explicitly entered as a challenger -- comparing a new version
+        # against its own predecessor is usually the entire point of the run.
+        protected = {s.bot_id for s in specs} if versus is not None else set()
+        keep = [s for s in target if s.bot_id not in protected]
+        pruned, dropped = duplicates.prune(keep, groups)
+        pruned += [s for s in target if s.bot_id in protected]
+        if dropped:
+            print(f"pruned {len(dropped)} duplicate bot(s) from the field:")
+            for gone, kept in dropped:
+                print(f"  {gone:<28} -> covered by {kept}")
+        if versus is not None:
+            versus = pruned
+        else:
+            specs = pruned
 
     destination, matches = planning.plan(
         args.tid, specs, args.maps, seeds, args.tle, versus=versus

@@ -41,6 +41,10 @@ from tournament.registry import BotSpec
 # A pair needs to have met this many shared opponents before "identical results" means anything.
 MIN_SHARED_OPPONENTS = 3
 
+# Directories this repo uses for work kept for reference rather than actively developed. A bot
+# under one of these is a worse name to carry into a report than its live twin.
+ARCHIVE_DIRS = frozenset({"versions", "archive", "legacy", "probes", "old"})
+
 
 @dataclass(frozen=True)
 class Group:
@@ -206,6 +210,50 @@ def detect(
     if specs:
         groups += code_groups(specs)
     return groups
+
+
+def representative(members: tuple[str, ...], specs: dict[str, BotSpec]) -> str:
+    """Which member of a duplicate group to keep when pruning a roster.
+
+    All members play identically, so this is purely about which name you would rather see in the
+    results. In order: the newest commit (the version someone is actually working on), then a live
+    path over an archived one, then the shallower path, then the name so the pick is stable across
+    runs. Path depth alone cannot decide -- `bots/jon/fair/vanguard` and
+    `bots/jon/versions/vanguard_1e88ae8` are the same depth -- hence ARCHIVE_DIRS.
+    """
+    def key(bot_id: str) -> tuple:
+        spec = specs.get(bot_id)
+        if spec is None:
+            return ("", False, 0, bot_id)
+        parts = Path(spec.path).parts
+        live = not (ARCHIVE_DIRS & set(parts))
+        return (spec.commit, live, -len(parts), bot_id)
+
+    return max(members, key=key)
+
+
+def prune(
+    roster: list[BotSpec], groups: list[Group]
+) -> tuple[list[BotSpec], list[tuple[str, str]]]:
+    """Drop all but one member of each duplicate group.
+
+    Playing a challenger against every copy of the same bot buys no information and costs a full
+    map sweep per copy. Returns the pruned roster and the (dropped, kept) pairs, so the caller can
+    say what it removed rather than silently shrinking the field.
+    """
+    specs = {spec.bot_id: spec for spec in roster}
+    dropped: list[tuple[str, str]] = []
+    remove: set[str] = set()
+    for group in groups:
+        present = tuple(m for m in group.members if m in specs)
+        if len(present) < 2:
+            continue
+        keep = representative(present, specs)
+        for member in present:
+            if member != keep and member not in remove:
+                remove.add(member)
+                dropped.append((member, keep))
+    return [spec for spec in roster if spec.bot_id not in remove], dropped
 
 
 def write_csv(groups: list[Group], path: Path) -> None:
