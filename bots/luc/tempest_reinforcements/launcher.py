@@ -12,7 +12,11 @@ from utils import pack_pos, unpack_pos
 def run(player, ct: Controller) -> None:
     try:
         _run(player, ct)
-    except GameError:
+    except GameError as error:
+        print(
+            f"PLAN_FAILED id={ct.get_id()} round={ct.get_current_round()} "
+            f"action=launcher run reason=GameError: {error}"
+        )
         return
 
 
@@ -45,6 +49,10 @@ def _run(player, ct):
         None,
     )
     if request is None:
+        print(
+            f"PLAN_FAILED id={ct.get_id()} round={ct.get_current_round()} "
+            "action=launch reason=no requested friendly passenger is adjacent"
+        )
         return
 
     slot, passenger, direction_index = request
@@ -76,6 +84,11 @@ def _run(player, ct):
                      | (passenger << LAUNCH_REJECTION_POSITION_BITS)
                      | packed_blocker)
         ct.write_store(slot, rejection)
+        print(
+            f"PLAN_FAILED id={ct.get_id()} round={ct.get_current_round()} "
+            f"action=launch passenger={passenger} "
+            "reason=no safe legal forward landing"
+        )
         return
 
     *_, destination = min(choices)

@@ -150,6 +150,29 @@ class StuckBuilderController:
         return self.store.get(slot, 0)
 
 
+class FireLaneController(StuckBuilderController):
+    def __init__(self) -> None:
+        super().__init__()
+        self.friendly_gunners = {70: Position(1, 1)}
+        self.enemy_positions[99] = Position(1, 4)
+
+    def get_nearby_buildings(self) -> list[int]:
+        return super().get_nearby_buildings() + list(self.friendly_gunners)
+
+    def get_position(self, entity_id: int | None = None) -> Position:
+        if entity_id in self.friendly_gunners:
+            return self.friendly_gunners[entity_id]
+        return super().get_position(entity_id)
+
+    def get_entity_type(self, entity_id: int) -> EntityType:
+        if entity_id in self.friendly_gunners:
+            return EntityType.GUNNER
+        return super().get_entity_type(entity_id)
+
+    def get_direction(self, entity_id: int):
+        return builder.FACING[(0, 1)]
+
+
 def stuck_player(width: int = 20):
     return SimpleNamespace(
         w=width,
@@ -415,7 +438,7 @@ class LauncherFallbackTests(unittest.TestCase):
         self.assertIn("BUILDER_STALL id=42 rounds=6", output.getvalue())
         self.assertIn("builder bot occupying target", output.getvalue())
 
-    def test_unaffordable_build_is_exempt_from_stall_alarm(self) -> None:
+    def test_unaffordable_build_is_exempt_from_duplicate_stall_alarm(self) -> None:
         player = stuck_player()
         player.pending_build = (
             "harvester", (5, 13), "needs 51 titanium", 6
@@ -430,6 +453,40 @@ class LauncherFallbackTests(unittest.TestCase):
 
         self.assertIsNone(message)
         self.assertEqual(output.getvalue(), "")
+
+    def test_failed_build_prints_exact_resource_reason(self) -> None:
+        player = stuck_player()
+        ct = StuckBuilderController(titanium=20)
+        output = StringIO()
+
+        with redirect_stdout(output):
+            abandoned = builder._build_failure(
+                player, ct, Position(5, 5), "harvester", 51,
+                allow_ore=True,
+            )
+
+        self.assertFalse(abandoned)
+        self.assertIn("PLAN_FAILED id=42 round=10", output.getvalue())
+        self.assertIn("action=build harvester target=(5, 5)", output.getvalue())
+        self.assertIn("needs 51 titanium; available=20 cost=51", output.getvalue())
+
+    def test_turret_site_cannot_interrupt_a_friendly_firing_lane(self) -> None:
+        ct = FireLaneController()
+        output = StringIO()
+
+        with redirect_stdout(output):
+            preserves_lane = builder._preserves_friendly_turret_lanes(
+                ct, Position(1, 2)
+            )
+
+        self.assertFalse(preserves_lane)
+        self.assertIn(
+            "reason=would block friendly turret=70 firing_at=(1, 4)",
+            output.getvalue(),
+        )
+        self.assertTrue(
+            builder._preserves_friendly_turret_lanes(ct, Position(2, 2))
+        )
 
     def test_routes_around_enemy_launcher_pickup_tiles(self) -> None:
         player = stuck_player()
@@ -516,6 +573,12 @@ class LauncherController:
 
     def write_store(self, slot: int, value: int) -> None:
         self.store[slot] = value
+
+    def get_id(self) -> int:
+        return 77
+
+    def get_current_round(self) -> int:
+        return 10
 
     def get_nearby_units(self, dist_sq: int) -> list[int]:
         return [42]

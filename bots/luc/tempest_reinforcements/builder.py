@@ -1,7 +1,6 @@
 """Map-agnostic online economy planner and explorer."""
 
 from collections import deque
-import os
 import sys
 from typing import TYPE_CHECKING
 
@@ -51,8 +50,12 @@ def run(p: "Player", ct: Controller) -> None:
     try:
         _run(p, ct)
     except GameError as error:
-        if os.environ.get("JONBOT_DEBUG"):
-            print("GameError", ct.get_current_round(), error, file=sys.stderr, flush=True)
+        print(
+            f"PLAN_FAILED id={ct.get_id()} round={ct.get_current_round()} "
+            f"action=builder run reason=GameError: {error}",
+            file=sys.stderr,
+            flush=True,
+        )
         # An escaping GameError permanently destroys this unit.
         return
 
@@ -547,6 +550,9 @@ def _build_failure(p, ct, target, kind, cost, allow_ore=False):
     else:
         p.build_wait_key, p.build_wait_rounds = key, 1
     p.pending_build = kind, target, reason, p.build_wait_rounds
+    details = f"{reason}; available={ct.get_global_resources()} cost={cost}"
+    _plan_failed(p, ct, f"build {kind}", target, details,
+                 p.build_wait_rounds)
 
     if _vacate_ore(p, ct, target):
         return False
@@ -555,6 +561,16 @@ def _build_failure(p, ct, target, kind, cost, allow_ore=False):
     if reason_code in ("resources", "cooldown"):
         return False
     return True
+
+
+def _plan_failed(p, ct, action, target, reason, attempt=None):
+    """Write a replay-visible explanation whenever an intended action fails."""
+    suffix = f" attempt={attempt}" if attempt is not None else ""
+    print(
+        f"PLAN_FAILED id={ct.get_id()} round={ct.get_current_round()} "
+        f"phase={p.phase} action={action} target={tuple(target)} "
+        f"reason={reason}{suffix}"
+    )
 
 
 def _vacate_ore(p, ct, build_target):
@@ -653,7 +669,13 @@ def _step(p, ct, target, exact, allow_launcher=True):
         return True
     if _build_blocker_gunner(p, ct, target):
         return True
-    return _move_while_stuck(p, ct, target)
+    if _move_while_stuck(p, ct, target):
+        return True
+    _plan_failed(
+        p, ct, "move", target,
+        "no route, safe launcher, aligned gunner, or legal local move",
+    )
+    return False
 
 
 def _build_escape_launcher(p, ct, target):
@@ -669,6 +691,11 @@ def _build_escape_launcher(p, ct, target):
         return True
 
     if ct.get_global_resources() < ct.get_launcher_cost():
+        _plan_failed(
+            p, ct, "build escape launcher", target,
+            f"needs {ct.get_launcher_cost()} titanium; "
+            f"available={ct.get_global_resources()}",
+        )
         return False
 
     here = tuple(ct.get_position())
@@ -681,6 +708,10 @@ def _build_escape_launcher(p, ct, target):
                 and spot not in p.ores and ct.can_build_launcher(position)):
             candidates.append((position.distance_squared(target), spot, position))
     if not candidates:
+        _plan_failed(
+            p, ct, "build escape launcher", target,
+            "no adjacent non-ore site with a safe legal landing",
+        )
         return False
 
     _, spot, position = min(candidates)
@@ -730,6 +761,7 @@ def _build_blocker_gunner(p, ct, target):
                     or not ct.can_fire_from(
                         position, facing, EntityType.GUNNER, enemy,
                     )
+                    or not _preserves_friendly_turret_lanes(ct, position)
                     or not ct.can_build_gunner(position, facing)):
                 continue
             enemy_dx = enemy.x - source[0]
@@ -1082,6 +1114,7 @@ def _defend_core(p, ct):
                         and ct.can_fire_from(
                             position, facing, EntityType.GUNNER, target,
                         )
+                        and _preserves_friendly_turret_lanes(ct, position)
                         and ct.can_build_gunner(position, facing)):
                     candidates.append((
                         combat_priority.get(ct.get_entity_type(enemy_id), 4),
@@ -1177,6 +1210,9 @@ def _build_basic_gunner(p, ct, enemy_core):
                         or not ct.can_fire_from(
                             Position(*spot), facing, EntityType.GUNNER,
                             Position(*core_tile),
+                        )
+                        or not _preserves_friendly_turret_lanes(
+                            ct, Position(*spot),
                         )):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
@@ -1229,6 +1265,9 @@ def _build_launcher_breaker_gunner(p, ct):
                         or not ct.can_fire_from(
                             Position(*spot), facing, EntityType.GUNNER,
                             Position(*launcher_position),
+                        )
+                        or not _preserves_friendly_turret_lanes(
+                            ct, Position(*spot),
                         )):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
@@ -1270,6 +1309,63 @@ def _ray_direction(source, target):
     step = (0 if dx == 0 else (1 if dx > 0 else -1),
             0 if dy == 0 else (1 if dy > 0 else -1))
     return next((direction for direction in D8 if direction.delta() == step), None)
+
+
+def _preserves_friendly_turret_lanes(ct, proposed_position):
+    """Reject a building tile that would interrupt a friendly turret's shot."""
+    proposed = tuple(proposed_position)
+    enemies = [
+        entity_id for entity_id in ct.get_nearby_entities()
+        if ct.get_team(entity_id) != ct.get_team()
+    ]
+    if not enemies:
+        return True
+    for turret_id in ct.get_nearby_buildings():
+        if ct.get_team(turret_id) != ct.get_team():
+            continue
+        turret_type = ct.get_entity_type(turret_id)
+        if turret_type not in (EntityType.GUNNER, EntityType.SENTINEL):
+            continue
+        origin = ct.get_position(turret_id)
+        facing = ct.get_direction(turret_id)
+        for enemy_id in enemies:
+            target = ct.get_position(enemy_id)
+            if (_strictly_between_on_ray(
+                    tuple(origin), proposed, tuple(target), facing)
+                    and ct.can_fire_from(
+                        origin, facing, turret_type, target,
+                    )):
+                print(
+                    f"PLAN_FAILED id={ct.get_id()} "
+                    f"round={ct.get_current_round()} action=place turret "
+                    f"target={proposed} reason=would block friendly "
+                    f"turret={turret_id} firing_at={tuple(target)}"
+                )
+                return False
+    return True
+
+
+def _strictly_between_on_ray(origin, candidate, target, direction):
+    dx, dy = direction.delta()
+    candidate_dx = candidate[0] - origin[0]
+    candidate_dy = candidate[1] - origin[1]
+    target_dx = target[0] - origin[0]
+    target_dy = target[1] - origin[1]
+
+    def steps(offset_x, offset_y):
+        if dx == 0:
+            return offset_y // dy if offset_x == 0 and offset_y * dy > 0 else None
+        if dy == 0:
+            return offset_x // dx if offset_y == 0 and offset_x * dx > 0 else None
+        if offset_x * dx <= 0 or offset_y * dy <= 0:
+            return None
+        step_x, step_y = offset_x // dx, offset_y // dy
+        return step_x if step_x == step_y else None
+
+    candidate_steps = steps(candidate_dx, candidate_dy)
+    target_steps = steps(target_dx, target_dy)
+    return (candidate_steps is not None and target_steps is not None
+            and candidate_steps < target_steps)
 
 
 def _distance_sq(a, b):
@@ -1382,6 +1478,12 @@ def _move_cardinal_adjacent(p, ct, target):
     if reachable:
         _, goal = min(reachable)
         _step(p, ct, Position(*goal), True)
+        return True
+    _plan_failed(
+        p, ct, "move to build range", target,
+        "no reachable cardinal-adjacent tile",
+    )
+    return False
 
 
 def _inside(p, tile):
