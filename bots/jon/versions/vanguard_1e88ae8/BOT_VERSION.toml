@@ -1,0 +1,4 @@
+source_commit = "1e88ae8df9ebcee38eb0808e6dbef01bef3990b2"
+source_path = "bots/jon/fair/vanguard"
+engine = "2.3.3"
+status = "historical-version"
