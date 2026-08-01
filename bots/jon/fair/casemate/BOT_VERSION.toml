@@ -1,4 +1,4 @@
-source_commit = "4406dbbe181b8626cf356cfc59ce2c056f275131"
+source_commit = "75d5dcbfb0dd0e5f308c3db551591522f9186fd9"
 source_path = "bots/jon/fair/casemate"
 engine = "2.3.3"
 status = "development"
