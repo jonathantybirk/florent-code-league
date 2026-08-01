@@ -94,7 +94,11 @@ ECON_BEFORE_DEFENCE = 3
 OUTHEALED_PATIENCE = 3
 
 # Defensive Launchers beside our Harvesters (Make Fire ran six).
-# Six, which is what Make Fire ran. Rejected under 2.2.0 and correct now: a
-# Launcher is the only weapon that needs no ammunition, and 2.3.3 made
-# ammunition the scarce thing.
-PICKET_LAUNCHERS = 6
+# Off. Six was Make Fire's number and it did measure better than zero back when
+# ECONOMY_BUILDERS was 3 -- but at 2 the pickets became a straight loss, worth
+# -12 games over 126 against the strongest live opponents and level on the
+# regression panel. Replays say why: we were laying four to seven Launchers by
+# round 10, each one +10% on the *team-wide* cost scale, while the bots that
+# beat us spent every point of titanium on Gunners. The pickets never stopped
+# the rush they were paying for.
+PICKET_LAUNCHERS = 0
