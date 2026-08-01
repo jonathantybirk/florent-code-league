@@ -16,6 +16,7 @@ from pathlib import Path
 
 from tournament import plan as planning
 from tournament import registry
+from tournament.outcome import score_a as evaluation_score_a
 
 
 def _read(path: Path) -> list[dict]:
@@ -31,7 +32,7 @@ def _slug(bot_id: str) -> str:
 
 
 def _score(row: dict, bot_id: str) -> float:
-    score_a = float(row["score_a"])
+    score_a = evaluation_score_a(row)
     return score_a if row["bot_a"] == bot_id else 1.0 - score_a
 
 

@@ -25,11 +25,6 @@ import time
 import traceback
 from pathlib import Path
 
-# Engine `winner` values are "A" / "B" / "draw"; we normalise case and carry a numeric score for
-# bot A so the rating code never has to re-interpret the outcome.
-SCORE = {"a": 1.0, "b": 0.0, "draw": 0.5}
-
-
 def compliance_timings(replay: str) -> dict[str, int | list[int]]:
     """Extract instrumented unit-turn timings from a compliance replay.
 
@@ -106,6 +101,7 @@ def load_match(run_dir: Path, index: int) -> dict:
 def run(run_dir: Path, match: dict, keep_replay: bool = False) -> dict:
     """Play the match. Engine failures are recorded, never raised."""
     from fcode.fcode_engine import run_game
+    from tournament.outcome import normalize
 
     a_main = str((run_dir / match["a_main"]).resolve())
     b_main = str((run_dir / match["b_main"]).resolve())
@@ -141,15 +137,16 @@ def run(run_dir: Path, match: dict, keep_replay: bool = False) -> dict:
             int(match["seed"]),
             int(match["tle"]),
         )
-        winner = str(result.get("winner", "")).lower()
-        if winner not in SCORE:
-            raise ValueError(f"unexpected winner value from engine: {result.get('winner')!r}")
+        engine_winner = str(result.get("winner", "")).lower()
+        win_condition = result.get("win_condition", "")
+        winner, score_a = normalize(engine_winner, win_condition)
         record.update(
             status="ok",
             error="",
+            engine_winner=engine_winner,
             winner=winner,
-            score_a=SCORE[winner],
-            win_condition=result.get("win_condition", ""),
+            score_a=score_a,
+            win_condition=win_condition,
             turns=result.get("turns", 0),
             resign_message=result.get("resign_message") or "",
             a_titanium=result.get("a_titanium", 0),
@@ -165,6 +162,7 @@ def run(run_dir: Path, match: dict, keep_replay: bool = False) -> dict:
         record.update(
             status="error",
             error=f"{type(error).__name__}: {error}".replace("\n", " ")[:500],
+            engine_winner="",
             winner="",
             score_a="",
             win_condition="",

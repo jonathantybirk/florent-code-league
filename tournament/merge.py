@@ -24,6 +24,7 @@ COLUMNS = [
     "seed",
     "tle",
     "kind",
+    "engine_winner",
     "winner",
     "score_a",
     "win_condition",
@@ -48,6 +49,7 @@ COLUMNS = [
 
 def merge(run_dir: Path) -> tuple[Path, int]:
     """Rewrite matches.csv from every result file present. Returns the path and row count."""
+    from tournament.outcome import normalize
     from tournament.plan import load_manifest
 
     manifest = load_manifest(run_dir)
@@ -65,6 +67,10 @@ def merge(run_dir: Path) -> tuple[Path, int]:
             continue
         row = dict.fromkeys(COLUMNS, "")
         row.update({key: value for key, value in record.items() if key in COLUMNS})
+        if record.get("status") == "ok" and record.get("winner"):
+            engine_winner = record.get("engine_winner") or record["winner"]
+            winner, score_a = normalize(engine_winner, record.get("win_condition", ""))
+            row.update(engine_winner=engine_winner, winner=winner, score_a=score_a)
         row["tournament_id"] = manifest["tournament_id"]
         row["map_set"] = manifest["map_set"]
         for side in ("a", "b"):

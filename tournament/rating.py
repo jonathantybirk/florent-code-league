@@ -28,6 +28,8 @@ import numpy as np
 from scipy.optimize import linprog, minimize
 from scipy.special import logsumexp
 
+from tournament.outcome import score_a as evaluation_score_a
+
 # logit(p) = log(p/(1-p)) with p in Elo's base-10 convention is alpha-scaled; the paper sets
 # alpha = 1 and works in natural log-odds ("The constant alpha is not important in what follows,
 # so we pretend alpha = 1"). This converts a natural-log rating back to familiar Elo points.
@@ -39,6 +41,7 @@ class Ratings:
     bots: list[str]
     games: np.ndarray  # n x n, games played (symmetric)
     wins: np.ndarray  # n x n, wins of i over j (draws counted as 0.5 each side)
+    draws: np.ndarray  # n x n, exact draw count (symmetric)
     win_prob: np.ndarray  # P, smoothed
     logit: np.ndarray  # A = logit(P), antisymmetric
     transitive: np.ndarray  # r = div(A), the mElo transitive component
@@ -98,12 +101,28 @@ def tally(rows: list[dict], bots: list[str] | None = None) -> tuple[list[str], n
         if a not in position or b not in position:
             continue
         i, j = position[a], position[b]
-        score = float(row["score_a"])
+        score = evaluation_score_a(row)
         games[i, j] += 1
         games[j, i] += 1
         wins[i, j] += score
         wins[j, i] += 1.0 - score
     return bots, games, wins
+
+
+def tally_draws(rows: list[dict], bots: list[str]) -> np.ndarray:
+    """Count draws exactly; they cannot be reconstructed from aggregated half-points."""
+    position = {bot: i for i, bot in enumerate(bots)}
+    draws = np.zeros((len(bots), len(bots)))
+    for row in rows:
+        if row.get("status") != "ok" or not row.get("winner"):
+            continue
+        a, b = row["bot_a"], row["bot_b"]
+        if a not in position or b not in position or evaluation_score_a(row) != 0.5:
+            continue
+        i, j = position[a], position[b]
+        draws[i, j] += 1
+        draws[j, i] += 1
+    return draws
 
 
 def tally_map_tasks(
@@ -135,7 +154,7 @@ def tally_map_tasks(
         if a not in bot_position or b not in bot_position:
             continue
         map_name = row["map"]
-        score_a = float(row["score_a"])
+        score_a = evaluation_score_a(row)
         for bot, opponent, score in ((a, b, score_a), (b, a, 1.0 - score_a)):
             i = bot_position[bot]
             j = task_position[(opponent, map_name)]
@@ -582,6 +601,7 @@ def evaluate(rows: list[dict], k: int = 1) -> Ratings:
         bots=bots,
         games=games,
         wins=wins,
+        draws=tally_draws(rows, bots),
         win_prob=probability,
         logit=matrix,
         transitive=transitive,

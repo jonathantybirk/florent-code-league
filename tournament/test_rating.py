@@ -11,6 +11,7 @@ import pytest
 
 from tournament.rating import (
     div,
+    evaluate,
     fit_melo,
     grad,
     logit_matrix,
@@ -342,6 +343,26 @@ def test_tally_counts_both_orders_and_draws():
     assert games[i, j] == 3 and games[j, i] == 3
     assert wins[i, j] == pytest.approx(1.5)  # one win + one draw
     assert wins[j, i] == pytest.approx(1.5)
+
+
+def test_tally_treats_final_engine_coinflip_as_draw():
+    row = _row("x@1", "y@2", 1.0)
+    row["win_condition"] = "coinflip"
+    _, games, wins = tally([row])
+    assert games[0, 1] == 1
+    assert wins[0, 1] == pytest.approx(0.5)
+    assert wins[1, 0] == pytest.approx(0.5)
+
+
+def test_evaluate_retains_even_numbers_of_draws_for_exact_reporting():
+    result = evaluate(
+        [
+            {**_row("x@1", "y@2", 1.0), "win_condition": "coinflip"},
+            {**_row("y@2", "x@1", 1.0), "win_condition": "coinflip"},
+        ]
+    )
+    assert result.draws[0, 1] == 2
+    assert result.draws[1, 0] == 2
 
 
 def test_tally_excludes_errored_matches():
