@@ -15,12 +15,14 @@ from tournament.rating import (
     grad,
     logit_matrix,
     maxent_nash,
+    maxent_rectangular_nash,
     melo_online_update,
     nash_average,
     omega,
     predict,
     rot,
     tally,
+    tally_map_tasks,
     win_probability,
 )
 
@@ -152,6 +154,27 @@ def test_nash_is_a_probability_distribution():
     equilibrium = maxent_nash(raw - raw.T)
     assert np.isclose(equilibrium.sum(), 1.0)
     assert np.all(equilibrium >= 0.0)
+
+
+def test_rectangular_nash_rates_agents_against_tasks():
+    score = np.array([[1.0, 2.0], [-1.0, 0.0]])
+    agents, tasks, value = maxent_rectangular_nash(score)
+    assert np.allclose(agents, [1.0, 0.0], atol=1e-5)
+    assert np.allclose(tasks, [1.0, 0.0], atol=1e-5)
+    assert np.isclose(value, 1.0, atol=1e-6)
+
+
+def test_map_tasks_balance_the_two_player_orders():
+    rows = [
+        {"status": "ok", "winner": "a", "bot_a": "a", "bot_b": "b", "map": "duel", "score_a": 1},
+        {"status": "ok", "winner": "a", "bot_a": "b", "bot_b": "a", "map": "duel", "score_a": 1},
+    ]
+    bots, tasks, games, wins = tally_map_tasks(rows)
+    assert tasks == [("a", "duel"), ("b", "duel")]
+    a = bots.index("a")
+    against_b = tasks.index(("b", "duel"))
+    assert games[a, against_b] == 2
+    assert wins[a, against_b] == 1
 
 
 # --------------------------------------------------------------------------------------------

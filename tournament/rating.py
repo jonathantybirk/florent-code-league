@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from scipy.optimize import linprog, minimize
+from scipy.special import logsumexp
 
 # logit(p) = log(p/(1-p)) with p in Elo's base-10 convention is alpha-scaled; the paper sets
 # alpha = 1 and works in natural log-odds ("The constant alpha is not important in what follows,
@@ -53,6 +54,23 @@ class Ratings:
         """||rot(A)||_F / ||A||_F -- how much of the field is rock-paper-scissors."""
         total = float(np.linalg.norm(self.logit))
         return float(np.linalg.norm(self.cyclic) / total) if total > 0 else 0.0
+
+
+@dataclass
+class MapTaskRatings:
+    """Agent-vs-task ratings where each (opponent, map) pair is a separate task."""
+
+    bots: list[str]
+    tasks: list[tuple[str, str]]
+    games: np.ndarray  # bots x tasks
+    wins: np.ndarray  # bots x tasks; draws count as 0.5
+    win_prob: np.ndarray
+    score: np.ndarray  # centered log-odds score matrix S
+    transitive: np.ndarray  # uniform task average, the AvT analogue of mElo r
+    agent_nash: np.ndarray  # maxent equilibrium over bots
+    task_nash: np.ndarray  # maxent equilibrium over (opponent, map) tasks
+    nash_average: np.ndarray  # S @ task_nash
+    value: float
 
 
 # --------------------------------------------------------------------------------------------
@@ -86,6 +104,52 @@ def tally(rows: list[dict], bots: list[str] | None = None) -> tuple[list[str], n
         wins[i, j] += score
         wins[j, i] += 1.0 - score
     return bots, games, wins
+
+
+def tally_map_tasks(
+    rows: list[dict], bots: list[str] | None = None
+) -> tuple[list[str], list[tuple[str, str]], np.ndarray, np.ndarray]:
+    """Build the AvT table whose tasks are (opponent bot, map) combinations.
+
+    Every rating row contributes from both players' perspectives. The two side-swapped games on
+    a map therefore form one side-balanced bot-vs-task score. Self-opponent task cells are
+    unplayed and remain neutral, exactly like unplayed pairs in the aggregate AvA matrix.
+    """
+    playable = [
+        row
+        for row in rows
+        if row.get("status") == "ok"
+        and row.get("winner")
+        and row.get("kind", "rating") == "rating"
+    ]
+    if bots is None:
+        bots = sorted({row[key] for row in playable for key in ("bot_a", "bot_b")})
+    maps = sorted({row["map"] for row in playable})
+    tasks = [(opponent, map_name) for opponent in bots for map_name in maps]
+    bot_position = {bot: index for index, bot in enumerate(bots)}
+    task_position = {task: index for index, task in enumerate(tasks)}
+    games = np.zeros((len(bots), len(tasks)))
+    wins = np.zeros((len(bots), len(tasks)))
+    for row in playable:
+        a, b = row["bot_a"], row["bot_b"]
+        if a not in bot_position or b not in bot_position:
+            continue
+        map_name = row["map"]
+        score_a = float(row["score_a"])
+        for bot, opponent, score in ((a, b, score_a), (b, a, 1.0 - score_a)):
+            i = bot_position[bot]
+            j = task_position[(opponent, map_name)]
+            games[i, j] += 1
+            wins[i, j] += score
+    return bots, tasks, games, wins
+
+
+def task_score_matrix(games: np.ndarray, wins: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return add-half probabilities and globally centered log-odds for an AvT table."""
+    probability = (wins + 0.5) / (games + 1.0)
+    score = np.log(probability / (1.0 - probability))
+    score -= score.mean()
+    return probability, score
 
 
 def win_probability(games: np.ndarray, wins: np.ndarray) -> np.ndarray:
@@ -350,6 +414,134 @@ def maxent_nash(matrix: np.ndarray, tolerance: float = 1e-9) -> np.ndarray:
     return best / best.sum()
 
 
+def maxent_rectangular_nash(
+    score: np.ndarray, tolerance: float = 1e-9
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Maximum-entropy equilibrium of the rectangular agent-vs-task zero-sum game.
+
+    The row player selects an agent and maximizes its score; the column player selects an
+    (opponent, map) task and minimizes it. The equilibrium polytopes for the two players are
+    independent once the game value is known, so entropy is maximized separately on each.
+    """
+    agents, tasks = score.shape
+    if not agents or not tasks:
+        raise ValueError("agent-vs-task ratings need at least one agent and one task")
+
+    # Maximize v subject to S.T @ p >= v, p in the agent simplex.
+    objective = np.zeros(agents + 1)
+    objective[-1] = -1.0
+    row_lp = linprog(
+        c=objective,
+        A_ub=np.column_stack((-score.T, np.ones(tasks))),
+        b_ub=np.zeros(tasks),
+        A_eq=np.array([[*np.ones(agents), 0.0]]),
+        b_eq=[1.0],
+        bounds=[(0.0, 1.0)] * agents + [(None, None)],
+        method="highs",
+    )
+    if not row_lp.success:
+        raise RuntimeError(f"no AvT Nash equilibrium found: {row_lp.message}")
+    value = float(row_lp.x[-1])
+
+    # A column LP supplies a feasible equilibrium seed for the task distribution.
+    column_lp = linprog(
+        c=np.r_[np.zeros(tasks), 1.0],
+        A_ub=np.column_stack((score, -np.ones(agents))),
+        b_ub=np.zeros(agents),
+        A_eq=np.array([[*np.ones(tasks), 0.0]]),
+        b_eq=[1.0],
+        bounds=[(0.0, 1.0)] * tasks + [(None, None)],
+        method="highs",
+    )
+    if not column_lp.success:
+        raise RuntimeError(f"no AvT task equilibrium found: {column_lp.message}")
+    value = (value + float(column_lp.x[-1])) / 2.0
+
+    def maximize_entropy(
+        size: int,
+        feasible: np.ndarray,
+        inequality,
+        jacobian,
+    ) -> np.ndarray:
+        uniform = np.full(size, 1.0 / size)
+
+        def negative_entropy(distribution: np.ndarray) -> float:
+            safe = np.clip(distribution, 1e-300, None)
+            return float(np.sum(safe * np.log(safe)))
+
+        def gradient(distribution: np.ndarray) -> np.ndarray:
+            return np.log(np.clip(distribution, 1e-300, None)) + 1.0
+
+        best: np.ndarray | None = None
+        best_entropy = -np.inf
+        for start in (uniform, np.clip(feasible, 1e-9, None) / np.clip(feasible, 1e-9, None).sum()):
+            solution = minimize(
+                negative_entropy,
+                start,
+                jac=gradient,
+                method="SLSQP",
+                bounds=[(0.0, 1.0)] * size,
+                constraints=[
+                    {
+                        "type": "eq",
+                        "fun": lambda distribution: distribution.sum() - 1.0,
+                        "jac": lambda distribution: np.ones(size),
+                    },
+                    {"type": "ineq", "fun": inequality, "jac": jacobian},
+                ],
+                options={"maxiter": 1000, "ftol": 1e-11},
+            )
+            candidate = np.clip(solution.x, 0.0, None)
+            if candidate.sum() <= 0:
+                continue
+            candidate /= candidate.sum()
+            if np.min(inequality(candidate)) < -1e-6:
+                continue
+            entropy = -negative_entropy(candidate)
+            if entropy > best_entropy:
+                best, best_entropy = candidate, entropy
+        if best is None:
+            raise RuntimeError("maxent AvT solve failed from every starting point")
+        best[best < tolerance] = 0.0
+        return best / best.sum()
+
+    agent_nash = maximize_entropy(
+        agents,
+        row_lp.x[:-1],
+        lambda distribution: score.T @ distribution - value + 1e-8,
+        lambda distribution: score.T,
+    )
+    # The task equilibrium has 1,008 variables in the current field but only 48 agent
+    # constraints. Its entropy dual therefore reduces the expensive primal solve to one
+    # non-negative multiplier per agent:
+    #   min_lambda logsumexp(-S.T lambda) + value * sum(lambda).
+    task_bound = value + 1e-8
+
+    def task_dual(multiplier: np.ndarray) -> tuple[float, np.ndarray]:
+        logits = -score.T @ multiplier
+        normalizer = logsumexp(logits)
+        distribution = np.exp(logits - normalizer)
+        objective = float(normalizer + task_bound * multiplier.sum())
+        gradient = task_bound - score @ distribution
+        return objective, gradient
+
+    task_solution = minimize(
+        lambda multiplier: task_dual(multiplier)[0],
+        np.zeros(agents),
+        jac=lambda multiplier: task_dual(multiplier)[1],
+        method="L-BFGS-B",
+        bounds=[(0.0, None)] * agents,
+        options={"maxiter": 2000, "ftol": 1e-13, "gtol": 1e-9},
+    )
+    task_logits = -score.T @ task_solution.x
+    task_nash = np.exp(task_logits - logsumexp(task_logits))
+    if np.max(score @ task_nash - task_bound) > 1e-6:
+        raise RuntimeError("maxent AvT task solve did not reach the equilibrium polytope")
+    task_nash[task_nash < tolerance] = 0.0
+    task_nash /= task_nash.sum()
+    return agent_nash, task_nash, value
+
+
 def nash_average(matrix: np.ndarray, equilibrium: np.ndarray) -> np.ndarray:
     """n_A = A p* (paper, Definition 2), in log-odds. Support members tie at 0; others are < 0."""
     return matrix @ equilibrium
@@ -399,4 +591,30 @@ def evaluate(rows: list[dict], k: int = 1) -> Ratings:
         melo_r=melo_r,
         melo_c=melo_c,
         fit=fit,
+    )
+
+
+def evaluate_map_tasks(rows: list[dict]) -> MapTaskRatings:
+    """Rate bots as agents against separate (opponent, map) tasks (paper, Appendix D)."""
+    bots, tasks, games, wins = tally_map_tasks(rows)
+    if len(bots) < 2 or not tasks:
+        raise ValueError("need results for at least two bots and one map")
+    probability, score = task_score_matrix(games, wins)
+    agent_nash, task_nash, value = maxent_rectangular_nash(score)
+    averages = score @ task_nash
+    # Equilibrium support agents are exactly indifferent at the game value. Pinning that identity
+    # removes solver-scale noise from ranks and makes the displayed tie explicit.
+    averages[agent_nash > 0] = value
+    return MapTaskRatings(
+        bots=bots,
+        tasks=tasks,
+        games=games,
+        wins=wins,
+        win_prob=probability,
+        score=score,
+        transitive=score.mean(axis=1),
+        agent_nash=agent_nash,
+        task_nash=task_nash,
+        nash_average=averages,
+        value=value,
     )

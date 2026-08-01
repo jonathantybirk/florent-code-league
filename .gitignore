@@ -23,3 +23,5 @@ tournament/runs/*/schedule.jsonl
 tournament/runs/*/job.sh
 tournament/runs/*/job_*.sh
 tournament/runs/*/work_*.txt
+tournament/automation-state.json
+tournament/automation.lock

@@ -170,7 +170,7 @@ def plan(
     compliance_specs: list[BotSpec] | None = None,
 ) -> tuple[Path, list[Match]]:
     """Materialise a complete run directory and return it with the schedule."""
-    if versus is None and len(specs) < 2:
+    if versus is None and len(specs) < 2 and not compliance_specs:
         raise ValueError("a round-robin tournament needs at least two bots")
     if versus is not None and not versus:
         raise ValueError("--vs selected no bots")
@@ -182,7 +182,7 @@ def plan(
 
     from tournament import compliance
 
-    map_paths = resolve(map_spec)
+    map_paths = resolve(map_spec) if specs else []
     compliance_specs = list(specs if compliance_specs is None else compliance_specs)
     compliance_map_paths = resolve(",".join(compliance.MAPS)) if compliance_specs else []
     everyone = list(specs)

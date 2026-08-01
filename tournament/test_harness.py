@@ -319,6 +319,7 @@ def test_merge_keeps_compliance_matches_out_of_rating_csv(tmp_path):
         "status": "ok",
         "winner": "b",
         "compliance_samples": 20,
+        "compliance_turn_us": [400, 1_000, 2_000, 4_000, 8_500],
         "compliance_max_turn_us": 8_500,
         "compliance_max_round": 4,
         "compliance_timeouts": 0,
@@ -334,6 +335,7 @@ def test_merge_keeps_compliance_matches_out_of_rating_csv(tmp_path):
     assert [row["match_id"] for row in read(run_dir)] == ["rating"]
     summary = (run_dir / "compliance.csv").read_text()
     assert "a@111" in summary and "pass" in summary
+    assert "min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us" in summary
     assert "check" in (run_dir / "compliance_matches.csv").read_text()
 
 
@@ -362,11 +364,31 @@ def test_compliance_replay_parser_distinguishes_timeouts_errors_and_terminal_act
 
     assert result == {
         "compliance_samples": 2,
+        "compliance_turn_us": [9100, 400],
         "compliance_max_turn_us": 9100,
         "compliance_max_round": 1,
         "compliance_timeouts": 1,
         "compliance_exceptions": 1,
         "compliance_terminal_starts": 1,
+    }
+
+
+def test_compliance_percentiles_use_all_observed_turns():
+    from tournament.compliance import timing_percentiles
+
+    assert timing_percentiles([100, 200, 300, 400, 500]) == {
+        "min_turn_us": 100,
+        "p25_turn_us": 200,
+        "p50_turn_us": 300,
+        "p75_turn_us": 400,
+        "max_turn_us": 500,
+    }
+    assert timing_percentiles([100, 200, 300], timeouts=2) == {
+        "min_turn_us": 100,
+        "p25_turn_us": 200,
+        "p50_turn_us": 300,
+        "p75_turn_us": ">12000",
+        "max_turn_us": ">12000",
     }
 
 

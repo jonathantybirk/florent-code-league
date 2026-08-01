@@ -374,3 +374,94 @@ name   = "vanguard"
 commit = "818f3b4"
 path   = "bots/jon/fair/vanguard"
 tags   = ["jon", "fair"]
+
+# ---------------------------------------------------------------------------------------------
+# fdc1e1f (x/jon tip, 2026-08-02). Every bot below has .py content that no previously rated entrant
+# had -- established by hashing the .py files of every bot directory at every commit on every
+# branch and diffing against the 54 distinct code hashes already in this registry. Diagnostic
+# probes, bots/rl (needs its inference server) and the stock starter/shell/donothing baselines
+# are deliberately absent; see AGENTS.md.
+
+[[bot]]
+name   = "tempest_frontier"
+commit = "fdc1e1f"
+path   = "bots/jon/fair/tempest_frontier"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "undertow"
+commit = "fdc1e1f"
+path   = "bots/jon/fair/undertow"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "tempest_oracle_ferry"
+commit = "fdc1e1f"
+path   = "bots/jon/unfair/tempest_oracle_ferry"
+tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "undertow_oracle"
+commit = "fdc1e1f"
+path   = "bots/jon/unfair/undertow_oracle"
+tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "vanguard_oracle"
+commit = "fdc1e1f"
+path   = "bots/jon/unfair/vanguard_oracle"
+tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "tempest_blindfire"
+commit = "fdc1e1f"
+path   = "bots/jon/versions/probes/tempest_blindfire"
+tags   = ["jon", "versions", "probes"]
+
+[[bot]]
+name   = "tempest_oracle_guarded"
+commit = "fdc1e1f"
+path   = "bots/jon/versions/probes/tempest_oracle_guarded"
+tags   = ["jon", "versions", "probes"]
+
+[[bot]]
+name   = "tempest_outer"
+commit = "fdc1e1f"
+path   = "bots/jon/versions/probes/tempest_outer"
+tags   = ["jon", "versions", "probes"]
+
+[[bot]]
+name   = "tempest_picket"
+commit = "fdc1e1f"
+path   = "bots/jon/versions/probes/tempest_picket"
+tags   = ["jon", "versions", "probes"]
+
+[[bot]]
+name   = "tempest_sentinel"
+commit = "fdc1e1f"
+path   = "bots/jon/versions/probes/tempest_sentinel"
+tags   = ["jon", "versions", "probes"]
+
+[[bot]]
+name   = "undertow_adjacent"
+commit = "fdc1e1f"
+path   = "bots/jon/versions/probes/undertow_adjacent"
+tags   = ["jon", "versions", "probes"]
+
+[[bot]]
+name   = "claude_challenger_1"
+commit = "fdc1e1f"
+path   = "bots/lucas/claude_challenger_1"
+tags   = ["lucas"]
+
+[[bot]]
+name   = "claude_challenger_2"
+commit = "fdc1e1f"
+path   = "bots/lucas/claude_challenger_2"
+tags   = ["lucas"]
+
+[[bot]]
+name   = "claude_challenger_3"
+commit = "fdc1e1f"
+path   = "bots/lucas/claude_challenger_3"
+tags   = ["lucas"]
