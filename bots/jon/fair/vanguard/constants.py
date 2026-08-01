@@ -92,3 +92,9 @@ ECON_BEFORE_DEFENCE = 3
 
 # Consecutive attacks with no net progress before a target is written off.
 OUTHEALED_PATIENCE = 3
+
+# Defensive Launchers beside our Harvesters (Make Fire ran six).
+# Six, which is what Make Fire ran. Rejected under 2.2.0 and correct now: a
+# Launcher is the only weapon that needs no ammunition, and 2.3.3 made
+# ammunition the scarce thing.
+PICKET_LAUNCHERS = 6
