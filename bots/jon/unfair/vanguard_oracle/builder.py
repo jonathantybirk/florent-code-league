@@ -32,6 +32,7 @@ from constants import (
     SLOT_ECON_LINES,
     SLOT_LAUNCH_ID,
     RAID_MIN_GAP,
+    SEAT_REACH_SLACK,
     SLOT_SYMMETRY_A,
     SLOT_SYMMETRY_B,
 )
@@ -753,6 +754,14 @@ def _add_gunner(p, ct, without_travel=False):
                                world.dist_sq(spot, p.enemy_core), spot, facing))
     if not candidates:
         return False
+    # Knowing the whole map means we can also see the pristine seat on the far
+    # side of their Core, and `obstacles` outranks `reach`, so the oracle will
+    # happily walk round the base for a cleaner line. Walking is what the siege
+    # is bottlenecked on, so ignore seats that are much further off than the
+    # nearest usable one and pick the best line among what is actually close.
+    nearest = min(entry[1] for entry in candidates)
+    close = [e for e in candidates if e[1] <= nearest + SEAT_REACH_SLACK]
+    candidates = close or candidates
     candidates.sort()
     for _, _, _, _, spot, facing in candidates[:4]:
         target = Position(*spot)
