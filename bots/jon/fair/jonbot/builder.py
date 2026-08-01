@@ -61,6 +61,7 @@ def _run(p, ct):
         p.is_attacker = p.builder_index >= ECONOMY_BUILDERS
         p.lock_required = False
         p.home_gunners_built = 0
+        p.attack_gunners_built = 0
     _sense(p, ct)
     _update_enemy_core_inference(p, ct)
     if p.core is None:
@@ -556,11 +557,52 @@ def _defend_core(p, ct):
 
 
 def _rush(p, ct):
-    """Scout toward the enemy side, then harass visible logistics."""
-    if ct.read_store(SLOT_ENEMY_CORE) == 0:
+    """Walk in and build a small, conventional direct-fire attack."""
+    packed = ct.read_store(SLOT_ENEMY_CORE)
+    if packed == 0:
         _explore(p, ct)
         return
+    if p.attack_gunners_built < 2 and _build_basic_gunner(p, ct, unpack_pos(packed)):
+        return
     _harass(p, ct)
+
+
+def _build_basic_gunner(p, ct, enemy_core):
+    """Build on the nearest visible legal ray, without a special formation."""
+    core_tiles = {(enemy_core[0] + dx, enemy_core[1] + dy)
+                  for dx in (0, 1) for dy in (0, 1)}
+    me = tuple(ct.get_position())
+    choices = []
+    for core_tile in sorted(core_tiles):
+        for dx in range(-3, 4):
+            for dy in range(-3, 4):
+                spot = core_tile[0] + dx, core_tile[1] + dy
+                if (not _inside(p, spot) or spot in core_tiles
+                        or spot in p.walls or spot in p.ores or spot in p.solids):
+                    continue
+                facing = _ray_direction(spot, core_tile)
+                if facing is None or _distance_sq(spot, core_tile) > GUNNER_RANGE_SQ:
+                    continue
+                goals = _cardinal_adjacent(p, spot) - p.walls - p.solids
+                distance = _distance(p, me, goals)
+                if distance is not None:
+                    choices.append((distance, spot, facing))
+    if not choices:
+        _explore(p, ct)
+        return True
+    _, spot, facing = min(choices)
+    position = Position(*spot)
+    if not ct.is_in_vision(position):
+        _step(p, ct, position, False)
+        return True
+    if _cardinal_distance(me, spot) != 1:
+        _move_cardinal_adjacent(p, ct, spot)
+        return True
+    if ct.can_build_gunner(position, facing):
+        ct.build_gunner(position, facing)
+        p.solids.add(spot)
+        p.attack_gunners_built += 1
+    return True
 
 
 def _ray_direction(source, target):
@@ -570,6 +612,10 @@ def _ray_direction(source, target):
     step = (0 if dx == 0 else (1 if dx > 0 else -1),
             0 if dy == 0 else (1 if dy > 0 else -1))
     return next((direction for direction in D8 if direction.delta() == step), None)
+
+
+def _distance_sq(a, b):
+    return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 
 
 def _enemy_core_candidates(p):
