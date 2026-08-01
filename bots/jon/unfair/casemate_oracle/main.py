@@ -29,6 +29,10 @@ MAP_NAMES = (
 THREE_MASON_MAPS = {"bridge", "duel", "showdown", "sprint", "string", "vase"}
 # Immediate contact makes a three-wall opening too slow on these maps.
 FAST_CONTACT_MAPS = {"bridge", "showdown", "sprint", "string"}
+SENTINEL_SIDES = {
+    ("bridge", (0, 6)), ("skerry", (2, 17)), ("sprint", (1, 1)),
+    ("strait", (2, 2)), ("string", (0, 6)),
+}
 
 
 def pack(pos: Position) -> int:
@@ -70,6 +74,7 @@ class Player:
         self.last: Position | None = None
         self.stuck = 0
         self.atlas = None
+        self.turrets_built = 0
 
     def run(self, ct: Controller) -> None:
         kind = ct.get_entity_type()
@@ -79,6 +84,12 @@ class Player:
             self.run_builder(ct)
         elif kind == EntityType.SENTINEL:
             self.run_sentinel(ct)
+        elif kind == EntityType.GUNNER:
+            self.run_gunner(ct)
+
+    def use_sentinel(self) -> bool:
+        return (self.atlas is None or self.core is None
+                or (self.atlas.name, (self.core.x, self.core.y)) in SENTINEL_SIDES)
 
     def run_core(self, ct: Controller) -> None:
         pos = ct.get_position()
@@ -275,6 +286,8 @@ class Player:
                     return True
 
         # Search only legal eight-way rays to one of the core's four tiles.
+        turret_type = EntityType.SENTINEL if self.use_sentinel() else EntityType.GUNNER
+        range_sq = 32 if turret_type == EntityType.SENTINEL else 13
         core_tiles = [enemy, Position(enemy.x + 1, enemy.y),
                       Position(enemy.x, enemy.y + 1), Position(enemy.x + 1, enemy.y + 1)]
         candidates = []
@@ -284,14 +297,21 @@ class Player:
                 continue
             for target in core_tiles:
                 facing = direction_between(seat, target)
-                if (facing is not None and seat.distance_squared(target) <= 32
-                        and ct.can_build_sentinel(seat, facing)):
+                can_build = (ct.can_build_sentinel(seat, facing)
+                             if turret_type == EntityType.SENTINEL else
+                             ct.can_build_gunner(seat, facing)) if facing is not None else False
+                if (facing is not None and seat.distance_squared(target) <= range_sq
+                        and can_build):
                     candidates.append((seat.distance_squared(target), seat.x, seat.y,
                                        seat, facing))
         if candidates:
             *_, seat, facing = min(candidates)
-            ct.build_sentinel(seat, facing)
-            self.sentinel = seat
+            if turret_type == EntityType.SENTINEL:
+                ct.build_sentinel(seat, facing)
+                self.sentinel = seat
+            else:
+                ct.build_gunner(seat, facing)
+            self.turrets_built += 1
             self.known_blocked.add((seat.x, seat.y))
             return True
         return False
@@ -366,6 +386,7 @@ class Player:
         if self.atlas is None:
             return None
         enemy = Position(*self.atlas.enemy_core)
+        range_limit = 32 if self.use_sentinel() else 13
         core_tiles = [enemy, Position(enemy.x + 1, enemy.y),
                       Position(enemy.x, enemy.y + 1), Position(enemy.x + 1, enemy.y + 1)]
         enemy_foot = {(p.x, p.y) for p in core_tiles}
@@ -377,7 +398,7 @@ class Player:
                     continue
                 rays = [target for target in core_tiles
                         if direction_between(seat, target) is not None
-                        and seat.distance_squared(target) <= 32]
+                        and seat.distance_squared(target) <= range_limit]
                 if not rays:
                     continue
                 for d in CARDINALS:
@@ -462,3 +483,8 @@ class Player:
                 0 if ct.get_entity_type(i) == EntityType.CORE else 1,
                 ct.get_hp(i), ct.get_position(i).distance_squared(ct.get_position())))
             ct.fire(ct.get_position(target))
+
+    def run_gunner(self, ct: Controller) -> None:
+        target = ct.get_gunner_target()
+        if target is not None and ct.can_fire(target):
+            ct.fire(target)
