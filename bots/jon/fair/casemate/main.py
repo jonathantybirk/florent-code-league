@@ -10,6 +10,7 @@ CARDINALS = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST]
 SLOT_CORE = 0
 SLOT_ENEMY = 1
 SLOT_ORE = 2
+SLOT_ROLES = 3
 MAX_BUILDERS = 5
 AMMO_TARGET = 36
 
@@ -82,7 +83,8 @@ class Player:
                          key=lambda p: (p.distance_squared(target), p.x, p.y))
         for candidate in choices:
             if ct.can_spawn(candidate):
-                ct.spawn_builder(candidate)
+                builder_id = ct.spawn_builder(candidate)
+                ct.write_store(SLOT_ROLES + self.spawned, builder_id)
                 self.spawned += 1
                 return
 
@@ -90,13 +92,15 @@ class Player:
         pos = ct.get_position()
         if self.core is None:
             self.core = unpack(ct.read_store(SLOT_CORE))
+        # Entity ids interleave both teams and all newly built structures, so
+        # the Core publishes explicit spawn-order assignments.
+        roles = ("mason", "miner", "guard", "miner", "mason")
+        for index, role in enumerate(roles):
+            if ct.read_store(SLOT_ROLES + index) == ct.get_id():
+                self.role = role
+                break
         if self.role is None:
-            # Two miners supply two masons; the middle spawn stays home as the
-            # wall layer and repair crew that makes the strategy a casemate at
-            # both ends of the map.
-            residue = ct.get_id() % 5
-            self.role = ("miner" if residue in (0, 1) else
-                         "guard" if residue == 2 else "mason")
+            return
 
         self.observe(ct)
         self.report_enemy(ct)
