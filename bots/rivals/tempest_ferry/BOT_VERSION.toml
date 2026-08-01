@@ -1,0 +1,4 @@
+source_commit = "26b5aa195ef92ebe6dee4fd31727544a5e2c7174"
+source_path = "bots/jon/fair/tempest_ferry"
+engine = "2.3.3"
+status = "experimental"

@@ -17,7 +17,6 @@ from constants import (
     SLOT_CONSTRUCTION_LOCK,
     SLOT_CORE_DAMAGED,
     SLOT_ENEMY_CORE,
-    SLOT_ALERT,
     SLOT_OWN_CORE,
     SLOT_SYMMETRY_REJECT_START,
     WALKABLE_BUILDINGS,
@@ -60,27 +59,15 @@ def _run(p, ct):
         p.network_load = 0
         p.economy_lines_completed = 0
         p.is_attacker = p.builder_index >= ECONOMY_BUILDERS
-        p.offensive_gunner_built = False
-        p.takeover_target = None
-        p.takeover_predecessor = None
-        p.takeover_stage = "terminal"
-        p.blocked_terminal = None
-        p.dislodge_gunner = None
-        p.dislodge_started = None
-        p.after_dislodge = False
-        p.battery_gunners = []
-        p.local_assault_plan = None
-        p.local_assault_i = 0
-        p.enemy_perimeter_seen = set()
-        p.opening_launcher_built = False
-        p.opening_launcher_pos = None
         p.lock_required = False
+        p.home_gunners_built = 0
+        p.attack_gunners_built = 0
     _sense(p, ct)
     _update_enemy_core_inference(p, ct)
     if p.core is None:
         return
     if not p.is_attacker and ct.read_store(SLOT_CORE_DAMAGED):
-        _heal_core(p, ct)
+        _defend_core(p, ct)
         return
     if p.is_attacker:
         p.phase = "rush"
@@ -293,13 +280,13 @@ def _prelay(p, ct):
         return
     tile, facing = p.route[p.route_i]
     me, target = ct.get_position(), Position(*tile)
-    if me != target:
+    if _cardinal_distance(tuple(me), tuple(target)) != 1:
         if tile in p.walls or tile in p.solids or (
             tile in p.conveyors and tile not in p.current_route_tiles
         ):
             _replace_route(p, outward=True)
             return
-        _step(p, ct, target, True)
+        _move_cardinal_adjacent(p, ct, tuple(target))
         return
     if ct.can_build_conveyor(target, facing):
         ct.build_conveyor(target, facing)
@@ -330,13 +317,13 @@ def _lay(p, ct):
         return
     tile, facing = p.route[p.route_i]
     me, target = ct.get_position(), Position(*tile)
-    if me != target:
+    if _cardinal_distance(tuple(me), tuple(target)) != 1:
         if tile in p.walls or tile in p.solids or (
             tile in p.conveyors and tile not in p.current_route_tiles
         ):
             _replace_route(p)
             return
-        _step(p, ct, target, True)
+        _move_cardinal_adjacent(p, ct, tuple(target))
         return
     if ct.can_build_conveyor(target, facing):
         ct.build_conveyor(target, facing)
@@ -396,6 +383,8 @@ def _step(p, ct, target, exact):
     source = ct.get_position()
     nxt = _bfs_step(p, tuple(source), tuple(target), exact)
     if nxt:
+        # Cardinal only: a diagonal is not a legal Builder move in 2.3.3, and
+        # this loop silently did nothing whenever the path asked for one.
         for direction in D8:
             if source.add(direction) == Position(*nxt) and ct.can_move(direction):
                 ct.move(direction)
@@ -414,8 +403,7 @@ def _bfs_step(p, source, target, exact):
         if cur in goals:
             found = cur
             break
-        for direction in D8:
-            dx, dy = direction.delta()
+        for dx, dy in D4_DELTAS:
             nxt = cur[0] + dx, cur[1] + dy
             if nxt in prev or not _inside(p, nxt) or nxt in blocked:
                 continue
@@ -435,8 +423,7 @@ def _distance(p, source, goals):
     dist, queue = {source: 0}, deque([source])
     while queue:
         cur = queue.popleft()
-        for direction in D8:
-            dx, dy = direction.delta()
+        for dx, dy in D4_DELTAS:
             nxt = cur[0] + dx, cur[1] + dy
             if nxt in dist or not _inside(p, nxt) or nxt in blocked:
                 continue
@@ -490,15 +477,16 @@ def _harass(p, ct):
             tile,
         ),
     )
+    # 2.3.3 inverted the attack rule: a Builder damages an orthogonally
+    # adjacent tile and never the one it stands on, so stand *beside* the
+    # target rather than on it.
     for target in targets:
-        if me == target:
-            position = Position(*target)
-            if ct.can_fire(position):
-                ct.fire(position)
-                return
+        if ct.can_fire(Position(*target)):
+            ct.fire(Position(*target))
+            return
 
     if targets:
-        _step(p, ct, Position(*targets[0]), True)
+        _step(p, ct, Position(*targets[0]), False)
         return
 
     # No remembered economy is reachable yet. Resolve the enemy-Core location
@@ -517,263 +505,104 @@ def _heal_core(p, ct):
     _step(p, ct, Position(*p.core), False)
 
 
+def _defend_core(p, ct):
+    """Answer a visible Core attack with an ordinary counter-firing Gunner.
+
+    This deliberately has no opening layout or inferred firing position: the
+    economy Builder must first see both the damage and a target it can align
+    with from a locally buildable tile.  Otherwise it falls back to repairs.
+    """
+    me = ct.get_position()
+    enemies = [entity_id for entity_id in ct.get_nearby_entities()
+               if ct.get_team(entity_id) != ct.get_team()]
+    combat_priority = {
+        EntityType.GUNNER: 0,
+        EntityType.SENTINEL: 1,
+        EntityType.BUILDER_BOT: 2,
+        EntityType.LAUNCHER: 3,
+    }
+    enemies.sort(key=lambda entity_id: (
+        combat_priority.get(ct.get_entity_type(entity_id), 4),
+        ct.get_position(entity_id).distance_squared(Position(*p.core)),
+        entity_id,
+    ))
+    # Escalate slowly with sustained damage rather than committing a fixed
+    # defensive formation before Jonbot knows whether one is needed.
+    core_id = ct.get_tile_building_id(Position(*p.core))
+    damage = (ct.get_max_hp(core_id) - ct.get_hp(core_id)) if core_id else 0
+    desired = min(4, 1 + damage // 180)
+    if p.home_gunners_built < desired:
+        candidates = []
+        for direction in D8:
+            position = me.add(direction)
+            if not _inside(p, tuple(position)) or tuple(position) in p.foot:
+                continue
+            for enemy_id in enemies:
+                target = ct.get_position(enemy_id)
+                facing = _ray_direction(tuple(position), tuple(target))
+                if (facing is not None
+                        and position.distance_squared(target) <= GUNNER_RANGE_SQ
+                        and ct.can_build_gunner(position, facing)):
+                    candidates.append((
+                        combat_priority.get(ct.get_entity_type(enemy_id), 4),
+                        position.distance_squared(target),
+                        position.x, position.y, position, facing,
+                    ))
+        if candidates:
+            *_, position, facing = min(candidates)
+            ct.build_gunner(position, facing)
+            p.home_gunners_built += 1
+            return
+    _heal_core(p, ct)
+
+
 def _rush(p, ct):
-    if p.builder_index == ECONOMY_BUILDERS and not p.opening_launcher_built:
-        if _build_opening_launcher(p, ct):
-            return
-    if p.opening_launcher_pos is not None:
-        launcher = Position(*p.opening_launcher_pos)
-        if ct.get_position().distance_squared(launcher) <= 2:
-            return
-        p.opening_launcher_pos = None
+    """Walk in and build a small, conventional direct-fire attack."""
     packed = ct.read_store(SLOT_ENEMY_CORE)
-    enemy_core = unpack_pos(packed) if packed else None
-    if enemy_core is None:
+    if packed == 0:
         _explore(p, ct)
         return
-    if p.offensive_gunner_built and p.takeover_stage == "done":
-        _harass(p, ct)
+    if p.attack_gunners_built < 2 and _build_basic_gunner(p, ct, unpack_pos(packed)):
         return
-    if p.takeover_stage != "terminal":
-        if _extend_takeover_battery(p, ct, enemy_core):
-            return
-        p.takeover_stage = "done"
-        p.offensive_gunner_built = True
-        _harass(p, ct)
-        return
-    if p.takeover_target is None:
-        p.takeover_target = _supply_takeover_target(p, enemy_core)
-        if p.takeover_target is not None:
-            p.takeover_predecessor = _takeover_predecessor(
-                p, tuple(p.takeover_target[0]))
-    if p.takeover_target is None:
-        if (p.builder_index <= ECONOMY_BUILDERS + 1
-                and _build_local_assault(p, ct, enemy_core)):
-            return
-        _explore_enemy_perimeter(p, ct, enemy_core)
-        return
-    position, facing = p.takeover_target
-    if p.takeover_predecessor is None:
-        p.takeover_predecessor = _takeover_predecessor(p, tuple(position))
+    _harass(p, ct)
+
+
+def _build_basic_gunner(p, ct, enemy_core):
+    """Build on the nearest visible legal ray, without a special formation."""
+    core_tiles = {(enemy_core[0] + dx, enemy_core[1] + dy)
+                  for dx in (0, 1) for dy in (0, 1)}
+    me = tuple(ct.get_position())
+    choices = []
+    for core_tile in sorted(core_tiles):
+        for dx in range(-3, 4):
+            for dy in range(-3, 4):
+                spot = core_tile[0] + dx, core_tile[1] + dy
+                if (not _inside(p, spot) or spot in core_tiles
+                        or spot in p.walls or spot in p.ores or spot in p.solids):
+                    continue
+                facing = _ray_direction(spot, core_tile)
+                if facing is None or _distance_sq(spot, core_tile) > GUNNER_RANGE_SQ:
+                    continue
+                goals = _cardinal_adjacent(p, spot) - p.walls - p.solids
+                distance = _distance(p, me, goals)
+                if distance is not None:
+                    choices.append((distance, spot, facing))
+    if not choices:
+        _explore(p, ct)
+        return True
+    _, spot, facing = min(choices)
+    position = Position(*spot)
     if not ct.is_in_vision(position):
         _step(p, ct, position, False)
-        return
-    building_id = ct.get_tile_building_id(position)
-    if building_id is not None:
-        occupying_bot = ct.get_tile_builder_bot_id(position)
-        if (occupying_bot is not None
-                and ct.get_team(occupying_bot) != ct.get_team()):
-            if p.takeover_predecessor is None:
-                _step(p, ct, position, False)
-                return
-            visible_enemy_builders = sum(
-                ct.get_team(entity_id) != ct.get_team()
-                and ct.get_entity_type(entity_id) == EntityType.BUILDER_BOT
-                for entity_id in ct.get_nearby_entities())
-            # A through-line gun efficiently breaks a small terminal guard.  A
-            # dense screen can continually replace blockers, so against one we
-            # retain the ordinary lateral battery instead of sinking titanium
-            # into a gun whose entire firing lane is contested.
-            if visible_enemy_builders <= 4:
-                choices = _supply_takeover_choices(p, enemy_core)
-                if len(choices) > 1:
-                    index = (p.builder_index - ECONOMY_BUILDERS) % len(choices)
-                    assigned = choices[index]
-                    if tuple(assigned[0]) != tuple(position):
-                        p.takeover_target = assigned
-                        p.takeover_predecessor = _takeover_predecessor(
-                            p, tuple(assigned[0]))
-                        return
-                p.blocked_terminal = tuple(position)
-            p.takeover_stage = "splitter"
-            if _extend_takeover_battery(p, ct, enemy_core):
-                return
-            p.takeover_stage = "done"
-            p.offensive_gunner_built = True
-            return
-        if (ct.get_team(building_id) == ct.get_team()
-                and ct.get_entity_type(building_id) == EntityType.GUNNER):
-            p.takeover_target = None
-            _explore_enemy_perimeter(p, ct, enemy_core)
-            return
-        if tuple(ct.get_position()) != tuple(position):
-            _step(p, ct, position, True)
-        elif (ct.get_team(building_id) != ct.get_team()
-              and ct.get_entity_type(building_id) == EntityType.CONVEYOR
-              and ct.can_fire(position)):
-            ct.fire(position)
-        return
-    if _cardinal_distance(tuple(ct.get_position()), tuple(position)) == 1:
-        if ct.can_build_gunner(position, facing):
-            ct.build_gunner(position, facing)
-            if p.after_dislodge:
-                p.takeover_stage = "done"
-                p.offensive_gunner_built = True
-            else:
-                p.takeover_stage = "splitter"
-            ct.write_store(SLOT_ALERT, 1)
-        return
-    _move_cardinal_adjacent(p, ct, tuple(position))
-
-
-def _extend_takeover_battery(p, ct, enemy_core):
-    """Fan a captured terminal line into every Core-facing firing lane.
-
-    Replacing only the final belt captures one buffered ammunition stack.  The
-    upstream Splitter lets the same line feed additional firing positions and
-    also removes another enemy logistics tile.
-    """
-    predecessor = p.takeover_predecessor
-    if predecessor is None:
-        return False
-    splitter_pos, splitter_direction = predecessor
-    splitter_pos = Position(*splitter_pos)
-
-    if p.takeover_stage == "splitter":
-        if not ct.is_in_vision(splitter_pos):
-            _step(p, ct, splitter_pos, False)
-            return True
-        building_id = ct.get_tile_building_id(splitter_pos)
-        if building_id is not None:
-            if (ct.get_team(building_id) == ct.get_team()
-                    and ct.get_entity_type(building_id) == EntityType.SPLITTER):
-                p.takeover_stage = (
-                    "dislodge" if p.blocked_terminal is not None else "battery")
-            elif (ct.get_team(building_id) != ct.get_team()
-                  and ct.get_entity_type(building_id) == EntityType.CONVEYOR):
-                if tuple(ct.get_position()) != tuple(splitter_pos):
-                    _step(p, ct, splitter_pos, True)
-                elif ct.can_fire(splitter_pos):
-                    ct.fire(splitter_pos)
-                return True
-            else:
-                return False
-        else:
-            if _cardinal_distance(tuple(ct.get_position()), tuple(splitter_pos)) != 1:
-                _move_cardinal_adjacent(p, ct, tuple(splitter_pos))
-                return True
-            if ct.can_build_splitter(splitter_pos, splitter_direction):
-                ct.build_splitter(splitter_pos, splitter_direction)
-            return True
-
-    if p.takeover_stage == "dislodge":
-        terminal = Position(*p.blocked_terminal)
-        if p.dislodge_gunner is None:
-            options = _dislodge_layout(
-                p, splitter_pos, splitter_direction, terminal, enemy_core)
-            if not options:
-                p.takeover_stage = "battery"
-            else:
-                p.dislodge_gunner = options[0]
-        if p.takeover_stage == "dislodge" and p.dislodge_gunner is not None:
-            position, facing = p.dislodge_gunner
-            if not ct.is_in_vision(position):
-                _step(p, ct, position, False)
-                return True
-            building_id = ct.get_tile_building_id(position)
-            if building_id is None:
-                if _cardinal_distance(tuple(ct.get_position()), tuple(position)) != 1:
-                    _move_cardinal_adjacent(p, ct, tuple(position))
-                    return True
-                if ct.can_build_gunner(position, facing):
-                    ct.build_gunner(position, facing)
-                    p.dislodge_started = ct.get_current_round()
-                return True
-            if (ct.get_team(building_id) != ct.get_team()
-                    or ct.get_entity_type(building_id) != EntityType.GUNNER):
-                p.takeover_stage = "battery"
-            else:
-                if p.dislodge_started is None:
-                    p.dislodge_started = ct.get_current_round()
-                occupying_bot = (ct.get_tile_builder_bot_id(terminal)
-                                  if ct.is_in_vision(terminal) else None)
-                if occupying_bot is None:
-                    p.blocked_terminal = None
-                    p.after_dislodge = True
-                    p.takeover_stage = "terminal"
-                    return True
-                if (p.dislodge_started is not None
-                        and ct.get_current_round() - p.dislodge_started >= 12):
-                    if ct.can_destroy(position):
-                        ct.destroy(position)
-                        p.solids.discard(tuple(position))
-                        p.dislodge_gunner = None
-                        p.blocked_terminal = None
-                        p.takeover_stage = "battery"
-                    else:
-                        _move_cardinal_adjacent(p, ct, tuple(position))
-                return True
-
-    if p.takeover_stage == "battery":
-        if not p.battery_gunners:
-            p.battery_gunners = _battery_layout(
-                p, splitter_pos, splitter_direction, enemy_core)
-        while p.battery_gunners:
-            position, facing = p.battery_gunners[0]
-            if not ct.is_in_vision(position):
-                _step(p, ct, position, False)
-                return True
-            building_id = ct.get_tile_building_id(position)
-            if building_id is not None:
-                p.battery_gunners.pop(0)
-                continue
-            if _cardinal_distance(tuple(ct.get_position()), tuple(position)) != 1:
-                _move_cardinal_adjacent(p, ct, tuple(position))
-                return True
-            if ct.can_build_gunner(position, facing):
-                ct.build_gunner(position, facing)
-                p.battery_gunners.pop(0)
-            return True
-        p.takeover_stage = "done"
-        return False
-    return False
-
-
-def _takeover_predecessor(p, terminal):
-    choices = []
-    for position, direction in p.enemy_conveyors.items():
-        dx, dy = direction.delta()
-        if (position[0] + dx, position[1] + dy) == terminal:
-            choices.append((position, direction))
-    return min(choices) if choices else None
-
-
-def _battery_layout(p, splitter, splitter_direction, enemy_core):
-    core_foot = {(enemy_core[0] + dx, enemy_core[1] + dy)
-                 for dx in (0, 1) for dy in (0, 1)}
-    input_direction = splitter_direction.opposite()
-    result = []
-    for direction in (d for d in FACING.values() if d != input_direction):
-        position = splitter.add(direction)
-        if not _inside(p, tuple(position)):
-            continue
-        facing = None
-        for core_tile in sorted(core_foot):
-            facing = _facing_toward(tuple(position), core_tile)
-            if (facing is not None
-                    and position.distance_squared(Position(*core_tile)) <= GUNNER_RANGE_SQ):
-                break
-            facing = None
-        if facing is not None:
-            result.append((position, facing))
-    return result
-
-
-def _dislodge_layout(p, splitter, splitter_direction, terminal, enemy_core):
-    input_direction = splitter_direction.opposite()
-    result = []
-    for direction in (d for d in FACING.values() if d != input_direction):
-        position = splitter.add(direction)
-        if (not _inside(p, tuple(position)) or tuple(position) in p.solids
-                or position == terminal):
-            continue
-        facing = _ray_direction(tuple(position), tuple(terminal))
-        if facing is not None and position.distance_squared(terminal) <= GUNNER_RANGE_SQ:
-            through_core = _ray_hits_core_after(
-                position, terminal, enemy_core, facing)
-            if through_core:
-                result.append((position.x, position.y, position, facing))
-    return [(position, facing) for _, _, position, facing in sorted(result)]
+        return True
+    if _cardinal_distance(me, spot) != 1:
+        _move_cardinal_adjacent(p, ct, spot)
+        return True
+    if ct.can_build_gunner(position, facing):
+        ct.build_gunner(position, facing)
+        p.solids.add(spot)
+        p.attack_gunners_built += 1
+    return True
 
 
 def _ray_direction(source, target):
@@ -785,187 +614,8 @@ def _ray_direction(source, target):
     return next((direction for direction in D8 if direction.delta() == step), None)
 
 
-def _ray_hits_core_after(source, terminal, enemy_core, facing):
-    core_foot = {(enemy_core[0] + dx, enemy_core[1] + dy)
-                 for dx in (0, 1) for dy in (0, 1)}
-    dx, dy = facing.delta()
-    current = terminal.add(facing)
-    while source.distance_squared(current) <= GUNNER_RANGE_SQ:
-        if tuple(current) in core_foot:
-            return True
-        current = Position(current.x + dx, current.y + dy)
-    return False
-
-
-def _build_local_assault(p, ct, enemy_core):
-    """Build a self-supplied battery when the opponent offers no line to steal."""
-    if p.local_assault_plan is None:
-        p.local_assault_plan = _plan_local_assault(p, enemy_core)
-        p.local_assault_i = 0
-    if not p.local_assault_plan:
-        return False
-    while p.local_assault_i < len(p.local_assault_plan):
-        kind, position, direction = p.local_assault_plan[p.local_assault_i]
-        position = Position(*position)
-        if not ct.is_in_vision(position):
-            _step(p, ct, position, False)
-            return True
-        building_id = ct.get_tile_building_id(position)
-        if building_id is not None:
-            if (ct.get_team(building_id) == ct.get_team()
-                    and ct.get_entity_type(building_id) == kind):
-                p.local_assault_i += 1
-                continue
-            p.local_assault_plan = None
-            return False
-        if _cardinal_distance(tuple(ct.get_position()), tuple(position)) != 1:
-            _move_cardinal_adjacent(p, ct, tuple(position))
-            return True
-        if kind == EntityType.HARVESTER and ct.can_build_harvester(position):
-            ct.build_harvester(position)
-        elif kind == EntityType.CONVEYOR and ct.can_build_conveyor(position, direction):
-            ct.build_conveyor(position, direction)
-        elif kind == EntityType.SPLITTER and ct.can_build_splitter(position, direction):
-            ct.build_splitter(position, direction)
-        elif kind == EntityType.GUNNER and ct.can_build_gunner(position, direction):
-            ct.build_gunner(position, direction)
-        else:
-            return True
-        p.local_assault_i += 1
-        return True
-    p.offensive_gunner_built = True
-    p.takeover_stage = "done"
-    return False
-
-
-def _plan_local_assault(p, enemy_core):
-    """Shortest fully observed ore-to-battery plan beside the enemy Core."""
-    core_foot = {(enemy_core[0] + dx, enemy_core[1] + dy)
-                 for dx in (0, 1) for dy in (0, 1)}
-    sources = [ore for ore in p.ores
-               if ore in p.seen and ore not in p.solids
-               and min((ore[0] - tile[0]) ** 2 + (ore[1] - tile[1]) ** 2
-                       for tile in core_foot) <= 100]
-    best = None
-    for source in sources:
-        prev, queue = {source: None}, deque([source])
-        while queue:
-            cur = queue.popleft()
-            if cur != source:
-                incoming = (cur[0] - prev[cur][0], cur[1] - prev[cur][1])
-                splitter_direction = FACING[incoming]
-                layout = _battery_layout(
-                    p, Position(*cur), splitter_direction, enemy_core)
-                layout = [(pos, facing) for pos, facing in layout
-                          if tuple(pos) not in p.solids and tuple(pos) in p.seen]
-                if len(layout) >= 2:
-                    path, node = [], cur
-                    while node is not None:
-                        path.append(node)
-                        node = prev[node]
-                    path.reverse()
-                    gunner_tiles = {tuple(pos) for pos, _ in layout}
-                    if not any(tile in gunner_tiles for tile in path[:-1]):
-                        score = (len(path), source, cur)
-                        if best is None or score < best[0]:
-                            best = (score, path, splitter_direction, layout)
-                    break
-            if len(prev) > 160:
-                break
-            for dx, dy in D4_DELTAS:
-                nxt = cur[0] + dx, cur[1] + dy
-                if (nxt in prev or not _inside(p, nxt) or nxt not in p.seen
-                        or nxt in p.walls or nxt in p.foot or nxt in p.solids
-                        or (nxt in p.ores and nxt != source)):
-                    continue
-                prev[nxt] = cur
-                queue.append(nxt)
-    if best is None:
-        return None
-    _, path, splitter_direction, layout = best
-    supply = [(EntityType.HARVESTER, path[0], None)]
-    for index, tile in enumerate(path[1:-1], start=1):
-        nxt = path[index + 1]
-        direction = FACING[(nxt[0] - tile[0], nxt[1] - tile[1])]
-        supply.append((EntityType.CONVEYOR, tile, direction))
-    gunners = [(EntityType.GUNNER, tuple(position), facing)
-               for position, facing in layout]
-    splitter = [(EntityType.SPLITTER, path[-1], splitter_direction)]
-    return gunners + supply + splitter
-
-
-def _build_opening_launcher(p, ct):
-    own_core = unpack_pos(ct.read_store(SLOT_OWN_CORE))
-    if own_core is None:
-        return True
-    target = _enemy_core_candidates(p)[0]
-    me = ct.get_position()
-    candidates = []
-    for dx, dy in D4_DELTAS:
-        position = Position(me.x + dx, me.y + dy)
-        if _inside(p, tuple(position)) and ct.can_build_launcher(position):
-            candidates.append(position)
-    if not candidates:
-        return False
-    position = min(candidates, key=lambda tile: (
-        tile.distance_squared(Position(*target)), tile.x, tile.y))
-    ct.build_launcher(position)
-    p.opening_launcher_built = True
-    p.opening_launcher_pos = tuple(position)
-    ct.write_store(SLOT_ALERT, ct.get_id())
-    return True
-
-
-def _explore_enemy_perimeter(p, ct, enemy_core):
-    x, y = enemy_core
-    candidates = [(x - 4, y), (x - 4, y + 1), (x, y - 4), (x + 1, y - 4),
-                  (x + 5, y), (x + 5, y + 1), (x, y + 5), (x + 1, y + 5)]
-    candidates = [tile for tile in candidates if _inside(p, tile)]
-    if not candidates:
-        _explore(p, ct)
-        return
-    me = tuple(ct.get_position())
-    for tile in candidates:
-        if ((tile[0] - me[0]) ** 2 + (tile[1] - me[1]) ** 2 <= 20
-                or tile in p.walls or tile in p.solids):
-            p.enemy_perimeter_seen.add(tile)
-    remaining = [tile for tile in candidates if tile not in p.enemy_perimeter_seen]
-    if not remaining:
-        p.enemy_perimeter_seen.clear()
-        remaining = candidates
-    offset = (p.builder_index - ECONOMY_BUILDERS) % len(remaining)
-    _step(p, ct, Position(*remaining[offset]), False)
-
-
-def _supply_takeover_target(p, enemy_core):
-    choices = _supply_takeover_choices(p, enemy_core)
-    return choices[0] if choices else None
-
-
-def _supply_takeover_choices(p, enemy_core):
-    core_foot = {(enemy_core[0] + dx, enemy_core[1] + dy)
-                 for dx in (0, 1) for dy in (0, 1)}
-    choices = []
-    for conveyor, output_direction in p.enemy_conveyors.items():
-        out_dx, out_dy = output_direction.delta()
-        if (conveyor[0] + out_dx, conveyor[1] + out_dy) not in core_foot:
-            continue
-        core_tile = min(core_foot, key=lambda tile:
-                        (tile[0] - conveyor[0]) ** 2 + (tile[1] - conveyor[1]) ** 2)
-        facing = _facing_toward(conveyor, core_tile)
-        if facing is not None:
-            choices.append((conveyor, facing))
-    return [(Position(*conveyor), facing)
-            for conveyor, facing in sorted(choices)]
-
-
-def _facing_toward(source, target):
-    dx, dy = target[0] - source[0], target[1] - source[1]
-    if dx == 0 and dy:
-        return FACING[(0, 1 if dy > 0 else -1)]
-    if dy == 0 and dx:
-        return FACING[(1 if dx > 0 else -1, 0)]
-    return None
+def _distance_sq(a, b):
+    return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 
 
 def _enemy_core_candidates(p):

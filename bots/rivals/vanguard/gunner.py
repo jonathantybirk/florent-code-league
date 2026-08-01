@@ -9,6 +9,12 @@ refused those would never damage the thing it was built to kill.
 Measured over the full 180-game field, additionally sparing a *friendly
 Builder* standing in the line is not worth it (99-81 against 105-75): it burns
 a firing window on a unit that walks out of the way by itself.
+
+Re-aiming an idle Gunner with ct.rotate() was tried and dropped: 10 Ti flat to
+turn round looks cheap against 25 plus cost scale for a new one, but the score
+was byte-identical at thresholds of 8, 25 and 80 idle rounds, so the case
+essentially never arises. Our Gunners are placed on a line to the Core and the
+line stays worth shooting.
 """
 
 from fcode import Controller, GameError
