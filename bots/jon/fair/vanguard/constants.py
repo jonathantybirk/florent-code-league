@@ -81,3 +81,6 @@ RAID_MIN_GAP = 5
 # Ammunition is a global pool the Core fills from titanium 1:1, once a turn.
 AMMO_TARGET = 40
 AMMO_FLOOR = 60
+
+# Harvesters to secure before any Builder spends a round on the ring.
+ECON_BEFORE_DEFENCE = 3
