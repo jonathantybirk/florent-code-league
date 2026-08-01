@@ -639,9 +639,11 @@ def _step(p, ct, target, exact, allow_launcher=True):
         else:
             adjacent = _adjacent_visible_launcher(ct, target)
             if adjacent is not None:
-                _announce_launch(p, ct, target, adjacent[1])
-                p.awaiting_launch -= 1
-                return True
+                if _announce_launch(p, ct, target, adjacent[1]):
+                    p.awaiting_launch -= 1
+                    return True
+                p.awaiting_launch = 0
+                p.launch_origin = None
             # The requested Launcher disappeared before servicing us.
             p.awaiting_launch = 0
             p.launch_origin = None
@@ -687,8 +689,11 @@ def _build_escape_launcher(p, ct, target):
             return False
         p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
         p.launch_origin = tuple(ct.get_position())
-        _announce_launch(p, ct, target, adjacent[1])
-        return True
+        if _announce_launch(p, ct, target, adjacent[1]):
+            return True
+        p.awaiting_launch = 0
+        p.launch_origin = None
+        return False
 
     if ct.get_global_resources() < ct.get_launcher_cost():
         _plan_failed(
@@ -738,6 +743,7 @@ def _build_blocker_gunner(p, ct, target):
         return False
 
     source, destination = tuple(here), tuple(target)
+    protected_lanes = _friendly_turret_lanes(ct)
     target_dx = destination[0] - source[0]
     target_dy = destination[1] - source[1]
     unit_priority = {
@@ -761,7 +767,9 @@ def _build_blocker_gunner(p, ct, target):
                     or not ct.can_fire_from(
                         position, facing, EntityType.GUNNER, enemy,
                     )
-                    or not _preserves_friendly_turret_lanes(ct, position)
+                    or not _preserves_friendly_turret_lanes(
+                        ct, position, protected_lanes,
+                    )
                     or not ct.can_build_gunner(position, facing)):
                 continue
             enemy_dx = enemy.x - source[0]
@@ -820,13 +828,20 @@ def _announce_launch(p, ct, target, launcher_position):
     """Publish this passenger and the launcher's requested compass direction."""
     dx = _sign(target.x - launcher_position.x)
     dy = _sign(target.y - launcher_position.y)
-    direction_index = next(
+    direction_index = next((
         index for index, direction in enumerate(D8, start=1)
         if direction.delta() == (dx, dy)
-    )
+    ), None)
+    if direction_index is None:
+        _plan_failed(
+            p, ct, "announce launch", target,
+            f"launcher at {tuple(launcher_position)} is already the target",
+        )
+        return False
     slot = LAUNCH_REQUEST_SLOTS[p.builder_index % len(LAUNCH_REQUEST_SLOTS)]
     request = (ct.get_id() << LAUNCH_DIRECTION_BITS) | direction_index
     ct.write_store(slot, request)
+    return True
 
 
 def _consume_launch_rejection(p, ct):
@@ -926,6 +941,22 @@ def _distance(p, source, goals):
                 return dist[nxt]
             queue.append(nxt)
     return None
+
+
+def _distance_map(p, source):
+    """Compute every reachable distance once for candidate-heavy planners."""
+    blocked = (p.walls | p.foot | p.solids | (p.bot_occupied - {source})
+               | (_launcher_hazards(p) - {source}))
+    dist, queue = {source: 0}, deque([source])
+    while queue:
+        cur = queue.popleft()
+        for dx, dy in D4_DELTAS:
+            nxt = cur[0] + dx, cur[1] + dy
+            if nxt in dist or not _inside(p, nxt) or nxt in blocked:
+                continue
+            dist[nxt] = dist[cur] + 1
+            queue.append(nxt)
+    return dist
 
 
 def _explore(p, ct):
@@ -1101,6 +1132,7 @@ def _defend_core(p, ct):
     desired = min(4, 1 + damage // 180)
     if (ct.get_global_ammo() >= MIN_AMMO_FOR_GUNNER
             and p.home_gunners_built < desired):
+        protected_lanes = _friendly_turret_lanes(ct)
         candidates = []
         for direction in D8:
             position = me.add(direction)
@@ -1114,7 +1146,9 @@ def _defend_core(p, ct):
                         and ct.can_fire_from(
                             position, facing, EntityType.GUNNER, target,
                         )
-                        and _preserves_friendly_turret_lanes(ct, position)
+                        and _preserves_friendly_turret_lanes(
+                            ct, position, protected_lanes,
+                        )
                         and ct.can_build_gunner(position, facing)):
                     candidates.append((
                         combat_priority.get(ct.get_entity_type(enemy_id), 4),
@@ -1165,8 +1199,11 @@ def _opening_ferry(p, ct, enemy_core):
     if adjacent is not None:
         p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
         p.launch_origin = here
-        _announce_launch(p, ct, target, adjacent[1])
-        return True
+        if _announce_launch(p, ct, target, adjacent[1]):
+            return True
+        p.awaiting_launch = 0
+        p.launch_origin = None
+        return False
 
     if launchers:
         # Reuse a forward Launcher. If only the previous relay remains behind
@@ -1195,6 +1232,8 @@ def _build_basic_gunner(p, ct, enemy_core):
     core_tiles = {(enemy_core[0] + dx, enemy_core[1] + dy)
                   for dx in (0, 1) for dy in (0, 1)}
     me = tuple(ct.get_position())
+    distances = _distance_map(p, me)
+    protected_lanes = _friendly_turret_lanes(ct)
     choices = []
     for core_tile in sorted(core_tiles):
         for dx in range(-3, 4):
@@ -1212,12 +1251,15 @@ def _build_basic_gunner(p, ct, enemy_core):
                             Position(*core_tile),
                         )
                         or not _preserves_friendly_turret_lanes(
-                            ct, Position(*spot),
+                            ct, Position(*spot), protected_lanes,
                         )):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
                          - _launcher_hazards(p))
-                distance = _distance(p, me, goals)
+                distance = min(
+                    (distances[goal] for goal in goals if goal in distances),
+                    default=None,
+                )
                 if distance is not None:
                     choices.append((distance, spot, D8.index(facing), facing))
     if not choices:
@@ -1248,6 +1290,8 @@ def _build_launcher_breaker_gunner(p, ct):
     if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
         return False
     me = tuple(ct.get_position())
+    distances = _distance_map(p, me)
+    protected_lanes = _friendly_turret_lanes(ct)
     choices = []
     for launcher_position in sorted(p.enemy_launchers):
         if launcher_position in p.launcher_breakers:
@@ -1267,12 +1311,15 @@ def _build_launcher_breaker_gunner(p, ct):
                             Position(*launcher_position),
                         )
                         or not _preserves_friendly_turret_lanes(
-                            ct, Position(*spot),
+                            ct, Position(*spot), protected_lanes,
                         )):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
                          - p.bot_occupied - _launcher_hazards(p))
-                distance = _distance(p, me, goals)
+                distance = min(
+                    (distances[goal] for goal in goals if goal in distances),
+                    default=None,
+                )
                 if distance is not None:
                     choices.append((
                         distance,
@@ -1311,15 +1358,15 @@ def _ray_direction(source, target):
     return next((direction for direction in D8 if direction.delta() == step), None)
 
 
-def _preserves_friendly_turret_lanes(ct, proposed_position):
-    """Reject a building tile that would interrupt a friendly turret's shot."""
-    proposed = tuple(proposed_position)
+def _friendly_turret_lanes(ct):
+    """Map protected firing-ray tiles to the friendly turret and its target."""
+    lanes = {}
     enemies = [
         entity_id for entity_id in ct.get_nearby_entities()
         if ct.get_team(entity_id) != ct.get_team()
     ]
     if not enemies:
-        return True
+        return lanes
     for turret_id in ct.get_nearby_buildings():
         if ct.get_team(turret_id) != ct.get_team():
             continue
@@ -1330,42 +1377,37 @@ def _preserves_friendly_turret_lanes(ct, proposed_position):
         facing = ct.get_direction(turret_id)
         for enemy_id in enemies:
             target = ct.get_position(enemy_id)
-            if (_strictly_between_on_ray(
-                    tuple(origin), proposed, tuple(target), facing)
-                    and ct.can_fire_from(
+            if (_ray_direction(tuple(origin), tuple(target)) != facing
+                    or not ct.can_fire_from(
                         origin, facing, turret_type, target,
                     )):
-                print(
-                    f"PLAN_FAILED id={ct.get_id()} "
-                    f"round={ct.get_current_round()} action=place turret "
-                    f"target={proposed} reason=would block friendly "
-                    f"turret={turret_id} firing_at={tuple(target)}"
-                )
-                return False
+                continue
+            dx, dy = facing.delta()
+            tile = origin.x + dx, origin.y + dy
+            target_tile = tuple(target)
+            while tile != target_tile:
+                lanes.setdefault(tile, (turret_id, target_tile))
+                tile = tile[0] + dx, tile[1] + dy
+    return lanes
+
+
+def _preserves_friendly_turret_lanes(
+        ct, proposed_position, protected_lanes=None):
+    """Reject a building tile that would interrupt a friendly turret's shot."""
+    proposed = tuple(proposed_position)
+    lanes = (protected_lanes if protected_lanes is not None
+             else _friendly_turret_lanes(ct))
+    blocker = lanes.get(proposed)
+    if blocker is not None:
+        turret_id, target = blocker
+        print(
+            f"PLAN_FAILED id={ct.get_id()} "
+            f"round={ct.get_current_round()} action=place turret "
+            f"target={proposed} reason=would block friendly "
+            f"turret={turret_id} firing_at={target}"
+        )
+        return False
     return True
-
-
-def _strictly_between_on_ray(origin, candidate, target, direction):
-    dx, dy = direction.delta()
-    candidate_dx = candidate[0] - origin[0]
-    candidate_dy = candidate[1] - origin[1]
-    target_dx = target[0] - origin[0]
-    target_dy = target[1] - origin[1]
-
-    def steps(offset_x, offset_y):
-        if dx == 0:
-            return offset_y // dy if offset_x == 0 and offset_y * dy > 0 else None
-        if dy == 0:
-            return offset_x // dx if offset_y == 0 and offset_x * dx > 0 else None
-        if offset_x * dx <= 0 or offset_y * dy <= 0:
-            return None
-        step_x, step_y = offset_x // dx, offset_y // dy
-        return step_x if step_x == step_y else None
-
-    candidate_steps = steps(candidate_dx, candidate_dy)
-    target_steps = steps(target_dx, target_dy)
-    return (candidate_steps is not None and target_steps is not None
-            and candidate_steps < target_steps)
 
 
 def _distance_sq(a, b):
@@ -1473,8 +1515,9 @@ def _move_cardinal_adjacent(p, ct, target):
     non_ore_goals = goals - p.ores
     if non_ore_goals:
         goals = non_ore_goals
-    reachable = [(distance, goal) for goal in goals
-                 if (distance := _distance(p, me, {goal})) is not None]
+    distances = _distance_map(p, me)
+    reachable = [(distances[goal], goal) for goal in goals
+                 if goal in distances]
     if reachable:
         _, goal = min(reachable)
         _step(p, ct, Position(*goal), True)
