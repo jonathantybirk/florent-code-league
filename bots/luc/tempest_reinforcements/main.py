@@ -1,8 +1,9 @@
-"""Tempest Reinforcements: Tempest with persistent surplus-Ti spawning."""
+"""Tempest with persistent reinforcements and stuck-Builder launchers."""
 
 import builder
 import core
 import gunner
+import launcher
 import sentinel
 from fcode import Controller, EntityType
 
@@ -11,6 +12,7 @@ HANDLERS = {
     EntityType.CORE: core.run,
     EntityType.BUILDER_BOT: builder.run,
     EntityType.GUNNER: gunner.run,
+    EntityType.LAUNCHER: launcher.run,
     EntityType.SENTINEL: sentinel.run,
 }
 
