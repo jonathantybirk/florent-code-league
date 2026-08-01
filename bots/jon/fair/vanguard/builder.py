@@ -939,6 +939,11 @@ def _explore(p, ct):
         if world.cheb(here, target) > 3:
             if _step(p, ct, world.adjacent8(p, target)):
                 return
+    # Spiral coverage from our own Core -- ordering waypoints by ring distance
+    # and angle, the way Make Fire did -- was tried and rejected. It beat the
+    # strongest archived opponent by three games and lost four to the next one,
+    # scored identically against the live bot, and left the panel a shade worse
+    # (262-32 against 264-30). One favourable opponent is not enough.
     stride = 4
     choices = [(x, y)
                for y in range(1, p.h, stride) for x in range(1, p.w, stride)
