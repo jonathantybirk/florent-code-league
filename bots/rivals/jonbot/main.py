@@ -3,7 +3,6 @@
 import builder
 import core
 import gunner
-import launcher
 import sentinel
 from fcode import Controller, EntityType
 
@@ -13,7 +12,6 @@ HANDLERS = {
     EntityType.BUILDER_BOT: builder.run,
     EntityType.GUNNER: gunner.run,
     EntityType.SENTINEL: sentinel.run,
-    EntityType.LAUNCHER: launcher.run,
 }
 
 

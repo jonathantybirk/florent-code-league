@@ -1,0 +1,4 @@
+source_commit = "eb1f0f33a60df14aa27fbd74927634f41082a469"
+source_path = "bots/jon/fair/tempest_fast"
+engine = "2.3.3"
+status = "experimental"
