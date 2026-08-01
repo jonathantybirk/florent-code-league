@@ -14,6 +14,7 @@ from constants import (
     D4_DELTAS,
     D8,
     ECONOMY_BUILDERS,
+    ECON_BEFORE_DEFENCE,
     OPENING_HOME_BUILDERS,
     FACING8,
     GUNNER_RANGE_SQ,
@@ -187,7 +188,8 @@ def _economy(p, ct):
         return
     if _picket(p, ct):
         return
-    if p.phase in ("idle", "explore") and _fortify(p, ct):
+    if (ct.read_store(SLOT_ECON_LINES) >= ECON_BEFORE_DEFENCE
+            and p.phase in ("idle", "explore") and _fortify(p, ct)):
         # Bricking the Core ring outranks a second income line: every strong
         # opponent here wins by placing Gunners against the Core itself.
         return

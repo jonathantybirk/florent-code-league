@@ -38,6 +38,9 @@ PICKET_SLOTS = range(12, 14)     # packed positions of defensive Launchers
 SLOT_ECON_LINES = 14
 SLOT_HOME_UNDER_FIRE = 15
 
+# Secure the ammunition economy before completing the static Core ring.
+ECON_BEFORE_DEFENCE = 3
+
 # How far from the enemy Core a deposit may sit and still be worth mining for
 # ammunition, and how long a forward conveyor creep may get before the battery
 # costs more than it delivers.
