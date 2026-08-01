@@ -121,6 +121,34 @@ differs by Jon's edits — none of which change what the bot does. Behaviour fin
 also that the code hash covers **only `.py` files**: an added `BOT_VERSION.toml` once made all 34
 bots look changed.
 
+### Pruning duplicates from a challenger field
+
+Duplicates are not merged in the ratings — Nash averaging is invariant to them, and a group like
+`vanguard@9713344, vanguard@da3fd8a` is *how you learn* a change did nothing. But playing a new bot
+against four copies of the same bot is four times the compute for one bot's worth of information,
+so `plan` can prune the field using duplicates found in earlier runs:
+
+```sh
+uv run python -m tournament plan --tid next --bots newbot@abc1234 \
+    --vs "$roster" --dedupe-from jon-full,jon-new
+```
+
+```
+pruned 6 duplicate bot(s) from the field:
+  v233_h@9713344            -> covered by vanguard@da3fd8a
+  vanguard@9713344          -> covered by vanguard@da3fd8a
+  vanguard_1e88ae8@da3fd8a  -> covered by vanguard@da3fd8a
+  ...
+1 challengers vs 36 roster bots  ->  1470 matches   (1722 without pruning)
+```
+
+The survivor is chosen by newest commit, then a live path over an archived one, then shallower
+path, then name. Depth alone cannot decide it: `bots/jon/fair/vanguard` and
+`bots/jon/versions/vanguard_1e88ae8` are the same depth, hence `ARCHIVE_DIRS`.
+
+**Bots named in `--bots` are never pruned**, even if they duplicate something in the roster —
+running a new version against its own predecessor is usually the entire point.
+
 **Both conditions are necessary.** A pair must match on every shared opponent *and* split their
 own head-to-head evenly. The pair's own result has to be excluded from the first test — identical
 bots beat each other exactly half the time — but excluding it alone would also flag two bots that

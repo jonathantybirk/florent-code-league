@@ -163,6 +163,75 @@ def test_code_hash_ignores_non_python_files():
     assert old and old == new
 
 
+def test_prune_keeps_one_member_per_group():
+    from tournament.duplicates import Group, prune
+
+    roster = [
+        BotSpec(name="a", commit="1" * 40, path="bots/x/a"),
+        BotSpec(name="b", commit="1" * 40, path="bots/x/b"),
+        BotSpec(name="c", commit="1" * 40, path="bots/x/c"),
+    ]
+    ids = [s.bot_id for s in roster]
+    groups = [Group("behaviour", (ids[0], ids[1]), "")]
+    kept, dropped = prune(roster, groups)
+    assert len(kept) == 2
+    assert len(dropped) == 1
+    assert ids[2] in {s.bot_id for s in kept}  # the non-duplicate always survives
+    gone, covered = dropped[0]
+    assert {gone, covered} == {ids[0], ids[1]}
+
+
+def test_prune_removes_three_of_a_four_way_group():
+    """The real vanguard group: 4 copies, so a challenger should face 1, not 4."""
+    from tournament.duplicates import Group, prune
+
+    roster = [BotSpec(name=n, commit="1" * 40, path=f"bots/x/{n}") for n in "abcd"]
+    roster.append(BotSpec(name="other", commit="1" * 40, path="bots/x/other"))
+    ids = [s.bot_id for s in roster[:4]]
+    kept, dropped = prune(roster, [Group("behaviour", tuple(ids), "")])
+    assert len(kept) == 2
+    assert len(dropped) == 3
+    assert all(covered == dropped[0][1] for _, covered in dropped)  # all point at one survivor
+
+
+def test_prune_ignores_groups_whose_members_are_absent():
+    from tournament.duplicates import Group, prune
+
+    roster = [BotSpec(name="a", commit="1" * 40, path="bots/x/a")]
+    kept, dropped = prune(roster, [Group("behaviour", ("ghost@111", "phantom@222"), "")])
+    assert len(kept) == 1 and not dropped
+
+
+def test_representative_prefers_the_newest_canonical_version():
+    """All copies play the same, so keep the one someone is actually working on."""
+    from tournament.duplicates import representative
+
+    old = BotSpec(name="vanguard", commit="a" * 40, path="bots/jon/fair/vanguard")
+    new = BotSpec(name="vanguard", commit="f" * 40, path="bots/jon/fair/vanguard")
+    snap = BotSpec(name="vanguard_1e88ae8", commit="f" * 40,
+                   path="bots/jon/versions/vanguard_1e88ae8")
+    specs = {s.bot_id: s for s in (old, new, snap)}
+
+    # newest commit wins over the older one...
+    assert representative((old.bot_id, new.bot_id), specs) == new.bot_id
+    # ...and at equal commit, the shallower canonical path beats an archived snapshot.
+    assert representative((new.bot_id, snap.bot_id), specs) == new.bot_id
+
+
+def test_representative_is_stable():
+    from tournament.duplicates import representative
+
+    specs = {
+        s.bot_id: s
+        for s in (
+            BotSpec(name="a", commit="1" * 40, path="bots/x/a"),
+            BotSpec(name="b", commit="1" * 40, path="bots/x/b"),
+        )
+    }
+    ids = tuple(specs)
+    assert representative(ids, specs) == representative(tuple(reversed(ids)), specs)
+
+
 def test_render_is_empty_when_nothing_found():
     assert "no duplicate" in render([])
 
