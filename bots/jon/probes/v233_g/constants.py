@@ -1,4 +1,4 @@
-"""Shared constants and communication layout for Undertow."""
+"""Shared constants and communication layout for Vanguard."""
 
 from fcode import Direction, EntityType
 
@@ -16,16 +16,15 @@ FACING8 = {
 }
 WALKABLE_BUILDINGS = (EntityType.CONVEYOR, EntityType.SPLITTER)
 
-# A Gunner draws from the team-wide ammunition pool and reaches slightly over
-# three tiles. Forward placement therefore needs only an observed firing line.
+# 2.3.3 pays turrets from a global pool, so a Gunner needs only a firing line
+# and titanium at home -- range is the whole constraint.
 GUNNER_RANGE_SQ = 13
 LAUNCH_RANGE_SQ = 26
 
-# Three Builders coordinate extraction; later Builders attack unless the Core
-# alarm converts them into repair crew. Economy Builders build pickets on
-# demand when they observe an enemy near home.
+# Three of the first four Builders stay home. The siege is supply-rich
+# once a battery lands, so the marginal Builder is worth more mining and
+# repairing than queueing for a firing position.
 ECONOMY_BUILDERS = 3
-OPENING_HOME_BUILDERS = 4
 
 SLOT_BUILDER_TICKET = 0
 CLAIM_SLOTS = range(1, 6)        # home ore claims
@@ -33,25 +32,17 @@ SLOT_LAUNCH_ID = 6               # Builder id asking to be thrown
 SLOT_ENEMY_CORE = 7
 SLOT_SYMMETRY_A = 8              # rejected-symmetry mask, writer = ticket 0
 SLOT_SYMMETRY_B = 9              # rejected-symmetry mask, writer = ticket 1
-SIEGE_SLOTS = range(10, 12)      # forward deposits, one claim per attacker
-PICKET_SLOTS = range(12, 14)     # packed positions of defensive Launchers
 SLOT_ECON_LINES = 14
 SLOT_HOME_UNDER_FIRE = 15
 
-# How far from the enemy Core a deposit may sit and still be worth mining for
-# ammunition, and how long a forward conveyor creep may get before the battery
-# costs more than it delivers.
-# A Gunner must sit within about three tiles of the Core and touch its
-# feeder, so a forward deposit further out than this can never supply one
-# directly and only earns its cost through a conveyor creep.
-SIEGE_ORE_RADIUS = 4
-# Fallback reach when nothing sits close to their Core at all.
-SIEGE_ORE_FAR = 10
 
 # Launcher hops per attacker, and the range at which walking is faster than
 # paying 20 Ti to be thrown.
 LAUNCH_HOPS = 2
-LAUNCH_MIN_GAP = 8
+# Ferry all the way in. Stopping eight tiles out lost the arrival race:
+# the strongest opponent had four Gunners against our Core by round 20
+# while our attacker was still walking. 15-27 to 22-20 by lowering this.
+LAUNCH_MIN_GAP = 3
 
 # The Core spawns Builders onto its own ring, so it must finish the opening
 # before we brick that ring up.
@@ -74,15 +65,25 @@ HOME_ALARM_PERCENT = 85
 EMERGENCY_RESERVE = 120
 
 # Bank above which standing still costs more than the cost scale does.
-RICH_RESERVE = 300
+RICH_RESERVE = 400
 
 # Bank above which a Builder may pay for a long home supply belt.
-LONG_LINE_RESERVE = 100000
+LONG_LINE_RESERVE = 250
 
 # Rounds spent failing to reach a firing position before trying another.
 BLOCKED_TILE_PATIENCE = 6
-SIEGE_LINE_MAX = 8
 
-PICKET_LAUNCHERS = 2
+# Gunners posted over our own approach. Suppression, not defence: the enemy
+# assault is Builders with no ranged attack.
+HOME_GUNNERS = 2
 
-HOME_THREAT_RADIUS = 10
+# Their repair crew mends close to their Core, so a belt cut beyond this is
+# severed for good.
+RAID_MIN_GAP = 5
+
+# Ammunition is a global pool the Core fills from titanium 1:1, once a turn.
+AMMO_TARGET = 40
+AMMO_FLOOR = 60
+
+# Harvesters to secure before any Builder spends a round on the ring.
+ECON_BEFORE_DEFENCE = 3
