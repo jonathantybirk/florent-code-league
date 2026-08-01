@@ -1,4 +1,4 @@
-source_commit = "e6a1b0b964c433fede8c1546ae1b37bb75da48bc"
-source_path = "bots/jon/fair/jonbot"
+source_commit = "123202ca42d841d3d01816c64f97174bc6d4cd7b"
+source_path = "bots/jon/fair/tempest"
 engine = "2.3.3"
 status = "experimental"
