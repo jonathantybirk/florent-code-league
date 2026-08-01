@@ -81,6 +81,7 @@ class Player:
         self.turrets_built = 0
         self.home_launcher_built = False
         self.waiting_ferry = 0
+        self.spawn_index = None
 
     def run(self, ct: Controller) -> None:
         kind = ct.get_entity_type()
@@ -159,6 +160,7 @@ class Player:
         for index, role in enumerate(roles):
             if ct.read_store(SLOT_ROLES + index) == ct.get_id():
                 self.role = role
+                self.spawn_index = index
                 break
         if self.role is None:
             return
@@ -378,7 +380,8 @@ class Player:
         return False
 
     def build_ferry(self, ct: Controller) -> bool:
-        if (self.atlas is None or self.atlas.name not in FERRY_MAPS
+        if (self.spawn_index != 0
+                or self.atlas is None or self.atlas.name not in FERRY_MAPS
                 or ct.read_store(SLOT_FERRY_BUILT)
                 or ct.get_global_resources() < ct.get_launcher_cost() + 60):
             return False
@@ -559,6 +562,9 @@ class Player:
             ct.fire(target)
 
     def run_launcher(self, ct: Controller) -> None:
+        if getattr(self, "ferry_used", False):
+            ct.self_destruct()
+            return
         here = ct.get_position()
         enemies = [unit for unit in ct.get_nearby_units(2)
                    if ct.get_team(unit) != ct.get_team()
@@ -590,3 +596,4 @@ class Player:
             target = min(choices, key=lambda p: (p.distance_squared(enemy), p.x, p.y))
             ct.launch(origin, target)
             ct.write_store(SLOT_FERRY_ID, 0)
+            self.ferry_used = True
