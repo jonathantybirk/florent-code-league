@@ -281,7 +281,7 @@ tags   = ["jon", "fair"]
 name   = "luc_1"
 commit = "604349b"
 path   = "bots/1"
-tags   = ["luc", "fair"]
+tags   = ["luc", "unfair"]
 
 # Untested code-bearing commits added to x/jon after ba943b9.
 
