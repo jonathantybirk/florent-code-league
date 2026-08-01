@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tournament.site_data import _game, _record, _slug
+from tournament.site_data import _game, _map_catalog, _record, _slug
 
 
 def row(a: str, b: str, score_a: float, turns: int = 20) -> dict:
@@ -44,3 +44,11 @@ def test_slug_is_stable_and_disambiguates_commits():
     first = _slug("vanguard@1234567")
     assert first == _slug("vanguard@1234567")
     assert first != _slug("vanguard@7654321")
+
+
+def test_map_catalog_contains_dimensions_terrain_and_cores():
+    [atoll] = _map_catalog(["atoll"])
+    assert (atoll["width"], atoll["height"]) == (18, 18)
+    assert len(atoll["terrain"]) == 18
+    assert len(atoll["terrain"][0]) == 18
+    assert len(atoll["cores"]) == 2

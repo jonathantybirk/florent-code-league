@@ -193,14 +193,11 @@ with an official map in the CSV.
 
 ## The rating pipeline
 
-The public/default view uses the paper's agent-vs-task construction. Rows are bots; columns are
-`(opponent bot, map)` tasks. The two side-swapped games are combined into one side-balanced task
-score, converted to centered log-odds, and rated with rectangular maxent Nash. The uniform task
-mean is the corresponding `melo_r`. This is computed alongside the older aggregate-over-maps AvA
-view, whose output columns use the `aggregate_` prefix.
+The rating view uses a square agent-vs-agent matrix. All maps and both Gold/Silver orders are
+pooled into one smoothed win probability for each bot pair. This preserves every match as a win,
+loss, or half-point draw; it does not reduce the whole pairwise series to one binary result.
 
 ```
-aggregate-over-maps alternative:
 match results  ->  P = (wins + 1/2)/(games + 1)      add-half, keeps logits finite
                ->  A = logit(P)                      antisymmetric: A + A^T = 0
                ->  r = div(A) = (1/n) A 1            TRANSITIVE component -- the ranking key
@@ -210,9 +207,8 @@ match results  ->  P = (wins + 1/2)/(games + 1)      add-half, keeps logits fini
                ->  n = A p*                          Nash average
 ```
 
-**The default ranking is by map-task `melo_r`**. `ratings.csv` carries its `nash_prob`,
-`nash_average`, and `rank_delta`, plus the full alternative set: `aggregate_rank`,
-`aggregate_melo_r`, `aggregate_nash_prob`, `aggregate_nash_average`, and related ranks/deltas.
+**Ranking is by `melo_r`**, the transitive component. `ratings.csv` also carries `nash_prob`,
+`nash_average`, and a `rank_delta` column showing how far the two methods disagree per bot.
 
 The engine records both `winner` and `win_condition` for every finished match. Its last fallback,
 `win_condition=coinflip`, is used only after core survival, delivered titanium, living harvesters,

@@ -14,9 +14,13 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+from maps.generated.generate_maps import read_map
 from tournament import plan as planning
 from tournament import registry
+from tournament import report
+from tournament.maps import resolve as resolve_map
 from tournament.outcome import score_a as evaluation_score_a
+from tournament.rating import evaluate
 
 
 def _read(path: Path) -> list[dict]:
@@ -122,6 +126,97 @@ def _compliance(run_dir: Path) -> dict[str, dict]:
     return found
 
 
+def _series(rows: list[dict], bot_ids: set[str]) -> dict[str, dict[str, int]]:
+    by_pair: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for row in rows:
+        by_pair[tuple(sorted((row["bot_a"], row["bot_b"])))].append(row)
+
+    result = {bot_id: {"wins": 0, "ties": 0, "losses": 0} for bot_id in bot_ids}
+    for (left, right), pair_rows in by_pair.items():
+        left_score = sum(_score(row, left) for row in pair_rows)
+        midpoint = len(pair_rows) / 2
+        if left_score > midpoint:
+            result[left]["wins"] += 1
+            result[right]["losses"] += 1
+        elif left_score < midpoint:
+            result[right]["wins"] += 1
+            result[left]["losses"] += 1
+        else:
+            result[left]["ties"] += 1
+            result[right]["ties"] += 1
+    return result
+
+
+def _ranking_rows(
+    ratings: list[dict],
+    metadata: dict[str, dict],
+    compliance: dict[str, dict],
+    series: dict[str, dict[str, int]],
+) -> list[dict]:
+    rows = []
+    for rating in ratings:
+        bot_id = rating["bot_id"]
+        info = metadata.get(bot_id, {})
+        timing = compliance.get(bot_id, {})
+        tags = info.get("tags", [])
+        rows.append(
+            {
+                "rank": int(rating["rank"]),
+                "bot_id": bot_id,
+                "name": info.get("name", rating.get("name") or bot_id.split("@")[0]),
+                "commit": rating.get("commit") or info.get("commit", "")[:7],
+                "slug": _slug(bot_id),
+                "tags": tags,
+                "unfair": "unfair" in tags,
+                "games": int(rating["games"]),
+                "wins": int(rating["wins"]),
+                "draws": int(rating["draws"]),
+                "losses": int(rating["losses"]),
+                "win_rate": float(rating["win_rate"]),
+                "melo_r": float(rating["melo_r"]),
+                "melo_r_elo": float(rating["melo_r_elo"]),
+                "nash_prob": float(rating["nash_prob"]),
+                "nash_average": float(rating["nash_average"]),
+                "nash_rank": int(rating["nash_rank"]),
+                "rank_delta": int(rating["rank_delta"]),
+                "series": series[bot_id],
+                "compliance": {
+                    "status": timing.get("status", "unknown"),
+                    "version": int(timing.get("version", 0)),
+                    "samples": int(timing["samples"]) if timing.get("samples") else 0,
+                    "min_turn_us": _timing_value(timing.get("min_turn_us")),
+                    "p25_turn_us": _timing_value(timing.get("p25_turn_us")),
+                    "p50_turn_us": _timing_value(timing.get("p50_turn_us")),
+                    "p75_turn_us": _timing_value(timing.get("p75_turn_us")),
+                    "max_turn_us": _timing_value(timing.get("max_turn_us")),
+                    "timeouts": int(timing["timeouts"]) if timing.get("timeouts") else 0,
+                },
+            }
+        )
+    return rows
+
+
+def _map_catalog(map_names: list[str]) -> list[dict]:
+    result = []
+    for name in map_names:
+        [map_path] = resolve_map(name)
+        game_map = read_map(map_path)
+        result.append(
+            {
+                "name": name,
+                "slug": name.replace("/", "--"),
+                "width": game_map.width,
+                "height": game_map.height,
+                "terrain": game_map.rows,
+                "cores": [
+                    {"team": core.team, "x": core.x, "y": core.y}
+                    for core in game_map.cores
+                ],
+            }
+        )
+    return result
+
+
 def build(run_dir: Path, output_dir: Path) -> dict:
     ratings_path = run_dir / "ratings-distinct.csv"
     if not ratings_path.exists():
@@ -148,85 +243,11 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     rank_by_id = {row["bot_id"]: int(row["rank"]) for row in ratings}
 
     by_bot: dict[str, list[dict]] = defaultdict(list)
-    by_pair: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for row in matches:
         a, b = row["bot_a"], row["bot_b"]
         by_bot[a].append(row)
         by_bot[b].append(row)
-        by_pair[tuple(sorted((a, b)))].append(row)
-
-    # Series records are calculated once and surfaced in the ranking table.
-    series = {bot_id: {"wins": 0, "ties": 0, "losses": 0} for bot_id in rated_ids}
-    for (left, right), pair_rows in by_pair.items():
-        left_score = sum(_score(row, left) for row in pair_rows)
-        midpoint = len(pair_rows) / 2
-        if left_score > midpoint:
-            series[left]["wins"] += 1
-            series[right]["losses"] += 1
-        elif left_score < midpoint:
-            series[right]["wins"] += 1
-            series[left]["losses"] += 1
-        else:
-            series[left]["ties"] += 1
-            series[right]["ties"] += 1
-
-    ranking_rows = []
-    for rating in ratings:
-        bot_id = rating["bot_id"]
-        info = metadata.get(bot_id, {})
-        timing = compliance.get(bot_id, {})
-        tags = info.get("tags", [])
-        ranking_rows.append(
-            {
-                "rank": int(rating["rank"]),
-                "bot_id": bot_id,
-                "name": info.get("name", rating.get("name") or bot_id.split("@")[0]),
-                "commit": rating.get("commit") or info.get("commit", "")[:7],
-                "slug": slug_by_id[bot_id],
-                "tags": tags,
-                "unfair": "unfair" in tags,
-                "games": int(rating["games"]),
-                "wins": int(rating["wins"]),
-                "draws": int(rating["draws"]),
-                "losses": int(rating["losses"]),
-                "win_rate": float(rating["win_rate"]),
-                "melo_r": float(rating["melo_r"]),
-                "melo_r_elo": float(rating["melo_r_elo"]),
-                "nash_prob": float(rating["nash_prob"]),
-                "nash_average": float(rating["nash_average"]),
-                "nash_rank": int(rating["nash_rank"]),
-                "rank_delta": int(rating["rank_delta"]),
-                "aggregate_rank": int(rating.get("aggregate_rank", rating["rank"])),
-                "aggregate_melo_r": float(rating.get("aggregate_melo_r", rating["melo_r"])),
-                "aggregate_melo_r_elo": float(
-                    rating.get("aggregate_melo_r_elo", rating["melo_r_elo"])
-                ),
-                "aggregate_nash_prob": float(
-                    rating.get("aggregate_nash_prob", rating["nash_prob"])
-                ),
-                "aggregate_nash_average": float(
-                    rating.get("aggregate_nash_average", rating["nash_average"])
-                ),
-                "aggregate_nash_rank": int(
-                    rating.get("aggregate_nash_rank", rating["nash_rank"])
-                ),
-                "aggregate_rank_delta": int(
-                    rating.get("aggregate_rank_delta", rating["rank_delta"])
-                ),
-                "series": series[bot_id],
-                "compliance": {
-                    "status": timing.get("status", "unknown"),
-                    "version": int(timing.get("version", 0)),
-                    "samples": int(timing["samples"]) if timing.get("samples") else 0,
-                    "min_turn_us": _timing_value(timing.get("min_turn_us")),
-                    "p25_turn_us": _timing_value(timing.get("p25_turn_us")),
-                    "p50_turn_us": _timing_value(timing.get("p50_turn_us")),
-                    "p75_turn_us": _timing_value(timing.get("p75_turn_us")),
-                    "max_turn_us": _timing_value(timing.get("max_turn_us")),
-                    "timeouts": int(timing["timeouts"]) if timing.get("timeouts") else 0,
-                },
-            }
-        )
+    ranking_rows = _ranking_rows(ratings, metadata, compliance, _series(matches, rated_ids))
 
     details_dir = output_dir / "bots"
     details_dir.mkdir(parents=True, exist_ok=True)
@@ -317,6 +338,30 @@ def build(run_dir: Path, output_dir: Path) -> dict:
         duplicate_rows = _read(duplicate_path)
 
     maps = sorted({row["map"] for row in matches})
+    map_catalog = _map_catalog(maps)
+    maps_dir = output_dir / "maps"
+    maps_dir.mkdir(parents=True, exist_ok=True)
+    expected_map_files = set()
+    for map_info in map_catalog:
+        map_rows = [row for row in matches if row["map"] == map_info["name"]]
+        map_ratings = report.records(evaluate(map_rows), metadata)
+        map_ranking_rows = _ranking_rows(
+            map_ratings, metadata, compliance, _series(map_rows, rated_ids)
+        )
+        filename = f"{map_info['slug']}.json"
+        expected_map_files.add(filename)
+        (maps_dir / filename).write_text(
+            json.dumps(
+                {"map": map_info, "rankings": map_ranking_rows},
+                separators=(",", ":"),
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+    for path in maps_dir.glob("*.json"):
+        if path.name not in expected_map_files:
+            path.unlink()
+
     index = {
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "run_id": run_dir.name,
@@ -327,12 +372,19 @@ def build(run_dir: Path, output_dir: Path) -> dict:
             "games_per_pair": 2 * len(maps),
         },
         "maps": maps,
+        "map_catalog": map_catalog,
         "rankings": ranking_rows,
         "duplicates": duplicate_rows,
         "methodology": {
-            "primary": "bot + map tasks",
-            "description": "Each (opponent bot, map) is a separate task after combining the two side-swapped games.",
-            "nash": "The default is agent-vs-task Nash averaging; aggregate-over-maps ratings remain available as a view switch.",
+            "primary": "pooled agent vs agent",
+            "description": (
+                "All maps are pooled into one smoothed head-to-head probability for each bot "
+                "pair before mElo and Nash averaging."
+            ),
+            "nash": (
+                "Nash averaging uses the square agent-vs-agent log-odds matrix built from those "
+                "pooled probabilities."
+            ),
             "sides": "Every pair plays every official map twice, swapping Gold and Silver.",
         },
     }
