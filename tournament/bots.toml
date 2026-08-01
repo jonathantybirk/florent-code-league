@@ -1,0 +1,258 @@
+# Tournament roster. Each bot is pinned by name AND commit; ratings are only
+# meaningful if the code behind a name cannot drift.
+# 9713344 = the original 34-bot round robin (tid jon-full).
+# da3fd8a = Jon's newer work: tempest (new), jonbot/undertow/vanguard (changed code),
+# and his commit-addressed version snapshots. The other 31 bots are unchanged at
+# da3fd8a apart from an added BOT_VERSION.toml, so they are not re-entered.
+
+[[bot]]
+name   = "adaptive_v1"
+commit = "9713344"
+path   = "bots/jon/archive/adaptive_v1"
+tags   = ["jon", "archive"]
+
+[[bot]]
+name   = "attack_wave_v1"
+commit = "9713344"
+path   = "bots/jon/archive/attack_wave_v1"
+tags   = ["jon", "archive"]
+
+[[bot]]
+name   = "frontier"
+commit = "9713344"
+path   = "bots/jon/archive/frontier"
+tags   = ["jon", "archive"]
+
+[[bot]]
+name   = "frontier_v1"
+commit = "9713344"
+path   = "bots/jon/archive/frontier_v1"
+tags   = ["jon", "archive"]
+
+[[bot]]
+name   = "frontier_v2"
+commit = "9713344"
+path   = "bots/jon/archive/frontier_v2"
+tags   = ["jon", "archive"]
+
+[[bot]]
+name   = "siege_v1"
+commit = "9713344"
+path   = "bots/jon/archive/siege_v1"
+tags   = ["jon", "archive"]
+
+[[bot]]
+name   = "siege_v2"
+commit = "9713344"
+path   = "bots/jon/archive/siege_v2"
+tags   = ["jon", "archive"]
+
+[[bot]]
+name   = "titanium_v1"
+commit = "9713344"
+path   = "bots/jon/archive/titanium_v1"
+tags   = ["jon", "archive"]
+
+[[bot]]
+name   = "jonbot"
+commit = "9713344"
+path   = "bots/jon/fair/jonbot"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "undertow"
+commit = "9713344"
+path   = "bots/jon/fair/undertow"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "vanguard"
+commit = "9713344"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "baiter"
+commit = "9713344"
+path   = "bots/jon/legacy/baiter"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "nemesis"
+commit = "9713344"
+path   = "bots/jon/legacy/nemesis"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "reaver"
+commit = "9713344"
+path   = "bots/jon/legacy/reaver"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "riptide"
+commit = "9713344"
+path   = "bots/jon/legacy/riptide"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "turtle"
+commit = "9713344"
+path   = "bots/jon/legacy/turtle"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "vg_v1"
+commit = "9713344"
+path   = "bots/jon/legacy/vg_v1"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "vg_v2"
+commit = "9713344"
+path   = "bots/jon/legacy/vg_v2"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "vg_v3"
+commit = "9713344"
+path   = "bots/jon/legacy/vg_v3"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "vg_v4"
+commit = "9713344"
+path   = "bots/jon/legacy/vg_v4"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "vg_v5"
+commit = "9713344"
+path   = "bots/jon/legacy/vg_v5"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "vg_v6"
+commit = "9713344"
+path   = "bots/jon/legacy/vg_v6"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "vg_v7"
+commit = "9713344"
+path   = "bots/jon/legacy/vg_v7"
+tags   = ["jon", "legacy"]
+
+[[bot]]
+name   = "uw_v1"
+commit = "9713344"
+path   = "bots/jon/probes/uw_v1"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "uw_v2"
+commit = "9713344"
+path   = "bots/jon/probes/uw_v2"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "v233_a"
+commit = "9713344"
+path   = "bots/jon/probes/v233_a"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "v233_b"
+commit = "9713344"
+path   = "bots/jon/probes/v233_b"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "v233_c"
+commit = "9713344"
+path   = "bots/jon/probes/v233_c"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "v233_d"
+commit = "9713344"
+path   = "bots/jon/probes/v233_d"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "v233_e"
+commit = "9713344"
+path   = "bots/jon/probes/v233_e"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "v233_f"
+commit = "9713344"
+path   = "bots/jon/probes/v233_f"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "v233_g"
+commit = "9713344"
+path   = "bots/jon/probes/v233_g"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "v233_h"
+commit = "9713344"
+path   = "bots/jon/probes/v233_h"
+tags   = ["jon", "probes"]
+
+[[bot]]
+name   = "lockin"
+commit = "9713344"
+path   = "bots/jon/unfair/lockin"
+tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "jonbot"
+commit = "da3fd8a"
+path   = "bots/jon/fair/jonbot"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "tempest"
+commit = "da3fd8a"
+path   = "bots/jon/fair/tempest"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "undertow"
+commit = "da3fd8a"
+path   = "bots/jon/fair/undertow"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "vanguard"
+commit = "da3fd8a"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "jonbot_190003d"
+commit = "da3fd8a"
+path   = "bots/jon/versions/jonbot_190003d"
+tags   = ["jon", "versions"]
+
+[[bot]]
+name   = "undertow_1ac7ac4"
+commit = "da3fd8a"
+path   = "bots/jon/versions/undertow_1ac7ac4"
+tags   = ["jon", "versions"]
+
+[[bot]]
+name   = "undertow_df5e698"
+commit = "da3fd8a"
+path   = "bots/jon/versions/undertow_df5e698"
+tags   = ["jon", "versions"]
+
+[[bot]]
+name   = "vanguard_1e88ae8"
+commit = "da3fd8a"
+path   = "bots/jon/versions/vanguard_1e88ae8"
+tags   = ["jon", "versions"]
