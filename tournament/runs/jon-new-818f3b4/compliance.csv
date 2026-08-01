@@ -1,0 +1,4 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+vanguard@bb03f14,vanguard,bb03f14,pass,3,3,3,505,3349,0,0,9000,10000
+undertow_oracle@75591b7,undertow_oracle,75591b7,pass,3,3,3,503,5306,0,0,9000,10000
+vanguard_oracle@75591b7,vanguard_oracle,75591b7,pass,3,3,3,661,6951,0,0,9000,10000
