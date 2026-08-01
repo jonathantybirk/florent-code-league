@@ -36,11 +36,14 @@ SLOT_ECON_LINES = 14
 SLOT_HOME_UNDER_FIRE = 15
 
 
-# Launcher hops per attacker, and the range at which walking is faster than
-# paying 20 Ti to be thrown.
-# Hops per attacker. This was a no-op while the ferry stopped eight tiles
-# short; with it ferrying all the way in, more hops is more tempo.
-LAUNCH_HOPS = 5
+# Two. The ferry buys tempo -- a Launcher throw covers ground no walk can --
+# but every Launcher is +10% on the team-wide cost scale and costs its rider
+# two motionless rounds per hop. Five hops meant four to seven Launchers per
+# match and a cost scale that priced us out of the Gunners that actually win.
+# Two hops is worth +18 games over 126 against the strongest live opponents
+# versus five, and +8 versus none: the ride matters, the price of the long
+# ride does not pay.
+LAUNCH_HOPS = 2
 # Ferry all the way in. Stopping eight tiles out lost the arrival race:
 # the strongest opponent had four Gunners against our Core by round 20
 # while our attacker was still walking. 15-27 to 22-20 by lowering this.
