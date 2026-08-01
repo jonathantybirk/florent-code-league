@@ -75,12 +75,13 @@ def _run(p, ct):
         p.opening_launcher_built = False
         p.opening_launcher_pos = None
         p.lock_required = False
+        p.home_gunners_built = 0
     _sense(p, ct)
     _update_enemy_core_inference(p, ct)
     if p.core is None:
         return
     if not p.is_attacker and ct.read_store(SLOT_CORE_DAMAGED):
-        _heal_core(p, ct)
+        _defend_core(p, ct)
         return
     if p.is_attacker:
         p.phase = "rush"
@@ -293,13 +294,13 @@ def _prelay(p, ct):
         return
     tile, facing = p.route[p.route_i]
     me, target = ct.get_position(), Position(*tile)
-    if me != target:
+    if _cardinal_distance(tuple(me), tuple(target)) != 1:
         if tile in p.walls or tile in p.solids or (
             tile in p.conveyors and tile not in p.current_route_tiles
         ):
             _replace_route(p, outward=True)
             return
-        _step(p, ct, target, True)
+        _move_cardinal_adjacent(p, ct, tuple(target))
         return
     if ct.can_build_conveyor(target, facing):
         ct.build_conveyor(target, facing)
@@ -330,13 +331,13 @@ def _lay(p, ct):
         return
     tile, facing = p.route[p.route_i]
     me, target = ct.get_position(), Position(*tile)
-    if me != target:
+    if _cardinal_distance(tuple(me), tuple(target)) != 1:
         if tile in p.walls or tile in p.solids or (
             tile in p.conveyors and tile not in p.current_route_tiles
         ):
             _replace_route(p)
             return
-        _step(p, ct, target, True)
+        _move_cardinal_adjacent(p, ct, tuple(target))
         return
     if ct.can_build_conveyor(target, facing):
         ct.build_conveyor(target, facing)
@@ -518,6 +519,57 @@ def _heal_core(p, ct):
     _step(p, ct, Position(*p.core), False)
 
 
+def _defend_core(p, ct):
+    """Answer a visible Core attack with an ordinary counter-firing Gunner.
+
+    This deliberately has no opening layout or inferred firing position: the
+    economy Builder must first see both the damage and a target it can align
+    with from a locally buildable tile.  Otherwise it falls back to repairs.
+    """
+    me = ct.get_position()
+    enemies = [entity_id for entity_id in ct.get_nearby_entities()
+               if ct.get_team(entity_id) != ct.get_team()]
+    combat_priority = {
+        EntityType.GUNNER: 0,
+        EntityType.SENTINEL: 1,
+        EntityType.BUILDER_BOT: 2,
+        EntityType.LAUNCHER: 3,
+    }
+    enemies.sort(key=lambda entity_id: (
+        combat_priority.get(ct.get_entity_type(entity_id), 4),
+        ct.get_position(entity_id).distance_squared(Position(*p.core)),
+        entity_id,
+    ))
+    # Escalate slowly with sustained damage rather than committing a fixed
+    # defensive formation before Jonbot knows whether one is needed.
+    core_id = ct.get_tile_building_id(Position(*p.core))
+    damage = (ct.get_max_hp(core_id) - ct.get_hp(core_id)) if core_id else 0
+    desired = min(4, 1 + damage // 180)
+    if p.home_gunners_built < desired:
+        candidates = []
+        for direction in D8:
+            position = me.add(direction)
+            if not _inside(p, tuple(position)) or tuple(position) in p.foot:
+                continue
+            for enemy_id in enemies:
+                target = ct.get_position(enemy_id)
+                facing = _ray_direction(tuple(position), tuple(target))
+                if (facing is not None
+                        and position.distance_squared(target) <= GUNNER_RANGE_SQ
+                        and ct.can_build_gunner(position, facing)):
+                    candidates.append((
+                        combat_priority.get(ct.get_entity_type(enemy_id), 4),
+                        position.distance_squared(target),
+                        position.x, position.y, position, facing,
+                    ))
+        if candidates:
+            *_, position, facing = min(candidates)
+            ct.build_gunner(position, facing)
+            p.home_gunners_built += 1
+            return
+    _heal_core(p, ct)
+
+
 def _rush(p, ct):
     if p.builder_index == ECONOMY_BUILDERS and not p.opening_launcher_built:
         if _build_opening_launcher(p, ct):
@@ -597,12 +649,12 @@ def _rush(p, ct):
             p.takeover_target = None
             _explore_enemy_perimeter(p, ct, enemy_core)
             return
-        if tuple(ct.get_position()) != tuple(position):
-            _step(p, ct, position, True)
-        elif (ct.get_team(building_id) != ct.get_team()
-              and ct.get_entity_type(building_id) == EntityType.CONVEYOR
-              and ct.can_fire(position)):
-            ct.fire(position)
+        if (ct.get_team(building_id) != ct.get_team()
+                and ct.get_entity_type(building_id) == EntityType.CONVEYOR):
+            if _cardinal_distance(tuple(ct.get_position()), tuple(position)) != 1:
+                _move_cardinal_adjacent(p, ct, tuple(position))
+            elif ct.can_fire(position):
+                ct.fire(position)
         return
     if _cardinal_distance(tuple(ct.get_position()), tuple(position)) == 1:
         if ct.can_build_gunner(position, facing):
@@ -642,8 +694,9 @@ def _extend_takeover_battery(p, ct, enemy_core):
                     "dislodge" if p.blocked_terminal is not None else "battery")
             elif (ct.get_team(building_id) != ct.get_team()
                   and ct.get_entity_type(building_id) == EntityType.CONVEYOR):
-                if tuple(ct.get_position()) != tuple(splitter_pos):
-                    _step(p, ct, splitter_pos, True)
+                if (_cardinal_distance(tuple(ct.get_position()),
+                                       tuple(splitter_pos)) != 1):
+                    _move_cardinal_adjacent(p, ct, tuple(splitter_pos))
                 elif ct.can_fire(splitter_pos):
                     ct.fire(splitter_pos)
                 return True
