@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import sys
 import unittest
 
-from fcode import Position, Team
+from fcode import EntityType, Position, Team
 
 
 BOT_DIR = Path(__file__).parents[1] / "bots" / "luc" / "tempest_reinforcements"
@@ -47,8 +47,15 @@ class StuckBuilderController:
         self.moved = False
         self.movement_allowed = can_move
         self.store: dict[int, int] = {}
+        self.launchers: dict[int, Position] = {}
+        self.enemy_positions: dict[int, Position] = {}
+        self.gunners: list[tuple[Position, object]] = []
 
-    def get_position(self) -> Position:
+    def get_position(self, entity_id: int | None = None) -> Position:
+        if entity_id is not None:
+            if entity_id in self.launchers:
+                return self.launchers[entity_id]
+            return self.enemy_positions[entity_id]
         return self.position
 
     def can_move(self, direction) -> bool:
@@ -72,7 +79,29 @@ class StuckBuilderController:
 
     def build_launcher(self, position: Position) -> int:
         self.built.append(position)
+        self.launchers[90 + len(self.built)] = position
         return 90
+
+    def get_nearby_buildings(self) -> list[int]:
+        return [entity_id for entity_id, position in self.launchers.items()
+                if self.position.distance_squared(position) <= 20]
+
+    def get_team(self, entity_id: int | None = None) -> Team:
+        return Team.B if entity_id in self.enemy_positions else Team.A
+
+    def get_entity_type(self, entity_id: int) -> EntityType:
+        return (EntityType.LAUNCHER if entity_id in self.launchers
+                else EntityType.BUILDER_BOT)
+
+    def get_nearby_entities(self) -> list[int]:
+        return list(self.enemy_positions)
+
+    def can_build_gunner(self, position: Position, facing) -> bool:
+        return True
+
+    def build_gunner(self, position: Position, facing) -> int:
+        self.gunners.append((position, facing))
+        return 200 + len(self.gunners)
 
     def get_id(self) -> int:
         return 42
@@ -81,62 +110,144 @@ class StuckBuilderController:
         self.store[slot] = value
 
 
-def stuck_player():
+def stuck_player(width: int = 20):
     return SimpleNamespace(
-        w=10,
+        w=width,
         h=10,
         walls={(2, y) for y in range(10)},
         foot=set(),
         solids=set(),
         bot_occupied=set(),
+        enemy_launcher_danger=set(),
         ores=set(),
         seen={(x, y) for x in range(10) for y in range(10)},
         path_failures=0,
         awaiting_launch=0,
         launch_origin=None,
-        next_launcher_round=0,
+        next_blocker_gunner_round=0,
         atlas=object(),
         builder_index=builder.ECONOMY_BUILDERS,
-        opening_hop_done=False,
-        opening_hop_pending=False,
+        core=(1, 5),
     )
 
 
+def launch_request(player, ct):
+    slot = builder.LAUNCH_REQUEST_SLOTS[
+        player.builder_index % len(builder.LAUNCH_REQUEST_SLOTS)
+    ]
+    value = ct.store[slot]
+    passenger = value >> builder.LAUNCH_DIRECTION_BITS
+    direction_index = value & builder.LAUNCH_DIRECTION_MASK
+    return slot, passenger, builder.D8[direction_index - 1]
+
+
 class LauncherFallbackTests(unittest.TestCase):
-    def test_lead_attacker_builds_one_proactive_oracle_ferry(self) -> None:
+    def test_lead_attacker_starts_a_proactive_oracle_relay(self) -> None:
         player = stuck_player()
-        ct = StuckBuilderController()
+        player.walls.clear()
+        ct = StuckBuilderController(titanium=20)
 
         self.assertTrue(builder._opening_ferry(player, ct, (12, 5)))
 
         self.assertEqual(len(ct.built), 1)
-        self.assertTrue(player.opening_hop_pending)
+        _, passenger, direction = launch_request(player, ct)
+        self.assertEqual(passenger, 42)
+        self.assertEqual(direction.delta(), (1, 0))
 
-    def test_builds_launcher_after_three_failed_paths(self) -> None:
+    def test_reuses_an_adjacent_visible_launcher_instead_of_building(self) -> None:
+        player = stuck_player()
+        ct = StuckBuilderController()
+        ct.launchers[77] = Position(1, 4)
+
+        self.assertTrue(builder._opening_ferry(player, ct, (12, 5)))
+
+        self.assertEqual(ct.built, [])
+        _, passenger, direction = launch_request(player, ct)
+        self.assertEqual(passenger, 42)
+        self.assertEqual(direction.delta(), (1, 1))
+
+    def test_all_opening_attackers_have_distinct_launcher_requests(self) -> None:
+        slots = set()
+        for builder_index in range(builder.ECONOMY_BUILDERS,
+                                   builder.LAUNCHER_BUILDER_INDEX):
+            player = stuck_player()
+            player.builder_index = builder_index
+            ct = StuckBuilderController()
+            ct.launchers[77] = Position(1, 4)
+
+            self.assertTrue(builder._opening_ferry(player, ct, (12, 5)))
+            slot, passenger, _ = launch_request(player, ct)
+            slots.add(slot)
+            self.assertEqual(passenger, 42)
+
+        self.assertEqual(
+            len(slots), builder.LAUNCHER_BUILDER_INDEX - builder.ECONOMY_BUILDERS
+        )
+
+    def test_does_not_build_while_a_nonadjacent_launcher_is_visible(self) -> None:
+        player = stuck_player()
+        player.walls.clear()
+        ct = StuckBuilderController(can_move=True)
+        ct.launchers[77] = Position(4, 5)
+
+        self.assertTrue(builder._opening_ferry(player, ct, (12, 5)))
+
+        self.assertEqual(ct.built, [])
+        self.assertTrue(ct.moved)
+
+    def test_builds_another_relay_after_the_previous_one_leaves_vision(self) -> None:
+        player = stuck_player(width=30)
+        player.walls.clear()
+        ct = StuckBuilderController()
+        ct.position = Position(8, 5)
+        ct.launchers[77] = Position(2, 5)
+
+        self.assertTrue(builder._opening_ferry(player, ct, (24, 5)))
+
+        self.assertEqual(len(ct.built), 1)
+
+    def test_skips_relay_when_enemy_core_is_within_seven_tiles(self) -> None:
+        player = stuck_player()
+        ct = StuckBuilderController()
+
+        self.assertFalse(builder._opening_ferry(player, ct, (8, 5)))
+
+        self.assertEqual(ct.built, [])
+
+    def test_builds_launcher_immediately_when_no_path_exists(self) -> None:
         player = stuck_player()
         ct = StuckBuilderController()
         target = Position(8, 5)
 
-        self.assertFalse(builder._step(player, ct, target, False))
-        self.assertFalse(builder._step(player, ct, target, False))
         self.assertTrue(builder._step(player, ct, target, False))
 
         self.assertEqual(len(ct.built), 1)
-        self.assertEqual(ct.store[builder.SLOT_LAUNCH_ID], 42)
-        self.assertEqual(
-            builder.unpack_pos(ct.store[builder.SLOT_LAUNCH_TARGET]),
-            tuple(target),
-        )
+        _, passenger, direction = launch_request(player, ct)
+        self.assertEqual(passenger, 42)
+        self.assertEqual(direction.delta(), (1, 1))
         self.assertEqual(player.awaiting_launch, builder.LAUNCH_REQUEST_ROUNDS)
+        self.assertEqual(ct.gunners, [])
 
     def test_preserves_titanium_when_launcher_is_not_affordable(self) -> None:
         player = stuck_player()
-        ct = StuckBuilderController(titanium=79)
+        ct = StuckBuilderController(titanium=19)
 
         for _ in range(builder.PATH_FAILURES_BEFORE_LAUNCHER):
             builder._step(player, ct, Position(8, 5), False)
 
         self.assertEqual(ct.built, [])
+
+    def test_builds_aligned_gunner_when_launcher_is_not_possible(self) -> None:
+        player = stuck_player()
+        ct = StuckBuilderController(titanium=0)
+        ct.enemy_positions[99] = Position(1, 2)
+
+        self.assertTrue(builder._step(player, ct, Position(8, 5), False))
+
+        self.assertEqual(len(ct.gunners), 1)
+        position, facing = ct.gunners[0]
+        self.assertEqual(position, Position(1, 4))
+        self.assertEqual(facing.delta(), (0, -1))
 
     def test_moves_locally_when_launcher_is_not_affordable(self) -> None:
         player = stuck_player()
@@ -147,12 +258,45 @@ class LauncherFallbackTests(unittest.TestCase):
         self.assertTrue(ct.moved)
         self.assertEqual(ct.built, [])
 
+    def test_routes_around_enemy_launcher_pickup_tiles(self) -> None:
+        player = stuck_player()
+        player.walls.clear()
+        player.enemy_launcher_danger = {(2, 5)}
+
+        step = builder._bfs_step(player, (1, 5), (8, 5), False)
+
+        self.assertIsNotNone(step)
+        self.assertNotEqual(step, (2, 5))
+
+    def test_builds_safe_ferry_when_enemy_launcher_blocks_corridor(self) -> None:
+        player = stuck_player(width=10)
+        player.h = 3
+        player.walls = ({(x, 0) for x in range(10)}
+                        | {(x, 2) for x in range(10)})
+        player.solids = {(3, 1)}
+        player.enemy_launcher_danger = {(2, 1), (4, 1)}
+        ct = StuckBuilderController()
+        ct.position = Position(1, 1)
+
+        self.assertTrue(builder._step(player, ct, Position(8, 1), False))
+
+        self.assertEqual(ct.built, [Position(0, 1)])
+        _, passenger, direction = launch_request(player, ct)
+        self.assertEqual(passenger, 42)
+        self.assertEqual(direction.delta(), (1, 0))
+
 
 class LauncherController:
-    def __init__(self) -> None:
+    def __init__(self, direction_delta: tuple[int, int] = (1, 0)) -> None:
+        direction_index = next(
+            index for index, direction in enumerate(launcher.D8, start=1)
+            if direction.delta() == direction_delta
+        )
+        self.request_slot = launcher.LAUNCH_REQUEST_SLOTS[1]
+        request = (42 << launcher.LAUNCH_DIRECTION_BITS) | direction_index
         self.store = {
-            launcher.SLOT_LAUNCH_ID: 42,
-            launcher.SLOT_LAUNCH_TARGET: builder.pack_pos((8, 5)),
+            self.request_slot: request,
+            launcher.SLOT_OWN_CORE: builder.pack_pos((0, 5)),
         }
         self.launched: tuple[Position, Position] | None = None
 
@@ -168,8 +312,8 @@ class LauncherController:
     def get_team(self, entity_id: int | None = None) -> Team:
         return Team.A
 
-    def get_position(self, entity_id: int) -> Position:
-        return Position(1, 5)
+    def get_position(self, entity_id: int | None = None) -> Position:
+        return Position(1, 5) if entity_id is not None else Position(0, 5)
 
     def get_nearby_tiles(self, dist_sq: int) -> list[Position]:
         return [Position(2, 5), Position(5, 5), Position(1, 1)]
@@ -182,14 +326,78 @@ class LauncherController:
 
 
 class LauncherBehaviorTests(unittest.TestCase):
-    def test_launches_requested_builder_toward_its_target(self) -> None:
+    def test_launches_requested_builder_maximally_in_announced_direction(self) -> None:
         ct = LauncherController()
 
         launcher._run(SimpleNamespace(), ct)
 
         self.assertEqual(ct.launched, (Position(1, 5), Position(5, 5)))
-        self.assertEqual(ct.store[launcher.SLOT_LAUNCH_ID], 0)
-        self.assertEqual(ct.store[launcher.SLOT_LAUNCH_TARGET], 0)
+        self.assertEqual(ct.store[ct.request_slot], 0)
+
+    def test_directional_launch_uses_farthest_forward_projection(self) -> None:
+        ct = LauncherController((1, -1))
+        ct.get_nearby_tiles = lambda dist_sq: [
+            Position(3, 2),  # projection 6
+            Position(4, 1),  # projection 8, at maximum radius
+            Position(5, 5),  # projection 5 but no northward progress
+        ]
+
+        launcher._run(SimpleNamespace(), ct)
+
+        self.assertEqual(ct.launched, (Position(1, 5), Position(4, 1)))
+
+    def test_no_legal_forward_landing_keeps_request_without_crashing(self) -> None:
+        ct = LauncherController()
+        ct.can_launch = lambda origin, target: False
+
+        launcher._run(SimpleNamespace(), ct)
+
+        self.assertIsNone(ct.launched)
+        self.assertNotEqual(ct.store[ct.request_slot], 0)
+
+    def test_launcher_throws_enemy_maximally_away_from_home_first(self) -> None:
+        ct = LauncherController()
+        ct.get_nearby_units = lambda dist_sq: [42, 99]
+        original_team = ct.get_team
+        ct.get_team = lambda entity_id=None: (
+            Team.B if entity_id == 99 else original_team(entity_id)
+        )
+        original_position = ct.get_position
+        ct.get_position = lambda entity_id=None: (
+            Position(1, 4) if entity_id == 99 else original_position(entity_id)
+        )
+        ct.get_nearby_tiles = lambda dist_sq: [Position(1, 1), Position(5, 5)]
+
+        launcher._run(SimpleNamespace(), ct)
+
+        self.assertEqual(ct.launched, (Position(1, 4), Position(5, 5)))
+        self.assertNotEqual(ct.store[ct.request_slot], 0)
+
+
+class LauncherWallTests(unittest.TestCase):
+    def test_wall_sites_have_two_tiles_between_launchers(self) -> None:
+        player = SimpleNamespace(
+            core=(2, 9), w=20, h=20, walls=set(), ores=set(), foot=set()
+        )
+
+        targets = builder._launcher_wall_targets(player, (17, 9))
+
+        self.assertTrue(targets)
+        self.assertEqual({target.x for target in targets}, {6})
+        ordered_y = sorted(target.y for target in targets)
+        self.assertTrue(all(b - a == 3 for a, b in zip(ordered_y, ordered_y[1:])))
+
+    def test_completed_wall_releases_builder_for_economy_work(self) -> None:
+        target = Position(6, 7)
+        player = SimpleNamespace(
+            launcher_wall_targets=[target],
+            launcher_wall_done={tuple(target)},
+        )
+        ct = SimpleNamespace(
+            read_store=lambda slot: builder.pack_pos((17, 9)),
+        )
+
+        self.assertTrue(builder._run_launcher_wall(player, ct))
 
 
 if __name__ == "__main__":
