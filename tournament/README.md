@@ -37,9 +37,15 @@ enter the rating matrix:
 uv run python -m tournament compliance --tid smoke
 ```
 
-The per-bot summary is durable in `compliance.csv`; all individual probe results, sample counts,
-maxima, timeouts, ordinary bot exceptions, host, and finish time are in
+To refresh timing distributions without scheduling any rating matches, use
+`plan --compliance-only`; this still runs the three instrumented probe maps for every selected bot.
+
+The per-bot summary is durable in `compliance.csv`; it includes the observed per-turn minimum,
+25th percentile, median, 75th percentile, and maximum. Individual probe distributions, sample
+counts, timeouts, ordinary bot exceptions, host, and finish time are in
 `compliance_matches.csv`. `rate` prints the summary alongside mElo and Nash results.
+Timeouts participate in the nearest-rank empirical percentiles as censored `>12 ms` observations;
+they are not silently dropped from the distribution.
 
 On the cluster (see [../docs/hpc/](../docs/hpc/)):
 
@@ -187,7 +193,14 @@ with an official map in the CSV.
 
 ## The rating pipeline
 
+The public/default view uses the paper's agent-vs-task construction. Rows are bots; columns are
+`(opponent bot, map)` tasks. The two side-swapped games are combined into one side-balanced task
+score, converted to centered log-odds, and rated with rectangular maxent Nash. The uniform task
+mean is the corresponding `melo_r`. This is computed alongside the older aggregate-over-maps AvA
+view, whose output columns use the `aggregate_` prefix.
+
 ```
+aggregate-over-maps alternative:
 match results  ->  P = (wins + 1/2)/(games + 1)      add-half, keeps logits finite
                ->  A = logit(P)                      antisymmetric: A + A^T = 0
                ->  r = div(A) = (1/n) A 1            TRANSITIVE component -- the ranking key
@@ -197,8 +210,9 @@ match results  ->  P = (wins + 1/2)/(games + 1)      add-half, keeps logits fini
                ->  n = A p*                          Nash average
 ```
 
-**Ranking is by `melo_r`**, the transitive component. `ratings.csv` also carries `nash_prob`,
-`nash_average`, and a `rank_delta` column showing how far the two methods disagree per bot.
+**The default ranking is by map-task `melo_r`**. `ratings.csv` carries its `nash_prob`,
+`nash_average`, and `rank_delta`, plus the full alternative set: `aggregate_rank`,
+`aggregate_melo_r`, `aggregate_nash_prob`, `aggregate_nash_average`, and related ranks/deltas.
 
 Two deliberate departures from the paper, both because the paper is loose where it matters here:
 
@@ -258,8 +272,8 @@ runs/<tid>/
   results/         one <match_id>.json per finished match
   matches.csv      merged results
   ratings.csv      mElo + Nash
-  compliance.csv          per-bot 10 ms status and maximum
-  compliance_matches.csv  per-probe timing evidence
+  compliance.csv          per-bot 10 ms status and timing percentiles
+  compliance_matches.csv  per-probe timing distributions and evidence
 ```
 
 Rating `match_id` is a hash of `(bot_a, bot_b, map, seed, tle)`; compliance ids additionally carry
@@ -358,3 +372,61 @@ Timing probes are samples, not proofs: three short matches can establish an obse
 near-limit turn, but a pass means only that no issue was observed in the sampled unit-turns.
 
 Bots that use unseeded `random` are also non-deterministic; the engine does not seed bot-side RNG.
+
+## Local live-ladder automation
+
+`tournament.automation` is the one-shot worker behind the public bot ladder. It is designed to be
+called by the systemd user timer in `tournament/systemd/`, but the units are deliberately shipped
+disabled: installing them starts real evaluation work and must be an explicit operator action.
+
+On each invocation it:
+
+1. fetches `origin/x/jon` and discovers directories containing `main.py`;
+2. hashes the complete Python tree at the pushed commit and skips hashes already in
+   `tournament/automation-state.json`;
+3. groups byte-identical new directories and evaluates one live-path representative on DTU HPC;
+4. plays every genuinely new implementation against the duplicate-free canonical field, plus
+   every other new implementation, on all official maps in both orders;
+5. runs the v4 10 ms compliance probes and records per-turn min/p25/median/p75/max;
+6. detects behavioural duplicates from the completed full evidence, excludes new duplicates from
+   the distinct matrix, and recalculates mElo and Nash;
+7. generates the split data bundle for `/botrankings`, builds the portfolio, commits and pushes
+   the changed data, then deploys the finished site directly to Cloudflare.
+
+The worker never falls back to local matches. If the eight-hour SSH master is unavailable it exits
+with the exact `SSH_ASKPASS_REQUIRE=never ssh dtu true` login instruction; the next timer event
+resumes after login.
+
+The run id is derived from the pushed commit and unseen source hashes. Match ids are
+content-addressed, so an interrupted invocation resumes its existing result directory. A non-
+blocking file lock prevents timer overlap. Failed or incomplete matches stop publication rather
+than entering the ratings as fake 50/50 evidence.
+
+The initial canonical run is `jon-vanguard-818f3b4`. The runtime state and lock are intentionally
+gitignored. To inspect discovery without playing matches, use:
+
+```sh
+uv run python -m tournament.automation \
+    --canonical-run jon-vanguard-818f3b4 --dry-run --no-publish
+```
+
+To install—but not start—the local units:
+
+```sh
+mkdir -p ~/.config/systemd/user
+cp tournament/systemd/botrankings-evaluator.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload
+```
+
+Launching the CI is a separate explicit action:
+
+```sh
+systemctl --user enable --now botrankings-evaluator.timer
+```
+
+Status and logs:
+
+```sh
+systemctl --user status botrankings-evaluator.timer
+journalctl --user -u botrankings-evaluator.service -f
+```

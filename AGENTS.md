@@ -143,22 +143,33 @@ result file.
 
 ## Reading the output
 
-`rate` ranks by **`melo_r`**, the transitive component of mElo (`r = div(A)`, `A = logit(P)`), and
-prints Nash averaging beside it. Read both.
+`rate` computes two views. The default is **agent vs task**: for evaluated bot `i`, every
+`(opponent bot j, map m)` is a separate task, and the two Gold/Silver games for `(i,j,m)` are one
+side-balanced score. The score table is converted to centered log-odds; `melo_r` is the uniform
+task average and `nash_average` uses the paper's rectangular agent-vs-task maxent Nash. This keeps
+a bot's weakness against one opponent on one map visible instead of hiding it by pooling maps
+before the nonlinear logit and Nash steps.
+
+The alternative **aggregate-over-maps** view is the previous agent-vs-agent calculation: pool all
+maps for each bot pair, then form `A = logit(P)`, `melo_r = div(A)`, and `nash_average = A p*`.
+Its CSV columns are prefixed `aggregate_`. The website defaults to bot+map tasks and lets the user
+switch to aggregate-over-maps. Compute and report both from the same duplicate-free match matrix;
+never overwrite one with the other or silently mix their ranks.
 
 | signal | meaning |
 |---|---|
-| `nash_prob > 0` | a **core agent** — in the unexploitable set. `nash_average` is 0 for these. |
+| `nash_prob > 0` | a **core agent** in the selected view; its `nash_average` equals that meta-game's value. |
 | large `rank_delta` | the two methods disagree about this bot. Investigate; this is the interesting column. |
 | identical `melo_r` for two bots | almost always duplicates. `rate` names them automatically. |
 | `!! PARTIAL DATA` | unplayed pairs enter `A` as 0, which reads as "evenly matched", not "unknown". Provisional only. |
 | `intransitivity` | 0 = a clean pecking order, 1 = pure rock-paper-scissors. |
 
-**A worked example of why you must read both.** In the 42-bot run, `tempest@da3fd8a` ranked **11th
-by mElo** but was the **sole Nash core agent** — it beats all 41 other bots head to head. `melo_r`
-is a mean of log-odds, so bots that crush the weak `vg_*` ancestors near-100% score enormous logits
-and outrank a bot that beats everyone by narrow margins. mElo asks "how dominant on average"; Nash
-asks "can you be exploited". Reporting only the mElo rank would have buried the strongest bot.
+**A worked example of why you must read both.** In the old aggregate-over-maps 42-bot view,
+`tempest@da3fd8a` ranked **11th by mElo** but was the **sole Nash core agent** — it beats all 41
+other bots head to head. `aggregate_melo_r` is a mean of pairwise log-odds, so bots that crush the
+weak `vg_*` ancestors near-100% score enormous logits and outrank a bot that beats everyone by
+narrow margins. mElo asks "how dominant on average"; Nash asks "can you be exploited". The default
+bot+map task view applies the same lesson without allowing strong maps to conceal weak ones.
 
 **Duplicates distort `melo_r` but not Nash.** Every copy remains a separate entrant in the raw
 historical evidence on purpose — Nash averaging is invariant to them (verified: collapsing 42 to
@@ -189,8 +200,9 @@ process, always. `test_harness.py` asserts this in a subprocess — if it fails,
 separate `kind=compliance` rows and never enter the win matrix; do not rate an ad-hoc run made with
 `--tle 10`.
 
-**Do not compare `melo_r` across separate tournaments.** Ratings are only meaningful within one win
-matrix. Use `--pool`.
+**Do not compare ratings across separate tournaments or rating views.** Ratings are only meaningful
+within one evidence matrix and one construction. Use `--pool`, and compare `melo_r` only with
+`melo_r` or `aggregate_melo_r` only with `aggregate_melo_r`.
 
 **Do not add bots to a finished tournament's directory.** Plan a new challenger run and pool it.
 

@@ -12,13 +12,14 @@ also used by local match workers.
 from __future__ import annotations
 
 import csv
+import math
 import shutil
 from pathlib import Path
 
 from tournament.maps import label
 from tournament.registry import BotSpec
 
-VERSION = 3
+VERSION = 4
 LIMIT_US = 10_000
 CLOSE_US = 9_000
 # The probe measures against LIMIT_US itself.  A slightly looser engine watchdog prevents the
@@ -75,6 +76,10 @@ RAW_COLUMNS = [
     "error",
     "turns",
     "samples",
+    "min_turn_us",
+    "p25_turn_us",
+    "p50_turn_us",
+    "p75_turn_us",
     "max_turn_us",
     "max_round",
     "timeouts",
@@ -96,6 +101,10 @@ SUMMARY_COLUMNS = [
     "matches_completed",
     "matches_reported",
     "samples",
+    "min_turn_us",
+    "p25_turn_us",
+    "p50_turn_us",
+    "p75_turn_us",
     "max_turn_us",
     "timeouts",
     "bot_exceptions",
@@ -144,10 +153,52 @@ def result_status(record: dict) -> str:
     return "pass"
 
 
+def _turn_samples(record: dict) -> list[int]:
+    values = record.get("compliance_turn_us", [])
+    if not isinstance(values, list):
+        return []
+    return [int(value) for value in values]
+
+
+def timing_percentiles(samples: list[int], timeouts: int = 0) -> dict[str, int | str]:
+    """Return nearest-rank percentiles, treating watchdog timeouts as censored observations."""
+    if not samples and not timeouts:
+        return {
+            "min_turn_us": "",
+            "p25_turn_us": "",
+            "p50_turn_us": "",
+            "p75_turn_us": "",
+            "max_turn_us": "",
+        }
+    ordered = sorted(samples)
+    observations = len(ordered) + timeouts
+    censored = f">{GUARD_TLE_MS * 1000}"
+
+    def percentile(fraction: float) -> int | str:
+        rank = 0 if fraction == 0 else math.ceil(fraction * observations) - 1
+        return ordered[rank] if rank < len(ordered) else censored
+
+    return {
+        "min_turn_us": percentile(0),
+        "p25_turn_us": percentile(0.25),
+        "p50_turn_us": percentile(0.50),
+        "p75_turn_us": percentile(0.75),
+        "max_turn_us": percentile(1),
+    }
+
+
 def raw_row(record: dict, manifest: dict) -> dict:
     bots = {bot["bot_id"]: bot for bot in manifest["bots"]}
     bot = bots.get(record.get("bot_a", ""), {})
     samples = int(record.get("compliance_samples", 0))
+    has_distribution = isinstance(record.get("compliance_turn_us"), list)
+    timings = timing_percentiles(
+        _turn_samples(record), int(record.get("compliance_timeouts", 0))
+    ) if has_distribution else timing_percentiles([])
+    # v3 and older result files retained only their maximum. Keep that evidence while leaving
+    # the unrecoverable distribution fields blank.
+    if timings["max_turn_us"] == "" and samples:
+        timings["max_turn_us"] = record.get("compliance_max_turn_us", "")
     row = {
         "match_id": record.get("match_id", ""),
         "tournament_id": manifest["tournament_id"],
@@ -162,7 +213,7 @@ def raw_row(record: dict, manifest: dict) -> dict:
         "error": record.get("error", ""),
         "turns": record.get("turns", ""),
         "samples": samples,
-        "max_turn_us": record.get("compliance_max_turn_us", "") if samples else "",
+        **timings,
         "max_round": record.get("compliance_max_round", "") if samples else "",
         "timeouts": record.get("compliance_timeouts", 0),
         "bot_exceptions": record.get("compliance_exceptions", 0),
@@ -190,7 +241,8 @@ def write_reports(run_dir: Path, records: list[dict], manifest: dict) -> tuple[P
     planned = config.get("matches_per_bot", len(MAPS))
     bots = {bot["bot_id"]: bot for bot in manifest["bots"]}
 
-    raw = [raw_row(record, manifest) for record in records if record.get("kind") == "compliance"]
+    compliance_records = [record for record in records if record.get("kind") == "compliance"]
+    raw = [raw_row(record, manifest) for record in compliance_records]
     raw.sort(key=lambda row: (row["bot_id"], row["map"], str(row["seed"])))
     raw_path = run_dir / "compliance_matches.csv"
     _write(raw_path, RAW_COLUMNS, raw)
@@ -211,7 +263,30 @@ def write_reports(run_dir: Path, records: list[dict], manifest: dict) -> tuple[P
             status = "inconclusive"
         else:
             status = "pass"
-        maxima = [int(row["max_turn_us"]) for row in bot_rows if row["max_turn_us"] != ""]
+        maxima = [
+            int(row["max_turn_us"])
+            for row in bot_rows
+            if row["max_turn_us"] != "" and not str(row["max_turn_us"]).startswith(">")
+        ]
+        bot_records = [
+            record for record in compliance_records if record.get("bot_a") == bot_id
+        ]
+        samples_us = [
+            elapsed
+            for record in bot_records
+            for elapsed in _turn_samples(record)
+        ]
+        timeouts = sum(int(row["timeouts"]) for row in bot_rows)
+        complete_distribution = bool(bot_records) and all(
+            isinstance(record.get("compliance_turn_us"), list) for record in bot_records
+        )
+        timings = (
+            timing_percentiles(samples_us, timeouts)
+            if complete_distribution
+            else timing_percentiles([])
+        )
+        if timings["max_turn_us"] == "" and maxima:
+            timings["max_turn_us"] = max(maxima)
         summary.append(
             {
                 "bot_id": bot_id,
@@ -222,8 +297,8 @@ def write_reports(run_dir: Path, records: list[dict], manifest: dict) -> tuple[P
                 "matches_completed": len(bot_rows),
                 "matches_reported": len(reported),
                 "samples": sum(int(row["samples"]) for row in bot_rows),
-                "max_turn_us": max(maxima) if maxima else "",
-                "timeouts": sum(int(row["timeouts"]) for row in bot_rows),
+                **timings,
+                "timeouts": timeouts,
                 "bot_exceptions": sum(int(row["bot_exceptions"]) for row in bot_rows),
                 "close_threshold_us": CLOSE_US,
                 "limit_us": LIMIT_US,
@@ -251,15 +326,23 @@ def render(rows: list[dict]) -> str:
         "status": max(6, max(len(row["status"]) for row in rows)),
     }
     lines = [
-        f"{'bot':<{widths['bot']}}  {'status':<{widths['status']}}  max turn  samples  matches",
-        f"{'-' * widths['bot']}  {'-' * widths['status']}  --------  -------  -------",
+        f"{'bot':<{widths['bot']}}  {'status':<{widths['status']}}  "
+        f"{'turn time ms (min/p25/p50/p75/max)':>39}  samples  matches",
+        f"{'-' * widths['bot']}  {'-' * widths['status']}  {'-' * 39}  -------  -------",
     ]
     for row in rows:
-        maximum = f"{int(row['max_turn_us']) / 1000:.3f} ms" if row["max_turn_us"] else "-"
+        values = []
+        for key in ("min_turn_us", "p25_turn_us", "p50_turn_us", "p75_turn_us", "max_turn_us"):
+            value = row.get(key, "")
+            if str(value).startswith(">"):
+                values.append(f">{int(str(value)[1:]) / 1000:.3f}")
+            else:
+                values.append(f"{int(value) / 1000:.3f}" if value else "-")
+        timings = "/".join(values)
         matches = f"{row['matches_completed']}/{row['matches_planned']}"
         lines.append(
             f"{row['bot_id']:<{widths['bot']}}  {row['status']:<{widths['status']}}  "
-            f"{maximum:>8}  {row['samples']:>7}  {matches:>7}"
+            f"{timings:>39}  {row['samples']:>7}  {matches:>7}"
         )
     return "\n".join(lines)
 

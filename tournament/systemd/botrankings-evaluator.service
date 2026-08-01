@@ -1,0 +1,15 @@
+[Unit]
+Description=Discover, evaluate, and publish new Florent Code League bots
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/Ucals/projects/florent-code-league-llm-rl
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/Ucals/projects/florent-code-league-llm-rl/.venv/bin/python -m tournament.automation --canonical-run jon-vanguard-818f3b4
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target

@@ -69,6 +69,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=0,
         help="rating-match per-turn ms limit; keep 0 (compliance probes are configured separately)",
     )
+    planner.add_argument(
+        "--compliance-only",
+        action="store_true",
+        help="stage only the short timing probes; do not schedule rating matches",
+    )
 
     runner = sub.add_parser("run", help="play outstanding matches locally")
     _add_tid(runner)
@@ -210,6 +215,8 @@ def cmd_plan(args) -> int:
     roster = registry.load()
     specs = registry.select(roster, args.bots)
     compliance_specs = list(specs)
+    if args.compliance_only and args.vs:
+        raise ValueError("--compliance-only cannot be combined with --vs")
     versus = registry.select(roster, args.vs) if args.vs else None
     seeds = tuple(int(part) for part in args.seeds.split(",") if part.strip())
 
@@ -231,9 +238,10 @@ def cmd_plan(args) -> int:
         else:
             specs = pruned
 
+    rating_specs = [] if args.compliance_only else specs
     destination, matches = planning.plan(
         args.tid,
-        specs,
+        rating_specs,
         args.maps,
         seeds,
         args.tle,
@@ -242,8 +250,10 @@ def cmd_plan(args) -> int:
     )
     rating_matches = [match for match in matches if match.kind == "rating"]
     compliance_matches = [match for match in matches if match.kind == "compliance"]
-    pairs = len(planning.pairings(specs, versus))
-    if versus:
+    pairs = len(planning.pairings(rating_specs, versus))
+    if args.compliance_only:
+        print(f"{args.tid}: compliance only -> 0 rating matches")
+    elif versus:
         print(
             f"{args.tid}: {len(specs)} challengers vs {len(versus)} roster bots, "
             f"{pairs} pairs, {len(rating_matches) // max(pairs, 1)} games per pair "
@@ -337,7 +347,7 @@ def cmd_rate(args) -> int:
     # Imported here, not at module scope: this is the only path that pulls in numpy/scipy, and
     # `run` must never do so. See tournament/run_match.py.
     from tournament import duplicates, report
-    from tournament.rating import evaluate
+    from tournament.rating import evaluate, evaluate_map_tasks
 
     destination = planning.run_dir(args.tid)
     rows, meta = _pooled(args.tid, args.pool)
@@ -348,8 +358,9 @@ def cmd_rate(args) -> int:
         return 1
 
     ratings = evaluate(rows, k=args.k)
+    map_tasks = evaluate_map_tasks(rows)
     output = destination / "ratings.csv"
-    records = report.write_csv(ratings, meta, output)
+    records = report.write_csv(ratings, meta, output, map_tasks=map_tasks)
     print(report.render(ratings, records, dropped))
 
     # Always run behaviour-level duplicate detection: a duplicate is the single most common way

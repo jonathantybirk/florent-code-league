@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Jon's branch for new bots every two minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitInactiveSec=2min
+Persistent=true
+Unit=botrankings-evaluator.service
+
+[Install]
+WantedBy=timers.target

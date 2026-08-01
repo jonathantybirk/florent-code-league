@@ -30,7 +30,7 @@ from pathlib import Path
 SCORE = {"a": 1.0, "b": 0.0, "draw": 0.5}
 
 
-def compliance_timings(replay: str) -> dict[str, int]:
+def compliance_timings(replay: str) -> dict[str, int | list[int]]:
     """Extract instrumented unit-turn timings from a compliance replay.
 
     Bot stdout is embedded verbatim in the protobuf replay.  Pairing start/end markers lets us
@@ -44,6 +44,7 @@ def compliance_timings(replay: str) -> dict[str, int]:
     except OSError:
         return {
             "compliance_samples": 0,
+            "compliance_turn_us": [],
             "compliance_max_turn_us": 0,
             "compliance_max_round": 0,
             "compliance_timeouts": 0,
@@ -76,6 +77,7 @@ def compliance_timings(replay: str) -> dict[str, int]:
     maximum = max(ends, key=lambda item: item[2], default=(0, 0, 0))
     return {
         "compliance_samples": len(ends),
+        "compliance_turn_us": [elapsed for _, _, elapsed in ends],
         "compliance_max_turn_us": maximum[2],
         "compliance_max_round": maximum[0],
         "compliance_timeouts": len(timed_out),
