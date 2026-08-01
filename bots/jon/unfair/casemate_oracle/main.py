@@ -174,8 +174,7 @@ class Player:
             elif self.role == "miner" and self.build_harvester(ct):
                 pass
             elif self.role == "mason":
-                if not self.clear_light_obstacle(ct):
-                    self.build_casemate(ct)
+                self.build_casemate(ct)
             elif self.role == "guard":
                 if not self.build_reactive_launcher(ct):
                     self.build_home_wall(ct)
@@ -320,27 +319,6 @@ class Player:
             self.known_blocked.add((seat.x, seat.y))
             return True
         return False
-
-    def clear_light_obstacle(self, ct: Controller) -> bool:
-        """Chip through cheap enemy logistics occupying the siege approach."""
-        pos = ct.get_position()
-        targets = []
-        priority = {EntityType.CONVEYOR: 0, EntityType.SPLITTER: 1,
-                    EntityType.BARRIER: 2}
-        for d in CARDINALS:
-            tile = pos.add(d)
-            if not inside(ct, tile):
-                continue
-            building = ct.get_tile_building_id(tile)
-            if building is None or ct.get_team(building) == ct.get_team():
-                continue
-            kind = ct.get_entity_type(building)
-            if kind in priority and ct.can_fire(tile):
-                targets.append((priority[kind], ct.get_hp(building), tile.x, tile.y, tile))
-        if not targets:
-            return False
-        ct.fire(min(targets)[-1])
-        return True
 
     def build_home_wall(self, ct: Controller) -> bool:
         if self.core is None:
