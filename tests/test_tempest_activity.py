@@ -1,6 +1,8 @@
 """Tests for the stuck-Builder launcher fallback."""
 
 from importlib import util
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 import sys
@@ -42,6 +44,7 @@ class StuckBuilderController:
     def __init__(self, titanium: int = 80, can_move: bool = False) -> None:
         self.position = Position(1, 5)
         self.titanium = titanium
+        self.ammo = 100
         self.round = 10
         self.built: list[Position] = []
         self.moved = False
@@ -50,6 +53,7 @@ class StuckBuilderController:
         self.launchers: dict[int, Position] = {}
         self.enemy_positions: dict[int, Position] = {}
         self.gunners: list[tuple[Position, object]] = []
+        self.harvesters: list[Position] = []
 
     def get_position(self, entity_id: int | None = None) -> Position:
         if entity_id is not None:
@@ -71,8 +75,26 @@ class StuckBuilderController:
     def get_global_resources(self) -> int:
         return self.titanium
 
+    def get_global_ammo(self) -> int:
+        return self.ammo
+
     def get_launcher_cost(self) -> int:
         return 20
+
+    def get_harvester_cost(self) -> int:
+        return 20
+
+    def get_conveyor_cost(self) -> int:
+        return 5
+
+    def get_gunner_cost(self) -> int:
+        return 20
+
+    def get_action_cooldown(self) -> int:
+        return 0
+
+    def get_move_cooldown(self) -> int:
+        return 0
 
     def can_build_launcher(self, position: Position) -> bool:
         return True
@@ -81,6 +103,17 @@ class StuckBuilderController:
         self.built.append(position)
         self.launchers[90 + len(self.built)] = position
         return 90
+
+    def can_build_harvester(self, position: Position) -> bool:
+        return False
+
+    def build_harvester(self, position: Position) -> int:
+        self.harvesters.append(position)
+        return 300 + len(self.harvesters)
+
+    def get_tile_building_id(self, position: Position) -> int | None:
+        return next((entity_id for entity_id, launcher_position
+                     in self.launchers.items() if launcher_position == position), None)
 
     def get_nearby_buildings(self) -> list[int]:
         return [entity_id for entity_id, position in self.launchers.items()
@@ -124,6 +157,7 @@ def stuck_player(width: int = 20):
         walls={(2, y) for y in range(10)},
         foot=set(),
         solids=set(),
+        conveyors={},
         bot_occupied=set(),
         enemy_launchers=set(),
         enemy_launcher_danger=set(),
@@ -136,6 +170,23 @@ def stuck_player(width: int = 20):
         launch_blocking_launchers=set(),
         launcher_breakers=set(),
         attack_gunners_built=0,
+        current_route_tiles=set(),
+        network_tiles=set(),
+        network_load=0,
+        economy_lines_completed=0,
+        task=None,
+        route=[],
+        route_i=0,
+        phase="scout",
+        lock_required=False,
+        build_wait_key=None,
+        build_wait_rounds=0,
+        pending_build=None,
+        rejected_build_sites=set(),
+        deferred_ores={},
+        last_progress_round=10,
+        last_progress="spawned",
+        stall_reported=False,
         next_blocker_gunner_round=0,
         atlas=object(),
         builder_index=builder.ECONOMY_BUILDERS,
@@ -261,6 +312,28 @@ class LauncherFallbackTests(unittest.TestCase):
         self.assertEqual(position, Position(1, 4))
         self.assertEqual(facing.delta(), (0, -1))
 
+    def test_does_not_build_gunner_below_ammo_reserve(self) -> None:
+        player = stuck_player()
+        ct = StuckBuilderController(titanium=0, can_move=True)
+        ct.ammo = builder.MIN_AMMO_FOR_GUNNER - 1
+        ct.enemy_positions[99] = Position(1, 2)
+
+        self.assertTrue(builder._step(player, ct, Position(8, 5), False))
+
+        self.assertEqual(ct.gunners, [])
+        self.assertTrue(ct.moved)
+
+    def test_does_not_build_gunner_through_obstacle(self) -> None:
+        player = stuck_player()
+        ct = StuckBuilderController(titanium=0, can_move=True)
+        ct.enemy_positions[99] = Position(1, 2)
+        ct.can_fire_from = lambda *args: False
+
+        self.assertTrue(builder._step(player, ct, Position(8, 5), False))
+
+        self.assertEqual(ct.gunners, [])
+        self.assertTrue(ct.moved)
+
     def test_moves_locally_when_launcher_is_not_affordable(self) -> None:
         player = stuck_player()
         ct = StuckBuilderController(titanium=0, can_move=True)
@@ -284,6 +357,79 @@ class LauncherFallbackTests(unittest.TestCase):
         self.assertEqual(
             builder._cardinal_distance(tuple(ct.position), player.task), 1
         )
+
+    def test_harvester_waits_for_bot_then_releases_blocked_ore(self) -> None:
+        player = stuck_player(width=16)
+        player.h = 16
+        player.walls.clear()
+        player.task = (5, 13)
+        player.phase = "goto"
+        player.bot_occupied = {(5, 13)}
+        ct = StuckBuilderController()
+        ct.position = Position(4, 13)
+
+        for round_number in range(10, 14):
+            ct.round = round_number
+            builder._goto(player, ct)
+
+        self.assertIsNone(player.task)
+        self.assertEqual(player.phase, "scout")
+        self.assertGreater(player.deferred_ores[(5, 13)], ct.round)
+
+    def test_waiting_wall_builder_vacates_ore(self) -> None:
+        player = stuck_player(width=16)
+        player.h = 16
+        player.walls.clear()
+        player.core = (2, 11)
+        player.ores = {(5, 13)}
+        player.launcher_wall_targets = [Position(6, 13)]
+        player.launcher_wall_done = set()
+        ct = StuckBuilderController(titanium=0, can_move=True)
+        ct.position = Position(5, 13)
+        ct.store[builder.SLOT_ENEMY_CORE] = builder.pack_pos((12, 3))
+        ct.is_in_vision = lambda position: True
+
+        for round_number in range(10, 14):
+            ct.round = round_number
+            self.assertFalse(builder._run_launcher_wall(player, ct))
+
+        self.assertTrue(ct.moved)
+        self.assertEqual(ct.position, Position(6, 12))
+
+    def test_more_than_five_idle_rounds_emit_diagnostic_reason(self) -> None:
+        player = stuck_player()
+        player.phase = "goto"
+        player.task = (5, 13)
+        player.pending_build = (
+            "harvester", (5, 13), "builder bot occupying target", 4
+        )
+        player.last_progress_round = 10
+        ct = StuckBuilderController()
+        ct.round = 16
+        output = StringIO()
+
+        with redirect_stdout(output):
+            message = builder._report_stall(player, ct)
+
+        self.assertIsNotNone(message)
+        self.assertIn("BUILDER_STALL id=42 rounds=6", output.getvalue())
+        self.assertIn("builder bot occupying target", output.getvalue())
+
+    def test_unaffordable_build_is_exempt_from_stall_alarm(self) -> None:
+        player = stuck_player()
+        player.pending_build = (
+            "harvester", (5, 13), "needs 51 titanium", 6
+        )
+        player.last_progress_round = 10
+        ct = StuckBuilderController(titanium=20)
+        ct.round = 16
+        output = StringIO()
+
+        with redirect_stdout(output):
+            message = builder._report_stall(player, ct)
+
+        self.assertIsNone(message)
+        self.assertEqual(output.getvalue(), "")
 
     def test_routes_around_enemy_launcher_pickup_tiles(self) -> None:
         player = stuck_player()

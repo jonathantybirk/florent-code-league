@@ -41,6 +41,10 @@ PATH_FAILURES_BEFORE_LAUNCHER = 1
 LAUNCH_REQUEST_ROUNDS = 4
 BLOCKER_GUNNER_RETRY_ROUNDS = 4
 RELAY_STOP_DISTANCE = 7
+MOVABLE_BUILD_BLOCKER_GRACE = 3
+STALL_REPORT_ROUNDS = 5
+DEFERRED_ORE_ROUNDS = 8
+MIN_AMMO_FOR_GUNNER = 20
 
 
 def run(p: "Player", ct: Controller) -> None:
@@ -88,6 +92,13 @@ def _run(p, ct):
         p.launch_blocking_launchers = set()
         p.launcher_breakers = set()
         p.next_blocker_gunner_round = 0
+        p.build_wait_key, p.build_wait_rounds = None, 0
+        p.pending_build = None
+        p.rejected_build_sites = set()
+        p.deferred_ores = {}
+        p.last_progress_round = ct.get_current_round()
+        p.last_progress = "spawned"
+        p.stall_reported = False
         own_core = unpack_pos(ct.read_store(SLOT_OWN_CORE))
         p.atlas = (identify_visible(ct, own_core) if own_core is not None
                    else None)
@@ -102,6 +113,7 @@ def _run(p, ct):
                               for tile in p.atlas.ores})
             ct.write_store(SLOT_ENEMY_CORE, pack_pos(p.atlas.enemy_core))
     _sense(p, ct)
+    _report_stall(p, ct)
     if p.atlas is None:
         _update_enemy_core_inference(p, ct)
     if p.core is None:
@@ -210,6 +222,10 @@ def _pick(p, ct):
         return
     claimed = {x for x in (unpack_pos(ct.read_store(s)) for s in CLAIM_SLOTS) if x}
     claimed |= p.ores & p.solids
+    claimed |= {ore for ore, expires in p.deferred_ores.items()
+                if expires >= ct.get_current_round()}
+    p.deferred_ores = {ore: expires for ore, expires in p.deferred_ores.items()
+                       if expires >= ct.get_current_round()}
     me, best = tuple(ct.get_position()), None
     candidates = sorted(
         p.ores - claimed,
@@ -248,6 +264,7 @@ def _route(p, ore):
     """Shortest cardinal line to Core or this Builder's unsaturated network."""
     joinable = p.network_tiles if p.network_load < 4 else set()
     blocked = (p.walls | p.foot | (p.ores - {ore}) | p.solids
+               | p.rejected_build_sites
                | _launcher_hazards(p)
                | (set(p.conveyors) - joinable))
     prev, queue, goal = {ore: None}, deque([ore]), None
@@ -298,11 +315,27 @@ def _goto(p, ct):
     if _cardinal_distance(me, p.task) == 1:
         if ct.can_build_harvester(target):
             ct.build_harvester(target)
+            _mark_progress(p, ct, "built harvester", p.task)
             p.solids.add(p.task)
             p.economy_lines_completed += 1
             _done(p, ct)
-        elif ct.get_tile_building_id(target) is not None:
-            _done(p, ct)
+        else:
+            building_id = ct.get_tile_building_id(target)
+            compatible = (
+                building_id is not None
+                and ct.get_team(building_id) == ct.get_team()
+                and ct.get_entity_type(building_id) == EntityType.HARVESTER
+            )
+            if compatible:
+                _mark_progress(p, ct, "found existing harvester", p.task)
+                _done(p, ct)
+            elif building_id is not None or _build_failure(
+                    p, ct, p.task, "harvester", ct.get_harvester_cost(),
+                    allow_ore=True):
+                p.deferred_ores[p.task] = (
+                    ct.get_current_round() + DEFERRED_ORE_ROUNDS
+                )
+                _abandon_task(p, ct, "blocked harvester site")
         return
     # Builder construction is cardinal-only. A diagonal tile is visible but
     # not actionable, so explicitly move to a cardinal neighbour of the ore.
@@ -346,12 +379,13 @@ def _prelay(p, ct):
         if tile in p.walls or tile in p.solids or (
             tile in p.conveyors and tile not in p.current_route_tiles
         ):
-            _replace_route(p, outward=True)
+            _reject_route_tile(p, ct, tile, outward=True)
             return
         _move_cardinal_adjacent(p, ct, tuple(target))
         return
     if ct.can_build_conveyor(target, facing):
         ct.build_conveyor(target, facing)
+        _mark_progress(p, ct, "built conveyor", tile)
         p.conveyors[tile] = facing
         p.current_route_tiles.add(tile)
     else:
@@ -364,8 +398,11 @@ def _prelay(p, ct):
             and ct.get_direction(building_id) == facing
         )
         if not compatible:
-            _replace_route(p, outward=True)
+            if building_id is not None or _build_failure(
+                    p, ct, tile, "conveyor", ct.get_conveyor_cost()):
+                _reject_route_tile(p, ct, tile, outward=True)
             return
+        _mark_progress(p, ct, "found existing conveyor", tile)
     p.route_i -= 1
     if p.route_i >= 0:
         _step(p, ct, Position(*p.route[p.route_i][0]), True)
@@ -383,19 +420,20 @@ def _lay(p, ct):
         if tile in p.walls or tile in p.solids or (
             tile in p.conveyors and tile not in p.current_route_tiles
         ):
-            _replace_route(p)
+            _reject_route_tile(p, ct, tile)
             return
         _move_cardinal_adjacent(p, ct, tuple(target))
         return
     if ct.can_build_conveyor(target, facing):
         ct.build_conveyor(target, facing)
+        _mark_progress(p, ct, "built conveyor", tile)
         p.conveyors[tile] = facing
         p.current_route_tiles.add(tile)
     else:
         building_id = ct.get_tile_building_id(target)
-        if building_id is None:
-            return
         compatible = (
+            building_id is not None
+            and
             tile in p.current_route_tiles
             and
             ct.get_team(building_id) == ct.get_team()
@@ -403,11 +441,13 @@ def _lay(p, ct):
             and ct.get_direction(building_id) == facing
         )
         if not compatible:
-            # The route was planned before this older line came into vision.
-            # Never silently splice into a conflicting facing: recompute a
-            # disjoint route with observed infrastructure blocked.
-            _replace_route(p)
+            if building_id is not None or _build_failure(
+                    p, ct, tile, "conveyor", ct.get_conveyor_cost()):
+                # Never silently splice into a conflicting facing: recompute a
+                # disjoint route with observed infrastructure blocked.
+                _reject_route_tile(p, ct, tile)
             return
+        _mark_progress(p, ct, "found existing conveyor", tile)
     p.route_i += 1
     if p.route_i < len(p.route):
         _step(p, ct, Position(*p.route[p.route_i][0]), True)
@@ -421,6 +461,16 @@ def _replace_route(p, outward=False):
     if replacement is not None and replacement != p.route[p.route_i:]:
         p.route = replacement
         p.route_i = len(replacement) - 1 if outward else 0
+        return True
+    return False
+
+
+def _reject_route_tile(p, ct, tile, outward=False):
+    p.rejected_build_sites.add(tile)
+    if _replace_route(p, outward):
+        _mark_progress(p, ct, "replanned blocked route", tile)
+    else:
+        _abandon_task(p, ct, "no alternate conveyor route")
 
 
 def _done(p, ct):
@@ -440,6 +490,125 @@ def _done(p, ct):
     p.task, p.route, p.route_i, p.phase = None, [], 0, "scout"
     p.lock_required = False
     p.path_failures = 0
+
+
+def _abandon_task(p, ct, reason):
+    """Release an impossible construction task without counting it as income."""
+    owner, _ = _read_construction_lock(ct)
+    if owner == p.builder_index + 1:
+        ct.write_store(SLOT_CONSTRUCTION_LOCK, 0)
+    if p.task:
+        value = pack_pos(p.task)
+        for slot in CLAIM_SLOTS:
+            if ct.read_store(slot) == value:
+                ct.write_store(slot, 0)
+                break
+    old_task = p.task
+    p.current_route_tiles.clear()
+    p.task, p.route, p.route_i, p.phase = None, [], 0, "scout"
+    p.lock_required = False
+    p.path_failures = 0
+    _mark_progress(p, ct, reason, old_task)
+
+
+def _build_failure(p, ct, target, kind, cost, allow_ore=False):
+    """Return true when a selected build site should be abandoned.
+
+    Mobile blockers get a short grace period. Resource/cooldown failures keep
+    waiting, while walls, buildings, ore misuse, and unexplained legal failures
+    immediately force the caller to choose another site.
+    """
+    target = tuple(target)
+    if target in p.bot_occupied:
+        reason_code = "bot"
+        reason = "builder bot occupying target"
+    elif target in p.walls:
+        reason_code = "wall"
+        reason = "wall on target"
+    elif target in p.ores and not allow_ore:
+        reason_code = "ore"
+        reason = "reserved ore tile"
+    elif target in p.solids or target in p.conveyors:
+        reason_code = "building"
+        reason = "building on target"
+    elif ct.get_global_resources() < cost:
+        reason_code = "resources"
+        reason = f"needs {cost} titanium"
+    elif ct.get_action_cooldown() > 0 or ct.get_move_cooldown() > 0:
+        reason_code = "cooldown"
+        reason = "builder cooldown"
+    else:
+        reason_code = "invalid"
+        reason = "site rejected by can_build"
+
+    key = kind, target, reason_code
+    if p.build_wait_key == key:
+        p.build_wait_rounds += 1
+    else:
+        p.build_wait_key, p.build_wait_rounds = key, 1
+    p.pending_build = kind, target, reason, p.build_wait_rounds
+
+    if _vacate_ore(p, ct, target):
+        return False
+    if reason_code == "bot":
+        return p.build_wait_rounds > MOVABLE_BUILD_BLOCKER_GRACE
+    if reason_code in ("resources", "cooldown"):
+        return False
+    return True
+
+
+def _vacate_ore(p, ct, build_target):
+    """Do not let a waiting Builder reserve an ore tile with its body."""
+    here = tuple(ct.get_position())
+    if here not in p.ores:
+        return False
+    choices = []
+    for dx, dy in D4_DELTAS:
+        spot = here[0] + dx, here[1] + dy
+        if (not _inside(p, spot) or spot == build_target or spot in p.ores
+                or spot in p.walls or spot in p.solids
+                or spot in p.bot_occupied):
+            continue
+        direction = FACING[(dx, dy)]
+        if ct.can_move(direction):
+            choices.append((
+                _cardinal_distance(spot, build_target),
+                spot,
+                direction,
+            ))
+    if not choices:
+        return False
+    _, spot, direction = min(choices)
+    ct.move(direction)
+    _mark_progress(p, ct, "vacated ore while waiting", spot)
+    return True
+
+
+def _mark_progress(p, ct, action, target=None):
+    p.last_progress_round = ct.get_current_round()
+    p.last_progress = f"{action} {target}" if target is not None else action
+    p.stall_reported = False
+    p.pending_build = None
+    p.build_wait_key, p.build_wait_rounds = None, 0
+
+
+def _report_stall(p, ct):
+    """Emit one replay-visible diagnostic after five rounds without progress."""
+    idle_rounds = ct.get_current_round() - p.last_progress_round
+    if idle_rounds <= STALL_REPORT_ROUNDS or p.stall_reported:
+        return None
+    if (p.pending_build is not None
+            and p.pending_build[2].startswith("needs ")):
+        return None
+    pending = p.pending_build or "none"
+    message = (
+        f"BUILDER_STALL id={ct.get_id()} rounds={idle_rounds} "
+        f"pos={tuple(ct.get_position())} phase={p.phase} task={p.task} "
+        f"last={p.last_progress} pending={pending}"
+    )
+    print(message)
+    p.stall_reported = True
+    return message
 
 
 def _step(p, ct, target, exact, allow_launcher=True):
@@ -468,6 +637,7 @@ def _step(p, ct, target, exact, allow_launcher=True):
         for direction in D8:
             if source.add(direction) == Position(*nxt) and ct.can_move(direction):
                 ct.move(direction)
+                _mark_progress(p, ct, "moved", nxt)
                 p.path_failures = 0
                 return True
 
@@ -515,6 +685,7 @@ def _build_escape_launcher(p, ct, target):
 
     _, spot, position = min(candidates)
     ct.build_launcher(position)
+    _mark_progress(p, ct, "built escape launcher", spot)
     p.solids.add(spot)
     p.path_failures = 0
     p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
@@ -525,7 +696,8 @@ def _build_escape_launcher(p, ct, target):
 
 def _build_blocker_gunner(p, ct, target):
     """Build an immediately aligned Gunner against a visible path blocker."""
-    if ct.get_current_round() < p.next_blocker_gunner_round:
+    if (ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER
+            or ct.get_current_round() < p.next_blocker_gunner_round):
         return False
 
     here = ct.get_position()
@@ -555,6 +727,9 @@ def _build_blocker_gunner(p, ct, target):
             facing = _ray_direction(spot, tuple(enemy))
             if (facing is None
                     or position.distance_squared(enemy) > GUNNER_RANGE_SQ
+                    or not ct.can_fire_from(
+                        position, facing, EntityType.GUNNER, enemy,
+                    )
                     or not ct.can_build_gunner(position, facing)):
                 continue
             enemy_dx = enemy.x - source[0]
@@ -577,6 +752,7 @@ def _build_blocker_gunner(p, ct, target):
 
     *_, position, facing = min(candidates)
     ct.build_gunner(position, facing)
+    _mark_progress(p, ct, "built blocker gunner", tuple(position))
     p.solids.add(tuple(position))
     p.next_blocker_gunner_round = (
         ct.get_current_round() + BLOCKER_GUNNER_RETRY_ROUNDS
@@ -671,6 +847,7 @@ def _move_while_stuck(p, ct, target):
         return False
     *_, direction = min(candidates)
     ct.move(direction)
+    _mark_progress(p, ct, "moved while blocked", tuple(ct.get_position()))
     return True
 
 
@@ -774,6 +951,7 @@ def _harass(p, ct):
     for target in targets:
         if ct.can_fire(Position(*target)):
             ct.fire(Position(*target))
+            _mark_progress(p, ct, "fired", target)
             return
 
     if targets:
@@ -792,6 +970,7 @@ def _heal_core(p, ct):
         position = Position(*tile)
         if ct.can_heal(position):
             ct.heal(position)
+            _mark_progress(p, ct, "healed", tuple(position))
             return
     _step(p, ct, Position(*p.core), False)
 
@@ -823,7 +1002,11 @@ def _run_launcher_wall(p, ct):
         if (ct.get_global_resources() >= ct.get_launcher_cost()
                 and ct.can_build_launcher(target)):
             ct.build_launcher(target)
+            _mark_progress(p, ct, "built wall launcher", key)
             p.solids.add(key)
+            p.launcher_wall_done.add(key)
+        elif _build_failure(
+                p, ct, key, "wall launcher", ct.get_launcher_cost()):
             p.launcher_wall_done.add(key)
         return False
     return True
@@ -884,7 +1067,8 @@ def _defend_core(p, ct):
                if ct.is_in_vision(core_position) else None)
     damage = (ct.get_max_hp(core_id) - ct.get_hp(core_id)) if core_id else 0
     desired = min(4, 1 + damage // 180)
-    if p.home_gunners_built < desired:
+    if (ct.get_global_ammo() >= MIN_AMMO_FOR_GUNNER
+            and p.home_gunners_built < desired):
         candidates = []
         for direction in D8:
             position = me.add(direction)
@@ -895,6 +1079,9 @@ def _defend_core(p, ct):
                 facing = _ray_direction(tuple(position), tuple(target))
                 if (facing is not None
                         and position.distance_squared(target) <= GUNNER_RANGE_SQ
+                        and ct.can_fire_from(
+                            position, facing, EntityType.GUNNER, target,
+                        )
                         and ct.can_build_gunner(position, facing)):
                     candidates.append((
                         combat_priority.get(ct.get_entity_type(enemy_id), 4),
@@ -904,6 +1091,7 @@ def _defend_core(p, ct):
         if candidates:
             *_, position, facing = min(candidates)
             ct.build_gunner(position, facing)
+            _mark_progress(p, ct, "built defensive gunner", tuple(position))
             p.home_gunners_built += 1
             return
     _heal_core(p, ct)
@@ -969,6 +1157,8 @@ def _chebyshev(a, b):
 
 def _build_basic_gunner(p, ct, enemy_core):
     """Build on the nearest visible legal ray, without a special formation."""
+    if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
+        return False
     core_tiles = {(enemy_core[0] + dx, enemy_core[1] + dy)
                   for dx in (0, 1) for dy in (0, 1)}
     me = tuple(ct.get_position())
@@ -978,7 +1168,8 @@ def _build_basic_gunner(p, ct, enemy_core):
             for dy in range(-3, 4):
                 spot = core_tile[0] + dx, core_tile[1] + dy
                 if (not _inside(p, spot) or spot in core_tiles
-                        or spot in p.walls or spot in p.ores or spot in p.solids):
+                        or spot in p.walls or spot in p.ores or spot in p.solids
+                        or spot in p.rejected_build_sites):
                     continue
                 facing = _ray_direction(spot, core_tile)
                 if (facing is None
@@ -1008,13 +1199,18 @@ def _build_basic_gunner(p, ct, enemy_core):
         return True
     if ct.can_build_gunner(position, facing):
         ct.build_gunner(position, facing)
+        _mark_progress(p, ct, "built core gunner", spot)
         p.solids.add(spot)
         p.attack_gunners_built += 1
+    elif _build_failure(p, ct, spot, "core gunner", ct.get_gunner_cost()):
+        p.rejected_build_sites.add(spot)
     return True
 
 
 def _build_launcher_breaker_gunner(p, ct):
     """Reach a safe build tile and place a Gunner aimed at a blocking Launcher."""
+    if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
+        return False
     me = tuple(ct.get_position())
     choices = []
     for launcher_position in sorted(p.enemy_launchers):
@@ -1024,7 +1220,8 @@ def _build_launcher_breaker_gunner(p, ct):
             for dy in range(-3, 4):
                 spot = launcher_position[0] + dx, launcher_position[1] + dy
                 if (not _inside(p, spot) or spot in p.foot or spot in p.walls
-                        or spot in p.ores or spot in p.solids):
+                        or spot in p.ores or spot in p.solids
+                        or spot in p.rejected_build_sites):
                     continue
                 facing = _ray_direction(spot, launcher_position)
                 if (facing is None
@@ -1056,9 +1253,13 @@ def _build_launcher_breaker_gunner(p, ct):
         return True
     if ct.can_build_gunner(position, facing):
         ct.build_gunner(position, facing)
+        _mark_progress(p, ct, "built launcher breaker", spot)
         p.solids.add(spot)
         p.attack_gunners_built += 1
         p.launcher_breakers.add(launcher_position)
+    elif _build_failure(
+            p, ct, spot, "launcher breaker", ct.get_gunner_cost()):
+        p.rejected_build_sites.add(spot)
     return True
 
 
@@ -1173,6 +1374,9 @@ def _move_cardinal_adjacent(p, ct, target):
     me = tuple(ct.get_position())
     goals = (_cardinal_adjacent(p, target) - p.walls - p.solids
              - p.bot_occupied - _launcher_hazards(p))
+    non_ore_goals = goals - p.ores
+    if non_ore_goals:
+        goals = non_ore_goals
     reachable = [(distance, goal) for goal in goals
                  if (distance := _distance(p, me, {goal})) is not None]
     if reachable:
