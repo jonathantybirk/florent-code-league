@@ -690,8 +690,11 @@ def _add_gunner(p, ct, without_travel=False):
             continue
         facing, obstacles = aim
         # Prefer a clear line, but take a blocked one over no siege at all.
+        # Launchers only throw adjacent Builders. Prefer the outer edge of
+        # Gunner range so a static picket screen cannot reset the engineer
+        # before it places ranged fire.
         candidates.append((obstacles, _flank_bias(p, spot),
-                           world.dist_sq(spot, p.enemy_core), spot, facing))
+                           -world.dist_sq(spot, p.enemy_core), spot, facing))
     if not candidates:
         return False
     candidates.sort()
