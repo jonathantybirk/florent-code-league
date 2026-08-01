@@ -105,3 +105,12 @@ OUTHEALED_PATIENCE = 3
 # beat us spent every point of titanium on Gunners. The pickets never stopped
 # the rush they were paying for.
 PICKET_LAUNCHERS = 0
+
+# How much further than the nearest usable seat the oracle will walk for a
+# cleaner firing line. Only meaningful when the whole map is known.
+SEAT_REACH_SLACK = 0
+
+# Cardinal walking rounds between the two Cores, below which the map is short
+# enough that pressure beats development. Only the oracle can measure this.
+RUSH_DISTANCE = 18
+RUSH_ECONOMY_BUILDERS = 1

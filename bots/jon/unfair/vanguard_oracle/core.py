@@ -2,7 +2,10 @@
 
 from fcode import Controller, Direction, Environment, Position
 
+from atlas import identify_visible
+
 from constants import (AMMO_FLOOR, AMMO_TARGET, ECONOMY_BUILDERS,
+                       RUSH_DISTANCE, RUSH_ECONOMY_BUILDERS,
                        EMERGENCY_RESERVE,
                        HOME_ALARM_PERCENT, RICH_RESERVE,
                        SLOT_HOME_UNDER_FIRE)
@@ -59,12 +62,13 @@ def run(player, ct: Controller) -> None:
     if player.spawned >= cap:
         return
     cost = ct.get_builder_bot_cost()
-    reserve = 0 if player.spawned < ECONOMY_BUILDERS else 60
+    economy = _opening_economy(player, ct)
+    reserve = 0 if player.spawned < economy else 60
     if ct.get_global_resources() < cost + reserve:
         return
 
     role = player.spawned
-    if role < ECONOMY_BUILDERS and role < len(player.opening_ores):
+    if role < economy and role < len(player.opening_ores):
         goal = player.opening_ores[role]
     else:
         goal = _away_from_home(ct)
@@ -100,3 +104,54 @@ def _away_from_home(ct: Controller) -> Position:
     anchor = ct.get_position()
     return Position(ct.get_map_width() - 2 - anchor.x,
                     ct.get_map_height() - 2 - anchor.y)
+
+def _opening_economy(player, ct) -> int:
+    """Split the opening Builders using the real distance between Cores.
+
+    The fair bot has to guess this: it cannot know how far away the enemy is
+    until it has walked there, so it commits to one opening for every map. The
+    atlas removes the guess. A short map rewards Mistral's answer -- put almost
+    everything into pressure, because the Gunners arrive before any economy
+    could have repaid itself -- and a long map rewards ours, because there is
+    time to mine and the walk is dead rounds either way.
+
+    Measured once, at spawn, and cached: this is a full-map BFS and the Core
+    has the same 10ms budget as anything else.
+    """
+    cached = getattr(player, "econ_builders", None)
+    if cached is not None:
+        return cached
+    player.econ_builders = ECONOMY_BUILDERS
+    try:
+        anchor = ct.get_position()
+        atlas = identify_visible(ct, (anchor.x, anchor.y))
+        if atlas is None:
+            return player.econ_builders
+        goal = atlas.enemy_core
+        seen = {(anchor.x, anchor.y)}
+        frontier = [(anchor.x, anchor.y)]
+        steps = 0
+        while frontier and steps < atlas.width * atlas.height:
+            nxt = []
+            for x, y in frontier:
+                if abs(x - goal[0]) <= 1 and abs(y - goal[1]) <= 1:
+                    player.econ_builders = (RUSH_ECONOMY_BUILDERS
+                                            if steps <= RUSH_DISTANCE
+                                            else ECONOMY_BUILDERS)
+                    return player.econ_builders
+                # Builders are cardinal-only in 2.3.3, so this is the honest
+                # number of rounds the walk actually takes.
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    tile = (x + dx, y + dy)
+                    if tile in seen or tile in atlas.walls:
+                        continue
+                    if not (0 <= tile[0] < atlas.width
+                            and 0 <= tile[1] < atlas.height):
+                        continue
+                    seen.add(tile)
+                    nxt.append(tile)
+            frontier = nxt
+            steps += 1
+    except Exception:  # noqa: BLE001 - a dead Core loses the match outright
+        pass
+    return player.econ_builders
