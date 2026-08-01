@@ -14,7 +14,7 @@ SLOT_ORE = 2
 SLOT_ROLES = 3
 SLOT_WALLS = 8
 SLOT_MAP = 9
-MAX_BUILDERS = 5
+MAX_BUILDERS = 4
 AMMO_TARGET = 60
 
 MAP_NAMES = (
@@ -144,9 +144,9 @@ class Player:
         # Entity ids interleave both teams and all newly built structures, so
         # the Core publishes explicit spawn-order assignments.
         map_name = self.atlas.name if self.atlas is not None else None
-        roles = (("mason", "guard", "mason", "miner", "mason")
+        roles = (("mason", "guard", "mason", "mason")
                  if map_name in THREE_MASON_MAPS else
-                 ("mason", "miner", "guard", "miner", "mason"))
+                 ("mason", "miner", "guard", "mason"))
         for index, role in enumerate(roles):
             if ct.read_store(SLOT_ROLES + index) == ct.get_id():
                 self.role = role
