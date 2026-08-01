@@ -270,6 +270,21 @@ class LauncherFallbackTests(unittest.TestCase):
         self.assertTrue(ct.moved)
         self.assertEqual(ct.built, [])
 
+    def test_diagonal_harvester_target_moves_to_cardinal_build_range(self) -> None:
+        player = stuck_player(width=16)
+        player.h = 16
+        player.walls.clear()
+        player.task = (1, 14)
+        ct = StuckBuilderController(can_move=True)
+        ct.position = Position(0, 13)
+
+        builder._goto(player, ct)
+
+        self.assertTrue(ct.moved)
+        self.assertEqual(
+            builder._cardinal_distance(tuple(ct.position), player.task), 1
+        )
+
     def test_routes_around_enemy_launcher_pickup_tiles(self) -> None:
         player = stuck_player()
         player.walls.clear()

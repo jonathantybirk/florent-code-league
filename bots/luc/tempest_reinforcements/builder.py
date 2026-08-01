@@ -294,8 +294,8 @@ def _route(p, ore):
 
 
 def _goto(p, ct):
-    me, target = ct.get_position(), Position(*p.task)
-    if 0 < me.distance_squared(target) <= 2:
+    me, target = tuple(ct.get_position()), Position(*p.task)
+    if _cardinal_distance(me, p.task) == 1:
         if ct.can_build_harvester(target):
             ct.build_harvester(target)
             p.solids.add(p.task)
@@ -304,7 +304,9 @@ def _goto(p, ct):
         elif ct.get_tile_building_id(target) is not None:
             _done(p, ct)
         return
-    _step(p, ct, target, False)
+    # Builder construction is cardinal-only. A diagonal tile is visible but
+    # not actionable, so explicitly move to a cardinal neighbour of the ore.
+    _move_cardinal_adjacent(p, ct, p.task)
 
 
 def _wait_for_construction_lock(p, ct):
