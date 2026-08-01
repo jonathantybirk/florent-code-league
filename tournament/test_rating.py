@@ -379,3 +379,65 @@ def test_unplayed_pairs_are_neutral():
     matrix = logit_matrix(win_probability(games, wins))
     assert games[0, 2] == 0
     assert matrix[0, 2] == pytest.approx(0.0)
+
+
+# ------------------------------------------------------------------------------------------
+# Missing data must never be silent.
+# ------------------------------------------------------------------------------------------
+
+
+def _rows_for(pairs):
+    """One decisive game per (winner, loser) pair, in both orders so P stays antisymmetric."""
+    out = []
+    for index, (winner, loser) in enumerate(pairs):
+        out.append({"bot_a": winner, "bot_b": loser, "score_a": 1.0, "status": "ok",
+                    "winner": "a", "match_id": f"m{index}a"})
+        out.append({"bot_a": loser, "bot_b": winner, "score_a": 0.0, "status": "ok",
+                    "winner": "b", "match_id": f"m{index}b"})
+    return out
+
+
+def test_missing_pairs_are_reported_as_data():
+    """A gap must be visible on Ratings itself, not only in the printed table."""
+    from tournament.rating import evaluate
+
+    # a-b and a-c play; b-c never do.
+    ratings = evaluate(_rows_for([("a", "b"), ("a", "c")]))
+    assert ratings.missing_pairs == [("b", "c")]
+    assert not ratings.complete
+
+
+def test_complete_field_reports_no_missing_pairs():
+    from tournament.rating import evaluate
+
+    ratings = evaluate(_rows_for([("a", "b"), ("a", "c"), ("b", "c")]))
+    assert ratings.missing_pairs == []
+    assert ratings.complete
+
+
+def test_report_names_the_unplayed_pair_rather_than_a_percentage():
+    """Regression: a coverage threshold once suppressed this entirely above 99.9%."""
+    from tournament.rating import evaluate
+    from tournament.report import render
+
+    from tournament.report import records
+
+    ratings = evaluate(_rows_for([("a", "b"), ("a", "c")]))
+    text = render(ratings, records(ratings, {}))
+    assert "INCOMPLETE" in text
+    assert "unplayed: b  vs  c" in text
+
+
+def test_a_single_gap_in_a_large_field_is_still_reported():
+    """The old 0.999 threshold went quiet on big fields, where one gap still moves the Nash set."""
+    from tournament.rating import evaluate
+    from tournament.report import records, render
+
+    names = [f"b{i:02d}" for i in range(40)]
+    pairs = [(names[i], names[j]) for i in range(40) for j in range(i + 1, 40)]
+    complete = evaluate(_rows_for(pairs))
+    assert complete.complete
+    # 779/780 pairs = 99.87% coverage, which the old threshold ignored.
+    ratings = evaluate(_rows_for([p for p in pairs if p != (names[0], names[1])]))
+    assert ratings.missing_pairs == [(names[0], names[1])]
+    assert "INCOMPLETE" in render(ratings, records(ratings, {}))

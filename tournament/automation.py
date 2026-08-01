@@ -15,12 +15,13 @@ import json
 import subprocess
 import sys
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 from tournament import duplicates, hpc, report
 from tournament import plan as planning
-from tournament.discover import discover
+from tournament.discover import DEFAULT_EXCLUDES, discover
 from tournament.gitutil import REPO_ROOT, resolve_commit
 from tournament.merge import merge, read
 from tournament.rating import evaluate
@@ -29,7 +30,52 @@ from tournament import registry
 from tournament.site_data import build as build_site_data
 
 
-STATE_VERSION = 1
+STATE_VERSION = 2
+
+
+@dataclass(frozen=True)
+class Source:
+    """One watched branch and the subtree under it that holds that person's bots.
+
+    Each contributor owns a directory, so a prefix keeps discovery from wandering into vendored
+    copies of other people's work. Elias in particular keeps bots/rivals/ (Jon's and Luc's bots,
+    verbatim) and bots/probes/ (single-mechanic instruments that resign or idle on purpose);
+    neither is an entrant. Excludes are fnmatch patterns against the repo-relative bot directory.
+    """
+
+    branch: str
+    prefix: str
+    excludes: tuple[str, ...] = ()
+
+    @property
+    def ref(self) -> str:
+        return f"origin/{self.branch}"
+
+    @classmethod
+    def parse(cls, text: str) -> "Source":
+        """`branch:prefix[:exclude,exclude]`, e.g. `x/jon:bots/jon`."""
+        parts = text.split(":")
+        if len(parts) == 2:
+            branch, prefix = parts
+            excludes: tuple[str, ...] = ()
+        elif len(parts) == 3:
+            branch, prefix, raw = parts
+            excludes = tuple(item for item in raw.split(",") if item)
+        else:
+            raise argparse.ArgumentTypeError(
+                f"expected branch:prefix[:excludes], got {text!r}"
+            )
+        return cls(branch=branch, prefix=prefix, excludes=excludes)
+
+
+# The active branches. A contributor who starts a new top-level directory needs a line here --
+# discovery is deliberately opt-in per subtree rather than scanning all of bots/, because the
+# repo also contains vendored rivals, probes and starter templates that must never be entered.
+DEFAULT_SOURCES = (
+    Source("x/jon", "bots/jon"),
+    Source("x/luc", "bots/luc"),
+    Source("elias_dev", "bots/elias"),
+)
 DEFAULT_STATE = REPO_ROOT / "tournament" / "automation-state.json"
 DEFAULT_LOCK = REPO_ROOT / "tournament" / "automation.lock"
 DEFAULT_SITE = REPO_ROOT.parent / "portfolio"
@@ -83,10 +129,6 @@ def _spec_dict(spec: BotSpec) -> dict:
     }
 
 
-def _spec_from_dict(value: dict) -> BotSpec:
-    return BotSpec(value["name"], value["commit"], value["path"], tuple(value.get("tags", [])))
-
-
 def _preferred(specs: list[BotSpec]) -> BotSpec:
     """Prefer a live bot path over archived/versioned aliases, then choose stably."""
     archive = {"versions", "archive", "legacy", "probes", "old"}
@@ -99,30 +141,137 @@ def _preferred(specs: list[BotSpec]) -> BotSpec:
     return max(specs, key=key)
 
 
-def bootstrap(canonical_run: str, ref: str) -> dict:
-    run_dir = planning.run_dir(canonical_run)
-    ratings = _distinct_ratings(run_dir)
+def played_bot_ids() -> set[str]:
+    """Every bot_id that has actually played a rating match, read from the match CSVs.
+
+    This is the ground truth for "have we evaluated this?". Compliance probes are excluded --
+    they measure turn time and never enter a win matrix, so a bot that has only been probed has
+    not been rated.
+    """
+    found: set[str] = set()
+    for path in sorted(planning.RUNS_ROOT.glob("*/matches.csv")):
+        with open(path, newline="") as handle:
+            for row in csv.DictReader(handle):
+                if row.get("kind") == "compliance":
+                    continue
+                found.add(row["bot_a"])
+                found.add(row["bot_b"])
+    return found
+
+
+def unfinished_runs() -> dict[str, set[str]]:
+    """Runs whose schedule is not fully merged, mapped to the bot_ids they cover.
+
+    A run that has been submitted but not merged is evidence of work in progress, and it is
+    invisible to the ledger: results only reach matches.csv at merge time, so until then every
+    bot in that run looks un-evaluated. Without this, an interrupted evaluation gets scheduled
+    a second time while the first one is still on the cluster.
+
+    Compliance probes are counted separately -- they land in compliance_matches.csv, so counting
+    them against the rating schedule would mark every complete run as unfinished.
+    """
+    pending: dict[str, set[str]] = {}
+    for schedule_path in sorted(planning.RUNS_ROOT.glob("*/schedule.jsonl")):
+        run_dir = schedule_path.parent
+        scheduled: set[str] = set()
+        bots: set[str] = set()
+        for line in schedule_path.read_text().splitlines():
+            if not line.strip():
+                continue
+            entry = json.loads(line)
+            if entry.get("kind") == "compliance":
+                continue
+            scheduled.add(entry["match_id"])
+            bots.add(entry["bot_a"])
+            bots.add(entry["bot_b"])
+        if not scheduled:
+            continue
+        merged: set[str] = set()
+        matches = run_dir / "matches.csv"
+        if matches.exists():
+            with open(matches, newline="") as handle:
+                for row in csv.DictReader(handle):
+                    merged.add(row["match_id"])
+        if scheduled - merged:
+            pending[run_dir.name] = bots
+    return pending
+
+
+def pending_runs() -> dict[str, set[str]]:
+    """Automation runs that have been submitted but not yet rated and published.
+
+    Completion is defined by the published artefact, not by how many results have been merged.
+    Merging is only one step: a run whose matches have all arrived but whose rating failed is
+    still outstanding work, and keying this on merge progress made such a run invisible -- it
+    dropped out of the queue the moment its last result landed, and was never revisited.
+    """
+    pending: dict[str, set[str]] = {}
+    for marker in sorted(planning.RUNS_ROOT.glob("*/automation.json")):
+        run_dir = marker.parent
+        if (run_dir / "ratings-distinct.csv").exists():
+            continue
+        bots: set[str] = set()
+        schedule = run_dir / "schedule.jsonl"
+        if schedule.exists():
+            for line in schedule.read_text().splitlines():
+                if not line.strip():
+                    continue
+                entry = json.loads(line)
+                if entry.get("kind") == "compliance":
+                    continue
+                bots.add(entry["bot_a"])
+                bots.add(entry["bot_b"])
+        pending[run_dir.name] = bots
+    return pending
+
+
+def derive_ledger() -> tuple[dict[str, dict], dict[str, BotSpec]]:
+    """Rebuild "which implementations have been rated" from the match data itself.
+
+    The alternative -- a hand-maintained tested_hashes file -- is a cache of exactly this, and a
+    cache of the repo's own contents can only ever drift out of date. Deriving it means a run
+    performed by hand, on the cluster, or by an older version of this script all count, and there
+    is no bootstrap step to get wrong.
+
+    Returns (hash -> {representative, aliases}, bot_id -> spec).
+
+    Raises if a bot has played but its source is unresolvable: that would silently look like an
+    un-evaluated implementation and get scheduled again, which is the failure this whole function
+    exists to prevent.
+    """
     specs = _all_specs()
-    canonical: dict[str, dict] = {}
-    tested: dict[str, dict] = {}
-    for row in ratings:
-        bot_id = row["bot_id"]
-        if bot_id not in specs:
-            raise RuntimeError(f"cannot bootstrap: no source metadata for {bot_id}")
+    played = played_bot_ids()
+    unresolved = sorted(bot_id for bot_id in played if bot_id not in specs)
+    if unresolved:
+        raise RuntimeError(
+            f"{len(unresolved)} bot(s) have played but have no source metadata, so their code "
+            f"cannot be hashed and they would be re-evaluated as if new: "
+            f"{', '.join(unresolved[:5])}"
+        )
+
+    by_hash: dict[str, list[BotSpec]] = defaultdict(list)
+    unhashable: list[str] = []
+    for bot_id in sorted(played):
         spec = specs[bot_id]
         digest = duplicates.code_hash(spec.commit, spec.path)
-        if not digest:
-            raise RuntimeError(f"cannot hash {bot_id}")
-        canonical[bot_id] = _spec_dict(spec)
-        tested[digest] = {"representative": bot_id, "aliases": []}
-    return {
-        "version": STATE_VERSION,
-        "canonical_run": canonical_run,
-        "canonical_bots": canonical,
-        "tested_hashes": tested,
-        "last_seen_ref": resolve_commit(ref),
-        "updated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-    }
+        if digest:
+            by_hash[digest].append(spec)
+        else:
+            unhashable.append(bot_id)
+    if unhashable:
+        raise RuntimeError(
+            f"{len(unhashable)} rated bot(s) no longer resolve to a git object, so their code "
+            f"cannot be compared against new pushes: {', '.join(unhashable[:5])}"
+        )
+
+    ledger: dict[str, dict] = {}
+    for digest, group in by_hash.items():
+        representative = _preferred(group).bot_id
+        ledger[digest] = {
+            "representative": representative,
+            "aliases": sorted(spec.bot_id for spec in group if spec.bot_id != representative),
+        }
+    return ledger, specs
 
 
 def _save_state(path: Path, state: dict) -> None:
@@ -160,58 +309,120 @@ def run_once(
     *,
     state_path: Path,
     canonical_run: str | None,
-    ref: str,
+    sources: tuple[Source, ...],
     fetch_remote: str,
-    fetch_branch: str,
-    prefix: str,
     site_repo: Path,
     publish: bool,
     fetch: bool,
     dry_run: bool,
 ) -> int:
     if fetch:
-        print(f"fetching {fetch_remote}/{fetch_branch}")
-        _run(["git", "fetch", fetch_remote, fetch_branch])
-    head = resolve_commit(ref)
+        print(f"fetching {fetch_remote}: {', '.join(source.branch for source in sources)}")
+        _run(["git", "fetch", fetch_remote, *(source.branch for source in sources)])
+    heads = {source.branch: resolve_commit(source.ref) for source in sources}
+    # One identity for the combined state of every watched branch, so a push to any of them
+    # produces a distinct run id.
+    head = hashlib.sha256(
+        "|".join(f"{branch}@{sha}" for branch, sha in sorted(heads.items())).encode()
+    ).hexdigest()
+
+    # The ledger is derived from the match CSVs on every tick, never cached. A stale cache was
+    # holding 48 implementations while the repo's own results held 81.
+    tested, all_specs = derive_ledger()
+    print(f"ledger: {len(tested)} implementation(s) already rated (derived from match data)")
 
     if state_path.exists():
         state = json.loads(state_path.read_text())
+        if state.get("version") == 1:
+            # v1 watched a single branch and stored one head. Everything else -- tested_hashes,
+            # canonical_bots, canonical_run -- is content-addressed and carries over unchanged,
+            # so migration only has to widen the head record.
+            state["last_seen_refs"] = {}
+            state["version"] = STATE_VERSION
+            print("migrated automation state v1 -> v2 (single branch -> multi-branch)")
         if state.get("version") != STATE_VERSION:
             raise RuntimeError(f"unsupported automation state version: {state.get('version')}")
     else:
         if not canonical_run:
             raise RuntimeError("first run needs --canonical-run")
-        state = bootstrap(canonical_run, ref)
+        state = {"version": STATE_VERSION, "canonical_run": canonical_run}
         _save_state(state_path, state)
-        print(f"bootstrapped automation from {canonical_run}")
+        print(f"initialised automation state (canonical run: {canonical_run})")
 
-    current = discover(head, prefix)
+    current: list[BotSpec] = []
+    for source in sources:
+        found = discover(
+            heads[source.branch],
+            source.prefix,
+            excludes=DEFAULT_EXCLUDES + source.excludes,
+        )
+        print(f"  {source.branch}@{heads[source.branch][:7]}: {len(found)} bot(s) under {source.prefix}")
+        current.extend(found)
+
     by_hash: dict[str, list[BotSpec]] = defaultdict(list)
     for spec in current:
         digest = duplicates.code_hash(spec.commit, spec.path)
         if digest:
             by_hash[digest].append(spec)
+    # tested_hashes is shared across branches on purpose. Elias vendors Jon's bots under
+    # bots/rivals/ and Luc's starter is a fork of the stock one; keying on .py content means an
+    # implementation already rated from one branch is recorded as an alias, never re-scheduled.
 
-    tested = state["tested_hashes"]
-    unseen = {digest: specs for digest, specs in by_hash.items() if digest not in tested}
-    # A pushed alias of tested code is recorded, but never scheduled.
-    for digest, specs in by_hash.items():
-        if digest not in tested:
+    # Phase 1: make progress on work already submitted. Each visit either collects and publishes
+    # a finished run or reports it as still going; nothing here blocks on the cluster.
+    in_flight_bots = set()
+    # Bots in a half-merged run of any kind are under test, automation-owned or not.
+    for run_name, bots in sorted(unfinished_runs().items()):
+        in_flight_bots |= bots
+    pending = pending_runs()
+    for run_name, bots in sorted(pending.items()):
+        if dry_run:
+            print(f"  run {run_name} is unfinished ({len(bots)} bot(s) under test)")
+            in_flight_bots |= bots
             continue
-        aliases = set(tested[digest].get("aliases", []))
-        aliases.update(spec.bot_id for spec in specs if spec.bot_id != tested[digest]["representative"])
-        tested[digest]["aliases"] = sorted(aliases)
+        try:
+            done = finalise(
+                run_name, state=state, state_path=state_path,
+                site_repo=site_repo, publish=publish,
+            )
+        except hpc.HpcError:
+            raise
+        if not done:
+            in_flight_bots |= bots
+    in_flight_hashes = {
+        digest
+        for digest, specs in by_hash.items()
+        if any(spec.bot_id in in_flight_bots for spec in specs)
+    }
+
+    unseen = {
+        digest: specs
+        for digest, specs in by_hash.items()
+        if digest not in tested and digest not in in_flight_hashes
+    }
+    # A pushed alias of already-rated code needs no bookkeeping: the next tick re-derives the
+    # ledger from the match data and sees the same hash again.
+    aliases = {
+        spec.bot_id
+        for digest, specs in by_hash.items()
+        if digest in tested
+        for spec in specs
+        if spec.bot_id != tested[digest]["representative"]
+    }
+    if aliases:
+        print(f"  {len(aliases)} pushed alias(es) of already-rated code, not scheduled")
 
     if not unseen:
         state["last_seen_ref"] = head
+        state["last_seen_refs"] = heads
         state["updated_at"] = datetime.now(UTC).isoformat(timespec="seconds")
         _save_state(state_path, state)
-        print(f"{head[:7]}: no unseen Python implementations in {len(current)} bot directories")
+        print(f"no unseen Python implementations in {len(current)} bot directories")
         return 0
 
     representatives = [_preferred(specs) for specs in unseen.values()]
     representatives.sort(key=lambda spec: spec.bot_id)
-    print(f"{head[:7]}: {len(representatives)} unseen implementation(s)")
+    print(f"{len(representatives)} unseen implementation(s) across {len(sources)} branch(es)")
     for spec in representatives:
         print(f"  {spec.bot_id:<30} {spec.path}")
     if dry_run:
@@ -219,9 +430,14 @@ def run_once(
 
     settings = hpc.config()
     hpc.check_connection(settings["host"])
-    canonical_specs = [_spec_from_dict(value) for value in state["canonical_bots"].values()]
-    run_key = hashlib.sha256("|".join(sorted(unseen)).encode()).hexdigest()[:8]
-    tid = f"auto-{head[:7]}-{run_key}"
+    # The same field finalise() will rate over, so the challenger cannot miss a survivor.
+    canonical_specs, _ = canonical_field()
+    # Keyed on the implementations under test and nothing else. An unrelated branch moving must
+    # not change the tid: the run directory is where partial results live, and content-addressed
+    # match ids mean re-submitting the same tid resumes rather than repeats. Keying this on the
+    # branch heads stranded a half-finished run every time anyone else pushed.
+    run_key = hashlib.sha256("|".join(sorted(unseen)).encode()).hexdigest()[:12]
+    tid = f"auto-{run_key}"
     destination, schedule = planning.plan(
         tid,
         representatives,
@@ -238,97 +454,150 @@ def run_once(
     except hpc.HpcError as error:
         if "nothing to submit" not in str(error):
             raise
-        print("all scheduled results already exist; fetching them")
-    hpc.watch(tid, settings)
+        print("all scheduled results already exist")
+    # Record what this run is for, so a later tick can finish it without re-deriving the
+    # discovery that produced it. The run directory describes itself; nothing lives in memory
+    # across ticks, because there is no process that spans them any more.
+    _save_state(destination / "automation.json", {
+        "challengers": sorted(spec.bot_id for spec in representatives),
+        "heads": heads,
+        "submitted_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    })
+    state["last_seen_ref"] = head
+    state["last_seen_refs"] = heads
+    state["updated_at"] = datetime.now(UTC).isoformat(timespec="seconds")
+    _save_state(state_path, state)
+    print(f"submitted {tid}; a later tick will collect and publish it")
+    return 0
+
+
+def pooled_matches() -> list[dict]:
+    """Every rating match in the repo, deduplicated by match_id.
+
+    Ratings are only meaningful inside one win matrix, so the published ladder has to be built
+    from all the evidence there is, not from one run plus one challenger set. match_id is
+    content-addressed, so the same pairing recorded by two runs collapses to one row.
+    """
+    seen: set[str] = set()
+    rows: list[dict] = []
+    for path in sorted(planning.RUNS_ROOT.glob("*/matches.csv")):
+        with open(path, newline="") as handle:
+            for row in csv.DictReader(handle):
+                if row.get("kind") == "compliance":
+                    continue
+                if row["match_id"] in seen:
+                    continue
+                seen.add(row["match_id"])
+                rows.append(row)
+    return rows
+
+
+def canonical_field() -> tuple[list[BotSpec], list[tuple[str, str]]]:
+    """The deduplicated set of bots a challenger must play, and the copies pruned away.
+
+    Both callers must agree on this. A challenger is scheduled against these bots, and the
+    published ladder is rated over these bots -- if the two disagree by even one entrant, the
+    challenger never played somebody who ends up in the matrix, and the result is an unplayed
+    pair imputed as a draw. Deriving both from this one function is what keeps that impossible.
+    """
+    _, all_specs = derive_ledger()
+    rows = pooled_matches()
+    played = {row["bot_a"] for row in rows} | {row["bot_b"] for row in rows}
+    entrants = [spec for bot_id, spec in sorted(all_specs.items()) if bot_id in played]
+    groups = duplicates.behaviour_groups(rows) + duplicates.code_groups(entrants)
+    return duplicates.prune(entrants, groups)
+
+
+def finalise(
+    tid: str,
+    *,
+    state: dict,
+    state_path: Path,
+    site_repo: Path,
+    publish: bool,
+) -> bool:
+    """Collect a submitted run, then rate and publish if the cluster has finished it.
+
+    Returns True when the run is complete and has been published, False when it is still going.
+    Splitting this out is what lets a tick stay short: submission and collection are separate
+    visits, so the lock is never held across hours of cluster time.
+    """
+    destination = planning.run_dir(tid)
+    marker = destination / "automation.json"
+    if not marker.exists():
+        print(f"  {tid}: not an automation run, leaving alone")
+        return False
+    info = json.loads(marker.read_text())
+
+    settings = hpc.config()
+    hpc.check_connection(settings["host"])
+    hpc.fetch(tid, settings)
     _, merged = merge(destination)
-    if merged != len(schedule):
-        raise RuntimeError(f"incomplete run: {merged}/{len(schedule)} results")
-    challenger_rows = read(destination)
-    failures = [row for row in challenger_rows if row.get("status") != "ok"]
+    scheduled = planning.rating_match_count(destination)
+    if merged < scheduled:
+        print(f"  {tid}: {merged}/{scheduled} matches collected; still running")
+        return False
+
+    failures = [row for row in read(destination) if row.get("status") != "ok"]
     if failures:
-        raise RuntimeError(f"{len(failures)} rating matches failed; not publishing partial data")
-
-    canonical_dir = planning.run_dir(state["canonical_run"])
-    canonical_rows = _distinct_matches(canonical_dir)
-    combined = canonical_rows + challenger_rows
-    behaviour = duplicates.behaviour_groups(combined)
-    canonical_ids = set(state["canonical_bots"])
-    new_ids = {spec.bot_id for spec in representatives}
-    dropped: dict[str, str] = {}
-    for group in behaviour:
-        newcomers = [member for member in group.members if member in new_ids]
-        incumbents = [member for member in group.members if member in canonical_ids]
-        if not newcomers:
-            continue
-        if incumbents:
-            keep = min(incumbents, key=lambda bot_id: int(next(r["rank"] for r in _distinct_ratings(canonical_dir) if r["bot_id"] == bot_id)))
-            dropped.update({bot_id: keep for bot_id in newcomers})
-        elif len(newcomers) > 1:
-            specs = {spec.bot_id: spec for spec in representatives}
-            keep = _preferred([specs[bot_id] for bot_id in newcomers]).bot_id
-            dropped.update({bot_id: keep for bot_id in newcomers if bot_id != keep})
-
-    kept = new_ids - set(dropped)
-    desired = canonical_ids | kept
-    distinct_rows = [
-        row for row in combined if row["bot_a"] in desired and row["bot_b"] in desired
-    ]
-    map_count = len({row["map"] for row in distinct_rows})
-    expected = len(desired) * (len(desired) - 1) // 2 * map_count * 2
-    if len(distinct_rows) != expected:
         raise RuntimeError(
-            f"distinct matrix incomplete after dedupe: {len(distinct_rows)}/{expected} matches"
+            f"{tid}: {len(failures)} rating match(es) failed; refusing to publish partial data"
         )
-    _write_csv(destination / "matches-distinct.csv", distinct_rows)
 
-    metadata = {bot_id: value for bot_id, value in state["canonical_bots"].items()}
-    metadata.update({spec.bot_id: _spec_dict(spec) for spec in representatives})
+    # Rate the whole field, not this run against one older run. Behavioural duplicates are
+    # collapsed to one representative each: keeping every copy would double-count whatever the
+    # duplicated bot is good at (the paper's Example 1).
+    rows = pooled_matches()
+    kept, dropped = canonical_field()
+    desired = {spec.bot_id for spec in kept}
+    distinct_rows = [
+        row for row in rows if row["bot_a"] in desired and row["bot_b"] in desired
+    ]
+
     ratings = evaluate(distinct_rows)
+    if not ratings.complete:
+        # Unplayed pairs enter A as 0, which is indistinguishable from a measured draw. Publishing
+        # that to a live ladder would present imputed numbers as results.
+        pairs = "\n".join(f"      {a}  vs  {b}" for a, b in ratings.missing_pairs[:20])
+        raise RuntimeError(
+            f"{tid}: refusing to publish an incomplete matrix -- "
+            f"{len(ratings.missing_pairs)} pair(s) have never played:\n{pairs}"
+        )
+
+    _write_csv(destination / "matches-distinct.csv", distinct_rows)
+    metadata = {spec.bot_id: _spec_dict(spec) for spec in kept}
     report.write_csv(ratings, metadata, destination / "ratings-distinct.csv")
     report.write_csv(ratings, metadata, destination / "ratings.csv")
+    duplicates.write_csv(duplicates.behaviour_groups(distinct_rows),
+                         destination / "duplicates.csv")
 
-    code_groups = []
-    for digest, specs in unseen.items():
-        if len(specs) > 1:
-            code_groups.append(
-                duplicates.Group(
-                    "code",
-                    tuple(sorted(spec.bot_id for spec in specs)),
-                    f"identical .py content ({digest})",
-                )
-            )
-    duplicates.write_csv(behaviour + code_groups, destination / "duplicates.csv")
+    print(f"  {tid}: rated {len(desired)} distinct bot(s) over {len(distinct_rows)} matches")
+    for bot_id, covered_by in sorted(dropped):
+        print(f"    duplicate: {bot_id} -> {covered_by}")
 
-    representative_by_id = {spec.bot_id: spec for spec in representatives}
-    for bot_id in kept:
-        state["canonical_bots"][bot_id] = _spec_dict(representative_by_id[bot_id])
-    for digest, specs in unseen.items():
-        played = _preferred(specs).bot_id
-        representative = dropped.get(played, played)
-        tested[digest] = {
-            "representative": representative,
-            "aliases": sorted(spec.bot_id for spec in specs if spec.bot_id != representative),
-        }
-    state["canonical_run"] = tid
-    state["last_seen_ref"] = head
-    state["updated_at"] = datetime.now(UTC).isoformat(timespec="seconds")
-    print(f"canonical field: {len(desired)} bots; {len(dropped)} new duplicate(s) excluded")
-    for bot_id, covered_by in sorted(dropped.items()):
-        print(f"  {bot_id} -> {covered_by}")
+    head = next(iter(info.get("heads", {}).values()), tid)
     if publish:
         _publish(destination, site_repo, head)
+    state["canonical_run"] = tid
+    state["updated_at"] = datetime.now(UTC).isoformat(timespec="seconds")
     _save_state(state_path, state)
-    return 0
+    return True
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE)
-    parser.add_argument("--canonical-run", help="initial duplicate-free run used to bootstrap")
-    parser.add_argument("--ref", default="origin/x/jon")
+    parser.add_argument("--canonical-run", help="run id recorded as the starting point; the\n                        rated-implementation ledger is derived from match data regardless")
+    parser.add_argument(
+        "--source",
+        type=Source.parse,
+        action="append",
+        dest="sources",
+        metavar="BRANCH:PREFIX[:EXCLUDES]",
+        help="watched branch and bot subtree; repeatable. Defaults to "
+        + ", ".join(f"{s.branch}:{s.prefix}" for s in DEFAULT_SOURCES),
+    )
     parser.add_argument("--fetch-remote", default="origin")
-    parser.add_argument("--fetch-branch", default="x/jon")
-    parser.add_argument("--prefix", default="bots/jon")
     parser.add_argument("--site-repo", type=Path, default=DEFAULT_SITE)
     parser.add_argument("--no-publish", action="store_true")
     parser.add_argument("--no-fetch", action="store_true")
@@ -346,10 +615,8 @@ def main() -> int:
             return run_once(
                 state_path=args.state.resolve(),
                 canonical_run=args.canonical_run,
-                ref=args.ref,
+                sources=tuple(args.sources) if args.sources else DEFAULT_SOURCES,
                 fetch_remote=args.fetch_remote,
-                fetch_branch=args.fetch_branch,
-                prefix=args.prefix,
                 site_repo=args.site_repo.resolve(),
                 publish=not args.no_publish,
                 fetch=not args.no_fetch,

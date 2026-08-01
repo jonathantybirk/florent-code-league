@@ -118,15 +118,22 @@ def render(ratings: Ratings, rows: list[dict], dropped: int = 0) -> str:
 
     lines.append("")
     lines.append("Ranked by melo_r, the transitive component of mElo: r = div(A), A = logit(P).")
-    if coverage < 0.999:
+    missing = ratings.missing_pairs
+    if missing:
         # An unplayed pair contributes A_ij = 0, which reads as "evenly matched" rather than
         # "unknown". That inflates the apparent cycle structure and can park most of the field in
-        # the Nash support at equal mass. Ratings from a partial tournament are provisional.
+        # the Nash support at equal mass. There is deliberately no coverage threshold below which
+        # this is skipped: a single imputed pair can decide the Nash support, so every gap is
+        # named. Silence here would be a claim that the matrix is complete.
         lines.append(
-            f"  !! PARTIAL DATA: only {played}/{possible} pairs ({100 * coverage:.1f}%) have "
-            f"played. Unplayed pairs enter A as 0 (indistinguishable from a 50/50 record), which "
-            f"inflates intransitivity and the Nash support. Treat this ranking as provisional."
+            f"  !! INCOMPLETE: {played}/{possible} pairs ({100 * coverage:.2f}%) have played. "
+            f"The {len(missing)} unplayed pair(s) below enter A as 0, which is indistinguishable "
+            f"from a measured 50/50 record. This ranking is provisional until they are played."
         )
+        for left, right in missing[:20]:
+            lines.append(f"       unplayed: {left}  vs  {right}")
+        if len(missing) > 20:
+            lines.append(f"       ... and {len(missing) - 20} more (see the run's ratings.csv)")
     lines.append(
         f"  * = in the support of the maxent Nash equilibrium ('core agents', tied at the top "
         f"with nash_average 0): {', '.join(support) if support else 'none'}"
