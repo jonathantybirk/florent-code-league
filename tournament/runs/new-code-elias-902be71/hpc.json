@@ -1,0 +1,42 @@
+{
+  "submissions": [
+    {
+      "job_id": "29003316",
+      "name": "trn_new-code-elias-902be71_1",
+      "elements": 1000,
+      "chunk": 20,
+      "range": "1-1000",
+      "submitted_at": "2026-08-01T22:33:32+0200"
+    },
+    {
+      "job_id": "29003319",
+      "name": "trn_new-code-elias-902be71_2",
+      "elements": 642,
+      "chunk": 20,
+      "range": "1001-1642",
+      "submitted_at": "2026-08-01T22:35:33+0200"
+    },
+    {
+      "job_id": "29003351",
+      "name": "trn_new-code-elias-902be71",
+      "elements": 2,
+      "chunk": 20,
+      "range": "1-2",
+      "submitted_at": "2026-08-01T23:07:08+0200"
+    },
+    {
+      "job_id": "29003352",
+      "name": "trn_new-code-elias-902be71",
+      "elements": 2,
+      "chunk": 20,
+      "range": "1-2",
+      "submitted_at": "2026-08-01T23:07:36+0200"
+    }
+  ],
+  "job_ids": [
+    "29003352"
+  ],
+  "job_id": "29003352",
+  "host": "dtu",
+  "remote": "florent-tournament/new-code-elias-902be71"
+}

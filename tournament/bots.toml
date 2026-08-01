@@ -542,17 +542,6 @@ commit = "6db8844"
 path   = "bots/cand/CONDC"
 tags   = ["elias", "cand"]
 
-# ---------------------------------------------------------------------------------------------
-# x/llm-RL's training opponent. Not a starter variant: its .py (1441e10ea715) is an early
-# version of Luc's bot, carried along for RL self-play. bots/rl stays excluded -- it needs its
-# companion inference server over a unix socket and cannot run as a standalone entrant.
-
-[[bot]]
-name   = "opponent_luc"
-commit = "e83a42c"
-path   = "bots/opponent_luc"
-tags   = ["llm-RL"]
-
 # x/luc @87724ec.
 
 [[bot]]
