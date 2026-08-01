@@ -18,6 +18,8 @@ from constants import (
     SLOT_CONSTRUCTION_LOCK,
     SLOT_CORE_DAMAGED,
     SLOT_ENEMY_CORE,
+    SLOT_LAUNCH_ID,
+    SLOT_LAUNCH_TARGET,
     SLOT_OWN_CORE,
     SLOT_SYMMETRY_REJECT_START,
     WALKABLE_BUILDINGS,
@@ -30,6 +32,10 @@ if TYPE_CHECKING:
 
 HARASS_PRIORITY = {EntityType.SPLITTER: 0, EntityType.CONVEYOR: 1}
 GUNNER_RANGE_SQ = 13
+PATH_FAILURES_BEFORE_LAUNCHER = 3
+LAUNCHER_TITANIUM_RESERVE = 60
+LAUNCH_REQUEST_ROUNDS = 4
+LAUNCHER_RETRY_ROUNDS = 12
 
 
 def run(p: "Player", ct: Controller) -> None:
@@ -67,6 +73,10 @@ def _run(p, ct):
         p.lock_required = False
         p.home_gunners_built = 0
         p.attack_gunners_built = 0
+        p.path_failures = 0
+        p.awaiting_launch = 0
+        p.launch_origin = None
+        p.next_launcher_round = 0
     _sense(p, ct)
     _update_enemy_core_inference(p, ct)
     if p.core is None:
@@ -382,10 +392,23 @@ def _done(p, ct):
                 break
     p.task, p.route, p.route_i, p.phase = None, [], 0, "scout"
     p.lock_required = False
+    p.path_failures = 0
 
 
 def _step(p, ct, target, exact):
     source = ct.get_position()
+    if p.awaiting_launch:
+        if tuple(source) != p.launch_origin:
+            # The Launcher moved us. Resume the original task immediately.
+            p.awaiting_launch = 0
+            p.launch_origin = None
+            p.path_failures = 0
+        else:
+            ct.write_store(SLOT_LAUNCH_ID, ct.get_id())
+            ct.write_store(SLOT_LAUNCH_TARGET, pack_pos(target))
+            p.awaiting_launch -= 1
+            return True
+
     nxt = _bfs_step(p, tuple(source), tuple(target), exact)
     if nxt:
         # Cardinal only: a diagonal is not a legal Builder move in 2.3.3, and
@@ -393,7 +416,70 @@ def _step(p, ct, target, exact):
         for direction in D8:
             if source.add(direction) == Position(*nxt) and ct.can_move(direction):
                 ct.move(direction)
-                return
+                p.path_failures = 0
+                return True
+
+    goals = {tuple(target)} if exact else _adjacent(p, tuple(target))
+    if tuple(source) in goals:
+        p.path_failures = 0
+        return False
+
+    p.path_failures += 1
+    if (p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
+            and _build_escape_launcher(p, ct, target)):
+        return True
+    return _move_while_stuck(p, ct, target)
+
+
+def _build_escape_launcher(p, ct, target):
+    """Build a temporary ferry after repeated failures to find a walkable path."""
+    if ct.get_current_round() < p.next_launcher_round:
+        return False
+    if ct.get_global_resources() < ct.get_launcher_cost() + LAUNCHER_TITANIUM_RESERVE:
+        return False
+
+    here = tuple(ct.get_position())
+    candidates = []
+    for dx, dy in D4_DELTAS:
+        spot = here[0] + dx, here[1] + dy
+        position = Position(*spot)
+        if (_inside(p, spot) and spot not in p.walls and spot not in p.solids
+                and spot not in p.ores and ct.can_build_launcher(position)):
+            candidates.append((position.distance_squared(target), spot, position))
+    if not candidates:
+        return False
+
+    _, spot, position = min(candidates)
+    ct.build_launcher(position)
+    p.solids.add(spot)
+    p.path_failures = 0
+    p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
+    p.launch_origin = here
+    p.next_launcher_round = ct.get_current_round() + LAUNCHER_RETRY_ROUNDS
+    ct.write_store(SLOT_LAUNCH_ID, ct.get_id())
+    ct.write_store(SLOT_LAUNCH_TARGET, pack_pos(target))
+    return True
+
+
+def _move_while_stuck(p, ct, target):
+    """Explore locally while waiting until a useful Launcher is affordable."""
+    source = ct.get_position()
+    candidates = []
+    for direction in FACING.values():
+        position = source.add(direction)
+        if ct.can_move(direction):
+            candidates.append((
+                tuple(position) in p.seen,
+                position.distance_squared(target),
+                position.x,
+                position.y,
+                direction,
+            ))
+    if not candidates:
+        return False
+    *_, direction = min(candidates)
+    ct.move(direction)
+    return True
 
 
 def _bfs_step(p, source, target, exact):
@@ -455,6 +541,11 @@ def _explore(p, ct):
                and (x // stride + y // stride) % 3 == p.builder_index % 3]
     if not choices:
         p.explored.clear()
+        corners = ((0, 0), (p.w - 1, 0), (0, p.h - 1), (p.w - 1, p.h - 1))
+        target = max(corners, key=lambda q: (
+            max(abs(q[0] - me[0]), abs(q[1] - me[1])), q
+        ))
+        _step(p, ct, Position(*target), False)
         return
     target = min(choices, key=lambda q: max(abs(q[0] - me[0]), abs(q[1] - me[1])))
     # A Builder already observes radius^2 20; don't idle walking to the exact
@@ -533,7 +624,9 @@ def _defend_core(p, ct):
     ))
     # Escalate slowly with sustained damage rather than committing a fixed
     # defensive formation before Jonbot knows whether one is needed.
-    core_id = ct.get_tile_building_id(Position(*p.core))
+    core_position = Position(*p.core)
+    core_id = (ct.get_tile_building_id(core_position)
+               if ct.is_in_vision(core_position) else None)
     damage = (ct.get_max_hp(core_id) - ct.get_hp(core_id)) if core_id else 0
     desired = min(4, 1 + damage // 180)
     if p.home_gunners_built < desired:
