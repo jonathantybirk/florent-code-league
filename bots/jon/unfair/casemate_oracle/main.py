@@ -327,7 +327,8 @@ class Player:
                     front = self.sentinel.add(facing)
                     if inside(ct, front):
                         return front
-            return self.enemy_core(ct)
+            staging = self.oracle_siege_staging(ct)
+            return staging if staging is not None else self.enemy_core(ct)
 
         if self.role == "guard" and self.core is not None:
             missing = []
@@ -359,6 +360,39 @@ class Player:
         far_x = ct.get_map_width() - 1 if ct.get_id() % 2 else 0
         far_y = 0 if ct.get_id() % 4 < 2 else ct.get_map_height() - 1
         return Position(far_x, far_y)
+
+    def oracle_siege_staging(self, ct: Controller) -> Position | None:
+        """Choose a build stance, never the sentinel seat itself."""
+        if self.atlas is None:
+            return None
+        enemy = Position(*self.atlas.enemy_core)
+        core_tiles = [enemy, Position(enemy.x + 1, enemy.y),
+                      Position(enemy.x, enemy.y + 1), Position(enemy.x + 1, enemy.y + 1)]
+        enemy_foot = {(p.x, p.y) for p in core_tiles}
+        choices = []
+        for y in range(self.atlas.height):
+            for x in range(self.atlas.width):
+                seat = Position(x, y)
+                if (x, y) in self.atlas.walls or (x, y) in enemy_foot:
+                    continue
+                rays = [target for target in core_tiles
+                        if direction_between(seat, target) is not None
+                        and seat.distance_squared(target) <= 32]
+                if not rays:
+                    continue
+                for d in CARDINALS:
+                    stage = seat.add(d)
+                    key = (stage.x, stage.y)
+                    if (not inside(ct, stage) or key in self.atlas.walls
+                            or key in enemy_foot):
+                        continue
+                    # Prefer outer-range seats, then the staging tile nearest
+                    # this mason. Exact atlas BFS handles walls after selection.
+                    range_sq = max(seat.distance_squared(t) for t in rays)
+                    choices.append((-range_sq,
+                                    stage.distance_squared(ct.get_position()),
+                                    stage.x, stage.y, stage))
+        return min(choices)[-1] if choices else None
 
     def step_toward(self, ct: Controller, target: Position) -> None:
         if ct.get_move_cooldown() != 0:
