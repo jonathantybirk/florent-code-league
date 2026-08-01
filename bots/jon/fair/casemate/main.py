@@ -275,15 +275,24 @@ class Player:
             return self.enemy_core(ct)
 
         if self.role == "guard" and self.core is not None:
-            ring = []
+            missing = []
             for x in range(self.core.x - 1, self.core.x + 3):
                 for y in range(self.core.y - 1, self.core.y + 3):
                     tile = Position(x, y)
                     if (inside(ct, tile)
                             and not (self.core.x <= x <= self.core.x + 1
-                                     and self.core.y <= y <= self.core.y + 1)):
-                        ring.append(tile)
-            return min(ring, key=lambda p: (p.distance_squared(pos), p.x, p.y))
+                                     and self.core.y <= y <= self.core.y + 1)
+                            and (tile.x, tile.y) not in self.known_blocked):
+                        missing.append(tile)
+            if missing:
+                core_tiles = [Position(self.core.x + dx, self.core.y + dy)
+                              for dx in (0, 1) for dy in (0, 1)]
+                # Stand inside the Core and construct outward. Walking onto a
+                # missing wall tile would make that tile unbuildable.
+                return min(core_tiles, key=lambda p: (
+                    min(p.distance_squared(wall) for wall in missing),
+                    p.distance_squared(pos), p.x, p.y))
+            return self.core
 
         if self.routing and self.core is not None:
             return self.core
