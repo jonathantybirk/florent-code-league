@@ -48,6 +48,8 @@ class Player:
         self.known_blocked: set[tuple[int, int]] = set()
         self.visited: set[tuple[int, int]] = set()
         self.sentinel: Position | None = None
+        self.routing = False
+        self.route_pending: Position | None = None
         self.last: Position | None = None
         self.stuck = 0
 
@@ -103,6 +105,8 @@ class Player:
 
         if ct.get_action_cooldown() == 0:
             if self.heal_valuable(ct):
+                pass
+            elif self.role == "miner" and self.extend_route(ct):
                 pass
             elif self.role == "miner" and self.build_harvester(ct):
                 pass
@@ -168,7 +172,24 @@ class Player:
             if inside(ct, tile) and ct.can_build_harvester(tile):
                 ct.build_harvester(tile)
                 self.known_blocked.add((tile.x, tile.y))
+                # Walk home and leave a rear-facing belt on each vacated tile.
+                self.routing = True
+                self.route_pending = pos
                 return True
+        return False
+
+    def extend_route(self, ct: Controller) -> bool:
+        if not self.routing or self.route_pending is None:
+            return False
+        pos = ct.get_position()
+        pending = self.route_pending
+        direction = direction_between(pending, pos)
+        if (direction in CARDINALS and pending.distance_squared(pos) == 1
+                and ct.can_build_conveyor(pending, direction)):
+            ct.build_conveyor(pending, direction)
+            self.known_blocked.discard((pending.x, pending.y))
+            self.known_passable.add((pending.x, pending.y))
+            return True
         return False
 
     def build_casemate(self, ct: Controller) -> bool:
@@ -226,6 +247,9 @@ class Player:
                         return front
             return self.enemy_core(ct)
 
+        if self.routing and self.core is not None:
+            return self.core
+
         ore = unpack(ct.read_store(SLOT_ORE))
         if ore is not None:
             return ore
@@ -239,7 +263,8 @@ class Player:
             return
         start = ct.get_position()
         first = self.bfs_step(ct, start, target)
-        directions = ([first] if first is not None else []) + D8
+        allowed = CARDINALS if self.routing else D8
+        directions = ([first] if first in allowed else []) + allowed
         seen = set()
         ranked = []
         for d in directions:
@@ -251,7 +276,17 @@ class Player:
             ranked.append((0 if d == first else 1, 0 if novelty else 1,
                            nxt.distance_squared(target), d.value, d))
         if ranked:
+            old = start
             ct.move(min(ranked)[-1])
+            if self.routing:
+                # The conveyor built this round occupied the previous pending
+                # tile; the tile just vacated becomes next round's belt piece.
+                self.route_pending = old
+                if self.core is not None:
+                    now = ct.get_position()
+                    if self.core.x <= now.x <= self.core.x + 1 and self.core.y <= now.y <= self.core.y + 1:
+                        # One final turn will place the pending conveyor into Core.
+                        pass
 
     def bfs_step(self, ct: Controller, start: Position, target: Position) -> Direction | None:
         start_key = (start.x, start.y)
