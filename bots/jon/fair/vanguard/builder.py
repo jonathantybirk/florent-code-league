@@ -702,6 +702,15 @@ def _add_gunner(p, ct, without_travel=False):
     # Order seats by how soon this Builder can *reach* them, not by how close
     # they sit to the Core. Tempest does exactly this and wins the tempo race:
     # a Gunner firing five rounds earlier beats a Gunner one tile closer.
+    #
+    # This key is measured from where we stand, so it re-ranks as we move and
+    # the Builder can oscillate: strait replays show the same four seats called
+    # "too far" from round 23 to round 30 while we sat on 98 titanium and a
+    # Gunner cost 22. Three fixes were tried and all three lost, out of 126
+    # games against the strongest live opponents: pinning the seat until it
+    # resolves 74, pinning with a tolerance of 1/3/6 tiles 70/69/73, and
+    # dropping `reach` from the key altogether 59 -- against 78 for leaving the
+    # wobble alone. Walking past a better seat costs more than the wobble does.
     reach = world.distance_field(p, {(ct.get_position().x, ct.get_position().y)})
     seats = set()
     for tile in core_tiles:
