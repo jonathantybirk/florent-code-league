@@ -69,7 +69,10 @@ class Player:
 
         # Sentinels spend in ten-ammo bursts. Preserve a builder purchase while
         # establishing the team, then keep enough for two simultaneous shots.
-        reserve = ct.get_builder_bot_cost() if self.spawned < MAX_BUILDERS else 35
+        # After spawning, retain a real construction bank. Without this, every
+        # passive titanium tick is immediately converted to ammo and the cheap
+        # barrier half of the strategy never exists in practice.
+        reserve = ct.get_builder_bot_cost() if self.spawned < MAX_BUILDERS else 100
         missing = AMMO_TARGET - ct.get_global_ammo()
         amount = min(missing, max(0, ct.get_global_resources() - reserve))
         if amount > 0 and ct.can_convert_ammo(amount):
