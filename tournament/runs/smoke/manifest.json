@@ -1,0 +1,49 @@
+{
+  "tournament_id": "smoke",
+  "map_set": "screen",
+  "maps": [
+    "atoll",
+    "aurora",
+    "duel",
+    "pinch",
+    "quarry",
+    "twins"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 36,
+  "bots": [
+    {
+      "bot_id": "vanguard@9713344",
+      "name": "vanguard",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "undertow@9713344",
+      "name": "undertow",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/fair/undertow",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "turtle@9713344",
+      "name": "turtle",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/turtle",
+      "tags": [
+        "jon",
+        "legacy"
+      ]
+    }
+  ]
+}

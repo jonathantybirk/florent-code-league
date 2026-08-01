@@ -1,0 +1,13 @@
+{
+  "submissions": [
+    {
+      "job_id": "28998582",
+      "name": "trn_smoke",
+      "indices": 36,
+      "submitted_at": "2026-08-01T14:33:02+0200"
+    }
+  ],
+  "job_id": "28998582",
+  "host": "dtu",
+  "remote": "florent-tournament/smoke"
+}
