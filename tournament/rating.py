@@ -53,6 +53,28 @@ class Ratings:
     fit: dict = field(default_factory=dict)
 
     @property
+    def missing_pairs(self) -> list[tuple[str, str]]:
+        """Pairs with no game between them, as (bot_i, bot_j).
+
+        These are the entries where A_ij = 0 was imputed rather than measured. Callers must not
+        have to infer this from a coverage percentage: a rating built on unmeasured pairs is a
+        different object from one built on a complete matrix, and the difference has to be
+        visible to anything that consumes Ratings, not just to whoever reads the printed table.
+        """
+        n = len(self.bots)
+        return [
+            (self.bots[i], self.bots[j])
+            for i in range(n)
+            for j in range(i + 1, n)
+            if self.games[i, j] == 0
+        ]
+
+    @property
+    def complete(self) -> bool:
+        """True when every pair has played. Ratings are only comparable across complete fields."""
+        return not self.missing_pairs
+
+    @property
     def intransitivity(self) -> float:
         """||rot(A)||_F / ||A||_F -- how much of the field is rock-paper-scissors."""
         total = float(np.linalg.norm(self.logit))

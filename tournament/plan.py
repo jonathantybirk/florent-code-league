@@ -267,3 +267,17 @@ def pending(destination: Path, matches: list[Match]) -> list[Match]:
     """Matches with no result file yet -- the basis for resuming a partial tournament."""
     results = destination / "results"
     return [m for m in matches if not (results / f"{m.match_id}.json").exists()]
+
+
+def rating_match_count(run_dir: Path) -> int:
+    """Rating matches in a run's schedule, excluding compliance probes.
+
+    Compliance results are written to compliance_matches.csv, so comparing a merged matches.csv
+    against the whole schedule would make every finished run look short by the probe count.
+    """
+    total = 0
+    with open(run_dir / "schedule.jsonl") as handle:
+        for line in handle:
+            if line.strip() and json.loads(line).get("kind") != "compliance":
+                total += 1
+    return total

@@ -549,3 +549,9 @@ name   = "tempest_reinforcements"
 commit = "87724ec"
 path   = "bots/luc/tempest_reinforcements"
 tags   = ["luc"]
+
+[[bot]]
+name   = "tempest_reinforcements"
+commit = "e1dc316"
+path   = "bots/luc/tempest_reinforcements"
+tags   = ["luc"]

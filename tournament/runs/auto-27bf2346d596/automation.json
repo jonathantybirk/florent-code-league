@@ -1,0 +1,11 @@
+{
+  "challengers": [
+    "tempest_reinforcements@e1dc316"
+  ],
+  "heads": {
+    "elias_dev": "ecd4d249f79737bf99632d3298ee9f5a85d06839",
+    "x/jon": "902be71c12fe64badadf6b77103b3059399b7f8a",
+    "x/luc": "e1dc316348eccb9195b67474ead5225df833f312"
+  },
+  "submitted_at": "2026-08-01T23:09:37+00:00"
+}

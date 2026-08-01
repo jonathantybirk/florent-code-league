@@ -1,5 +1,5 @@
 [Unit]
-Description=Check Jon's branch for new bots every two minutes
+Description=Check the active bot branches (jon, luc, elias) for new bots every two minutes
 
 [Timer]
 OnBootSec=3min
