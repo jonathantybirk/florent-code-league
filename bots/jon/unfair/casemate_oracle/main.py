@@ -28,7 +28,7 @@ MAP_NAMES = (
 # second miner. On longer maps, two belts repay before contact.
 THREE_MASON_MAPS = {"bridge", "duel", "showdown", "sprint", "string", "vase"}
 # Immediate contact makes a three-wall opening too slow on these maps.
-FAST_CONTACT_MAPS = {"bridge", "showdown", "sprint", "string"}
+FAST_CONTACT_MAPS = {"bridge", "duel", "showdown", "sprint", "string", "vase"}
 SENTINEL_SIDES = {
     ("bridge", (0, 6)), ("skerry", (2, 17)), ("sprint", (1, 1)),
     ("strait", (2, 2)), ("string", (0, 6)),
