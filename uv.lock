@@ -134,18 +134,18 @@ nvtx = [
 
 [[package]]
 name = "fcode"
-version = "2.2.0"
+version = "2.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "rich" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/e1/b8d3000f827f7c981bf63f4a8ef9615fa1d4af5f32fa9d72cb64915a44a6/fcode-2.2.0-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:3a03f940aa7aaec87f8809da183c80a5f5fddd7dbe09139159f2283a97c63e03", size = 15725478, upload-time = "2026-07-09T08:01:24.036Z" },
-    { url = "https://files.pythonhosted.org/packages/c0/b3/bcbda119bcf3b192dc0056ba7e864510117b80de371bf8ff93ba19c5e1d8/fcode-2.2.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:bf76b7ba9beb9089c81969628945aafd9897864ba20989e57683f8e1f55c2a8a", size = 15712706, upload-time = "2026-07-09T08:01:26.868Z" },
-    { url = "https://files.pythonhosted.org/packages/9b/a5/9d40ca6249a8a4206cecb2d5e9be7714432f21e6a7534e75c30e223855cb/fcode-2.2.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:df6b77c7bf7ae4ed3316971ccc6fa449e9da71f42d555405734c153d72d2fd53", size = 15790228, upload-time = "2026-07-09T08:01:29.92Z" },
-    { url = "https://files.pythonhosted.org/packages/4a/f8/ca5905ee8f32e1e651b7c4c59076d4e6a5146ead95beb8f4cc9ad956ee1a/fcode-2.2.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:aa5c4d958b0ba66961308120d10b8de8b2dc1a8872a841f92a8002d8214a90a6", size = 15796837, upload-time = "2026-07-09T08:01:33.268Z" },
-    { url = "https://files.pythonhosted.org/packages/12/79/8eccb753b5e9a7247992efa04b85552fd1ef55ce83fcf6e3d059cd408696/fcode-2.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:4d5cf60d639c3d81aaa75f70c81f793a2e95edd6d2a273ed38ff5011b20f654a", size = 15619066, upload-time = "2026-07-09T08:01:36.203Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/4e/2206ef49ef8f969c30d33dadce9756e6820f0ef598ac9d087f900f477301/fcode-2.3.3-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:cf62303337d8afae4394ea2cd60daf59431f09008a16ab24116110b22b2f60e7", size = 20225251, upload-time = "2026-07-31T12:00:05.225Z" },
+    { url = "https://files.pythonhosted.org/packages/38/f9/9ae09e0f1de49d356dc8db555efeb5a8f51c9c7f5c32cba2a072223575ed/fcode-2.3.3-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:ec22e96bad371d9cc1017bb69534b1da739e1efe59683c4f003339df3797fb0f", size = 20210874, upload-time = "2026-07-31T12:00:07.507Z" },
+    { url = "https://files.pythonhosted.org/packages/15/89/5a934f47373a0a4b41e50827d69565a55cfd29862ed4996cd29237cd21f1/fcode-2.3.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c60032aa79335dbf6e54f35dfb6e39a305eb3caefa135234cc86a43f5a52b76e", size = 20283686, upload-time = "2026-07-31T12:00:09.877Z" },
+    { url = "https://files.pythonhosted.org/packages/db/c0/0923c6c48947b89567419ce54aba972ce3ad5e563025c22f5b8cdf2bbd8a/fcode-2.3.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:886e316d6347ed46b9552c5e50bdf4401497bec24eedd328927fd04a8de9ebb8", size = 20290273, upload-time = "2026-07-31T12:00:12.173Z" },
+    { url = "https://files.pythonhosted.org/packages/33/d3/6a30456ad84afde559e571668d51bc229e9bffc8e8c1e3281f5dcca17ea9/fcode-2.3.3-cp313-cp313-win_amd64.whl", hash = "sha256:ba26e10cc0d29e465fbf6e67efc438c1ee798352a3fac4eee8b6c0be4f14c585", size = 20116531, upload-time = "2026-07-31T12:00:14.468Z" },
 ]
 
 [[package]]
@@ -170,7 +170,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fcode", specifier = "==2.2.0" },
+    { name = "fcode", specifier = "==2.3.3" },
     { name = "numpy", specifier = ">=2.5.1" },
     { name = "torch", specifier = ">=2.13.0" },
     { name = "wandb", specifier = ">=0.28.1" },
