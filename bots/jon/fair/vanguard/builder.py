@@ -20,6 +20,7 @@ from constants import (
     LAUNCH_MIN_GAP,
     FORTIFY_ROUND,
     HOME_GUNNERS,
+    ECON_BEFORE_DEFENCE,
     REPAIR_RADIUS,
     CORE_PANIC_PERCENT,
     LONG_LINE_RESERVE,
@@ -187,12 +188,16 @@ def _economy(p, ct):
         p.phase = "idle"
     if _repair(p, ct):
         return
-    if p.phase in ("idle", "explore") and _home_gunner(p, ct):
-        return
-    if p.phase in ("idle", "explore") and _fortify(p, ct):
-        # Bricking the Core ring outranks a second income line: every strong
-        # opponent here wins by placing Gunners against the Core itself.
-        return
+    # Income first, fortification second. Under 2.3.3 titanium *is* ammunition
+    # is damage, so a deposit outranks a Barrier -- and this ordering was
+    # letting Builders lay the ring while the strongest opponent out-mined us
+    # five Harvesters to two.
+    if (ct.read_store(SLOT_ECON_LINES) >= ECON_BEFORE_DEFENCE
+            and p.phase in ("idle", "explore")):
+        if _home_gunner(p, ct):
+            return
+        if _fortify(p, ct):
+            return
     if p.phase == "idle":
         _pick_job(p, ct)
     if p.phase == "line":

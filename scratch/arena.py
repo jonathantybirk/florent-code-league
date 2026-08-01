@@ -11,6 +11,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import hashlib
 from collections import defaultdict
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -47,6 +48,15 @@ def play(a, b, mapname, seed):
             pass
 
 
+def fingerprint(bot):
+    """Hash a bot's sources so we can tell if it changed under us."""
+    root = ROOT / "bots" / bot
+    digest = hashlib.md5()
+    for path in sorted(root.rglob("*.py")):
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("a")
@@ -62,6 +72,9 @@ def main():
     jobs = [(args.a, args.b, m, s, "fwd") for m in maps for s in seeds]
     jobs += [(args.b, args.a, m, s, "rev") for m in maps for s in seeds]
 
+    # Another agent edits some of these bots live, and a run measured against a
+    # bot that changed halfway through is worthless. Fingerprint both ends.
+    before = {b: fingerprint(b) for b in (args.a, args.b)}
     wins = defaultdict(int)
     rows = []
     stats = {"a": defaultdict(list), "b": defaultdict(list)}
@@ -97,6 +110,9 @@ def main():
             print(f"  {row[0]:12s} seed{row[1]} {row[2]:3s} -> {row[3]}  "
                   f"{row[4]} t{row[5]}")
 
+    changed = [b for b, h in before.items() if fingerprint(b) != h]
+    if changed:
+        print(f"!! CONTAMINATED: {', '.join(changed)} changed during this run")
     total = wins["a"] + wins["b"]
     print(f"{args.a} {wins['a']} - {wins['b']} {args.b}   "
           f"({100 * wins['a'] / max(total, 1):.1f}%)  errors={wins['?']}")
