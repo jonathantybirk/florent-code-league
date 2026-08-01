@@ -1,10 +1,16 @@
-.venv/
+# Replays (regenerated with fcode run)
+*.replay26
+
+# Python
 __pycache__/
 *.py[cod]
 .DS_Store
 replay.replay26
 runs/
 checkpoints/
-*.replay26
 wandb/
 bots/rl_deploy/
+
+# Virtual environments
+.venv/
+venv/
