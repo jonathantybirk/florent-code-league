@@ -13,3 +13,7 @@ __pycache__/
 # Virtual environments
 .venv/
 venv/
+
+# spent agent variants -- never commit these
+bots/cand/
+bots/e9cand/
