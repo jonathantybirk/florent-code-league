@@ -14,13 +14,15 @@ from constants import (
     D8,
     ECONOMY_BUILDERS,
     FACING,
+    LAUNCHER_BUILDER_INDEX,
+    LAUNCH_DIRECTION_BITS,
+    LAUNCH_DIRECTION_MASK,
+    LAUNCH_REQUEST_SLOTS,
     SLOT_BUILDER_HEARTBEAT,
     SLOT_BUILDER_TICKET,
     SLOT_CONSTRUCTION_LOCK,
     SLOT_CORE_DAMAGED,
     SLOT_ENEMY_CORE,
-    SLOT_LAUNCH_ID,
-    SLOT_LAUNCH_TARGET,
     SLOT_OWN_CORE,
     SLOT_SYMMETRY_REJECT_START,
     WALKABLE_BUILDINGS,
@@ -33,10 +35,10 @@ if TYPE_CHECKING:
 
 HARASS_PRIORITY = {EntityType.SPLITTER: 0, EntityType.CONVEYOR: 1}
 GUNNER_RANGE_SQ = 13
-PATH_FAILURES_BEFORE_LAUNCHER = 3
-LAUNCHER_TITANIUM_RESERVE = 60
+PATH_FAILURES_BEFORE_LAUNCHER = 1
 LAUNCH_REQUEST_ROUNDS = 4
-LAUNCHER_RETRY_ROUNDS = 12
+BLOCKER_GUNNER_RETRY_ROUNDS = 4
+RELAY_STOP_DISTANCE = 7
 
 
 def run(p: "Player", ct: Controller) -> None:
@@ -61,6 +63,7 @@ def _run(p, ct):
         p.seen, p.terrain = set(), {}
         p.walls, p.ores, p.solids, p.conveyors = set(), set(), set(), {}
         p.bot_occupied, p.enemy_conveyors = set(), {}
+        p.enemy_launchers, p.enemy_launcher_danger = set(), set()
         p.enemy_economy = {}
         p.core, p.foot = None, set()
         p.task, p.route, p.route_i, p.phase = None, [], 0, "scout"
@@ -70,16 +73,16 @@ def _run(p, ct):
         p.network_tiles = set()
         p.network_load = 0
         p.economy_lines_completed = 0
-        p.is_attacker = p.builder_index >= ECONOMY_BUILDERS
+        p.is_launcher_builder = p.builder_index == LAUNCHER_BUILDER_INDEX
+        p.is_attacker = (p.builder_index >= ECONOMY_BUILDERS
+                         and not p.is_launcher_builder)
         p.lock_required = False
         p.home_gunners_built = 0
         p.attack_gunners_built = 0
         p.path_failures = 0
         p.awaiting_launch = 0
         p.launch_origin = None
-        p.next_launcher_round = 0
-        p.opening_hop_done = False
-        p.opening_hop_pending = False
+        p.next_blocker_gunner_round = 0
         own_core = unpack_pos(ct.read_store(SLOT_OWN_CORE))
         p.atlas = (identify_visible(ct, own_core) if own_core is not None
                    else None)
@@ -98,8 +101,10 @@ def _run(p, ct):
         _update_enemy_core_inference(p, ct)
     if p.core is None:
         return
-    if not p.is_attacker and ct.read_store(SLOT_CORE_DAMAGED):
+    if p.builder_index == 0 and ct.read_store(SLOT_CORE_DAMAGED):
         _defend_core(p, ct)
+        return
+    if p.is_launcher_builder and not _run_launcher_wall(p, ct):
         return
     if p.is_attacker:
         p.phase = "rush"
@@ -135,6 +140,7 @@ def _sense(p, ct):
         p.terrain[key] = env
         if env == Environment.WALL:
             p.walls.add(key)
+            p.enemy_launchers.discard(key)
             continue
         if env == Environment.ORE_TITANIUM:
             p.ores.add(key)
@@ -149,9 +155,14 @@ def _sense(p, ct):
             p.conveyors.pop(key, None)
             p.enemy_conveyors.pop(key, None)
             p.enemy_economy.pop(key, None)
+            p.enemy_launchers.discard(key)
             continue
         kind = ct.get_entity_type(bid)
         enemy = ct.get_team(bid) != ct.get_team()
+        if enemy and kind == EntityType.LAUNCHER:
+            p.enemy_launchers.add(key)
+        else:
+            p.enemy_launchers.discard(key)
         if kind == EntityType.CORE and enemy:
             ct.write_store(SLOT_ENEMY_CORE, pack_pos(ct.get_position(bid)))
         if enemy and kind in HARASS_PRIORITY:
@@ -174,6 +185,12 @@ def _sense(p, ct):
     if p.core and not p.foot:
         x, y = p.core
         p.foot = {(x + dx, y + dy) for dx in (0, 1) for dy in (0, 1)}
+    p.enemy_launcher_danger = {
+        (launcher[0] + dx, launcher[1] + dy)
+        for launcher in p.enemy_launchers
+        for dx, dy in (direction.delta() for direction in D8)
+        if _inside(p, (launcher[0] + dx, launcher[1] + dy))
+    }
 
 
 def _pick(p, ct):
@@ -221,6 +238,7 @@ def _route(p, ore):
     """Shortest cardinal line to Core or this Builder's unsaturated network."""
     joinable = p.network_tiles if p.network_load < 4 else set()
     blocked = (p.walls | p.foot | (p.ores - {ore}) | p.solids
+               | _launcher_hazards(p)
                | (set(p.conveyors) - joinable))
     prev, queue, goal = {ore: None}, deque([ore]), None
     while queue and goal is None:
@@ -412,7 +430,7 @@ def _done(p, ct):
     p.path_failures = 0
 
 
-def _step(p, ct, target, exact):
+def _step(p, ct, target, exact, allow_launcher=True):
     source = ct.get_position()
     if p.awaiting_launch:
         if tuple(source) != p.launch_origin:
@@ -421,10 +439,14 @@ def _step(p, ct, target, exact):
             p.launch_origin = None
             p.path_failures = 0
         else:
-            ct.write_store(SLOT_LAUNCH_ID, ct.get_id())
-            ct.write_store(SLOT_LAUNCH_TARGET, pack_pos(target))
-            p.awaiting_launch -= 1
-            return True
+            adjacent = _adjacent_visible_launcher(ct, target)
+            if adjacent is not None:
+                _announce_launch(p, ct, target, adjacent[1])
+                p.awaiting_launch -= 1
+                return True
+            # The requested Launcher disappeared before servicing us.
+            p.awaiting_launch = 0
+            p.launch_origin = None
 
     nxt = _bfs_step(p, tuple(source), tuple(target), exact)
     if nxt:
@@ -442,17 +464,28 @@ def _step(p, ct, target, exact):
         return False
 
     p.path_failures += 1
-    if (p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
+    if (allow_launcher
+            and p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
             and _build_escape_launcher(p, ct, target)):
+        return True
+    if _build_blocker_gunner(p, ct, target):
         return True
     return _move_while_stuck(p, ct, target)
 
 
 def _build_escape_launcher(p, ct, target):
     """Build a temporary ferry after repeated failures to find a walkable path."""
-    if ct.get_current_round() < p.next_launcher_round:
-        return False
-    if ct.get_global_resources() < ct.get_launcher_cost() + LAUNCHER_TITANIUM_RESERVE:
+    launchers = _visible_friendly_launchers(ct)
+    if launchers:
+        adjacent = _adjacent_visible_launcher(ct, target, launchers)
+        if adjacent is None:
+            return False
+        p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
+        p.launch_origin = tuple(ct.get_position())
+        _announce_launch(p, ct, target, adjacent[1])
+        return True
+
+    if ct.get_global_resources() < ct.get_launcher_cost():
         return False
 
     here = tuple(ct.get_position())
@@ -461,6 +494,7 @@ def _build_escape_launcher(p, ct, target):
         spot = here[0] + dx, here[1] + dy
         position = Position(*spot)
         if (_inside(p, spot) and spot not in p.walls and spot not in p.solids
+                and spot not in _launcher_hazards(p)
                 and spot not in p.ores and ct.can_build_launcher(position)):
             candidates.append((position.distance_squared(target), spot, position))
     if not candidates:
@@ -472,10 +506,110 @@ def _build_escape_launcher(p, ct, target):
     p.path_failures = 0
     p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
     p.launch_origin = here
-    p.next_launcher_round = ct.get_current_round() + LAUNCHER_RETRY_ROUNDS
-    ct.write_store(SLOT_LAUNCH_ID, ct.get_id())
-    ct.write_store(SLOT_LAUNCH_TARGET, pack_pos(target))
+    _announce_launch(p, ct, target, position)
     return True
+
+
+def _build_blocker_gunner(p, ct, target):
+    """Build an immediately aligned Gunner against a visible path blocker."""
+    if ct.get_current_round() < p.next_blocker_gunner_round:
+        return False
+
+    here = ct.get_position()
+    enemies = [entity_id for entity_id in ct.get_nearby_entities()
+               if ct.get_team(entity_id) != ct.get_team()]
+    if not enemies:
+        return False
+
+    source, destination = tuple(here), tuple(target)
+    target_dx = destination[0] - source[0]
+    target_dy = destination[1] - source[1]
+    unit_priority = {
+        EntityType.BUILDER_BOT: 0,
+        EntityType.LAUNCHER: 1,
+        EntityType.GUNNER: 2,
+        EntityType.SENTINEL: 3,
+    }
+    candidates = []
+    for dx, dy in D4_DELTAS:
+        spot = source[0] + dx, source[1] + dy
+        position = Position(*spot)
+        if (not _inside(p, spot) or spot in p.foot or spot in p.walls
+                or spot in p.ores or spot in p.solids):
+            continue
+        for enemy_id in enemies:
+            enemy = ct.get_position(enemy_id)
+            facing = _ray_direction(spot, tuple(enemy))
+            if (facing is None
+                    or position.distance_squared(enemy) > GUNNER_RANGE_SQ
+                    or not ct.can_build_gunner(position, facing)):
+                continue
+            enemy_dx = enemy.x - source[0]
+            enemy_dy = enemy.y - source[1]
+            ahead = enemy_dx * target_dx + enemy_dy * target_dy > 0
+            deviation = abs(enemy_dx * target_dy - enemy_dy * target_dx)
+            candidates.append((
+                not ahead,
+                deviation,
+                unit_priority.get(ct.get_entity_type(enemy_id), 4),
+                here.distance_squared(enemy),
+                position.distance_squared(target),
+                position.x,
+                position.y,
+                position,
+                facing,
+            ))
+    if not candidates:
+        return False
+
+    *_, position, facing = min(candidates)
+    ct.build_gunner(position, facing)
+    p.solids.add(tuple(position))
+    p.next_blocker_gunner_round = (
+        ct.get_current_round() + BLOCKER_GUNNER_RETRY_ROUNDS
+    )
+    return True
+
+
+def _visible_friendly_launchers(ct):
+    """Return visible friendly Launcher ids and positions."""
+    result = []
+    for entity_id in ct.get_nearby_buildings():
+        if (ct.get_team(entity_id) == ct.get_team()
+                and ct.get_entity_type(entity_id) == EntityType.LAUNCHER):
+            result.append((entity_id, ct.get_position(entity_id)))
+    return result
+
+
+def _adjacent_visible_launcher(ct, target, launchers=None):
+    """Pick the adjacent Launcher furthest forward toward target."""
+    here = ct.get_position()
+    if launchers is None:
+        launchers = _visible_friendly_launchers(ct)
+    adjacent = [launcher for launcher in launchers
+                if here.distance_squared(launcher[1]) <= 2]
+    if not adjacent:
+        return None
+    return min(adjacent, key=lambda launcher: (
+        launcher[1].distance_squared(target), launcher[1].x, launcher[1].y,
+    ))
+
+
+def _announce_launch(p, ct, target, launcher_position):
+    """Publish this passenger and the launcher's requested compass direction."""
+    dx = _sign(target.x - launcher_position.x)
+    dy = _sign(target.y - launcher_position.y)
+    direction_index = next(
+        index for index, direction in enumerate(D8, start=1)
+        if direction.delta() == (dx, dy)
+    )
+    slot = LAUNCH_REQUEST_SLOTS[p.builder_index % len(LAUNCH_REQUEST_SLOTS)]
+    request = (ct.get_id() << LAUNCH_DIRECTION_BITS) | direction_index
+    ct.write_store(slot, request)
+
+
+def _sign(value):
+    return (value > 0) - (value < 0)
 
 
 def _move_while_stuck(p, ct, target):
@@ -484,7 +618,8 @@ def _move_while_stuck(p, ct, target):
     candidates = []
     for direction in FACING.values():
         position = source.add(direction)
-        if ct.can_move(direction):
+        if (tuple(position) not in _launcher_hazards(p)
+                and ct.can_move(direction)):
             candidates.append((
                 tuple(position) in p.seen,
                 position.distance_squared(target),
@@ -503,7 +638,8 @@ def _bfs_step(p, source, target, exact):
     goals = {target} if exact else _adjacent(p, target)
     if source in goals:
         return None
-    blocked = p.walls | p.foot | p.solids | (p.bot_occupied - {source})
+    blocked = (p.walls | p.foot | p.solids | (p.bot_occupied - {source})
+               | (_launcher_hazards(p) - {source}))
     prev, queue = {source: None}, deque([source])
     found = None
     while queue:
@@ -527,7 +663,8 @@ def _bfs_step(p, source, target, exact):
 def _distance(p, source, goals):
     if source in goals:
         return 0
-    blocked = p.walls | p.foot | p.solids | (p.bot_occupied - {source})
+    blocked = (p.walls | p.foot | p.solids | (p.bot_occupied - {source})
+               | (_launcher_hazards(p) - {source}))
     dist, queue = {source: 0}, deque([source])
     while queue:
         cur = queue.popleft()
@@ -555,6 +692,7 @@ def _explore(p, ct):
     choices = [(x, y) for y in range(1, p.h, stride) for x in range(1, p.w, stride)
                if (x, y) not in p.explored and (x, y) not in p.walls
                and (x, y) not in p.solids
+               and (x, y) not in _launcher_hazards(p)
                and (x // stride + y // stride) % 3 == p.builder_index % 3]
     if not choices:
         p.explored.clear()
@@ -618,6 +756,66 @@ def _heal_core(p, ct):
     _step(p, ct, Position(*p.core), False)
 
 
+def _run_launcher_wall(p, ct):
+    """Build the Launcher screen, returning true when economy work can resume."""
+    packed = ct.read_store(SLOT_ENEMY_CORE)
+    if packed == 0:
+        _explore(p, ct)
+        return False
+    enemy_core = unpack_pos(packed)
+    if not hasattr(p, "launcher_wall_targets"):
+        p.launcher_wall_targets = _launcher_wall_targets(p, enemy_core)
+        p.launcher_wall_done = set()
+
+    for target in p.launcher_wall_targets:
+        key = tuple(target)
+        if key in p.launcher_wall_done:
+            continue
+        if ct.is_in_vision(target):
+            building_id = ct.get_tile_building_id(target)
+            if building_id is not None:
+                p.launcher_wall_done.add(key)
+                continue
+        here = ct.get_position()
+        if _cardinal_distance(tuple(here), key) != 1:
+            _move_cardinal_adjacent(p, ct, key)
+            return False
+        if (ct.get_global_resources() >= ct.get_launcher_cost()
+                and ct.can_build_launcher(target)):
+            ct.build_launcher(target)
+            p.solids.add(key)
+            p.launcher_wall_done.add(key)
+        return False
+    return True
+
+
+def _launcher_wall_targets(p, enemy_core):
+    """Return center-first sites with two intervening tiles per Launcher."""
+    core_x, core_y = p.core
+    delta_x = enemy_core[0] - core_x
+    delta_y = enemy_core[1] - core_y
+    targets = []
+    if abs(delta_x) >= abs(delta_y):
+        line_x = core_x + (4 if delta_x >= 0 else -3)
+        line_x = min(max(line_x, 0), p.w - 1)
+        coordinates = list(range(1, p.h, 3))
+        center = core_y + 1
+        sites = [(line_x, coordinate) for coordinate in coordinates]
+        sites.sort(key=lambda site: (abs(site[1] - center), site[1]))
+    else:
+        line_y = core_y + (4 if delta_y >= 0 else -3)
+        line_y = min(max(line_y, 0), p.h - 1)
+        coordinates = list(range(1, p.w, 3))
+        center = core_x + 1
+        sites = [(coordinate, line_y) for coordinate in coordinates]
+        sites.sort(key=lambda site: (abs(site[0] - center), site[0]))
+
+    for site in sites:
+        if site not in p.walls and site not in p.ores and site not in p.foot:
+            targets.append(Position(*site))
+    return targets
+
+
 def _defend_core(p, ct):
     """Answer a visible Core attack with an ordinary counter-firing Gunner.
 
@@ -661,7 +859,7 @@ def _defend_core(p, ct):
                     candidates.append((
                         combat_priority.get(ct.get_entity_type(enemy_id), 4),
                         position.distance_squared(target),
-                        position.x, position.y, position, facing,
+                        position.x, position.y, D8.index(facing), position, facing,
                     ))
         if candidates:
             *_, position, facing = min(candidates)
@@ -686,35 +884,44 @@ def _rush(p, ct):
 
 
 def _opening_ferry(p, ct, enemy_core):
-    """Give the lead attacker one proactive atlas-directed hop."""
-    if (p.atlas is None or p.builder_index != ECONOMY_BUILDERS
-            or p.opening_hop_done):
+    """Relay every attacker toward a sufficiently distant enemy Core."""
+    if p.atlas is None:
         return False
 
     here = tuple(ct.get_position())
-    if p.opening_hop_pending:
-        if here != p.launch_origin:
-            p.awaiting_launch = 0
-            p.launch_origin = None
-            p.path_failures = 0
-            p.opening_hop_done = True
-            p.opening_hop_pending = False
-            return False
-        ct.write_store(SLOT_LAUNCH_ID, ct.get_id())
-        ct.write_store(SLOT_LAUNCH_TARGET, pack_pos(enemy_core))
-        p.awaiting_launch -= 1
-        if p.awaiting_launch <= 0:
-            p.opening_hop_done = True
-            p.opening_hop_pending = False
+    if (_chebyshev(p.core, enemy_core) <= RELAY_STOP_DISTANCE
+            or _chebyshev(here, enemy_core) <= RELAY_STOP_DISTANCE):
+        p.awaiting_launch = 0
+        p.launch_origin = None
+        return False
+
+    target = Position(*enemy_core)
+    launchers = _visible_friendly_launchers(ct)
+    adjacent = _adjacent_visible_launcher(ct, target, launchers)
+    if adjacent is not None:
+        p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
+        p.launch_origin = here
+        _announce_launch(p, ct, target, adjacent[1])
         return True
 
-    if max(abs(here[0] - enemy_core[0]), abs(here[1] - enemy_core[1])) < 9:
-        p.opening_hop_done = True
-        return False
-    if _build_escape_launcher(p, ct, Position(*enemy_core)):
-        p.opening_hop_pending = True
+    if launchers:
+        # Reuse a forward Launcher. If only the previous relay remains behind
+        # us, keep walking toward the Core until it leaves vision; never build
+        # a duplicate while any friendly Launcher is visible.
+        current_distance = Position(*here).distance_squared(target)
+        forward = [launcher for launcher in launchers
+                   if launcher[1].distance_squared(target) < current_distance]
+        destination = (min(forward, key=lambda launcher: (
+            launcher[1].distance_squared(target), launcher[1].x, launcher[1].y,
+        ))[1] if forward else target)
+        _step(p, ct, destination, False, allow_launcher=False)
         return True
-    return False
+
+    return _build_escape_launcher(p, ct, target)
+
+
+def _chebyshev(a, b):
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
 
 
 def _build_basic_gunner(p, ct, enemy_core):
@@ -733,14 +940,15 @@ def _build_basic_gunner(p, ct, enemy_core):
                 facing = _ray_direction(spot, core_tile)
                 if facing is None or _distance_sq(spot, core_tile) > GUNNER_RANGE_SQ:
                     continue
-                goals = _cardinal_adjacent(p, spot) - p.walls - p.solids
+                goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
+                         - _launcher_hazards(p))
                 distance = _distance(p, me, goals)
                 if distance is not None:
-                    choices.append((distance, spot, facing))
+                    choices.append((distance, spot, D8.index(facing), facing))
     if not choices:
         _explore(p, ct)
         return True
-    _, spot, facing = min(choices)
+    _, spot, _, facing = min(choices)
     position = Position(*spot)
     if not ct.is_in_vision(position):
         _step(p, ct, position, False)
@@ -864,7 +1072,8 @@ def _cardinal_distance(a, b):
 
 def _move_cardinal_adjacent(p, ct, target):
     me = tuple(ct.get_position())
-    goals = _cardinal_adjacent(p, target) - p.walls - p.solids - p.bot_occupied
+    goals = (_cardinal_adjacent(p, target) - p.walls - p.solids
+             - p.bot_occupied - _launcher_hazards(p))
     reachable = [(distance, goal) for goal in goals
                  if (distance := _distance(p, me, {goal})) is not None]
     if reachable:
@@ -874,3 +1083,8 @@ def _move_cardinal_adjacent(p, ct, target):
 
 def _inside(p, tile):
     return 0 <= tile[0] < p.w and 0 <= tile[1] < p.h
+
+
+def _launcher_hazards(p):
+    """Tiles where an enemy Launcher could pick this Builder up."""
+    return getattr(p, "enemy_launcher_danger", set())
