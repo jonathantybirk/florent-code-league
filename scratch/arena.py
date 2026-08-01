@@ -23,11 +23,11 @@ RESULT_RE = re.compile(r"Winner:\s+(\S+)\s+\((.*?), turn (\d+)\)")
 KINDS = ("builder", "harvester", "conveyor", "gunner", "launcher")
 
 
-def play(a, b, mapname, seed):
+def play(a, b, mapname, seed, tle):
     handle, replay = tempfile.mkstemp(suffix=".replay26")
     os.close(handle)
     cmd = ["uv", "run", "fcode", "run", a, b, f"maps/{mapname}.map26",
-           "--replay", replay, "--seed", str(seed)]
+           "--replay", replay, "--seed", str(seed), "--tle", str(tle)]
     try:
         out = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                              timeout=300).stdout.replace("\n", " ")
@@ -64,13 +64,17 @@ def main():
     ap.add_argument("--maps", default=None)
     ap.add_argument("--seeds", default="1")
     ap.add_argument("--jobs", type=int, default=8)
+    ap.add_argument("--tle", type=int, default=10,
+                    help="per-turn limit in ms (server default: 10)")
     ap.add_argument("-v", action="store_true")
     args = ap.parse_args()
 
     maps = args.maps.split(",") if args.maps else MAPS
     seeds = [int(s) for s in args.seeds.split(",")]
-    jobs = [(args.a, args.b, m, s, "fwd") for m in maps for s in seeds]
-    jobs += [(args.b, args.a, m, s, "rev") for m in maps for s in seeds]
+    jobs = [(args.a, args.b, m, s, args.tle, "fwd")
+            for m in maps for s in seeds]
+    jobs += [(args.b, args.a, m, s, args.tle, "rev")
+             for m in maps for s in seeds]
 
     # Another agent edits some of these bots live, and a run measured against a
     # bot that changed halfway through is worthless. Fingerprint both ends.
@@ -79,19 +83,19 @@ def main():
     rows = []
     stats = {"a": defaultdict(list), "b": defaultdict(list)}
     with cf.ThreadPoolExecutor(args.jobs) as ex:
-        futures = {ex.submit(play, *j[:4]): j for j in jobs}
+        futures = {ex.submit(play, *j[:5]): j for j in jobs}
         for future in cf.as_completed(futures):
             job = futures[future]
             result = future.result()
             if result is None or result["side"] == "?":
                 wins["?"] += 1
                 continue
-            forward = job[4] == "fwd"
+            forward = job[5] == "fwd"
             # Engine team 0 is always the bot passed first on the command line.
             mine, theirs = (0, 1) if forward else (1, 0)
             key = "a" if (result["side"] == "A") == forward else "b"
             wins[key] += 1
-            rows.append((job[2], job[3], job[4], key, result["reason"],
+            rows.append((job[2], job[3], job[5], key, result["reason"],
                          result["turn"]))
             summary = result["summary"]
             if summary is None:

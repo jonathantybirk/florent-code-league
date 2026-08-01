@@ -22,13 +22,13 @@ ALL_MAPS = sorted(p.name[:-6] for p in (ROOT / "maps").glob("*.map26"))
 RESULT = re.compile(r"Winner:\s+(\S+)\s+\((.*?), turn (\d+)\)")
 
 
-def play(a, b, mapname):
+def play(a, b, mapname, tle):
     handle, replay = tempfile.mkstemp(suffix=".replay26")
     os.close(handle)
     try:
         out = subprocess.run(
             ["uv", "run", "fcode", "run", a, b, f"maps/{mapname}.map26",
-             "--replay", replay, "--seed", "1"],
+             "--replay", replay, "--seed", "1", "--tle", str(tle)],
             cwd=ROOT, capture_output=True, text=True, timeout=600,
         ).stdout.replace("\n", " ")
         found = RESULT.search(out)
@@ -52,6 +52,8 @@ def main():
     ap.add_argument("--vs", default=None)
     ap.add_argument("--maps", default=None)
     ap.add_argument("--jobs", type=int, default=8)
+    ap.add_argument("--tle", type=int, default=10,
+                    help="per-turn limit in ms (server default: 10)")
     args = ap.parse_args()
 
     bots = args.bots.split(",")
@@ -60,19 +62,21 @@ def main():
     pairs = ([(x, y) for x in bots for y in rivals] if args.vs
              else list(itertools.combinations(bots, 2)))
 
-    jobs = [(x, y, m) for x, y in pairs for m in maps]
-    jobs += [(y, x, m) for x, y in pairs for m in maps]
+    jobs = [(x, y, m, args.tle) for x, y in pairs for m in maps]
+    jobs += [(y, x, m, args.tle) for x, y in pairs for m in maps]
     print(f"{len(bots)} bots x {len(rivals)} rivals x {len(maps)} maps "
           f"= {len(jobs)} games", file=sys.stderr, flush=True)
 
     score = defaultdict(int)          # (bot, rival) -> wins
     played = defaultdict(int)
+    invalid = 0
     with cf.ThreadPoolExecutor(args.jobs) as ex:
         futures = {ex.submit(play, *j): j for j in jobs}
         for done, future in enumerate(cf.as_completed(futures), 1):
-            first, second, _ = futures[future]
+            first, second, *_ = futures[future]
             side = future.result()
             if side is None:
+                invalid += 1
                 continue
             win, lose = (first, second) if side == "A" else (second, first)
             score[(win, lose)] += 1
@@ -101,6 +105,7 @@ def main():
     for rate, bot, wins, losses, cells in sorted(rows, reverse=True):
         print(f"{label[bot]:>{width}s}  " + " ".join(cells)
               + f"   | {wins:4d}-{losses:<4d} {100 * rate:5.1f}%")
+    print(f"TLE={args.tle}ms unresolved/errors={invalid}", file=sys.stderr)
 
 
 main()
