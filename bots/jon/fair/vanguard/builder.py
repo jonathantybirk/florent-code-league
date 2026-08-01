@@ -687,6 +687,10 @@ def _add_gunner(p, ct, without_travel=False):
     # beside a producer, because ammunition was a physical stack somebody had
     # to hand it; 2.3.3 feeds every turret from one team-wide pool, so the only
     # question left is whether the tile can see the Core.
+    # Order seats by how soon this Builder can *reach* them, not by how close
+    # they sit to the Core. Tempest does exactly this and wins the tempo race:
+    # a Gunner firing five rounds earlier beats a Gunner one tile closer.
+    reach = world.distance_field(p, {(ct.get_position().x, ct.get_position().y)})
     seats = set()
     for tile in core_tiles:
         for dx in range(-3, 4):
@@ -723,12 +727,13 @@ def _add_gunner(p, ct, without_travel=False):
             else:
                 facing, obstacles = aim
             # Prefer a clear line, but take a blocked one over no siege at all.
-            candidates.append((obstacles, _flank_bias(p, spot),
+            candidates.append((obstacles, reach.get(spot, 999),
+                               _flank_bias(p, spot),
                                world.dist_sq(spot, p.enemy_core), spot, facing))
     if not candidates:
         return False
     candidates.sort()
-    for _, _, _, spot, facing in candidates[:4]:
+    for _, _, _, _, spot, facing in candidates[:4]:
         target = Position(*spot)
         if not ct.is_in_vision(target):
             if without_travel:
