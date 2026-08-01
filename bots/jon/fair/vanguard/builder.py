@@ -38,6 +38,8 @@ from constants import (
 from utils import pack_pos
 
 DEBUG = bool(os.environ.get("VANGUARD_DEBUG"))
+# Zero-cost unless asked for: the engine allows 10ms per unit-turn.
+CPU_WATCH = bool(os.environ.get("VANGUARD_CPU"))
 
 # A single trunk saturates at four Harvesters, but deposits far enough apart
 # get their own line into the Core, and once the barrier ring and the repair
@@ -57,6 +59,13 @@ def log(ct, *args):
 def run(p: "object", ct: Controller) -> None:
     try:
         _run(p, ct)
+        if CPU_WATCH:
+            used = ct.get_cpu_time_elapsed()
+            if used > 6000:
+                print(f"CPU r{ct.get_current_round()} t{getattr(p,'ticket','?')}"
+                      f" {used}us phase={getattr(p,'phase','?')}"
+                      f" atk={getattr(p,'attacker','?')}",
+                      file=sys.stderr, flush=True)
     except GameError as error:
         log(ct, "GameError", error)
     except Exception as error:  # noqa: BLE001 - an escape would kill the unit
