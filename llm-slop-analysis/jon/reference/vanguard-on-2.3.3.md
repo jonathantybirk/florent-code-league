@@ -91,10 +91,52 @@ Both are instances of the same discipline: **the head-to-head against your own
 last build is not sufficient evidence, and neither is a correct-sounding
 argument.** Only the panel decides.
 
+## A second structural improvement: income before fortification
+
+`_economy` ran `_home_gunner` and `_fortify` *before* `_pick_job`, so once the
+first Harvester was down every idle Builder went to lay the Barrier ring rather
+than expand. That ordering was correct under 2.2.0, where the ring was the whole
+defence and ammunition came from a belt. Under 2.3.3 titanium **is** ammunition
+**is** damage, so a deposit outranks a Barrier.
+
+A trace found the bot broke at round 75 -- 63 titanium in hand at 265% cost
+scale -- while the strongest opponent out-mined it five Harvesters to two.
+Gating defence on three completed income lines:
+
+| | before | after |
+|---|---|---|
+| Harvesters built | 1.1 | **3.6** |
+| Conveyors | 5.5 | **17.5** |
+| Gunners | 1.5 | **6.2** |
+
+Swept: 1 and 3 both score 63/84 on the discriminating pair, 2 and 4 score 60,
+6 scores 57. Three wins on the sensitive opponent, so three it is.
+
+## Measuring against a moving target
+
+`undertow` and `jonbot` belong to another agent who edits them live. A run
+against `undertow` was fingerprinted before and after and **the hash changed
+mid-run**, which explains a 39-3 and a 15-27 recorded for the same setting
+minutes apart. `scratch/arena.py` now hashes both bots' sources at the start
+and end of every run and prints `!! CONTAMINATED` when either moved, and
+`scratch/panel.sh` decides changes using only opponents nobody else edits.
+
+The cost of not having done this earlier: several numbers reported during the
+conversion were measured against a target that was being rewritten underneath.
+
 ## Where the headroom is not
 
 Swept and found flat: `MAX_BUILDERS` (4/6/8), `HOME_LINE_MAX` (7/14/24, literally
-identical results), `FORTIFY_ROUND` (5/60/200). `ECONOMY_BUILDERS` is the one
+identical results), `FORTIFY_ROUND` (5/60/200), `RICH_BUILDERS` (4/6/8),
+`HOME_GUNNERS` (0/2/4, all 62/62/61 on the discriminating pair). Capping the
+number of attackers scored *exactly* level at 2 and at 4, because the bank is
+rarely deep enough to spawn a fifth Builder at all -- equal result plus extra
+code, so it was reverted.
+
+**Sentinels, retested on 2.3.3 and rejected again: 9-33.** The global pool
+removes their logistics penalty entirely, which was the obvious reason to
+revisit them, and they still lose badly -- 1.8 damage per titanium against a
+Gunner's 5 decides it whatever the supply rules are. `ECONOMY_BUILDERS` is the one
 that matters and 3 is right -- **more attackers is worse**. Under a global pool
 titanium is ammunition is damage, so economy is more central than it was, not
 less.
