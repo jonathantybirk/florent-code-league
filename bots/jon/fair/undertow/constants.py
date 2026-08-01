@@ -25,7 +25,7 @@ LAUNCH_RANGE_SQ = 26
 # alarm converts them into repair crew. Economy Builders build pickets on
 # demand when they observe an enemy near home.
 ECONOMY_BUILDERS = 3
-OPENING_HOME_BUILDERS = 4
+OPENING_HOME_BUILDERS = 3
 
 SLOT_BUILDER_TICKET = 0
 CLAIM_SLOTS = range(1, 6)        # home ore claims
@@ -50,8 +50,8 @@ SIEGE_ORE_FAR = 10
 
 # Launcher hops per attacker, and the range at which walking is faster than
 # paying 20 Ti to be thrown.
-LAUNCH_HOPS = 2
-LAUNCH_MIN_GAP = 8
+LAUNCH_HOPS = 0
+LAUNCH_MIN_GAP = 3
 
 # The Core spawns Builders onto its own ring, so it must finish the opening
 # before we brick that ring up.

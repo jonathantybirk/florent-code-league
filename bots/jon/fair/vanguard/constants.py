@@ -89,3 +89,6 @@ AMMO_FLOOR = 60
 
 # Harvesters to secure before any Builder spends a round on the ring.
 ECON_BEFORE_DEFENCE = 3
+
+# Consecutive attacks with no net progress before a target is written off.
+OUTHEALED_PATIENCE = 3
