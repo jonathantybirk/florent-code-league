@@ -13,6 +13,8 @@ belt, and build turrets that never fire.
   `nemesis` is a recorded negative result.
 - `probe_launch`, `probe_sentinel`, `probe_steal` -- single-purpose mechanic
   probes. Their findings are in `llm-slop-analysis/jon/legacy/`.
+- `archive/` -- the earliest economy, siege, and frontier strategies, also
+  written for the 2.2.0 rules. Post-2.3.3 snapshots live in `../versions/`.
 
 The findings that still hold under 2.3.3 are the geometric ones: Barrier rings
 block Gunner rays, Sentinels pierce buildings, and a Launcher can throw an
