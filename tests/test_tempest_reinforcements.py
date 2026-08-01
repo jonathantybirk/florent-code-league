@@ -30,12 +30,13 @@ finally:
 class FakeController:
     def __init__(self, titanium: int) -> None:
         self.titanium = titanium
+        self.ammo = 120
         self.spawned: list[Position] = []
         self.round = 100
         self.store: dict[int, int] = {core.SLOT_BUILDER_HEARTBEAT: self.round}
 
     def get_global_ammo(self) -> int:
-        return 120
+        return self.ammo
 
     def get_id(self) -> int:
         return 1
@@ -75,6 +76,12 @@ class FakeController:
     def get_builder_bot_cost(self) -> int:
         return 30
 
+    def get_harvester_cost(self) -> int:
+        return 68
+
+    def get_launcher_cost(self) -> int:
+        return 70
+
     def get_map_width(self) -> int:
         return 20
 
@@ -89,8 +96,24 @@ class FakeController:
         self.titanium -= self.get_builder_bot_cost()
         return 100 + len(self.spawned)
 
+    def can_convert_ammo(self, amount: int) -> bool:
+        return amount > 0
+
+    def convert_ammo(self, amount: int) -> None:
+        self.titanium -= amount
+        self.ammo += amount
+
 
 class PersistentSpawningTests(unittest.TestCase):
+    def test_ammo_conversion_preserves_scaled_construction_cost(self) -> None:
+        ct = FakeController(80)
+        ct.ammo = 0
+
+        core._keep_ammunition(ct)
+
+        self.assertEqual(ct.titanium, 70)
+        self.assertEqual(ct.ammo, 10)
+
     def test_does_not_reinforce_at_threshold(self) -> None:
         player = object_with_builders_spawned(core.MAX_OPENING_BUILDERS)
         ct = FakeController(core.REINFORCEMENT_TITANIUM_THRESHOLD)

@@ -20,6 +20,8 @@ CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 # This leaves enough titanium for repairs, construction, and ammunition while
 # ensuring a healthy economy continually replaces bots lost in combat.
 REINFORCEMENT_TITANIUM_THRESHOLD = 120
+MIN_TITANIUM_RESERVE = 60
+AMMO_TARGET = 120
 
 
 def run(player: "Player", ct: Controller) -> None:
@@ -117,10 +119,25 @@ def _keep_ammunition(ct) -> None:
     """
     try:
         held = ct.get_global_ammo()
-        if held >= 120:
+        if held >= AMMO_TARGET:
             return
-        amount = min(120 - held, ct.get_global_resources() - 60)
+        # Scaled Harvester and Launcher costs can exceed the old fixed 60-Ti
+        # reserve. Converting down to 60 made waiting Builders permanently
+        # unaffordable even while the replay showed 80 Ti between rounds.
+        construction_reserve = max(
+            MIN_TITANIUM_RESERVE,
+            ct.get_harvester_cost(),
+            ct.get_launcher_cost(),
+        )
+        amount = min(
+            AMMO_TARGET - held,
+            ct.get_global_resources() - construction_reserve,
+        )
         if amount > 0 and ct.can_convert_ammo(amount):
             ct.convert_ammo(amount)
-    except Exception:  # noqa: BLE001 - never let this kill the Core
+    except Exception as error:  # noqa: BLE001 - never let this kill the Core
+        print(
+            f"PLAN_FAILED id={ct.get_id()} round={ct.get_current_round()} "
+            f"action=convert ammunition reason={type(error).__name__}: {error}"
+        )
         return
