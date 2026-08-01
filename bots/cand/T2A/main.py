@@ -154,7 +154,7 @@ S_RUSH_ACTIVE = 15    # 1 once the rusher owns an executable plan and the reserv
 # Six is the pick: seven is stronger against the starter but falls off against the opponent that
 # actually resembles the ladder. Before the nav fix this curve was flat and peaked at 4 -- extra
 # builders paid their cost scale but could not navigate well enough to deliver.
-BUILDERS = 3
+BUILDERS = 6
 # Under sustained fire the cap lifts. A heal restores 4 HP for a flat 1 Ti and is NOT touched by
 # the global cost scale, while their Gunner spends 2 Ti to deal 10 damage and averages 5 damage a
 # round -- so one extra Builder standing on the Core very nearly cancels one extra turret, and
@@ -462,6 +462,13 @@ class Player:
         self.rush_dist_key = None
         self.enemy_core_tiles = set()
         self.occupied = set()
+        # The subset of `occupied` that is NOT a wall to a walker. G61 measured the standing rule
+        # exhaustively: a Builder Bot may stand on a CONVEYOR or a SPLITTER -- either team's, the
+        # rule is about the building type and not about who owns it -- and may not stand on a
+        # wall, a harvester, a barrier, a turret or a Core footprint. Those tiles stay in
+        # `occupied`, because a conveyor is still a ballistic stopper and still cannot be built
+        # on; they are simply subtracted from every set that means "cannot walk here".
+        self.passable_bld = set()
         self.occ_ver = 0
         self.rush_ray = frozenset()
         self.rush_target = None        # enemy anchor the current route was planned against
@@ -1340,7 +1347,9 @@ class Player:
         foot = set(siege.footprint(self.enemy_anchor))
         blocked = walls | self.core_tiles | foot | self.enemy_core_tiles
         buildings = (self.occupied - self.core_tiles) - self.enemy_core_tiles - foot
-        dist = self._flood(ct, (pos.x, pos.y), blocked | (buildings - {(pos.x, pos.y)}), w, h)
+        walls_to_a_walker = buildings - self.passable_bld
+        dist = self._flood(ct, (pos.x, pos.y),
+                           blocked | (walls_to_a_walker - {(pos.x, pos.y)}), w, h)
         known = (self.seen | self.pred_seen) or None
         try:
             sites = siege.battery(w, h, self.enemy_anchor, self.core_tiles, walls, buildings,
@@ -1691,7 +1700,9 @@ class Player:
         foot = set(siege.footprint(anchor))
         blocked = walls | self.core_tiles | foot | self.enemy_core_tiles
         buildings = (self.occupied - self.core_tiles) - self.enemy_core_tiles - foot
-        dist = self._flood(ct, (pos.x, pos.y), blocked | (buildings - {(pos.x, pos.y)}), w, h)
+        walls_to_a_walker = buildings - self.passable_bld
+        dist = self._flood(ct, (pos.x, pos.y),
+                           blocked | (walls_to_a_walker - {(pos.x, pos.y)}), w, h)
         known = (self.seen | self.pred_seen) or None
         try:
             found = siege.plan(w, h, anchor, self.core_tiles, walls, buildings, dist,
@@ -1807,7 +1818,7 @@ class Player:
         key = (goal, self.occ_ver)
         if self.rush_dist is None or self.rush_dist_key != key:
             blocked = (self.known_walls | self.core_tiles | self.enemy_core_tiles
-                       | self.occupied)
+                       | (self.occupied - self.passable_bld))
             blocked.discard((pos.x, pos.y))
             dist = {}
             frontier = []
@@ -1895,12 +1906,14 @@ class Player:
                 if key in self.occupied:
                     self.occupied.discard(key)
                     self.occ_ver += 1
+                self.passable_bld.discard(key)
                 self.known_blocked.discard(key)
             else:
                 if key not in self.occupied:
                     self.occupied.add(key)
                     self.occ_ver += 1
                 self.known_blocked.add(key)
+                self.passable_bld.discard(key)
                 if key not in self.core_tiles and key not in self.enemy_core_tiles:
                     # Learn both Cores' real 2x2 footprints from vision rather than guessing an
                     # anchor. A sighted enemy Core settles the symmetry outright and outranks every
@@ -1914,6 +1927,14 @@ class Player:
                     try:
                         et = ct.get_entity_type(occ)
                         mine = ct.get_team(occ) == ct.get_team()
+                        # A conveyor or a splitter is not an obstacle -- G61 verified a builder
+                        # stepping onto one and reading the building id still underneath it. This
+                        # is the single most common building on the board: an opponent lays its
+                        # belt across the ground in front of its own Core, and every tile of it
+                        # used to delete a tile our rusher was allowed to stand on.
+                        if et == EntityType.CONVEYOR or et == EntityType.SPLITTER:
+                            self.passable_bld.add(key)
+                            self.known_blocked.discard(key)
                         if et == EntityType.CORE:
                             if mine:
                                 self.core_tiles.add(key)

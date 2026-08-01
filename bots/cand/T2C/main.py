@@ -154,7 +154,7 @@ S_RUSH_ACTIVE = 15    # 1 once the rusher owns an executable plan and the reserv
 # Six is the pick: seven is stronger against the starter but falls off against the opponent that
 # actually resembles the ladder. Before the nav fix this curve was flat and peaked at 4 -- extra
 # builders paid their cost scale but could not navigate well enough to deliver.
-BUILDERS = 3
+BUILDERS = 6
 # Under sustained fire the cap lifts. A heal restores 4 HP for a flat 1 Ti and is NOT touched by
 # the global cost scale, while their Gunner spends 2 Ti to deal 10 damage and averages 5 damage a
 # round -- so one extra Builder standing on the Core very nearly cancels one extra turret, and
@@ -268,6 +268,16 @@ VAULT_PATIENCE = 3
 # Manhattan tiles a hop must actually gain. A throw costs the rusher nothing directly, but a short
 # one leaves it inside the same Launcher's pickup radius, which is exactly how the treadmill starts.
 VAULT_GAIN = 4
+
+# Rounds the rusher will keep asking for a build the engine refuses while it CAN AFFORD IT,
+# before it gives the tile up and re-derives. The affordability test is the whole point: an
+# unconditional patience was measured at 29-13 against 31-11 over 42 mirrored games because it
+# abandoned firing positions that were only waiting to be funded, and that is the ONE reason a
+# refusal is worth waiting out. Every other reason -- an enemy Builder Bot parked on the tile
+# (measured on atoll/b vs luc1: 987 consecutive rounds asking, 4506 titanium banked, no Gunner),
+# the team unit cap, a building that appeared and left no id we can read -- is permanent to us and
+# is worth exactly the eight rounds it takes to notice.
+BUILD_PATIENCE = 8
 
 # --- Ammunition (fcode 2.3.x) ------------------------------------------------
 # 2.3.x REPLACED per-turret ammo with a TEAM-WIDE POOL. `get_ammo_amount` / `get_ammo_type` are gone;
@@ -456,12 +466,21 @@ class Player:
         # Rush state
         self.rush_role = None          # None = undecided, True = this builder owns the rush
         self.rush_stuck = 0
+        # Rounds spent asking for a build we could afford and were refused. See BUILD_PATIENCE.
+        self.build_wait = 0
         self.rush_i = 0
         self.rush_route = None
         self.rush_dist = None
         self.rush_dist_key = None
         self.enemy_core_tiles = set()
         self.occupied = set()
+        # The subset of `occupied` that is NOT a wall to a walker. G61 measured the standing rule
+        # exhaustively: a Builder Bot may stand on a CONVEYOR or a SPLITTER -- either team's, the
+        # rule is about the building type and not about who owns it -- and may not stand on a
+        # wall, a harvester, a barrier, a turret or a Core footprint. Those tiles stay in
+        # `occupied`, because a conveyor is still a ballistic stopper and still cannot be built
+        # on; they are simply subtracted from every set that means "cannot walk here".
+        self.passable_bld = set()
         self.occ_ver = 0
         self.rush_ray = frozenset()
         self.rush_target = None        # enemy anchor the current route was planned against
@@ -1242,6 +1261,9 @@ class Player:
                 self.rush_i += 1
                 self.rush_dist = None
                 self.rush_stuck = 0
+                self.build_wait = 0
+            else:
+                self._refused(ct, bxy, kind)
             # NOT GIVEN UP ON. `can_build_*` refusing from a legal tile is nearly always "not
             # enough titanium yet" -- the normal state of a rusher that has walked ahead of its
             # funding, and one it must be allowed to wait out, because the economy is holding
@@ -1261,6 +1283,40 @@ class Player:
         if self.rush_i == 0 and self._vault(ct, pos, bxy):
             return True
         return self._rush_walk(ct, pos, bpos)
+
+    def _refused(self, ct, bxy, kind):
+        """The engine said no from a legal tile. Wait it out, or give the tile up.
+
+        Two reasons, and they want opposite answers. NOT ENOUGH TITANIUM is the normal state of a
+        rusher that has walked ahead of its funding, it resolves itself, and abandoning the
+        position over it measured 29-13 against 31-11. ANYTHING ELSE is permanent as far as this
+        builder is concerned -- an enemy Builder Bot standing on the tile is the measured case, and
+        a bot is not a building, so the occupied-tile branch above cannot see it. Separating them
+        is one call to `get_global_resources`.
+        """
+        try:
+            cost = ct.get_gunner_cost()
+            if kind == "conveyor":
+                cost = ct.get_conveyor_cost()
+            elif kind == "harvester":
+                cost = ct.get_harvester_cost()
+            if ct.get_global_resources() < cost:
+                self.build_wait = 0
+                return
+        except Exception:
+            self.build_wait = 0
+            return
+        self.build_wait += 1
+        if self.build_wait < BUILD_PATIENCE:
+            return
+        self.build_wait = 0
+        # Same split as the unreachable-tile handler in `_rush_walk`: an appended battery turret is
+        # dropped on its own, and only the load-bearing first Gunner re-opens the whole plan.
+        if self.rush_route and self.rush_i >= self.rush_base_len > 0:
+            self._abort_segment(bxy)
+        else:
+            self.rush_black.add(bxy)
+            self._drop_plan()
 
     def _is_our_gunner(self, ct, entity_id):
         if entity_id is None:
@@ -1340,7 +1396,9 @@ class Player:
         foot = set(siege.footprint(self.enemy_anchor))
         blocked = walls | self.core_tiles | foot | self.enemy_core_tiles
         buildings = (self.occupied - self.core_tiles) - self.enemy_core_tiles - foot
-        dist = self._flood(ct, (pos.x, pos.y), blocked | (buildings - {(pos.x, pos.y)}), w, h)
+        walls_to_a_walker = buildings - self.passable_bld
+        dist = self._flood(ct, (pos.x, pos.y),
+                           blocked | (walls_to_a_walker - {(pos.x, pos.y)}), w, h)
         known = (self.seen | self.pred_seen) or None
         try:
             sites = siege.battery(w, h, self.enemy_anchor, self.core_tiles, walls, buildings,
@@ -1639,6 +1697,7 @@ class Player:
         return self._rush_walk(ct, pos, Position(anchor[0], anchor[1]))
 
     def _drop_plan(self):
+        self.build_wait = 0
         self.rush_route = None
         self.rush_target = None
         self.rush_i = 0
@@ -1691,7 +1750,9 @@ class Player:
         foot = set(siege.footprint(anchor))
         blocked = walls | self.core_tiles | foot | self.enemy_core_tiles
         buildings = (self.occupied - self.core_tiles) - self.enemy_core_tiles - foot
-        dist = self._flood(ct, (pos.x, pos.y), blocked | (buildings - {(pos.x, pos.y)}), w, h)
+        walls_to_a_walker = buildings - self.passable_bld
+        dist = self._flood(ct, (pos.x, pos.y),
+                           blocked | (walls_to_a_walker - {(pos.x, pos.y)}), w, h)
         known = (self.seen | self.pred_seen) or None
         try:
             found = siege.plan(w, h, anchor, self.core_tiles, walls, buildings, dist,
@@ -1807,7 +1868,7 @@ class Player:
         key = (goal, self.occ_ver)
         if self.rush_dist is None or self.rush_dist_key != key:
             blocked = (self.known_walls | self.core_tiles | self.enemy_core_tiles
-                       | self.occupied)
+                       | (self.occupied - self.passable_bld))
             blocked.discard((pos.x, pos.y))
             dist = {}
             frontier = []
@@ -1895,12 +1956,14 @@ class Player:
                 if key in self.occupied:
                     self.occupied.discard(key)
                     self.occ_ver += 1
+                self.passable_bld.discard(key)
                 self.known_blocked.discard(key)
             else:
                 if key not in self.occupied:
                     self.occupied.add(key)
                     self.occ_ver += 1
                 self.known_blocked.add(key)
+                self.passable_bld.discard(key)
                 if key not in self.core_tiles and key not in self.enemy_core_tiles:
                     # Learn both Cores' real 2x2 footprints from vision rather than guessing an
                     # anchor. A sighted enemy Core settles the symmetry outright and outranks every
@@ -1914,6 +1977,14 @@ class Player:
                     try:
                         et = ct.get_entity_type(occ)
                         mine = ct.get_team(occ) == ct.get_team()
+                        # A conveyor or a splitter is not an obstacle -- G61 verified a builder
+                        # stepping onto one and reading the building id still underneath it. This
+                        # is the single most common building on the board: an opponent lays its
+                        # belt across the ground in front of its own Core, and every tile of it
+                        # used to delete a tile our rusher was allowed to stand on.
+                        if et == EntityType.CONVEYOR or et == EntityType.SPLITTER:
+                            self.passable_bld.add(key)
+                            self.known_blocked.discard(key)
                         if et == EntityType.CORE:
                             if mine:
                                 self.core_tiles.add(key)

@@ -154,7 +154,7 @@ S_RUSH_ACTIVE = 15    # 1 once the rusher owns an executable plan and the reserv
 # Six is the pick: seven is stronger against the starter but falls off against the opponent that
 # actually resembles the ladder. Before the nav fix this curve was flat and peaked at 4 -- extra
 # builders paid their cost scale but could not navigate well enough to deliver.
-BUILDERS = 3
+BUILDERS = 6
 # Under sustained fire the cap lifts. A heal restores 4 HP for a flat 1 Ti and is NOT touched by
 # the global cost scale, while their Gunner spends 2 Ti to deal 10 damage and averages 5 damage a
 # round -- so one extra Builder standing on the Core very nearly cancels one extra turret, and
@@ -237,6 +237,7 @@ BATTERY_EVERY = 3
 # so this is a role reassignment costing one economy chain and zero cost scale. Two attackers put
 # two turrets on two different bearings off the same early tempo.
 ATTACKERS = 2
+ECON_LAB = True
 
 # --- Launcher relay (G41, measured on a purpose-built arena) -------------------------------
 # A Launcher throws an ADJACENT friendly Builder Bot to any bot-passable tile inside r^2 <= 26
@@ -1104,6 +1105,9 @@ class Player:
         never matched the hard-coded list, `_is_rusher` answered False for every builder, and the
         offence did not exist -- zero core kills across every unseen map measured.
         """
+        if ECON_LAB:
+            self.rush_role = False
+            return False
         if siege is None or self.core_pos is None:
             return False
         if self.rush_role is None:
@@ -1914,6 +1918,19 @@ class Player:
                     try:
                         et = ct.get_entity_type(occ)
                         mine = ct.get_team(occ) == ct.get_team()
+                        # OUR OWN BELTS ARE NOT OBSTACLES. G61 measured the standing rules
+                        # exhaustively: a Builder Bot walks onto conveyors and splitters and
+                        # stands on them. `known_blocked` is the movement set `_nav_field`
+                        # floods over, and recording a belt in it makes the chain we lay behind
+                        # us a WALL across our own corridor. Measured on bridge/a: the builder
+                        # that had just laid (5,3) and (6,3) was standing on (6,3), its own nav
+                        # field said every tile east of x=5 was unreachable, and all six builders
+                        # were in two-tile oscillations by round 15 for a final score of ZERO
+                        # titanium collected. `occupied` keeps them -- that set means "a building
+                        # is here", which is a different question and is what the siege planner
+                        # and the ray checks need.
+                        if mine and (et == EntityType.CONVEYOR or et == EntityType.SPLITTER):
+                            self.known_blocked.discard(key)
                         if et == EntityType.CORE:
                             if mine:
                                 self.core_tiles.add(key)
@@ -2189,7 +2206,7 @@ class Player:
         if target is None:
             self._abandon()
             return False
-        step = self._step_toward(ct, pos, target)
+        step = self._belt_move(ct, pos, target)
         if step is None:
             self.stuck += 1
             if self.stuck >= 5:
@@ -2204,6 +2221,36 @@ class Player:
             self.owed = (pos, step)
             self.owed_is_final = False
         return True
+
+    def _belt_move(self, ct, pos, target):
+        """A step that STRICTLY shortens the walk to `target`, or None.
+
+        `_step_toward` is the general-purpose stepper and its fallbacks are deliberately loose --
+        rotate off the wanted direction, then take any passable cardinal at all -- because for a
+        builder merely travelling, a sideways shuffle beats standing still. For a builder LAYING A
+        CHAIN it is the opposite: every tile it vacates gets a conveyor pointing the way it
+        walked, so a loose step is a permanently crooked link, and a step back the way it came is
+        a two-belt loop that zeroes the chain for the rest of the match (G02).
+        """
+        field = self._nav_field(ct, target)
+        if field is None:
+            return None
+        here = field.get((pos.x, pos.y))
+        if here is None:
+            return None
+        best, best_d = None, here
+        for d in CARDINALS:
+            n = pos.add(d)
+            nd = field.get((n.x, n.y))
+            if nd is None or nd >= best_d:
+                continue
+            try:
+                if not ct.can_move(d):
+                    continue
+            except Exception:
+                continue
+            best, best_d = d, nd
+        return best
 
     def _finish_chain(self, ct):
         self.owed_is_final = False
@@ -2379,6 +2426,9 @@ class Player:
             return
         if self.phase == "harvest" and self.target_ore is not None:
             target = Position(self.target_ore[0], self.target_ore[1])
+            if self._unreachable(ct, pos, target):
+                self._abandon()
+                return
             step = self._step_toward(ct, pos, target)
             if step is not None:
                 try:
@@ -2390,10 +2440,53 @@ class Player:
             if self.stuck >= 5:
                 self._abandon()
             return
+        if self.phase == "belt":
+            # A CHAIN IN FLIGHT IS NEVER ABANDONED FOR A WALK. Every tile this builder vacates
+            # owes a conveyor (`self.owed`), and the only code that owes one is `_belt_step`.
+            # Moving from here would leave a hole in the chain, and a chain with a hole delivers
+            # nothing at all for the rest of the match (G02). Stand still instead: the position
+            # stuck counter in `_run_builder` is already ticking, so a genuinely wedged builder
+            # still gives the chain up after five rounds and goes back to prospecting.
+            if self.stuck >= 5:
+                self._abandon()
+            return
         self._explore(ct, pos)
 
+    def _unreachable(self, ct, pos, target):
+        """True when no path to `target` exists over ground we have already seen.
+
+        `_nav_field` is a flood FROM the target over the known wall and building sets, so this is
+        one dict lookup and no extra work at all. It is deliberately conservative: unobserved
+        ground is treated as open by the flood, so this only fires when we have PERSONALLY seen
+        the walls that seal the target off.
+        """
+        field = self._nav_field(ct, target)
+        if field is None:
+            return False
+        return field.get((pos.x, pos.y)) is None
+
     def _explore(self, ct, pos):
-        """Spread out from the Core to find ore. Deterministic -- never the global random module (G26)."""
+        """Walk toward the nearest tile we have never seen. Deterministic (G26/M02).
+
+        The old version stepped toward whichever cardinal pointed away from the Core and had no
+        memory whatsoever, so wherever the away direction is blocked on one tile and open on its
+        neighbour it is an UNBREAKABLE TWO-TILE CYCLE -- and because both moves succeed,
+        `self.stuck` is never touched and nothing ever notices. Measured on bridge/a against an
+        inert opponent: four of the six builders oscillated from round 11 to round 1000,
+        discovered not one further ore tile, and the game ended 0 titanium collected.
+
+        A single BFS outward over the ground we know, stopping at the first unseen tile, cannot
+        cycle: every step strictly decreases the distance to a frontier, and reaching one turns it
+        into seen ground, which moves the frontier outward. ~w*h integer ops, and only on a
+        builder that has nothing else to do.
+        """
+        step = self._frontier_step(ct, pos)
+        if step is not None:
+            try:
+                ct.move(step)
+                return
+            except Exception:
+                pass
         core = self._nearest_core_tile(pos)
         if core is None:
             order = CARDINALS
@@ -2409,6 +2502,59 @@ class Player:
                 except Exception:
                     continue
                 return
+
+    def _frontier_step(self, ct, pos):
+        """First step of a shortest walk to the nearest tile absent from `self.seen`.
+
+        BFS from where we stand rather than from a goal, because the goal is "any unseen tile" and
+        there are many of them. Not cached: the frontier moves every round the builder does, and
+        the flood stops at the FIRST unseen tile, so on an explored map it is a few hundred
+        integer ops and on an unexplored one it stops almost immediately.
+        """
+        if not self._cpu_left(ct):
+            return None
+        try:
+            w, h = ct.get_map_width(), ct.get_map_height()
+        except Exception:
+            return None
+        start = (pos.x, pos.y)
+        walls, blocked, seen = self.known_walls, self.known_blocked, self.seen
+        first = {}
+        frontier = []
+        for d in CARDINALS:
+            n = pos.add(d)
+            key = (n.x, n.y)
+            if not (0 <= key[0] < w and 0 <= key[1] < h):
+                continue
+            if key in walls or key in blocked or key in first:
+                continue
+            if key not in seen:
+                return d if self._passable(ct, pos, d) else None
+            first[key] = d
+            frontier.append(key)
+        goal_dir = None
+        while frontier and goal_dir is None:
+            nxt = []
+            for cx, cy in frontier:
+                d0 = first[(cx, cy)]
+                for nb in ((cx, cy - 1), (cx + 1, cy), (cx, cy + 1), (cx - 1, cy)):
+                    if nb in first or nb == start:
+                        continue
+                    if not (0 <= nb[0] < w and 0 <= nb[1] < h):
+                        continue
+                    if nb in walls or nb in blocked:
+                        continue
+                    first[nb] = d0
+                    if nb not in seen:
+                        goal_dir = d0
+                        break
+                    nxt.append(nb)
+                if goal_dir is not None:
+                    break
+            frontier = nxt
+        if goal_dir is None:
+            return None
+        return goal_dir if self._passable(ct, pos, goal_dir) else None
 
     def _passable(self, ct, pos, d):
         """can_move, plus: a non-rusher never enters the gunner's firing lane (G11)."""

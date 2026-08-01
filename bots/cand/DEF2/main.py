@@ -129,15 +129,52 @@ S_SYMMETRY = 11
 S_FLAGS = S_SYMMETRY
 EV_MASK = 0xFFFFFFF8
 
-EV_HURT = 1 << 3           # a unit of ours has lost hit points -- PROVES a fed enemy turret
+EV_HURT = 1 << 3           # a unit of ours has lost hit points -- CONTACT, not a turret
 EV_ECON_HIT = 1 << 4       # a belt of ours has been destroyed where we could see it
 EV_INTRUDER = 1 << 5       # an enemy Builder Bot seen at or inside the midline
 EV_DEEP = 1 << 6           # ...and seen in the near third of the core-to-core axis
 EV_FOE_TURRET = 1 << 7     # at least one enemy turret seen standing
 EV_FOE_TURRET2 = 1 << 8    # at least FOE_TURRETS_MANY of them
 EV_FOE_ECON = 1 << 9       # at least FOE_HARVESTERS_MANY enemy producers seen standing
+# The old EV_HURT claimed that any hit point lost PROVED a fed enemy turret. It rested on the
+# 2.2.0 pair "a Builder Bot cannot damage an adjacent tile" (old G13) and "our own turrets do not
+# fire on our own team" -- the first is REVERSED on 2.3.3 (a builder hits orthogonally adjacent
+# tiles for 2 damage at 2 Ti, G59) and the second was never true (turrets are team-blind, G10, and
+# now have a global pool to shoot from, G11). Measured over 270 games: 86.9% of every hit point we
+# lose is enemy BUILDER melee and 0.4% is our own turret shooting our own buildings, so 52% of
+# EV_HURT's latches were caused by something that is not a turret.
+#
+# What replaces it is the DAMAGE QUANTUM. The three attack damages are pairwise distinct and a
+# cross-tab of 229 damage events against the source the replay independently proves is perfectly
+# diagonal, so the SIZE of a hit names its source. EV_HURT keeps its bit and loses its claim: it
+# now says only "somebody is in contact with us".
+EV_MELEE = 1 << 10         # a net loss of exactly 2 HP -- an enemy Builder Bot is beside us
+EV_TURRET_HURT = 1 << 11   # a net loss of exactly 10 or 18 -- a FED ENEMY TURRET
+# ...and the bit that beats both of them ON THE CLOCK. Being hit is a late signal: measured
+# against `undertow` over 16 known games, their first turret exists at round 30 and lands its
+# first shot at 31, our Core is dead by 60, and a posture decided at 31 is published at 32, read
+# by a builder at 33 and standing as a Barrier some ten rounds after that. Half the defence
+# arrives after the Core has. What is EARLY is the enemy BUILDER that walks in to build the
+# turret, and the Core can see it for nothing: the Core acts first every round, never moves, and
+# one `get_nearby_entities` around its own footprint answers "is somebody setting up on top of
+# us" directly, instead of inferring it from our own hit points afterwards.
+EV_HOME_THREAT = 1 << 12   # an enemy Builder Bot or turret standing NEXT TO OUR OWN CORE
 EV_BITS = (EV_HURT, EV_ECON_HIT, EV_INTRUDER, EV_DEEP,
-           EV_FOE_TURRET, EV_FOE_TURRET2, EV_FOE_ECON)
+           EV_FOE_TURRET, EV_FOE_TURRET2, EV_FOE_ECON, EV_MELEE, EV_TURRET_HURT,
+           EV_HOME_THREAT)
+# Squared radius, measured from the Core's ANCHOR (its top-left footprint tile, G33), inside
+# which an enemy on his feet is treated as a siege being set up rather than a wanderer. A Gunner
+# reaches three tiles along its facing (attack r^2 = 13), so anything that can already shoot the
+# footprint is inside r^2 = 16 of the anchor; the extra ring of slack is the walk-in.
+HOME_WATCH_D2 = 25
+
+# Read off GameConstants. A NET round delta is matched against these, so this is strong evidence
+# and not proof: HEAL_AMOUNT is 4, so a Gunner hit plus two friendly heals in the same round also
+# nets -2, and five builders chewing the same tile also net -10. Documented rather than hidden --
+# pretending a signal is airtight is the mistake this replaces.
+DMG_MELEE = 2
+DMG_GUNNER = 10
+DMG_SENTINEL = 18
 S_RUSHER = 12         # id+1 of the builder that owns the rush; 0 = unclaimed
 S_RUSH_DONE = 13      # 1 once the rusher has built its whole route; 0 while it still needs money
 # Packed Gunner tile | facing index << 17. Publishes the firing lane so no economy builder ever
@@ -154,7 +191,7 @@ S_RUSH_ACTIVE = 15    # 1 once the rusher owns an executable plan and the reserv
 # Six is the pick: seven is stronger against the starter but falls off against the opponent that
 # actually resembles the ladder. Before the nav fix this curve was flat and peaked at 4 -- extra
 # builders paid their cost scale but could not navigate well enough to deliver.
-BUILDERS = 3
+BUILDERS = 6
 # Under sustained fire the cap lifts. A heal restores 4 HP for a flat 1 Ti and is NOT touched by
 # the global cost scale, while their Gunner spends 2 Ti to deal 10 damage and averages 5 damage a
 # round -- so one extra Builder standing on the Core very nearly cancels one extra turret, and
@@ -312,16 +349,23 @@ STEP_HEAL = 6
 ORDER_TODAY = (STEP_OWED, STEP_HOLD, STEP_PHASE,
                STEP_REPAIR, STEP_SEEK, STEP_HEAL)
 
-# Evidence weights. EV_HURT is worth double because it is the only bit here with ZERO false
-# positives -- see Player._sense.
-EV_WEIGHTS = ((EV_HURT, 2), (EV_ECON_HIT, 1), (EV_INTRUDER, 1),
-              (EV_DEEP, 2), (EV_FOE_TURRET2, 1))
-ALARM_WEIGHT = 3
+# Evidence weights, priced so that DEFENCE is reachable by exactly two routes and no other:
+# a hit of turret size landed on one of our units, or the Core's own 88% alarm. Everything else
+# a hit of turret size landed on one of our units, an enemy standing on our own doorstep, or the
+# Core's own 88% alarm. Everything else is corroboration and CANNOT reach the threshold however
+# much of it accumulates: every remaining bit at once is 2+1+1+1+1+1 = 7 against a threshold of 8.
+# That matters because the cheap bits are not cheap in the way they look: EV_INTRUDER and EV_DEEP
+# fire in 90-100% of games against every opponent that spawns a Builder Bot at all, so a threshold
+# they can reach between them is not a detector, it is "DEFENCE unless the enemy is inert".
+EV_WEIGHTS = ((EV_TURRET_HURT, 8), (EV_HOME_THREAT, 8), (EV_MELEE, 2), (EV_HURT, 1),
+              (EV_ECON_HIT, 1), (EV_INTRUDER, 1),
+              (EV_DEEP, 1), (EV_FOE_TURRET2, 1))
+ALARM_WEIGHT = 8
 # Points needed to leave the default at all, and the level it has to fall back below before the
 # default is resumed. A Schmitt trigger: the gap is what stops a single flickering bit flapping
 # the whole team's economy. In practice evidence is latched, so DEFENCE is a one-way door -- the
 # release path exists for a future specialist that fields decaying evidence, not for today.
-POSTURE_CONFIDENCE = 3
+POSTURE_CONFIDENCE = 8
 POSTURE_RELEASE = 1
 # Minimum rounds between two CHANGES of posture. The first change is deliberately not gated:
 # there is nothing yet to oscillate against, and the bits worth acting on early are the ones that
@@ -364,6 +408,25 @@ _BASE_ROW = {
     "fortify_from": FORTIFY_FROM,
     "fortify_keep_open": FORTIFY_KEEP_OPEN,
     "hold_on_posture": False,       # come home on the posture, not only on the Core alarm
+    # Titanium held back before a Core-ring Barrier is laid. Its own key rather than
+    # `chain_reserve`, which it used to share: `chain_reserve` is ALSO the Core's spawn gate, and
+    # a specialist that wants cheap barriers does not thereby want the Core spending its last
+    # titanium on builders.
+    "barrier_reserve": CHAIN_RESERVE,
+    # Lay the Barrier BEFORE trying to heal, instead of after. Healing is 4 HP per 1 Ti; a fresh
+    # 30 HP Barrier is ~4 Ti, or 7.5 HP per titanium, and unlike a heal it also stops the ray.
+    "brick_first": False,
+    # Titanium floor under the builder's own 2 dmg / 2 Ti orthogonal shot while it is holding the
+    # base. `None` -> SNIPE_FLOOR, which is 90 and is never met during a siege.
+    "hold_snipe_floor": None,
+    # WHICH builders are allowed to hold the base, by spawn ordinal. `None` -> all of them, which
+    # is today's behaviour and is the expensive half of a defence: the come-home rung outranks
+    # everything except a belt in flight, and the walk to ore happens in `_walk` BELOW the whole
+    # ladder, so a builder that has claimed an ore tile twenty tiles away turns round and walks
+    # back the moment the posture flips. An integer here reserves the job for the late cohort --
+    # the builders the emergency spawn cap puts on the Core ring, who are standing on the ring
+    # already -- and leaves the chains that are already running alone.
+    "hold_from_ordinal": None,
     "fire_only": None,              # None -> a turret shoots whatever the engine offers it
     "order": ORDER_TODAY,
 }
@@ -371,7 +434,15 @@ _BASE_ROW = {
 # Filled in by a specialist. Empty here, and that emptiness is the acceptance criterion: with
 # nothing in these two dicts the refactored bot must measure identically to the unrefactored one,
 # game for game, which is what proves the seams cost nothing.
-DEFENCE_OVERRIDES = {}
+DEFENCE_OVERRIDES = {
+    # Three numbers and no new subsystem. The ring already existed, was already sited on the side
+    # the enemy walks in from, and already rebuilt itself when a tile came free; it was funded out
+    # of a reserve it could never meet and queued behind a heal that never yielded.
+    "hold_on_posture": True,
+    "barrier_reserve": 0,
+    "brick_first": True,
+    "fortify_keep_open": 2,
+}
 ECONOMY_OVERRIDES = {}
 
 
@@ -492,6 +563,7 @@ class Player:
         # Archetype evidence. Monotone and latched forever -- an archetype does not un-happen.
         self.evidence = 0
         self.core_ev = 0               # evidence only the Core can see (its own hit points)
+        self.last_hp = None            # own HP last round, so a delta can be SIZED
         self.ev_round = {}             # bit -> round the TEAM first held it (Core only)
         self.foe_turrets = set()       # enemy turret tiles this unit has seen
         self.foe_harvesters = set()    # enemy producer tiles this unit has seen
@@ -643,28 +715,26 @@ class Player:
     def _sense(self, ct):
         """Fold this round's observations into the latched evidence word.
 
-        EV_HURT is the bit that matters and it has ZERO false positives, which is why it is the
-        only one weighted double. A Builder Bot cannot attack any adjacent tile at all -- can_fire
-        is False and fire() raises against an adjacent Core, Barrier, Conveyor, Harvester and
-        Builder Bot, verified byte-identically on two platforms (G13) -- and the only attack a
-        builder has is the range-0 shot at its OWN tile, which damages the building under it and
-        nothing else (G14). Our own turrets check the occupant's team before every shot, so no
-        friendly fire either. Therefore: one hit point of damage anywhere on our side PROVES the
-        enemy has a turret and is feeding it. Nothing else in this detector is that clean, and it
-        is latched forever the moment it fires.
-
-        The other bits are TELLS, not proofs, and are priced accordingly.
+        NOTHING HERE IS A PROOF ON 2.3.3. The hit is SIZED rather than merely counted: the delta
+        is taken against this unit's own hit points last round -- free, because the same get_hp()
+        call was already being made -- and matched against the three distinct attack damages.
+        Only this unit's own hit points are watched; polling every visible building would name the
+        melee on our belts too, but it costs an API call per tile per round against a 10 ms budget
+        (G45), and a cut belt already has its own bit in EV_ECON_HIT.
         """
         try:
             self.evidence = self.evidence | (ct.read_store(S_FLAGS) & EV_MASK)
         except Exception:
             pass
-        if not (self.evidence & EV_HURT):
-            try:
-                if ct.get_hp() < ct.get_max_hp():
-                    self.evidence = self.evidence | EV_HURT
-            except Exception:
-                pass
+        try:
+            hp = ct.get_hp()
+            if hp < ct.get_max_hp():
+                self.evidence = self.evidence | EV_HURT
+            if self.last_hp is not None and hp < self.last_hp:
+                self.evidence = self.evidence | self._size_hit(self.last_hp - hp)
+            self.last_hp = hp
+        except Exception:
+            pass
         n = len(self.foe_turrets)
         if n >= 1:
             self.evidence = self.evidence | EV_FOE_TURRET
@@ -672,6 +742,14 @@ class Player:
             self.evidence = self.evidence | EV_FOE_TURRET2
         if len(self.foe_harvesters) >= FOE_HARVESTERS_MANY:
             self.evidence = self.evidence | EV_FOE_ECON
+
+    def _size_hit(self, lost):
+        """Which evidence bit a NET hit-point loss of `lost` justifies. Never both."""
+        if lost == DMG_MELEE:
+            return EV_MELEE
+        if lost == DMG_GUNNER or lost == DMG_SENTINEL:
+            return EV_TURRET_HURT
+        return 0
 
     def _scan_intruder(self, ct, tile, key):
         """Latch how deep into OUR half an enemy Builder Bot has been seen.
@@ -771,12 +849,15 @@ class Player:
         hurt = False
         try:
             hp, mx = ct.get_hp(), ct.get_max_hp()
-            # ANY damage at all on the Core proves a fed enemy turret exists, tens of rounds
-            # before the 88% alarm below is willing to say so. Same argument as _sense: a Builder
-            # Bot cannot attack an adjacent tile (G13) and our own turrets never fire on our own
-            # team, so nothing else on the board can have done it.
+            # Damage on the Core is CONTACT and nothing more -- an enemy Builder Bot standing on
+            # our footprint chips it 2 at a time (G59). The Core sizes its own hits exactly as
+            # every other unit does, and it is the unit this matters most on: measured against
+            # `undertow`, 90% of every hit point their turrets deal lands here.
             if hp < mx:
                 self.core_ev = self.core_ev | EV_HURT
+            if self.last_hp is not None and hp < self.last_hp:
+                self.core_ev = self.core_ev | self._size_hit(self.last_hp - hp)
+            self.last_hp = hp
             hurt = hp * 100 < mx * ALARM_PERCENT
             if hurt or (self.state & ALARM_BIT):
                 hurt = True
@@ -2540,22 +2621,37 @@ class Player:
         if not (self.alarm or (self._pv("hold_on_posture")
                                and self.posture == POSTURE_DEFENCE)):
             return False
-        if self._heal(ct, pos):
+        # ORDER IS THE WHOLE POINT. `_heal` succeeds every round the Core is damaged and a
+        # builder is beside it, so healing first means the first builder home heal-tanks for the
+        # rest of the match and the ring below is never reached -- measured, 0.44 barriers a game
+        # against their 1.81. And it loses the exchange it is tanking: 4 HP for 1 Ti against a
+        # Gunner's 10 damage for 2 Ti. Rebuilding beats both, at 30 HP for ~4 Ti, and a Barrier
+        # also stops the ray where a healed Core does not. So under DEFENCE the heal becomes the
+        # FALLBACK for rounds with nothing to build; in every other posture `brick_first` is
+        # False and these three lines are the two they replace, verbatim.
+        first = self._pv("hold_from_ordinal")
+        if first is not None and (self.ordinal is None or self.ordinal < first):
+            return False
+        brick_first = self._pv("brick_first")
+        if not brick_first and self._heal(ct, pos):
             return True
         try:
             if ct.get_current_round() < self._pv("fortify_from"):
-                return False
+                return self._hold_fallback(ct, pos, brick_first)
             cost = ct.get_barrier_cost()
-            if ct.get_global_resources() < cost + self._pv("chain_reserve"):
-                return False
+            # A SEPARATE RESERVE. This gate used to read `chain_reserve`, which is 45, so a
+            # Barrier needed ~52 Ti banked -- and in the games where the Core is actually under
+            # fire the bank sits at 0-50. That single number is why the ring does not exist.
+            if ct.get_global_resources() < cost + self._pv("barrier_reserve"):
+                return self._hold_fallback(ct, pos, brick_first)
         except Exception:
-            return False
+            return self._hold_fallback(ct, pos, brick_first)
 
         keep_open = self._pv("fortify_keep_open")
         ring = self._core_ring(ct)
         free = [t for t in ring if self._building_at(ct, Position(t[0], t[1])) is None]
         if len(free) <= keep_open:
-            return False
+            return self._hold_fallback(ct, pos, brick_first)
         if self.enemy_anchor is not None:
             ax, ay = self.enemy_anchor
             free.sort(key=lambda t: ((t[0] - ax) ** 2 + (t[1] - ay) ** 2,
@@ -2584,6 +2680,55 @@ class Player:
             try:
                 ct.move(step)
                 return True
+            except Exception:
+                continue
+        return self._hold_fallback(ct, pos, brick_first)
+
+    def _hold_fallback(self, ct, pos, brick_first):
+        """What a base-holding builder does on a round it cannot lay a Barrier.
+
+        False in every posture where `brick_first` is False, which is what makes this whole branch
+        invisible outside DEFENCE: the callers all replace a literal `return False`.
+        """
+        if not brick_first:
+            return False
+        if self._hold_snipe(ct, pos):
+            return True
+        return self._heal(ct, pos)
+
+    def _hold_snipe(self, ct, pos):
+        """Chew the enemy building next to us. 2 damage for 2 Ti, orthogonal only (G59).
+
+        Costed honestly: a 40 HP Gunner is 20 rounds and 40 titanium for ONE builder, which is a
+        bad trade against a turret that deals 10 a round while it is being chewed -- but the four
+        orthogonal neighbours of a tile can be occupied by four builders at once, and the four of
+        them together take it down in five rounds for the same 40 Ti. It is off unless the row
+        turns it on, and it never outranks laying a Barrier, which is strictly better value per
+        titanium (30 HP of wall for ~4 Ti).
+        """
+        floor = self._pv("hold_snipe_floor")
+        if floor is None:
+            return False
+        if not self._can_act(ct):
+            return False
+        try:
+            if ct.get_global_resources() < floor:
+                return False
+        except Exception:
+            return False
+        for d in CARDINALS:
+            t = pos.add(d)
+            if not self._in_bounds(ct, t):
+                continue
+            eid = self._building_at(ct, t)
+            if not self._is_enemy(ct, eid):
+                continue
+            if (t.x, t.y) in self.enemy_core_tiles:
+                continue
+            try:
+                if ct.can_fire(t):
+                    ct.fire(t)
+                    return True
             except Exception:
                 continue
         return False
