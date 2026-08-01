@@ -36,7 +36,7 @@ SENTINEL_SIDES = {
     ("strait", (2, 2)), ("string", (0, 6)),
 }
 FERRY_MAPS = {"aurora", "hive", "longship", "quarry", "runestone",
-              "skerry", "strait", "twins", "vault"}
+              "twins", "vault"}
 
 
 def pack(pos: Position) -> int:
