@@ -465,3 +465,98 @@ name   = "claude_challenger_3"
 commit = "fdc1e1f"
 path   = "bots/lucas/claude_challenger_3"
 tags   = ["lucas"]
+
+# ---------------------------------------------------------------------------------------------
+# x/jon @902be71: four bots whose .py no rated entrant had.
+
+[[bot]]
+name   = "casemate"
+commit = "902be71"
+path   = "bots/jon/fair/casemate"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "casemate_oracle"
+commit = "902be71"
+path   = "bots/jon/unfair/casemate_oracle"
+tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "vanguard_oracle"
+commit = "902be71"
+path   = "bots/jon/unfair/vanguard_oracle"
+tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "v233_i"
+commit = "902be71"
+path   = "bots/jon/versions/probes/v233_i"
+tags   = ["jon", "versions", "probes"]
+
+# ---------------------------------------------------------------------------------------------
+# elias_dev, sampled rather than enumerated. His 64-variant cand/ grid was an ablation search
+# of near-identical bots and he deleted it himself at ecd4d24 ("Remove 64 spent agent
+# variants"), so rating all of it would have burned ~200k matches separating bots he had
+# already discarded. These seven are snapshots along his development instead, newest first.
+# cand/FINAL is byte-identical across f7006a9..9e77076, so those four commits are one point.
+
+[[bot]]
+name   = "autistimusprime"
+commit = "ecd4d24"
+path   = "bots/elias/unfair/autistimusprime"
+tags   = ["elias", "unfair"]
+
+[[bot]]
+name   = "e9cand"
+commit = "9e77076"
+path   = "bots/e9cand"
+tags   = ["elias"]
+
+[[bot]]
+name   = "e_final"
+commit = "9e77076"
+path   = "bots/cand/FINAL"
+tags   = ["elias", "cand"]
+
+[[bot]]
+name   = "e_t4l7"
+commit = "9e77076"
+path   = "bots/cand/T4L7"
+tags   = ["elias", "cand"]
+
+[[bot]]
+name   = "e_post2"
+commit = "4a95297"
+path   = "bots/cand/POST2"
+tags   = ["elias", "cand"]
+
+[[bot]]
+name   = "e_harc"
+commit = "6db8844"
+path   = "bots/cand/HARC"
+tags   = ["elias", "cand"]
+
+[[bot]]
+name   = "e_condc"
+commit = "6db8844"
+path   = "bots/cand/CONDC"
+tags   = ["elias", "cand"]
+
+# ---------------------------------------------------------------------------------------------
+# x/llm-RL's training opponent. Not a starter variant: its .py (1441e10ea715) is an early
+# version of Luc's bot, carried along for RL self-play. bots/rl stays excluded -- it needs its
+# companion inference server over a unix socket and cannot run as a standalone entrant.
+
+[[bot]]
+name   = "opponent_luc"
+commit = "e83a42c"
+path   = "bots/opponent_luc"
+tags   = ["llm-RL"]
+
+# x/luc @87724ec.
+
+[[bot]]
+name   = "tempest_reinforcements"
+commit = "87724ec"
+path   = "bots/luc/tempest_reinforcements"
+tags   = ["luc"]
