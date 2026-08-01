@@ -14,8 +14,6 @@ SLOT_ORE = 2
 SLOT_ROLES = 3
 SLOT_WALLS = 8
 SLOT_MAP = 9
-SLOT_FERRY_ID = 10
-SLOT_FERRY_BUILT = 11
 MAX_BUILDERS = 4
 AMMO_TARGET = 60
 
@@ -35,8 +33,6 @@ SENTINEL_SIDES = {
     ("bridge", (0, 6)), ("skerry", (2, 17)), ("sprint", (1, 1)),
     ("strait", (2, 2)), ("string", (0, 6)),
 }
-FERRY_MAPS = {"aurora", "hive", "longship", "quarry", "runestone",
-              "twins", "vault"}
 
 
 def pack(pos: Position) -> int:
@@ -80,8 +76,6 @@ class Player:
         self.atlas = None
         self.turrets_built = 0
         self.home_launcher_built = False
-        self.waiting_ferry = 0
-        self.spawn_index = None
 
     def run(self, ct: Controller) -> None:
         kind = ct.get_entity_type()
@@ -107,7 +101,6 @@ class Player:
             self.atlas = identify_visible(ct, (pos.x, pos.y))
         if self.atlas is not None:
             ct.write_store(SLOT_MAP, MAP_NAMES.index(self.atlas.name) + 1)
-            ct.write_store(SLOT_ENEMY, pack(Position(*self.atlas.enemy_core)))
 
         # Sentinels spend in ten-ammo bursts. Preserve a builder purchase while
         # establishing the team, then keep enough for two simultaneous shots.
@@ -160,7 +153,6 @@ class Player:
         for index, role in enumerate(roles):
             if ct.read_store(SLOT_ROLES + index) == ct.get_id():
                 self.role = role
-                self.spawn_index = index
                 break
         if self.role is None:
             return
@@ -182,15 +174,11 @@ class Player:
             elif self.role == "miner" and self.build_harvester(ct):
                 pass
             elif self.role == "mason":
-                if not self.build_ferry(ct):
-                    self.build_casemate(ct)
+                self.build_casemate(ct)
             elif self.role == "guard":
                 if not self.build_reactive_launcher(ct):
                     self.build_home_wall(ct)
 
-        if self.waiting_ferry:
-            self.waiting_ferry -= 1
-            return
         target = self.choose_target(ct)
         if target is not None:
             self.step_toward(ct, target)
@@ -379,29 +367,6 @@ class Player:
                 return True
         return False
 
-    def build_ferry(self, ct: Controller) -> bool:
-        if (self.spawn_index != 0
-                or self.atlas is None or self.atlas.name not in FERRY_MAPS
-                or ct.read_store(SLOT_FERRY_BUILT)
-                or ct.get_global_resources() < ct.get_launcher_cost() + 60):
-            return False
-        pos = ct.get_position()
-        enemy = self.enemy_core(ct)
-        if pos.distance_squared(enemy) < 100:
-            return False
-        choices = []
-        for d in CARDINALS:
-            tile = pos.add(d)
-            if inside(ct, tile) and ct.can_build_launcher(tile):
-                choices.append((tile.distance_squared(enemy), tile.x, tile.y, tile))
-        if not choices:
-            return False
-        ct.build_launcher(min(choices)[-1])
-        ct.write_store(SLOT_FERRY_ID, ct.get_id())
-        ct.write_store(SLOT_FERRY_BUILT, 1)
-        self.waiting_ferry = 1
-        return True
-
     def choose_target(self, ct: Controller) -> Position | None:
         pos = ct.get_position()
         if self.role == "mason":
@@ -562,9 +527,6 @@ class Player:
             ct.fire(target)
 
     def run_launcher(self, ct: Controller) -> None:
-        if getattr(self, "ferry_used", False):
-            ct.self_destruct()
-            return
         here = ct.get_position()
         enemies = [unit for unit in ct.get_nearby_units(2)
                    if ct.get_team(unit) != ct.get_team()
@@ -578,22 +540,3 @@ class Player:
                     p.distance_squared(here), -p.x, -p.y))
                 ct.launch(origin, target)
                 return
-        wanted = ct.read_store(SLOT_FERRY_ID)
-        if not wanted:
-            return
-        passengers = [unit for unit in ct.get_nearby_units(2)
-                      if unit == wanted and ct.get_team(unit) == ct.get_team()]
-        if not passengers:
-            return
-        origin = ct.get_position(passengers[0])
-        enemy = unpack(ct.read_store(SLOT_ENEMY))
-        if enemy is None:
-            return
-        choices = [tile for tile in ct.get_nearby_tiles(26)
-                   if ct.can_launch(origin, tile)
-                   and tile.distance_squared(enemy) < origin.distance_squared(enemy)]
-        if choices:
-            target = min(choices, key=lambda p: (p.distance_squared(enemy), p.x, p.y))
-            ct.launch(origin, target)
-            ct.write_store(SLOT_FERRY_ID, 0)
-            self.ferry_used = True
