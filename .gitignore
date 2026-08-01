@@ -8,3 +8,15 @@ __pycache__/
 # Virtual environments
 .venv/
 venv/
+
+# Tournament run directories. The durable artefacts -- what was planned and what happened --
+# are manifest.json, matches.csv and ratings.csv; everything else is reproducible from them
+# plus the registry, and the bulk (staged bots, per-match JSONs, LSF logs) is large.
+tournament/runs/*/stage/
+tournament/runs/*/maps/
+tournament/runs/*/results/
+tournament/runs/*/logs/
+tournament/runs/*/schedule.jsonl
+tournament/runs/*/job.sh
+tournament/runs/*/job_*.sh
+tournament/runs/*/work_*.txt

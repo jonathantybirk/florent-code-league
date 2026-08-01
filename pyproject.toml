@@ -6,7 +6,19 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "fcode==2.3.3",
+    # Tournament rating only (tournament/rating.py). Never imported by anything that
+    # calls the engine -- see the module-boundary note in tournament/README.md.
+    "numpy>=2.0",
+    "scipy>=1.14",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
 ]
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tournament"]
