@@ -9,7 +9,8 @@ from fcode import Environment, Position
 
 
 BOT_DIR = Path(__file__).parents[1] / "bots" / "luc" / "tempest_reinforcements"
-saved_modules = {name: sys.modules.pop(name) for name in ("constants", "utils")
+saved_modules = {name: sys.modules.pop(name)
+                 for name in ("atlas", "atlas_data", "constants", "utils")
                  if name in sys.modules}
 sys.path.insert(0, str(BOT_DIR))
 try:
@@ -21,7 +22,7 @@ try:
     SPEC.loader.exec_module(core)
 finally:
     sys.path.remove(str(BOT_DIR))
-    for name in ("constants", "utils"):
+    for name in ("atlas", "atlas_data", "constants", "utils"):
         sys.modules.pop(name, None)
     sys.modules.update(saved_modules)
 
@@ -124,6 +125,26 @@ class PersistentSpawningTests(unittest.TestCase):
         core.run(player, ct)
 
         self.assertEqual(len(ct.spawned), 1)
+
+    def test_known_map_publishes_oracle_enemy_core(self) -> None:
+        player = object_with_builders_spawned(core.MAX_OPENING_BUILDERS)
+        del player.builders_spawned
+        ct = DuelAtlasController(core.REINFORCEMENT_TITANIUM_THRESHOLD)
+
+        core.run(player, ct)
+
+        self.assertEqual(ct.store[core.SLOT_ENEMY_CORE], 1 + 9 * 32 + 2)
+
+
+class DuelAtlasController(FakeController):
+    def get_position(self) -> Position:
+        return Position(1, 8)
+
+    def get_map_width(self) -> int:
+        return 12
+
+    def get_map_height(self) -> int:
+        return 12
 
 
 def object_with_builders_spawned(count: int):
