@@ -7,10 +7,9 @@ return ``None`` and retain Tempest Fast's ordinary observation-only policy.
 """
 
 from dataclasses import dataclass
-from functools import lru_cache
-from pathlib import Path
-
 from fcode import Environment
+
+from atlas_data import ROWS
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,64 +92,12 @@ def identify_visible(ct, own_core: tuple[int, int]):
     return known
 
 
-@lru_cache(maxsize=21)
 def _terrain(name: str):
-    path = Path(__file__).resolve().parent / "maps" / f"{name}.map26"
-    fields = list(_protobuf_fields(path.read_bytes()))
-    width = _required_varint(fields, 1)
     walls, ores = set(), set()
-    y = 0
-    for number, wire, value in fields:
-        if number != 3 or wire != 2:
-            continue
-        row = _required_bytes(list(_protobuf_fields(value)), 1)
-        if len(row) != width:
-            raise ValueError(f"bad atlas row in {path}")
+    for y, row in enumerate(ROWS[name]):
         for x, tile in enumerate(row):
-            if tile == 1:
+            if tile == "#":
                 walls.add((x, y))
-            elif tile == 2:
+            elif tile == "O":
                 ores.add((x, y))
-        y += 1
     return frozenset(walls), frozenset(ores)
-
-
-def _required_varint(fields, wanted):
-    return next(value for number, wire, value in fields
-                if number == wanted and wire == 0)
-
-
-def _required_bytes(fields, wanted):
-    return next(value for number, wire, value in fields
-                if number == wanted and wire == 2)
-
-
-def _protobuf_fields(data):
-    offset = 0
-    while offset < len(data):
-        key, offset = _read_varint(data, offset)
-        number, wire = key >> 3, key & 7
-        if wire == 0:
-            value, offset = _read_varint(data, offset)
-        elif wire == 1:
-            value, offset = data[offset:offset + 8], offset + 8
-        elif wire == 2:
-            length, offset = _read_varint(data, offset)
-            value, offset = data[offset:offset + length], offset + length
-        elif wire == 5:
-            value, offset = data[offset:offset + 4], offset + 4
-        else:
-            raise ValueError(f"unsupported protobuf wire type {wire}")
-        yield number, wire, value
-
-
-def _read_varint(data, offset):
-    value = shift = 0
-    while offset < len(data):
-        byte = data[offset]
-        offset += 1
-        value |= (byte & 0x7f) << shift
-        if byte < 0x80:
-            return value, offset
-        shift += 7
-    raise ValueError("truncated protobuf varint")
