@@ -23,7 +23,7 @@ from tournament import plan as planning
 from tournament.discover import discover
 from tournament.gitutil import REPO_ROOT, resolve_commit
 from tournament.merge import merge, read
-from tournament.rating import evaluate, evaluate_map_tasks
+from tournament.rating import evaluate
 from tournament.registry import BotSpec
 from tournament import registry
 from tournament.site_data import build as build_site_data
@@ -284,11 +284,8 @@ def run_once(
     metadata = {bot_id: value for bot_id, value in state["canonical_bots"].items()}
     metadata.update({spec.bot_id: _spec_dict(spec) for spec in representatives})
     ratings = evaluate(distinct_rows)
-    map_tasks = evaluate_map_tasks(distinct_rows)
-    report.write_csv(
-        ratings, metadata, destination / "ratings-distinct.csv", map_tasks=map_tasks
-    )
-    report.write_csv(ratings, metadata, destination / "ratings.csv", map_tasks=map_tasks)
+    report.write_csv(ratings, metadata, destination / "ratings-distinct.csv")
+    report.write_csv(ratings, metadata, destination / "ratings.csv")
 
     code_groups = []
     for digest, specs in unseen.items():

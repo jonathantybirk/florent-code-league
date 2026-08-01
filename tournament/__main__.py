@@ -347,7 +347,7 @@ def cmd_rate(args) -> int:
     # Imported here, not at module scope: this is the only path that pulls in numpy/scipy, and
     # `run` must never do so. See tournament/run_match.py.
     from tournament import duplicates, report
-    from tournament.rating import evaluate, evaluate_map_tasks
+    from tournament.rating import evaluate
 
     destination = planning.run_dir(args.tid)
     rows, meta = _pooled(args.tid, args.pool)
@@ -358,9 +358,8 @@ def cmd_rate(args) -> int:
         return 1
 
     ratings = evaluate(rows, k=args.k)
-    map_tasks = evaluate_map_tasks(rows)
     output = destination / "ratings.csv"
-    records = report.write_csv(ratings, meta, output, map_tasks=map_tasks)
+    records = report.write_csv(ratings, meta, output)
     print(report.render(ratings, records, dropped))
 
     # Always run behaviour-level duplicate detection: a duplicate is the single most common way
