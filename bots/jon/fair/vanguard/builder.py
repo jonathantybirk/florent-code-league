@@ -20,6 +20,7 @@ from constants import (
     LAUNCH_MIN_GAP,
     FORTIFY_ROUND,
     HOME_GUNNERS,
+    PICKET_LAUNCHERS,
     ECON_BEFORE_DEFENCE,
     REPAIR_RADIUS,
     CORE_PANIC_PERCENT,
@@ -118,6 +119,7 @@ def _init(p, ct):
     p.fails = {}
     p.fortified = set()
     p.home_gunners = 0
+    p.pickets = 0
     p.awaiting_launch = 0
 
 
@@ -211,6 +213,8 @@ def _economy(p, ct):
             return
         if _fortify(p, ct):
             return
+    if p.phase in ("idle", "explore") and _picket(p, ct):
+        return
     if p.phase == "idle":
         _pick_job(p, ct)
     if p.phase == "line":
@@ -366,6 +370,44 @@ def _repair(p, ct):
         return True
     spots = world.adjacent4(p, tile) - world.blocked_tiles(p)
     return _step(p, ct, spots)
+
+
+def _picket(p, ct):
+    """Launchers beside our own Harvesters, to throw raiders off them.
+
+    Make Fire ran six of these at Cambridge. A Launcher needs no ammunition at
+    all, which under 2.3.3 means it is the only defence that costs nothing to
+    keep firing, and a thrown Builder leaves the map rather than dying slowly.
+    """
+    if p.pickets >= PICKET_LAUNCHERS or ct.get_current_round() < FORTIFY_ROUND:
+        return False
+    if not p.my_harvesters:
+        return False
+    if ct.get_global_resources() < ct.get_launcher_cost() + 60:
+        return False
+    occupied = p.solids | set(p.conveyors) | set(p.enemy_buildings)
+    for harvester in sorted(p.my_harvesters):
+        for delta in D4_DELTAS:
+            spot = (harvester[0] + delta[0], harvester[1] + delta[1])
+            if not world.inside(p, spot) or spot in occupied or spot in p.foot:
+                continue
+            if spot in world.known_walls(p) or spot in world.known_ores(p):
+                continue
+            target = Position(*spot)
+
+            def attempt(target=target, spot=spot):
+                if ask(ct.can_build_launcher, target):
+                    ct.build_launcher(target)
+                    p.solids.add(spot)
+                    p.pickets += 1
+                    log(ct, f"picket t{p.ticket} launcher {spot}")
+                    return True
+                return False
+
+            if _build_from(p, ct, spot, attempt):
+                return True
+            return True
+    return False
 
 
 def _home_gunner(p, ct):
