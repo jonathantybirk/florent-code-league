@@ -338,3 +338,39 @@ name   = "tempest_oracle_ferry"
 commit = "12802b8"
 path   = "bots/jon/unfair/tempest_oracle_ferry"
 tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "tempest_oracle_ferry"
+commit = "7196487"
+path   = "bots/jon/unfair/tempest_oracle_ferry"
+tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "vanguard"
+commit = "bb03f14"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "undertow_oracle"
+commit = "75591b7"
+path   = "bots/jon/unfair/undertow_oracle"
+tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "vanguard_oracle"
+commit = "75591b7"
+path   = "bots/jon/unfair/vanguard_oracle"
+tags   = ["jon", "unfair"]
+
+[[bot]]
+name   = "v233_j"
+commit = "818f3b4"
+path   = "bots/jon/versions/probes/v233_j"
+tags   = ["jon", "versions", "probes"]
+
+[[bot]]
+name   = "vanguard"
+commit = "818f3b4"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]

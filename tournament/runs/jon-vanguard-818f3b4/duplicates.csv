@@ -1,0 +1,5 @@
+kind,size,members,detail
+behaviour,2,tempest_oracle_ferry@12802b8 tempest_oracle_ferry@7196487,same results vs all 45 shared opponents; 21/42 head to head
+behaviour,2,vanguard@bb03f14 vanguard@da3fd8a,same results vs all 47 shared opponents; 21/42 head to head
+behaviour,2,vanguard@17ad456 vanguard@818f3b4,same results vs all 47 shared opponents; 21/42 head to head
+code,2,v233_j@818f3b4 vanguard@818f3b4,identical .py content (949942fdfe96)
