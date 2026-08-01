@@ -267,34 +267,6 @@ def blocked_tiles(p):
     return p.walls | p.mirror_walls | p.solids | p.crowded
 
 
-def bfs_step(p, source, goals, treat_unseen_as_open=True):
-    """First tile of a shortest 8-connected walk from source into goals."""
-    if source in goals:
-        return None
-    blocked = blocked_tiles(p)
-    prev = {source: None}
-    queue = deque([source])
-    found = None
-    while queue:
-        cur = queue.popleft()
-        if cur in goals:
-            found = cur
-            break
-        for dx, dy in D8_DELTAS:
-            nxt = (cur[0] + dx, cur[1] + dy)
-            if nxt in prev or not inside(p, nxt) or nxt in blocked:
-                continue
-            if not treat_unseen_as_open and nxt not in p.seen:
-                continue
-            prev[nxt] = cur
-            queue.append(nxt)
-    if found is None:
-        return None
-    while prev[found] != source:
-        found = prev[found]
-    return found
-
-
 def distance_field(p, goals):
     """Walk distance from every reachable tile to the nearest goal.
 

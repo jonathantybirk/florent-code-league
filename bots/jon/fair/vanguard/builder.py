@@ -28,11 +28,7 @@ from constants import (
     SLOT_BUILDER_TICKET,
     SLOT_ECON_LINES,
     SLOT_LAUNCH_ID,
-    SIEGE_ORE_RADIUS,
-    SIEGE_ORE_FAR,
     RAID_MIN_GAP,
-    SIEGE_LINE_MAX,
-    SIEGE_SLOTS,
     SLOT_SYMMETRY_A,
     SLOT_SYMMETRY_B,
 )
@@ -566,21 +562,22 @@ def _raid(p, ct):
 
 
 def _siege(p, ct):
+    """Put Gunners on their Core. Nothing else is needed any more.
+
+    2.3.3 pays every turret from one team-wide pool, so a siege needs a firing
+    line and titanium at home -- not a supply. The forward Harvester, the
+    conveyor creep and the parasitism that 2.2.0 demanded are now pure
+    overhead: rounds spent mining beside their base instead of placing another
+    Gunner on their Core.
+    """
     if p.enemy_core is None:
         _explore(p, ct)
         return
     if _ferry(p, ct):
         return
-    # A firing position we can already reach costs nothing to take, and a
-    # producer the enemy paid for is the cheapest ammunition on the board.
     if _add_gunner(p, ct, without_travel=True):
         return
-    ore = _pick_siege_ore(p, ct)
-    if ore is not None and _forward_harvester(p, ct, ore) is False:
-        return
     if _add_gunner(p, ct):
-        return
-    if _extend_feed(p, ct):
         return
     _assist(p, ct)
 
@@ -615,86 +612,6 @@ def _ferry(p, ct):
             log(ct, f"siege t{p.ticket} launcher {spot} hop {p.hops + 1}")
             return True
     return False
-
-
-def _supply_tiles(p):
-    """Every producer that could push a stack into a Gunner we place."""
-    return set(p.feeders) | set(p.enemy_output)
-
-
-def _pick_siege_ore(p, ct):
-    """Claim a deposit close enough to the enemy Core to matter."""
-    core = p.enemy_core
-    if p.siege_ore is not None:
-        return p.siege_ore
-    taken = world.claimed_positions(p, ct, SIEGE_SLOTS)
-    # Tiered, not a hard cutoff. A deposit within SIEGE_ORE_RADIUS can feed a
-    # Gunner directly; a further one still can, through a short conveyor creep.
-    # Some maps put no ore at all near a Core, and a flat cutoff made the whole
-    # assault give up and explore for a thousand rounds on those.
-    # The far tier is a last resort. If they already run a producer near their
-    # own Core we would rather stand next to it than walk ten tiles to mine our
-    # own -- their Harvester feeds our Gunner just as well as ours would.
-    near_supply = any(world.cheb(t, core) <= SIEGE_ORE_RADIUS + 1
-                      for t in p.enemy_output)
-    limit = SIEGE_ORE_RADIUS if near_supply else SIEGE_ORE_FAR
-    pool = [o for o in world.known_ores(p) - p.foot
-            if world.cheb(o, core) <= limit and o not in taken]
-    pool.sort(key=lambda o: (world.cheb(o, core), world.cheb(o, p.core), o))
-    for ore in pool:
-        if world.claim(ct, SIEGE_SLOTS, ore) is not None:
-            p.siege_ore = ore
-            log(ct, f"siege t{p.ticket} claims ore {ore}")
-            return ore
-    return None
-
-
-def _forward_harvester(p, ct, ore):
-    """Walk to the deposit and mine it.
-
-    True once our Harvester stands there, False while still working on it, and
-    None when the deposit turned out to be unusable -- the caller then falls
-    through to parasitising whatever the enemy has already built nearby.
-    """
-    target = Position(*ore)
-    if ct.is_in_vision(target):
-        if ct.get_tile_env(target) != Environment.ORE_TITANIUM:
-            # A mirrored prediction that reality disagrees with; drop it.
-            log(ct, f"siege t{p.ticket} drop {ore}: not ore")
-            _drop_siege_ore(p, ct)
-            return None
-        building = ct.get_tile_building_id(target)
-        if building is not None:
-            if ct.get_team(building) == ct.get_team():
-                p.feeders.add(ore)
-                return True
-            # Their Harvester already feeds this deposit. Taking the tile costs
-            # ten Builder attacks, but the stacks it produces are ours to shoot
-            # with as soon as a Gunner stands beside it.
-            log(ct, f"siege t{p.ticket} drop {ore}: enemy building")
-            _drop_siege_ore(p, ct)
-            return None
-
-    def attempt():
-        if ask(ct.can_build_harvester, target):
-            ct.build_harvester(target)
-            p.solids.add(ore)
-            p.feeders.add(ore)
-            log(ct, f"siege t{p.ticket} forward harvester {ore}")
-            return True
-        log(ct, f"siege t{p.ticket} cannot harvest {ore} from "
-                f"{tuple(ct.get_position())}")
-        return False
-
-    _build_from(p, ct, ore, attempt)
-    return False
-
-
-def _drop_siege_ore(p, ct):
-    if p.siege_ore is not None:
-        world.unclaim(ct, SIEGE_SLOTS, p.siege_ore)
-        p.rejected_ores.add(p.siege_ore)
-        p.siege_ore = None
 
 
 def _add_gunner(p, ct, without_travel=False):
@@ -824,20 +741,6 @@ def _flank_bias(p, spot):
     return 0 if side == (rank % 2 == 0) else 1
 
 
-def _feeder_outputs_into(p, feeder, spot):
-    """Will this producer actually push a stack onto `spot`?"""
-    if feeder in p.enemy_output:
-        facing = p.enemy_output[feeder]
-    elif feeder in p.conveyors:
-        facing = p.conveyors[feeder]
-    else:
-        facing = None                    # our own Harvester
-    if facing is None:
-        return True                      # Harvesters round-robin every side
-    dx, dy = facing.delta()
-    return (feeder[0] + dx, feeder[1] + dy) == spot
-
-
 def _ray_to_core(p, spot, core_tiles):
     """A facing whose ray reaches the Core, and how much is in the way.
 
@@ -871,44 +774,6 @@ def _ray_to_core(p, spot, core_tiles):
                 break                    # one of ours, and we will not shoot it
             # Empty ground: keep tracing.
     return best
-
-
-def _extend_feed(p, ct):
-    """No Gunner slot touches the supply yet: creep a conveyor Core-ward."""
-    core_tiles = set(world.footprint(p.enemy_core))
-    ring = {t for tile in core_tiles for t in world.adjacent8(p, tile)
-            if t not in core_tiles and t not in world.known_walls(p)
-            and t not in world.known_ores(p)}
-    # Their Harvesters are deliberately not tapped here. A Conveyor of ours
-    # beside one does collect their titanium (probed and confirmed), but belting
-    # it anywhere useful means laying tiles inside their base that nobody
-    # repairs, and it measured worse both long and short: 12-18 and 13-17
-    # against undertow, from 14-16. The mechanic is real; this use of it is not.
-    best = None
-    for feeder in p.feeders:
-        if p.conveyors.get(feeder) is not None:
-            continue                     # a conveyor already has its output
-        line = plan.plan_line(p, feeder, ring, joinable=(),
-                              max_length=SIEGE_LINE_MAX)
-        if line and (best is None or len(line) < len(best)):
-            best = line
-    if not best:
-        return False
-    tile, facing = best[0]
-    target = Position(*tile)
-    if ct.is_in_vision(target) and ct.get_tile_building_id(target) is not None:
-        return _clear_tile(p, ct, tile)
-
-    def attempt():
-        if ask(ct.can_build_conveyor, target, facing):
-            ct.build_conveyor(target, facing)
-            p.conveyors[tile] = facing
-            p.feeders.add(tile)
-            return True
-        return False
-
-    _build_from(p, ct, tile, attempt)
-    return True
 
 
 def _clear_tile(p, ct, tile):

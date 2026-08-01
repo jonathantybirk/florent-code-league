@@ -16,9 +16,8 @@ FACING8 = {
 }
 WALKABLE_BUILDINGS = (EntityType.CONVEYOR, EntityType.SPLITTER)
 
-# A Gunner turns 1 Ti of delivered ammunition into 5 damage, so a siege is
-# throughput-limited: one forward Harvester (2.5 Ti/round) sustains roughly
-# 12.5 damage/round, i.e. a 500 HP Core in 40 rounds.
+# 2.3.3 pays turrets from a global pool, so a Gunner needs only a firing line
+# and titanium at home -- range is the whole constraint.
 GUNNER_RANGE_SQ = 13
 LAUNCH_RANGE_SQ = 26
 
@@ -33,19 +32,9 @@ SLOT_LAUNCH_ID = 6               # Builder id asking to be thrown
 SLOT_ENEMY_CORE = 7
 SLOT_SYMMETRY_A = 8              # rejected-symmetry mask, writer = ticket 0
 SLOT_SYMMETRY_B = 9              # rejected-symmetry mask, writer = ticket 1
-SIEGE_SLOTS = range(10, 14)      # forward deposits, one claim per attacker
 SLOT_ECON_LINES = 14
 SLOT_HOME_UNDER_FIRE = 15
 
-# How far from the enemy Core a deposit may sit and still be worth mining for
-# ammunition, and how long a forward conveyor creep may get before the battery
-# costs more than it delivers.
-# A Gunner must sit within about three tiles of the Core and touch its
-# feeder, so a forward deposit further out than this can never supply one
-# directly and only earns its cost through a conveyor creep.
-SIEGE_ORE_RADIUS = 4
-# Fallback reach when nothing sits close to their Core at all.
-SIEGE_ORE_FAR = 10
 
 # Launcher hops per attacker, and the range at which walking is faster than
 # paying 20 Ti to be thrown.
@@ -80,7 +69,6 @@ LONG_LINE_RESERVE = 250
 
 # Rounds spent failing to reach a firing position before trying another.
 BLOCKED_TILE_PATIENCE = 6
-SIEGE_LINE_MAX = 8
 
 # Gunners posted over our own approach. Suppression, not defence: the enemy
 # assault is Builders with no ranged attack.
