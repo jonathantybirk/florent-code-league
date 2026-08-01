@@ -31,6 +31,7 @@ def init(p, ct):
     p.w, p.h = ct.get_map_width(), ct.get_map_height()
     p.seen = set()
     p.terrain = {}
+    p.observed_terrain = {}
     p.walls = set()
     p.ores = set()
     p.solids = set()          # non-walkable buildings (either team)
@@ -66,7 +67,29 @@ def sense(p, ct):
     me = ct.get_id()
     p.crowded = set()
     p.enemy_builders = set()
-    for tile in ct.get_nearby_tiles():
+    visible = list(ct.get_nearby_tiles())
+    if p.atlas is not None:
+        mismatch = any(
+            ct.get_tile_env(tile) != (
+                Environment.WALL if tuple(tile) in p.atlas.walls else
+                Environment.ORE_TITANIUM if tuple(tile) in p.atlas.ores else
+                Environment.EMPTY)
+            for tile in visible
+        )
+        if mismatch:
+            p.atlas = None
+            p.seen = set(p.observed_terrain)
+            p.terrain = dict(p.observed_terrain)
+            p.walls = {tile for tile, env in p.observed_terrain.items()
+                       if env == Environment.WALL}
+            p.ores = {tile for tile, env in p.observed_terrain.items()
+                      if env == Environment.ORE_TITANIUM}
+            p.mirror_walls.clear()
+            p.mirror_ores.clear()
+            p.mirror_seen.clear()
+            p.enemy_core = None
+            ct.write_store(SLOT_ENEMY_CORE, 0)
+    for tile in visible:
         occupant = ct.get_tile_builder_bot_id(tile)
         if occupant is not None and occupant != me:
             p.crowded.add((tile.x, tile.y))
@@ -76,11 +99,16 @@ def sense(p, ct):
         p.seen.add(key)
         env = ct.get_tile_env(tile)
         p.terrain[key] = env
+        p.observed_terrain[key] = env
         if env == Environment.WALL:
             p.walls.add(key)
+            p.ores.discard(key)
             continue
         if env == Environment.ORE_TITANIUM:
             p.ores.add(key)
+        else:
+            p.ores.discard(key)
+        p.walls.discard(key)
         bid = ct.get_tile_building_id(tile)
         if bid is None:
             p.solids.discard(key)
