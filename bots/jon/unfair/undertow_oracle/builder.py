@@ -863,11 +863,8 @@ def _clear_tile(p, ct, tile):
     conveyor one step upstream is the next candidate and feeds the same
     battery, so the blockade only costs them the tile they are standing on.
     """
-    here = (ct.get_position().x, ct.get_position().y)
-    if here == tile:
-        position = Position(*tile)
-        if ask(ct.can_fire, position):
-            ct.fire(position)
+    if ask(ct.can_fire, Position(*tile)):
+        ct.fire(Position(*tile))
         p.stalls, p.clear_target = 0, None
         return True
     # Count rounds spent wanting this tile, not failed moves: a Builder denied
@@ -881,7 +878,7 @@ def _clear_tile(p, ct, tile):
         p.blacklist.add(tile)
         log(ct, f"siege t{p.ticket} gives up on denied tile {tile}")
         return False
-    _step(p, ct, {tile})
+    _step(p, ct, world.adjacent4(p, tile) - world.blocked_tiles(p))
     return True
 
 
@@ -916,7 +913,7 @@ HARASS_VALUE = {
 
 
 def _harass(p, ct):
-    """Chip enemy logistics; a Builder can only damage its own tile."""
+    """Chip enemy logistics from an orthogonally adjacent tile."""
     here = (ct.get_position().x, ct.get_position().y)
     targets = sorted(
         (t for t, kind in p.enemy_buildings.items() if kind in HARASS_VALUE),
@@ -927,12 +924,10 @@ def _harass(p, ct):
         _explore(p, ct)
         return
     target = targets[0]
-    if here == target:
-        position = Position(*here)
-        if ask(ct.can_fire, position):
-            ct.fire(position)
+    if ask(ct.can_fire, Position(*target)):
+        ct.fire(Position(*target))
         return
-    if not _step(p, ct, {target}):
+    if not _step(p, ct, world.adjacent4(p, target) - world.blocked_tiles(p)):
         _explore(p, ct)
 
 

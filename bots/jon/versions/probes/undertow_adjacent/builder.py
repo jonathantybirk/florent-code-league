@@ -863,6 +863,9 @@ def _clear_tile(p, ct, tile):
     conveyor one step upstream is the next candidate and feeds the same
     battery, so the blockade only costs them the tile they are standing on.
     """
+    # Engine 2.3.3 only permits Builder attacks against an orthogonally
+    # adjacent tile. The inherited 2.2 policy walked onto the target, where it
+    # could never attack and would report success forever.
     if ask(ct.can_fire, Position(*tile)):
         ct.fire(Position(*tile))
         p.stalls, p.clear_target = 0, None
