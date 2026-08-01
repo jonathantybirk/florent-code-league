@@ -91,8 +91,12 @@ class Player:
         if self.core is None:
             self.core = unpack(ct.read_store(SLOT_CORE))
         if self.role is None:
-            # Two miners keep the siege supplied; three masons establish lanes.
-            self.role = "miner" if ct.get_id() % 5 in (0, 1) else "mason"
+            # Two miners supply two masons; the middle spawn stays home as the
+            # wall layer and repair crew that makes the strategy a casemate at
+            # both ends of the map.
+            residue = ct.get_id() % 5
+            self.role = ("miner" if residue in (0, 1) else
+                         "guard" if residue == 2 else "mason")
 
         self.observe(ct)
         self.report_enemy(ct)
@@ -112,6 +116,8 @@ class Player:
                 pass
             elif self.role == "mason":
                 self.build_casemate(ct)
+            elif self.role == "guard":
+                self.build_home_wall(ct)
 
         target = self.choose_target(ct)
         if target is not None:
@@ -236,6 +242,27 @@ class Player:
             return True
         return False
 
+    def build_home_wall(self, ct: Controller) -> bool:
+        if self.core is None:
+            return False
+        pos = ct.get_position()
+        enemy = self.enemy_core(ct)
+        ring = []
+        for x in range(self.core.x - 1, self.core.x + 3):
+            for y in range(self.core.y - 1, self.core.y + 3):
+                if self.core.x <= x <= self.core.x + 1 and self.core.y <= y <= self.core.y + 1:
+                    continue
+                tile = Position(x, y)
+                if inside(ct, tile):
+                    ring.append(tile)
+        ring.sort(key=lambda p: (p.distance_squared(enemy), p.x, p.y))
+        for tile in ring:
+            if pos.distance_squared(tile) == 1 and ct.can_build_barrier(tile):
+                ct.build_barrier(tile)
+                self.known_blocked.add((tile.x, tile.y))
+                return True
+        return False
+
     def choose_target(self, ct: Controller) -> Position | None:
         pos = ct.get_position()
         if self.role == "mason":
@@ -246,6 +273,17 @@ class Player:
                     if inside(ct, front):
                         return front
             return self.enemy_core(ct)
+
+        if self.role == "guard" and self.core is not None:
+            ring = []
+            for x in range(self.core.x - 1, self.core.x + 3):
+                for y in range(self.core.y - 1, self.core.y + 3):
+                    tile = Position(x, y)
+                    if (inside(ct, tile)
+                            and not (self.core.x <= x <= self.core.x + 1
+                                     and self.core.y <= y <= self.core.y + 1)):
+                        ring.append(tile)
+            return min(ring, key=lambda p: (p.distance_squared(pos), p.x, p.y))
 
         if self.routing and self.core is not None:
             return self.core
