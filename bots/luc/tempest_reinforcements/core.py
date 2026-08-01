@@ -1,12 +1,13 @@
-"""Map-agnostic Core opening and persistent reinforcement spawning."""
+"""Atlas-aware Core opening and persistent reinforcement spawning."""
 
 from typing import TYPE_CHECKING
 
 from fcode import Controller, Direction, Environment, Position
 
+from atlas import identify_visible
 from constants import (ECONOMY_BUILDERS, MAX_OPENING_BUILDERS,
                        SLOT_BUILDER_HEARTBEAT, SLOT_CORE_DAMAGED,
-                       SLOT_OWN_CORE)
+                       SLOT_ENEMY_CORE, SLOT_OWN_CORE)
 from utils import pack_pos
 
 if TYPE_CHECKING:
@@ -33,14 +34,21 @@ def run(player: "Player", ct: Controller) -> None:
         player.repair_alert = False
     ct.write_store(SLOT_OWN_CORE, pack_pos(ct.get_position()))
     ct.write_store(SLOT_CORE_DAMAGED, int(player.repair_alert))
+    if not hasattr(player, "atlas"):
+        player.atlas = None
     if not hasattr(player, "builders_spawned"):
         player.builders_spawned = 0
         core = ct.get_position()
-        ores = [tile for tile in ct.get_nearby_tiles()
-                if ct.get_tile_env(tile) == Environment.ORE_TITANIUM
-                and ct.get_tile_building_id(tile) is None]
+        player.atlas = identify_visible(ct, tuple(core))
+        ores = ([Position(*tile) for tile in player.atlas.ores]
+                if player.atlas is not None else
+                [tile for tile in ct.get_nearby_tiles()
+                 if ct.get_tile_env(tile) == Environment.ORE_TITANIUM
+                 and ct.get_tile_building_id(tile) is None])
         ores.sort(key=lambda tile: (tile.distance_squared(core), tile.x, tile.y))
         player.opening_ore_targets = ores
+    if player.atlas is not None:
+        ct.write_store(SLOT_ENEMY_CORE, pack_pos(player.atlas.enemy_core))
 
     role = player.builders_spawned
     resources = ct.get_global_resources()
@@ -60,7 +68,8 @@ def run(player: "Player", ct: Controller) -> None:
         goals = [target.add(direction) for direction in CARDINALS
                  if _on_map(ct, target.add(direction))]
     else:
-        target = _scout_target(ct, role - ECONOMY_BUILDERS)
+        target = (Position(*player.atlas.enemy_core) if player.atlas is not None
+                  else _scout_target(ct, role - ECONOMY_BUILDERS))
         goals = [target]
 
     candidates = [tile for tile in ct.get_nearby_tiles(2) if ct.can_spawn(tile)]

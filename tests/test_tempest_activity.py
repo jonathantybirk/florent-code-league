@@ -13,7 +13,8 @@ BOT_DIR = Path(__file__).parents[1] / "bots" / "luc" / "tempest_reinforcements"
 
 
 def load_bot_modules():
-    saved_modules = {name: sys.modules.pop(name) for name in ("constants", "utils")
+    saved_modules = {name: sys.modules.pop(name)
+                     for name in ("atlas", "atlas_data", "constants", "utils")
                      if name in sys.modules}
     sys.path.insert(0, str(BOT_DIR))
     loaded = {}
@@ -28,7 +29,7 @@ def load_bot_modules():
             loaded[name] = module
     finally:
         sys.path.remove(str(BOT_DIR))
-        for name in ("constants", "utils"):
+        for name in ("atlas", "atlas_data", "constants", "utils"):
             sys.modules.pop(name, None)
         sys.modules.update(saved_modules)
     return loaded["builder"], loaded["launcher"]
@@ -94,10 +95,23 @@ def stuck_player():
         awaiting_launch=0,
         launch_origin=None,
         next_launcher_round=0,
+        atlas=object(),
+        builder_index=builder.ECONOMY_BUILDERS,
+        opening_hop_done=False,
+        opening_hop_pending=False,
     )
 
 
 class LauncherFallbackTests(unittest.TestCase):
+    def test_lead_attacker_builds_one_proactive_oracle_ferry(self) -> None:
+        player = stuck_player()
+        ct = StuckBuilderController()
+
+        self.assertTrue(builder._opening_ferry(player, ct, (12, 5)))
+
+        self.assertEqual(len(ct.built), 1)
+        self.assertTrue(player.opening_hop_pending)
+
     def test_builds_launcher_after_three_failed_paths(self) -> None:
         player = stuck_player()
         ct = StuckBuilderController()

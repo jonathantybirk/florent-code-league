@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from fcode import Controller, EntityType, Environment, GameError, Position
 
+from atlas import identify_visible
 from constants import (
     CLAIM_SLOTS,
     D4_DELTAS,
@@ -77,8 +78,24 @@ def _run(p, ct):
         p.awaiting_launch = 0
         p.launch_origin = None
         p.next_launcher_round = 0
+        p.opening_hop_done = False
+        p.opening_hop_pending = False
+        own_core = unpack_pos(ct.read_store(SLOT_OWN_CORE))
+        p.atlas = (identify_visible(ct, own_core) if own_core is not None
+                   else None)
+        if p.atlas is not None:
+            atlas_tiles = {(x, y) for y in range(p.h) for x in range(p.w)}
+            p.walls.update(p.atlas.walls)
+            p.ores.update(p.atlas.ores)
+            p.seen.update(atlas_tiles)
+            p.terrain.update({tile: Environment.EMPTY for tile in atlas_tiles})
+            p.terrain.update({tile: Environment.WALL for tile in p.atlas.walls})
+            p.terrain.update({tile: Environment.ORE_TITANIUM
+                              for tile in p.atlas.ores})
+            ct.write_store(SLOT_ENEMY_CORE, pack_pos(p.atlas.enemy_core))
     _sense(p, ct)
-    _update_enemy_core_inference(p, ct)
+    if p.atlas is None:
+        _update_enemy_core_inference(p, ct)
     if p.core is None:
         return
     if not p.is_attacker and ct.read_store(SLOT_CORE_DAMAGED):
@@ -660,9 +677,44 @@ def _rush(p, ct):
     if packed == 0:
         _explore(p, ct)
         return
-    if p.attack_gunners_built < 5 and _build_basic_gunner(p, ct, unpack_pos(packed)):
+    enemy_core = unpack_pos(packed)
+    if _opening_ferry(p, ct, enemy_core):
+        return
+    if p.attack_gunners_built < 5 and _build_basic_gunner(p, ct, enemy_core):
         return
     _harass(p, ct)
+
+
+def _opening_ferry(p, ct, enemy_core):
+    """Give the lead attacker one proactive atlas-directed hop."""
+    if (p.atlas is None or p.builder_index != ECONOMY_BUILDERS
+            or p.opening_hop_done):
+        return False
+
+    here = tuple(ct.get_position())
+    if p.opening_hop_pending:
+        if here != p.launch_origin:
+            p.awaiting_launch = 0
+            p.launch_origin = None
+            p.path_failures = 0
+            p.opening_hop_done = True
+            p.opening_hop_pending = False
+            return False
+        ct.write_store(SLOT_LAUNCH_ID, ct.get_id())
+        ct.write_store(SLOT_LAUNCH_TARGET, pack_pos(enemy_core))
+        p.awaiting_launch -= 1
+        if p.awaiting_launch <= 0:
+            p.opening_hop_done = True
+            p.opening_hop_pending = False
+        return True
+
+    if max(abs(here[0] - enemy_core[0]), abs(here[1] - enemy_core[1])) < 9:
+        p.opening_hop_done = True
+        return False
+    if _build_escape_launcher(p, ct, Position(*enemy_core)):
+        p.opening_hop_pending = True
+        return True
+    return False
 
 
 def _build_basic_gunner(p, ct, enemy_core):

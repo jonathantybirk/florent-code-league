@@ -1,4 +1,4 @@
-"""Tempest with persistent reinforcements and stuck-Builder launchers."""
+"""Atlas-guided Tempest with reinforcements and proactive/fallback ferries."""
 
 import builder
 import core
