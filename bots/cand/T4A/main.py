@@ -154,7 +154,7 @@ S_RUSH_ACTIVE = 15    # 1 once the rusher owns an executable plan and the reserv
 # Six is the pick: seven is stronger against the starter but falls off against the opponent that
 # actually resembles the ladder. Before the nav fix this curve was flat and peaked at 4 -- extra
 # builders paid their cost scale but could not navigate well enough to deliver.
-BUILDERS = 3
+BUILDERS = 6
 # Under sustained fire the cap lifts. A heal restores 4 HP for a flat 1 Ti and is NOT touched by
 # the global cost scale, while their Gunner spends 2 Ti to deal 10 damage and averages 5 damage a
 # round -- so one extra Builder standing on the Core very nearly cancels one extra turret, and
@@ -1914,6 +1914,19 @@ class Player:
                     try:
                         et = ct.get_entity_type(occ)
                         mine = ct.get_team(occ) == ct.get_team()
+                        # OUR OWN BELTS ARE NOT OBSTACLES. G61 measured the standing rules
+                        # exhaustively: a Builder Bot walks onto conveyors and splitters and
+                        # stands on them. `known_blocked` is the movement set `_nav_field`
+                        # floods over, and recording a belt in it makes the chain we lay behind
+                        # us a WALL across our own corridor. Measured on bridge/a: the builder
+                        # that had just laid (5,3) and (6,3) was standing on (6,3), its own nav
+                        # field said every tile east of x=5 was unreachable, and all six builders
+                        # were in two-tile oscillations by round 15 for a final score of ZERO
+                        # titanium collected. `occupied` keeps them -- that set means "a building
+                        # is here", which is a different question and is what the siege planner
+                        # and the ray checks need.
+                        if mine and (et == EntityType.CONVEYOR or et == EntityType.SPLITTER):
+                            self.known_blocked.discard(key)
                         if et == EntityType.CORE:
                             if mine:
                                 self.core_tiles.add(key)

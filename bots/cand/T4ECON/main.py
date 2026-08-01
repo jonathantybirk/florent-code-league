@@ -154,7 +154,7 @@ S_RUSH_ACTIVE = 15    # 1 once the rusher owns an executable plan and the reserv
 # Six is the pick: seven is stronger against the starter but falls off against the opponent that
 # actually resembles the ladder. Before the nav fix this curve was flat and peaked at 4 -- extra
 # builders paid their cost scale but could not navigate well enough to deliver.
-BUILDERS = 3
+BUILDERS = 6
 # Under sustained fire the cap lifts. A heal restores 4 HP for a flat 1 Ti and is NOT touched by
 # the global cost scale, while their Gunner spends 2 Ti to deal 10 damage and averages 5 damage a
 # round -- so one extra Builder standing on the Core very nearly cancels one extra turret, and
@@ -237,6 +237,7 @@ BATTERY_EVERY = 3
 # so this is a role reassignment costing one economy chain and zero cost scale. Two attackers put
 # two turrets on two different bearings off the same early tempo.
 ATTACKERS = 2
+ECON_LAB = True
 
 # --- Launcher relay (G41, measured on a purpose-built arena) -------------------------------
 # A Launcher throws an ADJACENT friendly Builder Bot to any bot-passable tile inside r^2 <= 26
@@ -1104,6 +1105,9 @@ class Player:
         never matched the hard-coded list, `_is_rusher` answered False for every builder, and the
         offence did not exist -- zero core kills across every unseen map measured.
         """
+        if ECON_LAB:
+            self.rush_role = False
+            return False
         if siege is None or self.core_pos is None:
             return False
         if self.rush_role is None:
