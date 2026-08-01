@@ -15,7 +15,7 @@ SLOT_ROLES = 3
 SLOT_WALLS = 8
 SLOT_MAP = 9
 MAX_BUILDERS = 5
-AMMO_TARGET = 36
+AMMO_TARGET = 60
 
 MAP_NAMES = (
     "atoll", "aurora", "bridge", "crossfire", "duel", "fjord", "hive",
@@ -93,7 +93,11 @@ class Player:
         # After spawning, retain a real construction bank. Without this, every
         # passive titanium tick is immediately converted to ammo and the cheap
         # barrier half of the strategy never exists in practice.
-        reserve = ct.get_builder_bot_cost() if self.spawned < MAX_BUILDERS else 100
+        map_name = self.atlas.name if self.atlas is not None else None
+        required_walls = 0 if map_name in FAST_CONTACT_MAPS else 3
+        fortified = ct.read_store(SLOT_WALLS) >= required_walls
+        reserve = (ct.get_builder_bot_cost() if self.spawned < MAX_BUILDERS else
+                   30 if fortified else 100)
         missing = AMMO_TARGET - ct.get_global_ammo()
         amount = min(missing, max(0, ct.get_global_resources() - reserve))
         if amount > 0 and ct.can_convert_ammo(amount):
