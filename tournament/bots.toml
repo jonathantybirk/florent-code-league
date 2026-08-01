@@ -256,3 +256,85 @@ name   = "vanguard_1e88ae8"
 commit = "da3fd8a"
 path   = "bots/jon/versions/vanguard_1e88ae8"
 tags   = ["jon", "versions"]
+
+# Challengers added after the original jon-full + jon-new pool.
+
+[[bot]]
+name   = "mistral"
+commit = "ba943b9"
+path   = "bots/jon/fair/mistral"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "tempest"
+commit = "ba943b9"
+path   = "bots/jon/fair/tempest"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "vanguard"
+commit = "ba943b9"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "luc_1"
+commit = "604349b"
+path   = "bots/1"
+tags   = ["luc", "fair"]
+
+# Untested code-bearing commits added to x/jon after ba943b9.
+
+[[bot]]
+name   = "vanguard"
+commit = "259c188"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "tempest_fast"
+commit = "eb1f0f3"
+path   = "bots/jon/fair/tempest_fast"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "vanguard"
+commit = "c407e79"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "vanguard"
+commit = "26e6792"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "mistral_fast"
+commit = "26b5aa1"
+path   = "bots/jon/fair/mistral_fast"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "tempest_ferry"
+commit = "26b5aa1"
+path   = "bots/jon/fair/tempest_ferry"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "vanguard"
+commit = "9932bec"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "vanguard"
+commit = "17ad456"
+path   = "bots/jon/fair/vanguard"
+tags   = ["jon", "fair"]
+
+[[bot]]
+name   = "tempest_oracle_ferry"
+commit = "12802b8"
+path   = "bots/jon/unfair/tempest_oracle_ferry"
+tags   = ["jon", "unfair"]

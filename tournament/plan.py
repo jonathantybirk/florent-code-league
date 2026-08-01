@@ -41,11 +41,16 @@ class Match:
     map_path: str  # relative to the run directory
     seed: int
     tle: int
+    kind: str = "rating"
 
 
-def match_id(bot_a: str, bot_b: str, map_label: str, seed: int, tle: int) -> str:
+def match_id(
+    bot_a: str, bot_b: str, map_label: str, seed: int, tle: int, kind: str = "rating"
+) -> str:
     """Content-addressed match identity, so re-planning is stable and merging is idempotent."""
     key = f"{bot_a}|{bot_b}|{map_label}|{seed}|{tle}"
+    if kind != "rating":
+        key += f"|{kind}"
     return hashlib.sha1(key.encode()).hexdigest()[:16]
 
 
@@ -162,6 +167,7 @@ def plan(
     seeds: tuple[int, ...] = (1,),
     tle: int = 0,
     versus: list[BotSpec] | None = None,
+    compliance_specs: list[BotSpec] | None = None,
 ) -> tuple[Path, list[Match]]:
     """Materialise a complete run directory and return it with the schedule."""
     if versus is None and len(specs) < 2:
@@ -174,17 +180,51 @@ def plan(
     (destination / "results").mkdir(exist_ok=True)
     (destination / "logs").mkdir(exist_ok=True)
 
+    from tournament import compliance
+
     map_paths = resolve(map_spec)
+    compliance_specs = list(specs if compliance_specs is None else compliance_specs)
+    compliance_map_paths = resolve(",".join(compliance.MAPS)) if compliance_specs else []
     everyone = list(specs)
-    for spec in versus or []:
+    for spec in list(versus or []) + compliance_specs:
         if spec.bot_id not in {s.bot_id for s in everyone}:
             everyone.append(spec)
 
     mains = stage_bots(everyone, destination / "stage")
-    staged_maps = stage_maps(map_paths, destination / "maps")
+    all_map_paths = list(dict.fromkeys(map_paths + compliance_map_paths))
+    staged_maps = stage_maps(all_map_paths, destination / "maps")
     matches = build_schedule(
         specs, map_paths, list(seeds), tle, mains, staged_maps, versus=versus
     )
+    if compliance_specs:
+        compliance_mains = compliance.stage(compliance_specs, destination, mains)
+        for spec in compliance_specs:
+            for path in compliance_map_paths:
+                key = label(path)
+                index = len(matches) + 1
+                kind = f"compliance-v{compliance.VERSION}"
+                matches.append(
+                    Match(
+                        index=index,
+                        match_id=match_id(
+                            spec.bot_id,
+                            compliance.BASELINE_ID,
+                            key,
+                            1,
+                            compliance.GUARD_TLE_MS,
+                            kind=kind,
+                        ),
+                        bot_a=spec.bot_id,
+                        bot_b=compliance.BASELINE_ID,
+                        a_main=compliance_mains[spec.bot_id],
+                        b_main=compliance_mains[compliance.BASELINE_ID],
+                        map=key,
+                        map_path=staged_maps[key],
+                        seed=1,
+                        tle=compliance.GUARD_TLE_MS,
+                        kind="compliance",
+                    )
+                )
 
     with open(destination / "schedule.jsonl", "w") as handle:
         for match in matches:
@@ -197,6 +237,7 @@ def plan(
         "seeds": list(seeds),
         "tle": tle,
         "matches": len(matches),
+        "rating_matches": sum(match.kind == "rating" for match in matches),
         "mode": "challenger" if versus else "round-robin",
         "challengers": [s.bot_id for s in specs] if versus else [],
         "bots": [
@@ -204,6 +245,7 @@ def plan(
              "tags": list(s.tags)}
             for s in everyone
         ],
+        "compliance": compliance.manifest_config(compliance_specs, compliance_map_paths),
     }
     (destination / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return destination, matches

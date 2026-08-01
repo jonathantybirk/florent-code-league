@@ -29,7 +29,7 @@ persists every match to CSV, and ranks with mElo and Nash averaging. Design rati
 
 ```sh
 uv sync
-uv run pytest tournament/          # 84 tests; validates the maths against the paper
+uv run pytest tournament/          # 87 tests; validates the maths and harness
 ```
 
 If you will touch the cluster, open the SSH master once (it lasts 8h):
@@ -73,6 +73,13 @@ from tournament import registry; print(','.join(s.bot_id for s in registry.load(
     --dedupe-from jon-full,jon-new \
     --maps official
 ```
+
+`plan` automatically appends three short, non-rating 10 ms compliance probes for every bot named
+in `--bots`. Their durable per-bot and per-match outputs are `compliance.csv` and
+`compliance_matches.csv`; inspect them directly or run
+`uv run python -m tournament compliance --tid my-run`. A pass is a sample, not a proof that every
+possible turn is fast. `rate` prints the compliance summary and excludes these matches from its
+win matrix.
 
 `--dedupe-from` drops roster bots already proven to play identically to another — currently 6 of
 42, so 1470 matches instead of 1722. Bots you name in `--bots` are never pruned.
@@ -155,9 +162,9 @@ anything they import.** The engine runs both bots in CPython sub-interpreters th
 *inside the calling process*; a scientific-stack import there means segfaults. One match per OS
 process, always. `test_harness.py` asserts this in a subprocess — if it fails, you broke it.
 
-**Use `--tle 0` (the default) for anything you will rate.** The turn-timeout watchdog is
-wall-clock, so `--tle 10` makes results depend on machine load. Use it only for a separate
-ladder-compliance check.
+**Use `--tle 0` (the default) for every rating match.** The automatically-added timing probes are
+separate `kind=compliance` rows and never enter the win matrix; do not rate an ad-hoc run made with
+`--tle 10`.
 
 **Do not compare `melo_r` across separate tournaments.** Ratings are only meaningful within one win
 matrix. Use `--pool`.
@@ -182,6 +189,8 @@ Most matches run the full 1000 rounds. Do not assume matches are cheap.
 | `tournament/runs/<tid>/matches.csv` | every match played |
 | `tournament/runs/<tid>/ratings.csv` | mElo + Nash per bot |
 | `tournament/runs/<tid>/duplicates.csv` | bots that play identically |
+| `tournament/runs/<tid>/compliance.csv` | per-bot 10 ms timing status |
+| `tournament/runs/<tid>/compliance_matches.csv` | raw per-probe timing evidence |
 | `tournament/README.md` | design rationale, and the departures from the paper |
 | `articles/1806.02643v2.pdf` | Balduzzi et al., the source for mElo and Nash averaging |
 

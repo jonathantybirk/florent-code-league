@@ -1,0 +1,4 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+mistral@ba943b9,mistral,ba943b9,exceeded,3,3,3,398,10119,36,0,9000,10000
+vanguard@ba943b9,vanguard,ba943b9,pass,3,3,3,505,1670,0,0,9000,10000
+luc_1@604349b,luc_1,604349b,exceeded,3,3,3,587,12416,5,0,9000,10000
