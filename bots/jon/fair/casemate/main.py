@@ -11,6 +11,7 @@ SLOT_CORE = 0
 SLOT_ENEMY = 1
 SLOT_ORE = 2
 SLOT_ROLES = 3
+SLOT_WALLS = 8
 MAX_BUILDERS = 5
 AMMO_TARGET = 36
 
@@ -209,6 +210,11 @@ class Player:
         enemy = self.enemy_core(ct)
         pos = ct.get_position()
 
+        # Let the guard spend the cheap part of the opening first. Otherwise
+        # scaled sentinel purchases consume the bank before a wall is legal.
+        if ct.read_store(SLOT_WALLS) < 3:
+            return False
+
         # Once a sentinel exists, wrap its enemy-facing side first. Sentinels
         # pierce the screen; conventional return fire and builders do not.
         if self.sentinel is not None:
@@ -267,6 +273,7 @@ class Player:
             if pos.distance_squared(tile) == 1 and ct.can_build_barrier(tile):
                 ct.build_barrier(tile)
                 self.known_blocked.add((tile.x, tile.y))
+                ct.write_store(SLOT_WALLS, ct.read_store(SLOT_WALLS) + 1)
                 return True
         return False
 
