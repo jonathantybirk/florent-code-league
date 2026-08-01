@@ -61,6 +61,37 @@ map; the trunk cells differ by 5/8 vs 7/8. Per-map argmax on 8 games is a noise
 generator, and the only defence is to validate on opponents the table has never
 seen. Do not add a per-map override without that check.
 
+## Per-map tables that were measured and rejected
+
+Three more constants were swept map by map, 8 games a cell, and none of them
+justified a table. Uniform totals over 168 games, best value in bold:
+
+- `HOME_LINE_MAX` 1/2/4 -> 121/**140**/138. Per-map argmax 148, but the two
+  maps with a real margin (`hive`, `sweden`) scored 90 vs 91 out-of-sample.
+- `MAX_BUILDERS` 3/4/6 -> 108/**140**/96. Four wins nearly everywhere; only
+  `strait` prefers 3 and only by one game. No table.
+- `ECONOMY_BUILDERS` 1/2 -> 103/**130**. No map prefers the harder rush once
+  the distance-based opening is already active.
+
+Early fortification was also tried on exactly the three weak maps, on the
+theory that a siege which reliably fails should turtle instead:
+`ECON_BEFORE_DEFENCE` 0 vs 3 scored showdown 3/8 vs 4/8, jackpot 6/8 vs 5/8,
+bridge 1/8 vs 5/8. Rejected.
+
+The `MAX_BUILDERS=4` column reproduced **exactly 140** in three independent
+sweeps, which is a useful check that the harness is deterministic and these
+numbers are comparable across runs.
+
+## A correct distance field is still worse, even with the whole map
+
+`world.distance_field` is eight-connected although 2.3.3 moves are cardinal
+only, so it under-counts diagonals. The fair bot measured the "correct"
+four-connected version worse (24-18 against 28-14) and the obvious explanation
+was incomplete terrain -- an optimistic field over a half-guessed map. The
+oracle has the whole map and it is still worse: 110 against 119 over 168 games.
+The optimistic field really does give a smoother gradient with fewer plateaus
+for the sidestep rule to stall on. Leave it alone.
+
 ## Maps that stay weak whatever is tuned
 
 `showdown` (4-5/8), `jackpot` (4-5/8) and `bridge` (3-5/8) resist every
