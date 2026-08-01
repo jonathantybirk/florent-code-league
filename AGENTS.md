@@ -84,6 +84,14 @@ win matrix.
 `--dedupe-from` drops roster bots already proven to play identically to another — currently 6 of
 42, so 1470 matches instead of 1722. Bots you name in `--bots` are never pruned.
 
+**Do not generate new evidence for a known duplicate.** Keep all duplicate matches already present
+in the historical CSVs, but every new challenger or round-robin plan must use `--dedupe-from` with
+all relevant completed runs and schedule only one representative of each known duplicate group.
+Pooling old results supplies the evidence already collected; replaying the same opponents against
+another copy adds no information. The only exception is the initial evaluation needed to determine
+whether a genuinely new bot is a duplicate. Once duplication is established, exclude that copy
+from every later schedule.
+
 **4. Run it.**
 
 ```sh
@@ -104,8 +112,12 @@ uv run python -m tournament rate --tid jon-full --pool jon-new,my-run --matrix
 
 ## Recipe 2 — a full round robin from scratch
 
+Use every relevant completed run as duplicate evidence. Omit `--dedupe-from` only when no prior
+results exist from which behavioural duplicates could be known.
+
 ```sh
-uv run python -m tournament plan --tid big --maps official   # omit --bots for everyone
+uv run python -m tournament plan --tid big --maps official \
+    --dedupe-from jon-full,jon-new                            # omit --bots for everyone
 uv run python -m tournament hpc push --tid big
 uv run python -m tournament hpc submit --tid big
 uv run python -m tournament hpc watch --tid big
@@ -148,10 +160,21 @@ is a mean of log-odds, so bots that crush the weak `vg_*` ancestors near-100% sc
 and outrank a bot that beats everyone by narrow margins. mElo asks "how dominant on average"; Nash
 asks "can you be exploited". Reporting only the mElo rank would have buried the strongest bot.
 
-**Duplicates distort `melo_r` but not Nash.** Every copy is a separate entrant on purpose — Nash
-averaging is invariant to them (verified: collapsing 42 to 36 entrants leaves the support
-unchanged), and a duplicate group is *how you learn* a change did nothing. Collapsing them shifts
-every strong bot's `melo_r` by about +0.2 log-odds and reorders 13 of 36 bots.
+**Duplicates distort `melo_r` but not Nash.** Every copy remains a separate entrant in the raw
+historical evidence on purpose — Nash averaging is invariant to them (verified: collapsing 42 to
+36 entrants leaves the support unchanged), and a duplicate group is *how you learn* a change did
+nothing. Collapsing them shifts every strong bot's `melo_r` by about +0.2 log-odds and reorders 13
+of 36 bots. This explains retained results; it does not permit scheduling new duplicate matches.
+
+**Historical raw evidence keeps duplicates; new schedules and overviews never do.** Keeping every
+already-evaluated entrant in `matches.csv`, `ratings.csv`, and duplicate-audit output is deliberate,
+but do not include more than one member of a duplicate group in any new schedule or user-facing
+ranking, comparison, winner list, or overview. Detect behavioural duplicates on the complete pooled
+result set first, choose one representative from each group, and then plan, analyse, or summarize
+only that deduplicated entrant set. For a map-specific overview, deduplicate on the complete pooled
+multi-map results *before* slicing by map; two distinct bots merely tying or behaving alike on one
+map does not make them duplicates. Preserve distinct nonduplicate versions as separate bots rather
+than hiding them under a shared family label.
 
 ## Traps
 
