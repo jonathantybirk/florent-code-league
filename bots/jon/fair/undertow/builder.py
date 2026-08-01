@@ -76,14 +76,15 @@ def _run(p, ct):
     world.refresh_prediction(p, ct)
     if p.core is None:
         return
+    if (p.attacker and not p.gunners
+            and ct.read_store(SLOT_HOME_UNDER_FIRE) >= 2):
+        # The ordinary alarm already spawns dedicated repair crew. Recall the
+        # sole attacker only when the Core is genuinely close to falling.
+        p.attacker = False
     if DEBUG and ct.get_current_round() % 25 == 0:
         log(ct, f"t{p.ticket} atk={p.attacker} phase={p.phase} "
                 f"pos={tuple(ct.get_position())} enemy={p.enemy_core} "
                 f"ore={p.siege_ore} feed={len(p.feeders)} gun={len(p.gunners)} ti={ct.get_global_resources()} gcost={ct.get_gunner_cost()} scale={ct.get_scale_percent():.2f}")
-    if p.attacker and not p.gunners and ct.read_store(SLOT_HOME_UNDER_FIRE):
-        # An attacker with no battery is contributing nothing, while at home
-        # its heals are worth more titanium-for-titanium than their Gunners.
-        p.attacker = False
     if p.attacker:
         _siege(p, ct)
     else:

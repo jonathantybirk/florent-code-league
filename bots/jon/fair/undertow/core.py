@@ -2,7 +2,7 @@
 
 from fcode import Controller, Direction, Environment, Position
 
-from constants import (ECONOMY_BUILDERS, OPENING_HOME_BUILDERS,
+from constants import (CORE_PANIC_PERCENT, ECONOMY_BUILDERS, OPENING_HOME_BUILDERS,
                        EMERGENCY_RESERVE,
                        HOME_ALARM_PERCENT, RICH_RESERVE,
                        SLOT_HOME_UNDER_FIRE)
@@ -42,7 +42,8 @@ def run(player, ct: Controller) -> None:
     elif healthy:
         player.alarm = False
     hurt = getattr(player, "alarm", False)
-    ct.write_store(SLOT_HOME_UNDER_FIRE, 1 if hurt else 0)
+    panic = ct.get_hp() * 100 < ct.get_max_hp() * CORE_PANIC_PERCENT
+    ct.write_store(SLOT_HOME_UNDER_FIRE, 2 if panic else (1 if hurt else 0))
     # Under fire the cap lifts hard: healing costs a flat 1 Ti and is not
     # touched by the cost scale, so with a deep bank every extra Builder is
     # another 4 HP a round against a Gunner's 5. Losing on a full treasury is
