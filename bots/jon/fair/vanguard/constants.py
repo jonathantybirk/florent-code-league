@@ -24,7 +24,7 @@ LAUNCH_RANGE_SQ = 26
 # Three of the first four Builders stay home. The siege is supply-rich
 # once a battery lands, so the marginal Builder is worth more mining and
 # repairing than queueing for a firing position.
-ECONOMY_BUILDERS = 3
+ECONOMY_BUILDERS = 2
 
 SLOT_BUILDER_TICKET = 0
 CLAIM_SLOTS = range(1, 6)        # home ore claims
