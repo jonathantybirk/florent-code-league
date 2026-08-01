@@ -14,6 +14,7 @@ SLOT_ORE = 2
 SLOT_ROLES = 3
 SLOT_WALLS = 8
 SLOT_MAP = 9
+SLOT_UNDER_FIRE = 10
 MAX_BUILDERS = 4
 AMMO_TARGET = 60
 
@@ -101,6 +102,7 @@ class Player:
             self.atlas = identify_visible(ct, (pos.x, pos.y))
         if self.atlas is not None:
             ct.write_store(SLOT_MAP, MAP_NAMES.index(self.atlas.name) + 1)
+        ct.write_store(SLOT_UNDER_FIRE, 1 if ct.get_hp() < ct.get_max_hp() else 0)
 
         # Sentinels spend in ten-ammo bursts. Preserve a builder purchase while
         # establishing the team, then keep enough for two simultaneous shots.
@@ -400,6 +402,12 @@ class Player:
             return self.core
 
         if self.routing and self.core is not None:
+            return self.core
+
+        if (self.role == "miner" and self.core is not None
+                and ct.read_store(SLOT_UNDER_FIRE)):
+            self.routing = False
+            self.route_pending = None
             return self.core
 
         ore = unpack(ct.read_store(SLOT_ORE))
