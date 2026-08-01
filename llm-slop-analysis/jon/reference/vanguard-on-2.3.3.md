@@ -27,7 +27,7 @@ actually buy us" honest.
 | Gunners placed by **firing line**, not by adjacency to a producer | strat1 36-6 to 39-3 |
 | Builder attack and heal moved to orthogonal adjacency | undertow 31-11 to 37-5 |
 | `_scorch` deleted | see below |
-| forward-Harvester / conveyor-creep / parasitism apparatus deleted | neutral, much simpler |
+| forward-Harvester / conveyor-creep / parasitism apparatus deleted | undertow 35-7 to 37-5 |
 | `AMMO_TARGET` 120 to 40 | neutral in 40-160, catastrophic above |
 
 **Placement by firing line.** Under 2.2.0 a Gunner had to sit beside a producer,
@@ -38,6 +38,13 @@ is now meaningless, and dropping it is a straight win.
 Gunner stood beside it, because a Harvester used to feed any adjacent building
 regardless of owner. With a global pool it feeds nobody, so the rule was
 demolishing our own economy for no benefit at all.
+
+**A correction worth recording.** The first attempt at deleting the siege
+apparatus silently did nothing -- a `str.replace` that no-matched -- and the
+21-21 it scored against the pre-strip build was reported as "neutral" when it
+actually meant *two identical bots*. An A/B that lands exactly level deserves a
+check that the two binaries really differ. Applied properly it is a small win,
+not a neutral one.
 
 **Ammunition has a real opportunity cost.** Converting is 1:1 and looks free,
 but converted titanium leaves the treasury and cannot buy buildings. Anything in
