@@ -1,0 +1,38 @@
+# DTU HPC settings for the tournament harness. See docs/hpc/ for where these numbers come from.
+
+host = "dtu"                              # ssh alias from ~/.ssh/config (login1.gbar.dtu.dk)
+remote_root = "florent-tournament"        # relative to $HOME on the cluster
+queue = "hpc"
+
+# Per-array cap on concurrently running elements. The `hpc` queue caps a user at ~100-120
+# processes overall (docs/hpc/queues.md), and that cap is what actually binds -- a large schedule
+# is split across several arrays (LSF allows at most 1000 elements each), so the nominal total is
+# throttle x number-of-arrays. LSF holds the excess as PEND rather than over-running the queue
+# limit, so this is a courtesy bound per array, not the real concurrency.
+throttle = 100
+
+# Matches per array element. Each element pays ~3s of module load, venv activation and
+# interpreter startup, so one-job-per-match wastes a third of its cluster time on setup and needs
+# 24 arrays instead of 2. Override per run with `hpc submit --chunk N`; --chunk 1 restores one
+# individually schedulable, individually retryable job per match.
+chunk = 20
+
+# Walltime is a HARD KILL, and it must cover a whole element: chunk x worst-case match.
+# Measured over 14,465 real matches: mean 8.8s, median 6.0s, p99 39s, max 64s (most matches run
+# the full 1000 rounds). chunk=20 is therefore ~3 min in the typical case and 21.3 min in the
+# pathological case where all 20 matches in one element are as slow as the slowest ever seen.
+# 22 covers that bound. Deliberately not padded further: a shorter request backfills into
+# scheduler gaps more easily, and queue contention -- not walltime -- is the real bottleneck.
+# Keep `chunk x 66s <= walltime x 60` if you change either.
+# If an element is killed anyway, nothing is lost permanently: its matches simply have no result
+# file, and re-running `hpc submit` picks up exactly those (finished matches are skipped by default).
+walltime = "22"
+memory = "2GB"        # per core; measured max RSS is 193 MB, so this is ample headroom.
+
+# One core, and only one. A match cannot use more: the engine runs both bots in CPython
+# sub-interpreters that share a single GIL inside one process. Measured CPU/wall efficiency is
+# ~84% of one core (the rest is startup I/O). Asking for more cores per element would not speed
+# anything up -- the binding constraint is the ~100-120 per-user *slot* cap, so 25 elements x 4
+# cores buys exactly the same concurrency as 100 elements x 1 core, while being harder to
+# schedule on a busy cluster.
+cores = 1
