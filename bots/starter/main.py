@@ -4,7 +4,8 @@ Each unit gets its own Player instance; the engine calls run() once per round.
 Use ct.get_entity_type() to branch on what kind of unit you are.
 
 Strategy:
-  1. Core spawns builder bots and publishes its position via the store
+  1. Core spawns builder bots, publishes its position via the store, and keeps
+     a small global-ammo buffer topped up (turrets fire from that shared pool)
   2. Builder bots explore, build harvesters on ore, and lay conveyors toward
      the core so titanium flows back automatically
   3. Once the economy is running (3+ harvesters), builder bots place gunners
@@ -22,7 +23,8 @@ Communication store slots:
 
 Ideas for improvement:
   - Build full conveyor chains from distant harvesters back to the core
-  - Feed ammo to gunners via conveyors so they can actually fire
+  - Tune the ammo buffer: convert more titanium when enemies are near, less
+    when you'd rather grow the economy
   - Add sentinels or launchers for stronger defense
   - Explore the map systematically instead of picking random targets
   - Use more store slots to coordinate roles between builder bots
@@ -32,10 +34,14 @@ import random
 
 from fcode import Controller, Direction, EntityType, Environment, GameConstants, Position
 
-# All directions except CENTRE — useful for movement and spawning
+# All directions except CENTRE — useful for spawning and turret facing (both
+# allow diagonals). Builder movement is cardinal-only, so use CARDINALS to move.
 DIRECTIONS = [d for d in Direction if d != Direction.CENTRE]
 
 # Cardinal directions only — conveyors and splitters can only face these
+# Compass: (0, 0) is the map's NORTHWEST corner, so NORTH = (0, -1) (toward
+# row 0) and EAST = (1, 0). In the visualiser's iso view north points up-right
+# on screen -- see its corner compass.
 CARDINALS = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST]
 
 # --- Communication store slot assignments ---
@@ -52,6 +58,11 @@ MAX_BUILDERS = 5
 
 # How many harvesters we want before switching builder bots to defense duty
 TARGET_HARVESTERS = 3
+
+# Global ammo buffer the core maintains (2 Ti per gunner shot -> 10 shots).
+# Turrets fire from the team's global ammo pool; the core fills it by
+# converting titanium 1:1 with convert_ammo(), at most once per turn.
+AMMO_BUFFER = 20
 
 
 def pack_pos(pos: Position) -> int:
@@ -129,6 +140,17 @@ class Player:
         pos = ct.get_position()
         ct.write_store(SLOT_CORE_X, pos.x)
         ct.write_store(SLOT_CORE_Y, pos.y)
+
+        # Keep the gunners supplied: top the global ammo pool up to AMMO_BUFFER
+        # whenever we have titanium to spare (we reserve enough for a builder
+        # bot so conversion never blocks spawning). The ammo is usable the same
+        # turn, and converting does not use the core's action cooldown.
+        ammo = ct.get_global_ammo()
+        if ammo < AMMO_BUFFER:
+            spare = ct.get_global_resources() - ct.get_builder_bot_cost()
+            amount = min(AMMO_BUFFER - ammo, spare)
+            if amount > 0 and ct.can_convert_ammo(amount):
+                ct.convert_ammo(amount)
 
         # Don't spawn more than MAX_BUILDERS total
         if self.num_spawned >= MAX_BUILDERS:
@@ -273,8 +295,9 @@ class Player:
         approaching enemies. We only build if we're close to the core
         (within ~4 tiles) so gunners end up defending the base.
 
-        Note: gunners need ammo delivered via conveyors to fire. This starter
-        bot doesn't set up ammo supply — that's an exercise for the player!
+        Note: gunners fire from the team's global ammo pool, which the core
+        fills by converting titanium (see AMMO_BUFFER in _run_core) — no
+        physical ammo delivery is needed.
         """
         ti = ct.get_global_resources()
         cost = ct.get_gunner_cost()
@@ -335,21 +358,20 @@ class Player:
         if self.target is None:
             return
 
-        # Get the direction toward our target
-        desired = pos.direction_to(self.target)
+        # Builder bots move only in cardinal directions, so use
+        # cardinal_direction_to (direction_to can return a diagonal, which is
+        # not a legal move and would raise).
+        desired = pos.cardinal_direction_to(self.target)
         if desired == Direction.CENTRE:
             return
 
-        # Try the ideal direction first, then slightly left/right of it.
-        # If all three fail (e.g. boxed in by harvesters), try every remaining
-        # direction so the bot can escape instead of sitting stuck for 3 rounds.
-        primary = [desired, desired.rotate_left(), desired.rotate_right()]
-        for d in primary:
-            if self._try_move(ct, d):
-                return
-        remaining = [d for d in DIRECTIONS if d not in primary]
-        random.shuffle(remaining)
-        for d in remaining:
+        # Try the ideal cardinal first, then the two perpendicular cardinals,
+        # then the reverse -- so if we're boxed in (e.g. by harvesters) we can
+        # still route around obstacles instead of sitting stuck. Never diagonal.
+        perpendicular = [d for d in CARDINALS if d not in (desired, desired.opposite())]
+        random.shuffle(perpendicular)
+        alternatives = [desired, *perpendicular, desired.opposite()]
+        for d in alternatives:
             if self._try_move(ct, d):
                 return
 
@@ -372,6 +394,11 @@ class Player:
             if ct.can_build_conveyor(next_pos, cardinal):
                 ct.build_conveyor(next_pos, cardinal)
 
+        # A build/attack/heal and a move can never happen in the same round --
+        # if we just laid a conveyor above, can_move() below will correctly
+        # say False until next round, when the conveyor already exists (so
+        # the build attempt becomes a no-op) and the move goes through
+        # instead.
         if ct.can_move(d):
             ct.move(d)
             return True

@@ -1,7 +1,14 @@
-.venv/
+# Replays (regenerated with fcode run)
+*.replay26
+
+# Python
 __pycache__/
 *.py[cod]
 .DS_Store
 replay.replay26
 temp-prompts
 match-replays
+
+# Virtual environments
+.venv/
+venv/
