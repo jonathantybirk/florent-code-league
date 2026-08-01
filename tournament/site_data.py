@@ -70,19 +70,8 @@ def _game(row: dict, bot_id: str) -> dict:
 
 
 def _metadata(run_dir: Path) -> dict[str, dict]:
-    """Collect metadata from the registry and every local manifest, newest value winning."""
+    """Collect historical manifests, then let the current registry override their metadata."""
     found: dict[str, dict] = {}
-    try:
-        for spec in registry.load(validate=False):
-            found[spec.bot_id] = {
-                "bot_id": spec.bot_id,
-                "name": spec.name,
-                "commit": spec.commit,
-                "path": spec.path,
-                "tags": list(spec.tags),
-            }
-    except (FileNotFoundError, ValueError):
-        pass
     for manifest in sorted(planning.RUNS_ROOT.glob("*/manifest.json")):
         try:
             bots = json.loads(manifest.read_text())["bots"]
@@ -94,6 +83,17 @@ def _metadata(run_dir: Path) -> dict[str, dict]:
     if own_manifest.exists():
         for bot in json.loads(own_manifest.read_text()).get("bots", []):
             found[bot["bot_id"]] = bot
+    try:
+        for spec in registry.load(validate=False):
+            found[spec.bot_id] = {
+                "bot_id": spec.bot_id,
+                "name": spec.name,
+                "commit": spec.commit,
+                "path": spec.path,
+                "tags": list(spec.tags),
+            }
+    except (FileNotFoundError, ValueError):
+        pass
     return found
 
 
