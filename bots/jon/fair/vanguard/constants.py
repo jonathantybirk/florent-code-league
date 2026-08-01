@@ -38,7 +38,9 @@ SLOT_HOME_UNDER_FIRE = 15
 
 # Launcher hops per attacker, and the range at which walking is faster than
 # paying 20 Ti to be thrown.
-LAUNCH_HOPS = 2
+# Hops per attacker. This was a no-op while the ferry stopped eight tiles
+# short; with it ferrying all the way in, more hops is more tempo.
+LAUNCH_HOPS = 5
 # Ferry all the way in. Stopping eight tiles out lost the arrival race:
 # the strongest opponent had four Gunners against our Core by round 20
 # while our attacker was still walking. 15-27 to 22-20 by lowering this.
