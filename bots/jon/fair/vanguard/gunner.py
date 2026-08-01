@@ -10,28 +10,21 @@ Measured over the full 180-game field, additionally sparing a *friendly
 Builder* standing in the line is not worth it (99-81 against 105-75): it burns
 a firing window on a unit that walks out of the way by itself.
 
-A Gunner whose line is empty is dead weight for the rest of the match, and
-2.3.3 lets it re-aim: ct.rotate() costs a flat 10 Ti against roughly 25 plus
-another 10% of shared cost scale for a fresh one. So a Gunner that has seen
-nothing for a while turns to face the enemy Core instead of standing idle.
+Re-aiming an idle Gunner with ct.rotate() was tried and dropped: 10 Ti flat to
+turn round looks cheap against 25 plus cost scale for a new one, but the score
+was byte-identical at thresholds of 8, 25 and 80 idle rounds, so the case
+essentially never arises. Our Gunners are placed on a line to the Core and the
+line stays worth shooting.
 """
 
-from fcode import Controller, Direction, GameError
-
-from constants import SLOT_ENEMY_CORE
-from utils import unpack_pos
-
-# Rounds of an empty firing line before a Gunner pays to turn round.
-IDLE_BEFORE_ROTATE = 25
+from fcode import Controller, GameError
 
 
 def run(player, ct: Controller) -> None:
     try:
         target = ct.get_gunner_target()
         if target is None:
-            _consider_rotating(player, ct)
             return
-        player.idle_rounds = 0
         # A Builder standing on a building soaks the hit, so it owns the tile.
         if ct.get_tile_builder_bot_id(target) is None:
             building = ct.get_tile_building_id(target)
@@ -41,25 +34,3 @@ def run(player, ct: Controller) -> None:
             ct.fire(target)
     except GameError:
         return
-
-
-def _consider_rotating(player, ct: Controller) -> None:
-    player.idle_rounds = getattr(player, "idle_rounds", 0) + 1
-    if player.idle_rounds < IDLE_BEFORE_ROTATE:
-        return
-    enemy = unpack_pos(ct.read_store(SLOT_ENEMY_CORE))
-    if not enemy:
-        return
-    here = ct.get_position()
-    want = (enemy[0] - here.x, enemy[1] - here.y)
-    if want == (0, 0):
-        return
-    best = max(Direction, key=lambda d: (
-        0 if d == Direction.CENTRE
-        else d.delta()[0] * want[0] + d.delta()[1] * want[1]))
-    if best == ct.get_direction():
-        player.idle_rounds = 0
-        return
-    if ct.can_rotate(best):
-        ct.rotate(best)
-        player.idle_rounds = 0
