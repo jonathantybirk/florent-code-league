@@ -114,3 +114,18 @@ SEAT_REACH_SLACK = 0
 # enough that pressure beats development. Only the oracle can measure this.
 RUSH_DISTANCE = 18
 RUSH_ECONOMY_BUILDERS = 1
+
+# Ferry length per map, for maps where the pooled sweep is badly wrong.
+#
+# LAUNCH_HOPS is one number for 21 maps and the per-map spread is large: over
+# 168 games against four frozen opponents, a uniform 1/2/4 scores 114/130/113,
+# while taking the best value on each map would score 144. Most of that gap is
+# argmax noise on 8-game cells, so only the lopsided maps are listed here and
+# everything else keeps the pooled default.
+MAP_HOPS = {
+    "bridge": 4,   # 1/8, 3/8, 5/8 -- a long corridor, the ride is the map
+    "duel": 1,     # 8/8, 5/8, 7/8 -- 12x12, they are already next door
+    "fjord": 4,    # 2/8, 5/8, 7/8
+    "string": 1,   # 7/8, 6/8, 2/8
+    "twins": 1,    # 8/8, 6/8, 5/8
+}

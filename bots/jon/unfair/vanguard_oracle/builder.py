@@ -17,6 +17,7 @@ from constants import (
     FACING8,
     GUNNER_RANGE_SQ,
     LAUNCH_HOPS,
+    MAP_HOPS,
     LAUNCH_MIN_GAP,
     FORTIFY_ROUND,
     HOME_GUNNERS,
@@ -657,11 +658,13 @@ def _siege(p, ct):
 
 def _ferry(p, ct):
     """Build a Launcher beside us and ride it toward the enemy Core."""
-    if p.hops >= LAUNCH_HOPS:
+    name = getattr(getattr(p, "atlas", None), "name", None)
+    limit = MAP_HOPS.get(name, LAUNCH_HOPS)
+    if p.hops >= limit:
         return False
     here = (ct.get_position().x, ct.get_position().y)
     if world.cheb(here, p.enemy_core) < LAUNCH_MIN_GAP:
-        p.hops = LAUNCH_HOPS
+        p.hops = limit
         return False
     if p.awaiting_launch:
         # The Launcher acts after us; hold still for the round it needs.
