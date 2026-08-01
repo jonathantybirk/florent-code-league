@@ -75,6 +75,12 @@ def test_match_id_is_stable_and_order_sensitive():
     assert first != match_id("a@1", "b@2", "duel", 1, 10)
 
 
+def test_compliance_match_ids_do_not_collide_with_rating_matches():
+    assert match_id("a@1", "b@2", "duel", 1, 10) != match_id(
+        "a@1", "b@2", "duel", 1, 10, kind="compliance-v1"
+    )
+
+
 # --------------------------------------------------------------------------------------------
 # Schedule construction
 # --------------------------------------------------------------------------------------------
@@ -273,6 +279,95 @@ def test_merge_is_idempotent_and_keyed_by_match_id(tmp_path):
     assert first[0]["bot_a_name"] == "a"
     assert first[0]["tournament_id"] == "t"
     assert first[0]["map_set"] == "official"
+
+
+def test_merge_keeps_compliance_matches_out_of_rating_csv(tmp_path):
+    from tournament.merge import merge, read
+
+    run_dir = tmp_path / "run"
+    (run_dir / "results").mkdir(parents=True)
+    (run_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "tournament_id": "t",
+                "map_set": "official",
+                "bots": [
+                    {"bot_id": "a@111", "name": "a", "commit": "1" * 40},
+                    {"bot_id": "b@222", "name": "b", "commit": "2" * 40},
+                ],
+                "compliance": {"targets": ["a@111"], "matches_per_bot": 1},
+            }
+        )
+    )
+    rating = {
+        "match_id": "rating",
+        "kind": "rating",
+        "bot_a": "a@111",
+        "bot_b": "b@222",
+        "status": "ok",
+        "winner": "a",
+        "score_a": 1.0,
+    }
+    check = {
+        "match_id": "check",
+        "kind": "compliance",
+        "bot_a": "a@111",
+        "bot_b": "__compliance_baseline__@v1",
+        "map": "duel",
+        "seed": 1,
+        "tle": 12,
+        "status": "ok",
+        "winner": "b",
+        "compliance_samples": 20,
+        "compliance_max_turn_us": 8_500,
+        "compliance_max_round": 4,
+        "compliance_timeouts": 0,
+        "compliance_exceptions": 0,
+        "compliance_terminal_starts": 0,
+    }
+    for record in (rating, check):
+        (run_dir / "results" / f"{record['match_id']}.json").write_text(json.dumps(record))
+
+    _, count = merge(run_dir)
+
+    assert count == 2  # completion counts every scheduled result
+    assert [row["match_id"] for row in read(run_dir)] == ["rating"]
+    summary = (run_dir / "compliance.csv").read_text()
+    assert "a@111" in summary and "pass" in summary
+    assert "check" in (run_dir / "compliance_matches.csv").read_text()
+
+
+def test_compliance_replay_parser_distinguishes_timeouts_errors_and_terminal_actions(tmp_path):
+    from tournament.compliance import END_MARKER, ERROR_MARKER, START_MARKER
+    from tournament.run_match import compliance_timings
+
+    replay = tmp_path / "probe.replay26"
+    replay.write_bytes(
+        b"\x00".join(
+            line.encode()
+            for line in [
+                f"{START_MARKER}:1:7",
+                f"{END_MARKER}:1:7:9100",
+                f"{START_MARKER}:2:7",  # interrupted, then the same entity runs again
+                f"{START_MARKER}:3:7",
+                f"{END_MARKER}:3:7:400",
+                f"{START_MARKER}:4:8",  # self-destruct or match end: no later run
+                f"{START_MARKER}:5:9",
+                f"{ERROR_MARKER}:5:9",
+            ]
+        )
+    )
+
+    result = compliance_timings(str(replay))
+
+    assert result == {
+        "compliance_samples": 2,
+        "compliance_max_turn_us": 9100,
+        "compliance_max_round": 1,
+        "compliance_timeouts": 1,
+        "compliance_exceptions": 1,
+        "compliance_terminal_starts": 1,
+    }
 
 
 # --------------------------------------------------------------------------------------------

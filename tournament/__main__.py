@@ -67,7 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--tle",
         type=int,
         default=0,
-        help="per-turn ms limit; 0 keeps matches deterministic (the watchdog is wall-clock)",
+        help="rating-match per-turn ms limit; keep 0 (compliance probes are configured separately)",
     )
 
     runner = sub.add_parser("run", help="play outstanding matches locally")
@@ -78,6 +78,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     merger = sub.add_parser("merge", help="fold result JSONs into matches.csv")
     _add_tid(merger)
+
+    checker = sub.add_parser("compliance", help="show the persistent 10 ms timing checks")
+    _add_tid(checker)
 
     rater = sub.add_parser("rate", help="compute mElo + Nash ratings and print the table")
     _add_tid(rater)
@@ -206,6 +209,7 @@ def cmd_plan(args) -> int:
 
     roster = registry.load()
     specs = registry.select(roster, args.bots)
+    compliance_specs = list(specs)
     versus = registry.select(roster, args.vs) if args.vs else None
     seeds = tuple(int(part) for part in args.seeds.split(",") if part.strip())
 
@@ -228,20 +232,33 @@ def cmd_plan(args) -> int:
             specs = pruned
 
     destination, matches = planning.plan(
-        args.tid, specs, args.maps, seeds, args.tle, versus=versus
+        args.tid,
+        specs,
+        args.maps,
+        seeds,
+        args.tle,
+        versus=versus,
+        compliance_specs=compliance_specs,
     )
+    rating_matches = [match for match in matches if match.kind == "rating"]
+    compliance_matches = [match for match in matches if match.kind == "compliance"]
     pairs = len(planning.pairings(specs, versus))
     if versus:
         print(
             f"{args.tid}: {len(specs)} challengers vs {len(versus)} roster bots, "
-            f"{pairs} pairs, {len(matches) // max(pairs, 1)} games per pair "
-            f"-> {len(matches)} matches"
+            f"{pairs} pairs, {len(rating_matches) // max(pairs, 1)} games per pair "
+            f"-> {len(rating_matches)} rating matches"
         )
     else:
         print(
             f"{args.tid}: {len(specs)} bots, {pairs} pairs, "
-            f"{len(matches) // max(pairs, 1)} games per pair -> {len(matches)} matches"
+            f"{len(rating_matches) // max(pairs, 1)} games per pair "
+            f"-> {len(rating_matches)} rating matches"
         )
+    print(
+        f"  + {len(compliance_matches)} compliance matches "
+        f"for {len(compliance_specs)} named bot(s)"
+    )
     print(f"  staged at {destination}")
     return 0
 
@@ -262,6 +279,18 @@ def cmd_merge(args) -> int:
 
     path, rows = merge(planning.run_dir(args.tid))
     print(f"{rows} results -> {path}")
+    return 0
+
+
+def cmd_compliance(args) -> int:
+    from tournament import compliance
+    from tournament.merge import merge
+
+    destination = planning.run_dir(args.tid)
+    merge(destination)
+    rows = compliance.read_summary(destination)
+    print(compliance.render(rows))
+    print(f"\nwrote {destination / 'compliance.csv'}")
     return 0
 
 
@@ -333,6 +362,13 @@ def cmd_rate(args) -> int:
 
     print(f"\nwrote {output}")
 
+    from tournament import compliance
+
+    compliance_rows = compliance.read_summary(destination)
+    if compliance_rows:
+        print("\n10 ms timing compliance (9 ms = close):")
+        print(compliance.render(compliance_rows))
+
     if args.matrix:
         print()
         width = max(len(bot) for bot in ratings.bots) + 1
@@ -373,6 +409,7 @@ HANDLERS = {
     "plan": cmd_plan,
     "run": cmd_run,
     "merge": cmd_merge,
+    "compliance": cmd_compliance,
     "rate": cmd_rate,
     "duplicates": cmd_duplicates,
     "hpc": cmd_hpc,

@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import socket
 import sys
 import tempfile
@@ -27,6 +28,60 @@ from pathlib import Path
 # Engine `winner` values are "A" / "B" / "draw"; we normalise case and carry a numeric score for
 # bot A so the rating code never has to re-interpret the outcome.
 SCORE = {"a": 1.0, "b": 0.0, "draw": 0.5}
+
+
+def compliance_timings(replay: str) -> dict[str, int]:
+    """Extract instrumented unit-turn timings from a compliance replay.
+
+    Bot stdout is embedded verbatim in the protobuf replay.  Pairing start/end markers lets us
+    distinguish a CPU timeout (start without end) from a normal return, while an explicit error
+    marker keeps ordinary bot exceptions from being mislabeled as timing violations.
+    """
+    from tournament.compliance import END_MARKER, ERROR_MARKER, START_MARKER
+
+    try:
+        payload = Path(replay).read_bytes()
+    except OSError:
+        return {
+            "compliance_samples": 0,
+            "compliance_max_turn_us": 0,
+            "compliance_max_round": 0,
+            "compliance_timeouts": 0,
+            "compliance_exceptions": 0,
+            "compliance_terminal_starts": 0,
+        }
+
+    def pairs(marker: str) -> list[tuple[int, int]]:
+        pattern = re.escape(marker.encode()) + rb":(\d+):(\d+)"
+        return [(int(round_), int(entity)) for round_, entity in re.findall(pattern, payload)]
+
+    starts = pairs(START_MARKER)
+    errors = set(pairs(ERROR_MARKER))
+    end_pattern = re.escape(END_MARKER.encode()) + rb":(\d+):(\d+):(\d+)"
+    ends = [
+        (int(round_), int(entity), int(elapsed))
+        for round_, entity, elapsed in re.findall(end_pattern, payload)
+    ]
+    completed = {(round_, entity) for round_, entity, _ in ends}
+    unmatched = [key for key in starts if key not in completed and key not in errors]
+    latest_round = {
+        entity: max(round_ for round_, candidate in starts if candidate == entity)
+        for _, entity in starts
+    }
+    # Actions such as self_destruct() deliberately end the entity during run(), so the wrapper's
+    # end marker is unreachable.  A real CPU interruption is distinguishable because official
+    # semantics call the same entity again next round.  An unmatched final appearance is retained
+    # in the raw data but is not falsely called a timeout.
+    timed_out = [key for key in unmatched if latest_round[key[1]] > key[0]]
+    maximum = max(ends, key=lambda item: item[2], default=(0, 0, 0))
+    return {
+        "compliance_samples": len(ends),
+        "compliance_max_turn_us": maximum[2],
+        "compliance_max_round": maximum[0],
+        "compliance_timeouts": len(timed_out),
+        "compliance_exceptions": len(errors),
+        "compliance_terminal_starts": len(unmatched) - len(timed_out),
+    }
 
 
 def engine_root() -> str:
@@ -62,12 +117,14 @@ def run(run_dir: Path, match: dict, keep_replay: bool = False) -> dict:
         "map": match["map"],
         "seed": match["seed"],
         "tle": match["tle"],
+        "kind": match.get("kind", "rating"),
         "host": socket.gethostname(),
         "lsf_job": os.environ.get("LSB_JOBID", ""),
     }
 
-    # Replays are megabytes each and we never read them, so they go to node-local scratch and are
-    # deleted. The engine has no way to disable replay writing -- only to redirect it.
+    # Replays are megabytes each, so they go to node-local scratch and are deleted. Compliance
+    # checks first extract their tiny timing markers; ordinary rating matches never read them.
+    # The engine has no way to disable replay writing -- only to redirect it.
     replay_dir = tempfile.mkdtemp(prefix="fcode-replay-")
     replay = os.path.join(replay_dir, f"{match['match_id']}.replay26")
 
@@ -114,6 +171,8 @@ def run(run_dir: Path, match: dict, keep_replay: bool = False) -> dict:
         )
         print(traceback.format_exc(), file=sys.stderr)
     finally:
+        if match.get("kind") == "compliance":
+            record.update(compliance_timings(replay))
         record["duration_s"] = round(time.time() - started, 3)
         record["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
         if not keep_replay:

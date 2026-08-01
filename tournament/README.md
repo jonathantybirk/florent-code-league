@@ -28,6 +28,19 @@ uv run python -m tournament run  --tid smoke --jobs 8
 uv run python -m tournament rate --tid smoke --matrix
 ```
 
+`plan` also adds three short timing probes for every bot selected by `--bots` (or the whole roster
+when `--bots` is omitted). They sample every unit-turn on `atoll`, `duel`, and `quarry`, flag a
+measured turn at 9 ms as **close** and one over the ladder's 10 ms limit as **exceeded**, and never
+enter the rating matrix:
+
+```sh
+uv run python -m tournament compliance --tid smoke
+```
+
+The per-bot summary is durable in `compliance.csv`; all individual probe results, sample counts,
+maxima, timeouts, ordinary bot exceptions, host, and finish time are in
+`compliance_matches.csv`. `rate` prints the summary alongside mElo and Nash results.
+
 On the cluster (see [../docs/hpc/](../docs/hpc/)):
 
 ```sh
@@ -229,6 +242,7 @@ autograd "called while holding the GIL" failure that way. So:
 | `run_match.py` | **one match, one result file** — the array-job payload |
 | `local.py` | process pool over the schedule |
 | `merge.py` | result JSONs -> `matches.csv` |
+| `compliance.py` | instrumented 10 ms probes + durable compliance reports |
 | `rating.py` | mElo + Nash averaging |
 | `report.py` | `ratings.csv` + the printed table |
 | `hpc.py`, `hpc.toml`, `bootstrap.sh` | the DTU HPC driver |
@@ -244,11 +258,14 @@ runs/<tid>/
   results/         one <match_id>.json per finished match
   matches.csv      merged results
   ratings.csv      mElo + Nash
+  compliance.csv          per-bot 10 ms status and maximum
+  compliance_matches.csv  per-probe timing evidence
 ```
 
-`match_id` is a hash of `(bot_a, bot_b, map, seed, tle)`, so re-planning reproduces ids, merging is
-idempotent, and an interrupted tournament resumes simply by re-running `hpc submit`, which
-skips whatever already has a result.
+Rating `match_id` is a hash of `(bot_a, bot_b, map, seed, tle)`; compliance ids additionally carry
+their probe version. Re-planning therefore reproduces ids, merging is idempotent, and an
+interrupted tournament resumes simply by re-running `hpc submit`, which skips whatever already
+has a result.
 
 ## LSF array sizing and `chunk`
 
@@ -332,9 +349,12 @@ while being harder for LSF to backfill on a busy queue.
 
 ## Determinism
 
-The engine is deterministic given a seed, so `--tle 0` (the default) makes a tournament exactly
-reproducible — local and cluster results agree match-for-match. **`--tle 10` breaks that**: the
-turn-timeout watchdog is wall-clock, so a bot near the limit wins or loses depending on machine
-load. Use it for a separate ladder-compliance run, not for ratings.
+The engine is deterministic given a seed, so rating matches use `--tle 0` (the default) and local
+and cluster results agree match-for-match. The automatically-added compliance probes are marked
+`kind=compliance`, use the engine CPU clock and a 12 ms guard (so their own replay markers do not
+create a timeout), and are written to separate CSVs. They are never pooled into ratings.
+
+Timing probes are samples, not proofs: three short matches can establish an observed violation or
+near-limit turn, but a pass means only that no issue was observed in the sampled unit-turns.
 
 Bots that use unseeded `random` are also non-deterministic; the engine does not seed bot-side RNG.

@@ -134,8 +134,11 @@ def push(tid: str, settings: dict | None = None, bootstrap: bool = False) -> Non
     rsync(
         f"{local}/",
         f"{host}:{root}/{tid}/",
-        extra=["--exclude=results/", "--exclude=logs/", "--exclude=matches.csv",
-               "--exclude=ratings.csv"],
+        extra=[
+            "--exclude=results/", "--exclude=logs/", "--exclude=matches.csv",
+            "--exclude=ratings.csv", "--exclude=compliance.csv",
+            "--exclude=compliance_matches.csv",
+        ],
     )
     ssh(host, f"mkdir -p {shlex.quote(root)}/{shlex.quote(tid)}/results "
               f"{shlex.quote(root)}/{shlex.quote(tid)}/logs")

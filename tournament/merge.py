@@ -23,6 +23,7 @@ COLUMNS = [
     "map_set",
     "seed",
     "tle",
+    "kind",
     "winner",
     "score_a",
     "win_condition",
@@ -53,6 +54,7 @@ def merge(run_dir: Path) -> tuple[Path, int]:
     bots = {bot["bot_id"]: bot for bot in manifest["bots"]}
 
     rows: dict[str, dict] = {}
+    records: dict[str, dict] = {}
     for path in sorted((run_dir / "results").glob("*.json")):
         try:
             record = json.loads(path.read_text())
@@ -71,13 +73,20 @@ def merge(run_dir: Path) -> tuple[Path, int]:
                 row[f"bot_{side}_name"] = bot["name"]
                 row[f"bot_{side}_commit"] = bot["commit"][:7]
         rows[record["match_id"]] = row
+        records[record["match_id"]] = record
 
     output = run_dir / "matches.csv"
     with open(output, "w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=COLUMNS)
         writer.writeheader()
         for match_id in sorted(rows):
-            writer.writerow(rows[match_id])
+            if records[match_id].get("kind", "rating") == "rating":
+                writer.writerow(rows[match_id])
+
+    if manifest.get("compliance"):
+        from tournament.compliance import write_reports
+
+        write_reports(run_dir, list(records.values()), manifest)
     return output, len(rows)
 
 
