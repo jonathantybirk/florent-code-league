@@ -488,6 +488,36 @@ class LauncherFallbackTests(unittest.TestCase):
             builder._preserves_friendly_turret_lanes(ct, Position(2, 2))
         )
 
+    def test_distance_map_matches_shortest_distance_queries(self) -> None:
+        player = stuck_player(width=10)
+        player.walls = {(3, y) for y in range(1, 9) if y != 4}
+        source = (1, 5)
+        goals = {(7, 3), (8, 6)}
+
+        distances = builder._distance_map(player, source)
+
+        self.assertEqual(
+            min(distances[goal] for goal in goals if goal in distances),
+            builder._distance(player, source, goals),
+        )
+
+    def test_launch_request_at_launcher_target_reports_failure(self) -> None:
+        player = stuck_player()
+        ct = StuckBuilderController()
+        launcher_position = Position(2, 5)
+        output = StringIO()
+
+        with redirect_stdout(output):
+            announced = builder._announce_launch(
+                player, ct, launcher_position, launcher_position,
+            )
+
+        self.assertFalse(announced)
+        self.assertIn(
+            "reason=launcher at (2, 5) is already the target",
+            output.getvalue(),
+        )
+
     def test_routes_around_enemy_launcher_pickup_tiles(self) -> None:
         player = stuck_player()
         player.walls.clear()
