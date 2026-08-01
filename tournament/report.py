@@ -41,22 +41,10 @@ COLUMNS = [
 def _records(
     ratings: Ratings, meta: dict[str, dict], map_tasks: MapTaskRatings | None = None
 ) -> list[dict]:
-    n = len(ratings.bots)
     games = ratings.games.sum(axis=1)
     scored = ratings.wins.sum(axis=1)
-
-    # Reconstruct W/D/L from the score matrix: draws contributed 0.5 to both sides, so any
-    # half-point remainder is a draw.
-    draws = np.zeros(n)
-    wins = np.zeros(n)
-    for i in range(n):
-        for j in range(n):
-            if i == j:
-                continue
-            fractional = ratings.wins[i, j] % 1
-            drawn = round(fractional * 2)
-            draws[i] += drawn
-            wins[i] += ratings.wins[i, j] - drawn * 0.5
+    draws = ratings.draws.sum(axis=1)
+    wins = scored - 0.5 * draws
     losses = games - wins - draws
 
     aggregate_order = np.argsort(-ratings.transitive)

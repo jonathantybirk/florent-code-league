@@ -214,6 +214,13 @@ match results  ->  P = (wins + 1/2)/(games + 1)      add-half, keeps logits fini
 `nash_average`, and `rank_delta`, plus the full alternative set: `aggregate_rank`,
 `aggregate_melo_r`, `aggregate_nash_prob`, `aggregate_nash_average`, and related ranks/deltas.
 
+The engine records both `winner` and `win_condition` for every finished match. Its last fallback,
+`win_condition=coinflip`, is used only after core survival, delivered titanium, living harvesters,
+and stored titanium are all tied. That random choice is not evidence of relative skill: the
+pipeline scores it as a draw (`score_a=0.5`) in ratings, duplicate detection, reports, and website
+views. New result files retain the raw random choice as `engine_winner`; historical CSVs are
+corrected on read from their preserved `win_condition`.
+
 Two deliberate departures from the paper, both because the paper is loose where it matters here:
 
 - **Add-half smoothing.** The paper uses raw relative frequencies, but a 42-game sweep produces

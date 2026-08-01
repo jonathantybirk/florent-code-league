@@ -187,6 +187,12 @@ multi-map results *before* slicing by map; two distinct bots merely tying or beh
 map does not make them duplicates. Preserve distinct nonduplicate versions as separate bots rather
 than hiding them under a shared family label.
 
+**A final engine coinflip is a draw.** Every result records `win_condition`. When it is `coinflip`,
+all gameplay tiebreakers were equal and the engine selected A or B randomly, so every consumer
+(ratings, duplicate detection, reports, and website views) must score the match as `0.5` for both
+bots. Preserve the raw selection as `engine_winner` for auditability; never let it become a win or
+loss merely because historical `winner`/`score_a` columns contain the engine's random choice.
+
 ## Traps
 
 Each of these cost real debugging time.

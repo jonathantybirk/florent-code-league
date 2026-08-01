@@ -33,6 +33,13 @@ def test_game_names_gold_and_silver_from_engine_order():
     assert silver["result"] == "win"
 
 
+def test_game_displays_final_engine_coinflip_as_draw():
+    match = row("alpha", "beta", 1)
+    match["win_condition"] = "coinflip"
+    assert _game(match, "alpha")["result"] == "draw"
+    assert _game(match, "beta")["result"] == "draw"
+
+
 def test_slug_is_stable_and_disambiguates_commits():
     first = _slug("vanguard@1234567")
     assert first == _slug("vanguard@1234567")

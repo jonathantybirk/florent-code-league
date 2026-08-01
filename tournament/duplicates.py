@@ -36,6 +36,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tournament.gitutil import REPO_ROOT
+from tournament.outcome import score_a as evaluation_score_a
 from tournament.registry import BotSpec
 
 # A pair needs to have met this many shared opponents before "identical results" means anything.
@@ -105,7 +106,7 @@ def score_table(rows: list[dict]) -> tuple[list[str], dict[tuple[str, str], tupl
     for row in rows:
         if row.get("status") != "ok" or not row.get("winner"):
             continue
-        a, b, score = row["bot_a"], row["bot_b"], float(row["score_a"])
+        a, b, score = row["bot_a"], row["bot_b"], evaluation_score_a(row)
         table[(a, b)][0] += score
         table[(a, b)][1] += 1
         table[(b, a)][0] += 1.0 - score
