@@ -92,6 +92,20 @@ oracle has the whole map and it is still worse: 110 against 119 over 168 games.
 The optimistic field really does give a smoother gradient with fewer plateaus
 for the sidestep rule to stall on. Leave it alone.
 
+## Beating tempest_oracle_ferry costs more than it is worth
+
+`tempest_oracle_ferry` is the strongest oracle in the repo and the only one
+this bot loses to (19-23; it beats `casemate_oracle` 32-10 and
+`undertow_oracle` 30-12). It fields three attackers to our two and ferries
+only its *lead* Builder -- one Launcher against our four, which is 30% less
+cost scale on everything.
+
+Copying that (`FERRY_TICKETS = 3`, lead attacker rides alone) does win the
+matchup, 22-20, and loses more elsewhere: 87 against 92 over 126 games, mostly
+against `v233_h` (29 vs 36). It is a counter to one opponent rather than an
+improvement, so it is not in the bot. Worth revisiting if that specific bot
+becomes the thing to beat.
+
 ## Maps that stay weak whatever is tuned
 
 `showdown` (4-5/8), `jackpot` (4-5/8) and `bridge` (3-5/8) resist every
