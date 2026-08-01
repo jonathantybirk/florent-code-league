@@ -486,5 +486,13 @@ class Player:
 
     def run_gunner(self, ct: Controller) -> None:
         target = ct.get_gunner_target()
-        if target is not None and ct.can_fire(target):
+        if target is None:
+            return
+        # A Builder on a tile absorbs the shot before a co-located building;
+        # otherwise never spend scarce ammo terminating on our own structure.
+        if ct.get_tile_builder_bot_id(target) is None:
+            building = ct.get_tile_building_id(target)
+            if building is not None and ct.get_team(building) == ct.get_team():
+                return
+        if ct.can_fire(target):
             ct.fire(target)
