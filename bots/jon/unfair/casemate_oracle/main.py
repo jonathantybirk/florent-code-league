@@ -75,6 +75,7 @@ class Player:
         self.stuck = 0
         self.atlas = None
         self.turrets_built = 0
+        self.home_launcher_built = False
 
     def run(self, ct: Controller) -> None:
         kind = ct.get_entity_type()
@@ -86,6 +87,8 @@ class Player:
             self.run_sentinel(ct)
         elif kind == EntityType.GUNNER:
             self.run_gunner(ct)
+        elif kind == EntityType.LAUNCHER:
+            self.run_launcher(ct)
 
     def use_sentinel(self) -> bool:
         return (self.atlas is None or self.core is None
@@ -173,7 +176,8 @@ class Player:
             elif self.role == "mason":
                 self.build_casemate(ct)
             elif self.role == "guard":
-                self.build_home_wall(ct)
+                if not self.build_reactive_launcher(ct):
+                    self.build_home_wall(ct)
 
         target = self.choose_target(ct)
         if target is not None:
@@ -338,6 +342,31 @@ class Player:
                 return True
         return False
 
+    def build_reactive_launcher(self, ct: Controller) -> bool:
+        if self.home_launcher_built or self.core is None:
+            return False
+        core_centre = Position(self.core.x, self.core.y)
+        threats = [unit for unit in ct.get_nearby_units()
+                   if ct.get_team(unit) != ct.get_team()
+                   and ct.get_entity_type(unit) == EntityType.BUILDER_BOT
+                   and ct.get_position(unit).distance_squared(core_centre) <= 36]
+        if not threats or ct.get_global_resources() < ct.get_launcher_cost() + 40:
+            return False
+        pos = ct.get_position()
+        ring = [Position(x, y)
+                for x in range(self.core.x - 1, self.core.x + 3)
+                for y in range(self.core.y - 1, self.core.y + 3)
+                if inside(ct, Position(x, y))
+                and not (self.core.x <= x <= self.core.x + 1
+                         and self.core.y <= y <= self.core.y + 1)]
+        for tile in sorted(ring, key=lambda p: (
+                p.distance_squared(ct.get_position(threats[0])), p.x, p.y)):
+            if pos.distance_squared(tile) == 1 and ct.can_build_launcher(tile):
+                ct.build_launcher(tile)
+                self.home_launcher_built = True
+                return True
+        return False
+
     def choose_target(self, ct: Controller) -> Position | None:
         pos = ct.get_position()
         if self.role == "mason":
@@ -496,3 +525,18 @@ class Player:
                 return
         if ct.can_fire(target):
             ct.fire(target)
+
+    def run_launcher(self, ct: Controller) -> None:
+        here = ct.get_position()
+        enemies = [unit for unit in ct.get_nearby_units(2)
+                   if ct.get_team(unit) != ct.get_team()
+                   and ct.get_entity_type(unit) == EntityType.BUILDER_BOT]
+        for unit in enemies:
+            origin = ct.get_position(unit)
+            choices = [tile for tile in ct.get_nearby_tiles(26)
+                       if ct.can_launch(origin, tile)]
+            if choices:
+                target = max(choices, key=lambda p: (
+                    p.distance_squared(here), -p.x, -p.y))
+                ct.launch(origin, target)
+                return
