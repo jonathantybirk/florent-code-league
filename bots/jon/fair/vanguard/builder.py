@@ -25,6 +25,7 @@ from constants import (
     CORE_PANIC_PERCENT,
     LONG_LINE_RESERVE,
     BLOCKED_TILE_PATIENCE,
+    OUTHEALED_PATIENCE,
     SLOT_HOME_UNDER_FIRE,
     SLOT_BUILDER_TICKET,
     SLOT_ECON_LINES,
@@ -112,6 +113,8 @@ def _init(p, ct):
     p.clear_target = None
     p.hops = 0
     p.blacklist = set()
+    p.chip_hp = {}
+    p.chip_fails = {}
     p.fails = {}
     p.fortified = set()
     p.home_gunners = 0
@@ -805,6 +808,20 @@ def _clear_tile(p, ct, tile):
     # adjacent tile, never the one it stands on. can_fire() enforces that, so
     # ask it rather than reimplementing the geometry.
     if ask(ct.can_fire, Position(*tile)):
+        # Give up on anything they out-heal. A Builder deals 2 damage a round
+        # and a heal restores 4, so a repaired target can never fall and every
+        # round spent on it is wasted. Make Fire published the same heuristic
+        # after Cambridge -- they abandoned conveyors that had been healed.
+        hp = ask(ct.get_hp, ct.get_tile_building_id(Position(*tile)))
+        seen = p.chip_hp.get(tile)
+        if seen is not None and hp is not False and hp >= seen:
+            p.chip_fails[tile] = p.chip_fails.get(tile, 0) + 1
+            if p.chip_fails[tile] >= OUTHEALED_PATIENCE:
+                p.blacklist.add(tile)
+                p.clear_target = None
+                log(ct, f"t{p.ticket} abandons out-healed {tile}")
+                return False
+        p.chip_hp[tile] = hp if hp is not False else 0
         ct.fire(Position(*tile))
         p.stalls, p.clear_target = 0, None
         return True
