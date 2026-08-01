@@ -112,6 +112,41 @@ Gating defence on three completed income lines:
 Swept: 1 and 3 both score 63/84 on the discriminating pair, 2 and 4 score 60,
 6 scores 57. Three wins on the sensitive opponent, so three it is.
 
+## Beating Undertow: it was a tempo race, not an economy race
+
+Undertow led 27-15. The diagnostics said the opposite of what that suggests --
+Vanguard built **more of everything**: 8.6 Builders to 6.8, 3.6 Harvesters to
+3.0, 4.6 Gunners to 2.3. Losing while out-building the opponent means the
+deficit is not resources.
+
+The replay showed it plainly. On atoll, dead on round 47: four of their Gunners
+were firing on our Core from round 21, from the tiles right beside it, while our
+attacker was still walking and reached their base around round 25.
+
+Six constants were swept with **no movement at all** -- `ECON_BEFORE_DEFENCE`,
+`HOME_ALARM_PERCENT`, `LAUNCH_HOPS`, `AMMO_TARGET`, `HOME_GUNNERS`, and a
+combined early-heavy-defence setting. Five configurations scoring *identically*
+is the same tell as before, so the harness itself was sanity-checked by
+crippling ammunition to zero: that moved the score to 1-7, proving edits do
+take effect and those levers genuinely do not matter here.
+
+The answer was `LAUNCH_MIN_GAP`. The ferry stopped **eight tiles short** of the
+enemy Core and the attacker walked the rest, losing the arrival race outright:
+
+| `LAUNCH_MIN_GAP` | vs Undertow |
+|---|---|
+| 8 (old) | 15-27 |
+| 5 | 21-21 |
+| 3 | **22-20** |
+| 1 | 16-26 |
+
+`LAUNCH_HOPS` had been a measured no-op *because* of this -- with the ferry
+stopping early, extra hops had nothing to do. Once it ferried the whole way,
+raising hops from 2 to 5 was worth another two games: **23-19**.
+
+A dead-looking parameter can be dead only because a *different* parameter is
+gating it. Re-sweep the ones you dismissed after you change something upstream.
+
 ## Measuring against a moving target
 
 `undertow` and `jonbot` belong to another agent who edits them live. A run

@@ -17,10 +17,11 @@ mechanics:
 - attackers choose any personally observed tile with a firing line to the
   enemy Core, rather than building a forward Harvester and local feed network.
 
-The opening now releases the fourth Builder as an attacker. Economy Builders
-still construct reactive picket Launchers when an enemy Builder is actually
-observed near home, so Undertow retains its cheap positional counter to a
-Builder siege without prepaying for static defence.
+The opening retains a fourth Builder as a home engineer. Economy Builders
+construct reactive picket Launchers when an enemy Builder is actually observed
+near home, so Undertow keeps its cheap positional counter to a Builder siege
+without prepaying for static defence. Rich-reserve Builders provide the delayed
+counterattack.
 
 ## Results
 
@@ -29,13 +30,15 @@ All pairings run both player orders, with no errors:
 | corpus | Undertow | Vanguard |
 |---|---:|---:|
 | current 21-map pool, seed 1 | **27** | 15 |
-| current 21-map pool, seeds 1-3 | **78** | 48 |
-| representative generated maps | **40** | 20 |
-| stress generated maps | **33** | 23 |
+| current 21-map pool, seeds 1-3 | **81** | 45 |
+| representative generated maps | **44** | 16 |
+| stress generated maps | **30** | 26 |
 
-On the six-map screen Undertow also went 60-0 against `strat1`, all three
-Lucas Claude challengers, and `jonbot`. A direct Duel match completed under
-the server's 10 ms turn limit and destroyed Vanguard's Core on round 58.
+On the six-map screen the three-attacker-opening experiment also went 60-0
+against `strat1`, all three Lucas Claude challengers, and `jonbot`; the retained
+home engineer was selected by the Vanguard and generated-map comparisons. A
+direct Duel match completed under the server's 10 ms turn limit and destroyed
+Vanguard's Core on round 58.
 
 ## Fairness
 
