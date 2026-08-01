@@ -16,7 +16,7 @@ CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 
 
 def run(player: "Player", ct: Controller) -> None:
-    """Spawn one economy Builder and three map-agnostic attackers."""
+    """Spawn two economy Builders and two map-agnostic scouts."""
     _keep_ammunition(ct)
     if not hasattr(player, "repair_alert"):
         player.repair_alert = False
