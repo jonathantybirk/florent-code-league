@@ -46,9 +46,12 @@ CPU_WATCH = bool(os.environ.get("VANGUARD_CPU"))
 # crew hold the base the long game is decided on titanium mined.
 MAX_HOME_HARVESTERS = 10
 
-# A long trunk is both expensive and a gift: the enemy only has to stand on it
-# to convert our income into their firing line.
-HOME_LINE_MAX = 7
+# Two, and the curve is clean: 0 and 1 collapse (46 and 58 games of 126 against
+# the strongest live opponents), 2 peaks at 78, and it falls away steadily to
+# 69 by ten. A long trunk is expensive, slow to pay back and a gift besides --
+# the enemy only has to stand on it to convert our income into their firing
+# line. Mine what is next to the Core and spend the rest on Gunners.
+HOME_LINE_MAX = 2
 
 
 def log(ct, *args):
