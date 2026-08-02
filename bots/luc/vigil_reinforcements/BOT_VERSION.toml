@@ -1,0 +1,5 @@
+source_commit = "e267eeb41"
+source_path = "bots/luc/vigil"
+engine = "2.3.3"
+status = "unfair"
+variant = "threat-boundary-ring, launch-tempo, damage-weighted-pathing"
