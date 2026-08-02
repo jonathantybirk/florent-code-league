@@ -7,6 +7,12 @@ and then does nothing for the rest of the match. Never resigns, so the match run
 
 Compare with the `chainshort` probe, which is identical but omits the last conveyor, so the
 belt dead-ends one tile short of the Core footprint.
+
+MEASURED 2026-08-02, fcode 2.3.3, `maps/lab/belt.map26` vs `idle` (full 1000 rounds):
+    a_titanium_collected = 2490   a_titanium = 5430   chain complete on round 7
+Compare `noop` vs `idle` on the same map: 3000 banked, 0 collected. Collected titanium is
+ALSO banked -- 5430 = 500 start - 60 spend + 2500 passive + 2490 collected -- so a chain is
+real income, not just a scoreboard entry. Control: `chainshort` = 0 collected, 2943 banked.
 """
 
 from fcode import Controller, Direction, EntityType, GameError, Position

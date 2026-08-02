@@ -3,6 +3,13 @@
 harvester(5,5) -> conveyor(4,5) facing WEST -> (3,5) left EMPTY, so nothing ever reaches the
 Core footprint. If G02 still holds, `a_titanium_collected` is exactly 0 while `chain` scores
 in the thousands.
+
+MEASURED 2026-08-02, fcode 2.3.3, `maps/lab/belt.map26` vs `idle` (full 1000 rounds):
+    a_titanium_collected = 0   a_titanium = 2943   win_condition = harvesters
+It still BEAT `idle` (3000 banked, 0 collected) because the tiebreak order is
+titanium_collected > harvesters > titanium_stored (G03): an unconnected harvester wins on
+the second key while holding less titanium. Every 10-Ti stack the belt swallows is
+annihilated -- 2943 = 500 - 57 spend + 2500 passive, with nothing added by the harvester.
 """
 
 from fcode import Controller, Direction, EntityType, GameError, Position
