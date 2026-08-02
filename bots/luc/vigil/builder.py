@@ -1059,7 +1059,7 @@ def _blocking_launchers(p, source, target, exact):
             if any(_chebyshev(launcher, tile) == 1 for tile in crossed)}
 
 
-def _keeps_route_open(p, spot, source, target, exact):
+def _keeps_route_open(p, ct, spot, source, target, exact):
     """True when spot can be built on without cutting our own way forward.
 
     Turrets are solid. Dropping one on the single corridor to the enemy Core
@@ -1067,12 +1067,28 @@ def _keeps_route_open(p, spot, source, target, exact):
     checked for it: _preserves_friendly_turret_lanes guards firing lines, not
     footpaths. Building onto the goal itself is exempt, since arriving is not
     the objective there.
+
+    Called once per candidate site, and the Gunner searches sweep roughly two
+    hundred of them, so a search per candidate is not affordable: it drove one
+    turn to 14.6 ms against a 10 ms limit, with 81 searches in a single turn.
+    Instead the route is found once per turn and a candidate off that route is
+    cleared without any search at all -- exactly, not approximately, since a
+    route that does not use a tile still exists when that tile is blocked. Only
+    a candidate standing on the route pays for a second look.
     """
     if spot == tuple(target) or spot == source:
         return True
-    if _bfs_path(p, source, tuple(target), exact) is None:
+    key = (ct.get_current_round(), source, tuple(target), exact)
+    if getattr(p, "route_cache_key", None) != key:
+        p.route_cache_key = key
+        path = _bfs_path(p, source, tuple(target), exact)
+        p.route_cache = None if path is None else set(path)
+    route = p.route_cache
+    if route is None:
         # Already no route; a turret cannot make that worse, and refusing here
         # would disable the breaker in exactly the case it exists for.
+        return True
+    if spot not in route:
         return True
     return _bfs_path(p, source, tuple(target), exact,
                      extra_blocked=(spot,)) is not None
@@ -1705,7 +1721,7 @@ def _build_basic_gunner(p, ct, enemy_core):
                             ct, Position(*spot), protected_lanes,
                         )
                         or not _keeps_route_open(
-                            p, spot, me, Position(*enemy_core), False)):
+                            p, ct, spot, me, Position(*enemy_core), False)):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
                          - _launcher_hazards(p))
@@ -1779,7 +1795,7 @@ def _build_launcher_breaker_gunner(p, ct, blocking=None, route=None):
                         )
                         or (route is not None
                             and not _keeps_route_open(
-                                p, spot, me, route, False))):
+                                p, ct, spot, me, route, False))):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
                          - p.bot_occupied - _launcher_hazards(p))
