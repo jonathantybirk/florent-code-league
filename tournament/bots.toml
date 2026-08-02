@@ -572,3 +572,18 @@ name   = "opponent_luc"
 commit = "e83a42c"
 path   = "bots/opponent_luc"
 tags   = ["llm-RL", "unfair"]
+
+# Discovered by the evaluator from the watched branches; registered so the CLI can
+# schedule them (plan resolves bot ids from this file, the evaluator also reads manifests).
+
+[[bot]]
+name   = "tempest_reinforcements"
+commit = "025dd51"
+path   = "bots/luc/tempest_reinforcements"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "tempest_reinforcements"
+commit = "51ad530"
+path   = "bots/luc/tempest_reinforcements"
+tags   = ["luc", "unfair"]
