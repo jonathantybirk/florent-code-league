@@ -57,6 +57,8 @@ def test_state_v1_migrates_to_multi_branch(tmp_path, monkeypatch):
         seen["fetched"] = command
         return ""
 
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", tmp_path / "runs")
+    (tmp_path / "runs").mkdir()
     monkeypatch.setattr(automation, "_run", fake_run)
     monkeypatch.setattr(automation, "resolve_commit", lambda ref: "a" * 40)
     monkeypatch.setattr(automation, "discover", lambda *a, **k: [])
@@ -87,6 +89,8 @@ def test_every_watched_branch_is_fetched(tmp_path, monkeypatch):
         "tested_hashes": {}, "last_seen_ref": "f" * 40, "last_seen_refs": {},
     }))
     calls = []
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", tmp_path / "runs")
+    (tmp_path / "runs").mkdir()
     monkeypatch.setattr(automation, "_run", lambda command, cwd=None: calls.append(command) or "")
     monkeypatch.setattr(automation, "resolve_commit", lambda ref: "a" * 40)
     monkeypatch.setattr(automation, "discover", lambda *a, **k: [])
@@ -329,3 +333,111 @@ def test_a_run_awaiting_publication_is_still_pending(tmp_path, monkeypatch):
     assert "auto-z" in automation.pending_runs()
     (run / "ratings-distinct.csv").write_text("rank,bot_id\n1,a@1\n")
     assert automation.pending_runs() == {}
+
+
+# ------------------------------------------------------------------------------------------
+# Only committed code is run or deployed.
+# ------------------------------------------------------------------------------------------
+
+
+def test_publish_skips_deploy_when_the_site_source_is_dirty(tmp_path, monkeypatch):
+    """Building compiles the working tree, so a file saved mid-edit would go live."""
+    from tournament import automation
+
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        if command[:2] == ["git", "status"]:
+            return " M src/components/BotRankings.tsx\n"
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            return "a" * 40 + "\n"
+        return ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    monkeypatch.setattr(automation, "build_site_data", lambda run_dir, out: None)
+    monkeypatch.setattr(automation.subprocess, "run",
+                        lambda *a, **k: type("R", (), {"returncode": 1})())
+    automation._publish(tmp_path, tmp_path, "abc1234")
+
+    assert ["npm", "run", "build"] not in calls, "must not build a dirty tree"
+    assert not any(c[:2] == ["npm", "exec"] for c in calls), "must not deploy a dirty tree"
+    # The data is still committed and pushed, so no results are lost while the UI is in flux.
+    assert ["git", "push", "origin", "main"] in calls
+
+
+def test_publish_deploys_when_the_source_is_clean(tmp_path, monkeypatch):
+    from tournament import automation
+
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        if command[:2] == ["git", "status"]:
+            return " M public/botrankings/data/index.json\n"   # data only: still clean
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            return "b" * 40 + "\n"
+        return ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    monkeypatch.setattr(automation, "build_site_data", lambda run_dir, out: None)
+    monkeypatch.setattr(automation.subprocess, "run",
+                        lambda *a, **k: type("R", (), {"returncode": 1})())
+    automation._publish(tmp_path, tmp_path, "abc1234")
+
+    assert ["npm", "run", "build"] in calls
+    assert (tmp_path / ".last-deployed-commit").read_text().strip() == "b" * 40
+
+
+def test_publish_does_not_redeploy_the_same_commit(tmp_path, monkeypatch):
+    from tournament import automation
+
+    (tmp_path / ".last-deployed-commit").write_text("c" * 40 + "\n")
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        if command[:2] == ["git", "status"]:
+            return ""
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            return "c" * 40 + "\n"
+        return ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    monkeypatch.setattr(automation, "build_site_data", lambda run_dir, out: None)
+    monkeypatch.setattr(automation.subprocess, "run",
+                        lambda *a, **k: type("R", (), {"returncode": 0})())
+    automation._publish(tmp_path, tmp_path, "abc1234")
+    assert ["npm", "run", "build"] not in calls
+
+
+def test_self_update_rolls_back_when_tests_fail(tmp_path, monkeypatch):
+    """A broken evaluator does not merely fail; it submits cluster jobs and publishes."""
+    from tournament import automation
+
+    calls = []
+    revs = iter(["old1234" + "0" * 33, "new5678" + "0" * 33])
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            return next(revs) + "\n"
+        return ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    monkeypatch.setattr(automation.subprocess, "run",
+                        lambda *a, **k: type("R", (), {"returncode": 1, "stdout": "boom"})())
+    assert automation.self_update("x/tournament") is False
+    assert any(c[:2] == ["git", "reset"] for c in calls), "must roll back a failing update"
+
+
+def test_self_update_adopts_a_passing_commit(tmp_path, monkeypatch):
+    from tournament import automation
+
+    revs = iter(["old1234" + "0" * 33, "new5678" + "0" * 33])
+    monkeypatch.setattr(automation, "_run",
+                        lambda command, cwd=None: (next(revs) + "\n")
+                        if command[:3] == ["git", "rev-parse", "HEAD"] else "")
+    monkeypatch.setattr(automation.subprocess, "run",
+                        lambda *a, **k: type("R", (), {"returncode": 0, "stdout": ""})())
+    assert automation.self_update("x/tournament") is True

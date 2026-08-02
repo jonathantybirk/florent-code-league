@@ -197,6 +197,45 @@ def unfinished_runs() -> dict[str, set[str]]:
     return pending
 
 
+def self_update(branch: str) -> bool:
+    """Fast-forward this checkout onto origin/<branch>. Returns True if the code moved.
+
+    The evaluator runs from a worktree pinned to a commit, so improvements to the harness or the
+    site bundle never reach it otherwise -- it keeps publishing with whatever code it was
+    installed with, which is invisible until the page looks wrong.
+
+    Two safeguards. Fast-forward only, so a rewritten branch stops the update rather than
+    silently discarding local state. And the test suite must pass on the new commit, otherwise
+    the checkout is rolled back: a broken evaluator does not just fail, it submits cluster work
+    and publishes to a live site.
+    """
+    before = _run(["git", "rev-parse", "HEAD"]).strip()
+    try:
+        _run(["git", "fetch", "origin", branch])
+        _run(["git", "merge", "--ff-only", f"origin/{branch}"])
+    except RuntimeError as error:
+        print(f"self-update skipped: {error}".splitlines()[0])
+        return False
+    after = _run(["git", "rev-parse", "HEAD"]).strip()
+    if after == before:
+        return False
+
+    print(f"self-update: {before[:7]} -> {after[:7]}; running tests before adopting it")
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "tournament/", "-q", "-x"],
+        cwd=REPO_ROOT, text=True, capture_output=True,
+    )
+    if result.returncode != 0:
+        _run(["git", "reset", "--hard", before])
+        print(
+            f"self-update ROLLED BACK to {before[:7]}: tests fail on {after[:7]}\n"
+            + "\n".join(result.stdout.strip().splitlines()[-8:])
+        )
+        return False
+    print(f"self-update adopted {after[:7]}; exiting so the next tick runs it")
+    return True
+
+
 def pending_runs() -> dict[str, set[str]]:
     """Automation runs that have been submitted but not yet rated and published.
 
@@ -291,18 +330,47 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
 
 
 def _publish(run_dir: Path, site_repo: Path, ref: str) -> None:
+    """Refresh the site's data bundle, commit it, and deploy -- but only committed source.
+
+    `npm run build` compiles the working tree, so building here while somebody edits the site
+    deploys their unfinished work, including a file saved mid-edit. The data is still committed
+    and pushed either way, so nothing is lost: the deploy simply waits until the source is clean,
+    and then goes out with the next tick.
+    """
     output = site_repo / "public" / "botrankings" / "data"
     build_site_data(run_dir, output)
-    _run(["npm", "run", "build"], site_repo)
     _run(["git", "add", "public/botrankings/data"], site_repo)
-    changed = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=site_repo)
-    if changed.returncode == 0:
-        print("website data is unchanged")
+    staged = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=site_repo)
+    if staged.returncode != 0:
+        _run(["git", "commit", "-m", f"Update bot rankings for {ref[:7]}"], site_repo)
+        _run(["git", "push", "origin", "main"], site_repo)
+        print("pushed updated ranking data")
+
+    dirty = [
+        line for line in _run(["git", "status", "--porcelain"], site_repo).splitlines()
+        if line and not line[3:].startswith("public/botrankings/data")
+    ]
+    if dirty:
+        print(
+            "site repo has uncommitted changes outside the data directory; not building or "
+            "deploying, so work in progress is not published:"
+        )
+        for line in dirty[:10]:
+            print(f"    {line}")
         return
-    _run(["git", "commit", "-m", f"Update bot rankings for {ref[:7]}"], site_repo)
-    _run(["git", "push", "origin", "main"], site_repo)
+
+    # Deploy whenever the committed site has moved, not only when the data changed -- a UI commit
+    # with no new results still needs to reach the live site.
+    head = _run(["git", "rev-parse", "HEAD"], site_repo).strip()
+    stamp = site_repo / ".last-deployed-commit"
+    if stamp.exists() and stamp.read_text().strip() == head:
+        print("live site already matches this commit")
+        return
+
+    _run(["npm", "run", "build"], site_repo)
     _run(["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"], site_repo)
-    print("published updated rankings to GitHub and Cloudflare")
+    stamp.write_text(head + "\n")
+    print(f"deployed {head[:7]} to Cloudflare")
 
 
 def run_once(
@@ -311,6 +379,7 @@ def run_once(
     canonical_run: str | None,
     sources: tuple[Source, ...],
     fetch_remote: str,
+    self_update_branch: str | None = None,
     site_repo: Path,
     publish: bool,
     fetch: bool,
@@ -325,6 +394,12 @@ def run_once(
     head = hashlib.sha256(
         "|".join(f"{branch}@{sha}" for branch, sha in sorted(heads.items())).encode()
     ).hexdigest()
+
+    if self_update_branch:
+        if self_update(self_update_branch):
+            # Deliberately do not continue: the rest of this process is still running the old
+            # code, and mixing the two halves is exactly the failure this guards against.
+            return 0
 
     # The ledger is derived from the match CSVs on every tick, never cached. A stale cache was
     # holding 48 implementations while the repo's own results held 81.
@@ -598,6 +673,12 @@ def main() -> int:
         + ", ".join(f"{s.branch}:{s.prefix}" for s in DEFAULT_SOURCES),
     )
     parser.add_argument("--fetch-remote", default="origin")
+    parser.add_argument(
+        "--self-update-branch", default="x/tournament",
+        help="fast-forward this checkout onto origin/<branch> before each tick, adopting the "
+             "new code only if its tests pass",
+    )
+    parser.add_argument("--no-self-update", action="store_true")
     parser.add_argument("--site-repo", type=Path, default=DEFAULT_SITE)
     parser.add_argument("--no-publish", action="store_true")
     parser.add_argument("--no-fetch", action="store_true")
@@ -617,6 +698,7 @@ def main() -> int:
                 canonical_run=args.canonical_run,
                 sources=tuple(args.sources) if args.sources else DEFAULT_SOURCES,
                 fetch_remote=args.fetch_remote,
+                self_update_branch=None if args.no_self_update else args.self_update_branch,
                 site_repo=args.site_repo.resolve(),
                 publish=not args.no_publish,
                 fetch=not args.no_fetch,
