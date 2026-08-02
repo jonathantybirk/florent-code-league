@@ -11,6 +11,7 @@ from atlas import identify_visible
 from constants import (
     CLAIM_SLOTS,
     CORE_THREAT_RADIUS_SQ,
+    CPU_SOFT_BUDGET_US,
     D4_DELTAS,
     D8,
     ECON_EXPAND_ROUND,
@@ -1044,7 +1045,35 @@ def _blocking_launchers(p, source, target, exact):
             if any(_chebyshev(launcher, tile) == 1 for tile in crossed)}
 
 
-def _keeps_route_open(p, spot, source, target, exact):
+def _out_of_time(ct, budget=CPU_SOFT_BUDGET_US):
+    """True once this turn has spent enough of its 10 ms to stop searching.
+
+    A unit that overruns is interrupted mid-run(): it does not act at all that
+    round, and nothing it was part-way through is kept. So an optional search
+    that might not fit is worth strictly less than the ordinary action it would
+    displace. Never let this raise -- a bad clock read must not cost the turn.
+    """
+    try:
+        return ct.get_cpu_time_elapsed() > budget
+    except Exception:  # noqa: BLE001
+        return False
+
+
+_NO_BASELINE = object()
+
+
+def _route_baseline(p, source, target, exact):
+    """The unobstructed route once, for a whole turn's worth of candidates.
+
+    Every candidate site asks the same first question -- "is there a route at
+    all?" -- so asking it per candidate searched the map hundreds of times a
+    turn. Returns the route as a set, or None when there is none.
+    """
+    path = _bfs_path(p, source, tuple(target), exact)
+    return None if path is None else set(path)
+
+
+def _keeps_route_open(p, spot, source, target, exact, baseline=_NO_BASELINE):
     """True when spot can be built on without cutting our own way forward.
 
     Turrets are solid. Dropping one on the single corridor to the enemy Core
@@ -1052,12 +1081,23 @@ def _keeps_route_open(p, spot, source, target, exact):
     checked for it: _preserves_friendly_turret_lanes guards firing lines, not
     footpaths. Building onto the goal itself is exempt, since arriving is not
     the objective there.
+
+    Pass `baseline` (from _route_baseline) when testing many sites against the
+    same route. A site the existing route does not use cannot close it -- that
+    route still stands with the site blocked -- so only sites *on* the route
+    need the second search. This is exact, not a heuristic: it decides the same
+    way the two-search version did, and turned a 13.5 ms Builder turn on
+    longship into one that fits the ladder's 10 ms limit with room to spare.
     """
     if spot == tuple(target) or spot == source:
         return True
-    if _bfs_path(p, source, tuple(target), exact) is None:
+    if baseline is _NO_BASELINE:
+        baseline = _route_baseline(p, source, target, exact)
+    if baseline is None:
         # Already no route; a turret cannot make that worse, and refusing here
         # would disable the breaker in exactly the case it exists for.
+        return True
+    if spot not in baseline:
         return True
     return _bfs_path(p, source, tuple(target), exact,
                      extra_blocked=(spot,)) is not None
@@ -1613,6 +1653,12 @@ def _build_siege_sentinel(p, ct, enemy_core):
     """
     if p.siege_sentinel is not None:
         return False
+    # This search is the widest in the bot (13x13 around four Core tiles) and
+    # it runs last, after two others have already spent the turn. Skipping it
+    # costs a fallback that fires in a handful of games; overrunning costs the
+    # whole round, for every unit, on the map where it happens.
+    if _out_of_time(ct):
+        return False
     if ct.get_global_ammo() < MIN_AMMO_FOR_SENTINEL:
         return False
     core_tiles = {(enemy_core[0] + dx, enemy_core[1] + dy)
@@ -1788,9 +1834,7 @@ def _build_basic_gunner(p, ct, enemy_core):
                         )
                         or not _preserves_friendly_turret_lanes(
                             ct, Position(*spot), protected_lanes,
-                        )
-                        or not _keeps_route_open(
-                            p, spot, me, Position(*enemy_core), False)):
+                        )):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
                          - _launcher_hazards(p))
@@ -1800,6 +1844,20 @@ def _build_basic_gunner(p, ct, enemy_core):
                 )
                 if distance is not None:
                     choices.append((distance, spot, D8.index(facing), facing))
+    # Self-blocking is checked in preference order and stops at the first site
+    # that survives, rather than for every candidate: the cheap tests above
+    # have already ruled most sites out, and the best site almost always keeps
+    # the route open, so this costs one search instead of one per candidate.
+    if choices:
+        choices.sort()
+        baseline = _route_baseline(p, me, Position(*enemy_core), False)
+        choices = [
+            next((choice for choice in choices
+                  if _keeps_route_open(p, choice[1], me,
+                                       Position(*enemy_core), False, baseline)),
+                 None)
+        ]
+        choices = [choice for choice in choices if choice is not None]
     if not choices:
         blocking = _blocking_launchers(p, me, tuple(enemy_core), False)
         if _build_launcher_breaker_gunner(
@@ -1862,10 +1920,7 @@ def _build_launcher_breaker_gunner(p, ct, blocking=None, route=None):
                         )
                         or not _preserves_friendly_turret_lanes(
                             ct, Position(*spot), protected_lanes,
-                        )
-                        or (route is not None
-                            and not _keeps_route_open(
-                                p, spot, me, route, False))):
+                        )):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
                          - p.bot_occupied - _launcher_hazards(p))
@@ -1884,8 +1939,22 @@ def _build_launcher_breaker_gunner(p, ct, blocking=None, route=None):
                     ))
     if not choices:
         return False
+    # As in _build_basic_gunner: rank first, then pay for the self-blocking
+    # search only until a site survives it.
+    choices.sort()
+    if route is not None:
+        baseline = _route_baseline(p, me, route, False)
+        chosen = next(
+            (choice for choice in choices
+             if _keeps_route_open(p, choice[3], me, route, False, baseline)),
+            None,
+        )
+        if chosen is None:
+            return False
+    else:
+        chosen = choices[0]
 
-    _, _, launcher_position, spot, _, facing = min(choices)
+    _, _, launcher_position, spot, _, facing = chosen
     position = Position(*spot)
     if _cardinal_distance(me, spot) != 1:
         _move_cardinal_adjacent(p, ct, spot)

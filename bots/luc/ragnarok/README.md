@@ -37,6 +37,20 @@ so every unit agrees (units do not share module globals — measured).
   the enemy must come down a lane, so a turret in that lane pays.
 - **RUSH** — everywhere else. One miner, one attacker, one Launcher ring.
 
+## Turn limit
+
+Every unit fits the ladder's 10 ms budget with room to spare: worst measured
+turn 2,995 µs across all 21 maps, against a limit where overrunning means the
+unit does not act at all that round. Check before submitting:
+
+```sh
+uv run python -m benchmarks.timing --bot bots/luc/ragnarok --maps all
+```
+
+`CPU_SOFT_BUDGET_US` stops the widest optional search once a turn has spent
+4 ms. The first build did *not* fit — 13,480 µs on longship — because
+`_keeps_route_open` ran two map searches inside a 196-candidate loop.
+
 ## Honest notes
 
 Three mechanics measured **exactly zero** — Launcher retirement, the second
