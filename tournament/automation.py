@@ -342,21 +342,22 @@ def _publish(run_dir: Path, site_repo: Path, ref: str) -> None:
     _deploy(site_repo)
 
 
-def _push_data(tid: str, branch: str, remote: str = "origin") -> None:
-    """Commit the run's durable artefacts to this checkout and push them to origin/<branch>.
+def _push_data(branch: str, remote: str = "origin") -> None:
+    """Commit whatever run data this checkout has gained and push it to <remote>/<branch>.
 
     The match and rating CSVs are the raw material for everyone else's analyses, so they have to
     leave the machine that happens to run the timer. .gitignore already narrows a run directory
     to the durable files -- manifest, matches, ratings, compliance; the bulk (staged bots,
     per-match JSON, LSF logs) stays local and is reproducible from them.
 
-    Everything under tournament/runs/ is staged, not just this run: a tick that finishes one run
-    while another is mid-collection should still carry the partial results along. They are
-    append-only, so a later tick simply adds the rest.
+    Called once per tick over all of tournament/runs/ rather than per finished run, so a run
+    still mid-collection travels too, and so results that a crashed tick or an older version of
+    this worker left behind get picked up rather than stranded. Match rows are append-only and
+    content-addressed, so a partial push simply gains the rest later.
     """
     head = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
     if head != branch:
-        print(f"  data push skipped: checkout is on {head}, not {branch}")
+        print(f"data push skipped: checkout is on {head}, not {branch}")
         return
     dirty = [
         line for line in _run(["git", "status", "--porcelain"]).splitlines()
@@ -365,7 +366,7 @@ def _push_data(tid: str, branch: str, remote: str = "origin") -> None:
     if dirty:
         # A rebase or a stray commit of someone's half-edited harness is a worse outcome than a
         # late push; the next tick retries once the tree is clean.
-        print("  data push skipped: uncommitted changes outside tournament/runs/:")
+        print("data push skipped: uncommitted changes outside tournament/runs/:")
         for line in dirty[:10]:
             print(f"    {line}")
         return
@@ -373,17 +374,19 @@ def _push_data(tid: str, branch: str, remote: str = "origin") -> None:
     _run(["git", "add", "--", "tournament/runs"])
     if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=REPO_ROOT).returncode == 0:
         return
-    _run(["git", "commit", "-m", f"Add tournament results for {tid}"])
+    summary = _run(["git", "diff", "--cached", "--name-only"]).splitlines()
+    runs = sorted({Path(name).parts[2] for name in summary if name.startswith("tournament/runs/")})
+    _run(["git", "commit", "-m", "Add tournament results for " + ", ".join(runs)])
     try:
         _run(["git", "push", remote, f"{branch}:{branch}"])
     except RuntimeError as error:
         # Somebody pushed to the branch while the cluster was working. Replay the data commit on
         # top instead of forcing: run directories are additive, so this cannot clobber their work.
-        print(f"  push rejected, rebasing onto {remote}/{branch}: {str(error).splitlines()[0]}")
+        print(f"push rejected, rebasing onto {remote}/{branch}: {str(error).splitlines()[0]}")
         _run(["git", "fetch", remote, branch])
         _run(["git", "rebase", f"{remote}/{branch}"])
         _run(["git", "push", remote, f"{branch}:{branch}"])
-    print(f"  pushed {tid} results to {remote}/{branch}")
+    print(f"pushed run data to {remote}/{branch}: {', '.join(runs)}")
 
 
 def _deploy(site_repo: Path) -> None:
@@ -434,7 +437,6 @@ def run_once(
     publish: bool,
     fetch: bool,
     dry_run: bool,
-    data_branch: str | None = None,
 ) -> int:
     if fetch:
         print(f"fetching {fetch_remote}: {', '.join(source.branch for source in sources)}")
@@ -510,7 +512,6 @@ def run_once(
             done = finalise(
                 run_name, state=state, state_path=state_path,
                 site_repo=site_repo, publish=publish,
-                data_branch=data_branch, remote=fetch_remote,
             )
         except hpc.HpcError:
             raise
@@ -644,8 +645,6 @@ def finalise(
     state_path: Path,
     site_repo: Path,
     publish: bool,
-    data_branch: str | None = None,
-    remote: str = "origin",
 ) -> bool:
     """Collect a submitted run, then rate and publish if the cluster has finished it.
 
@@ -707,8 +706,6 @@ def finalise(
         print(f"    duplicate: {bot_id} -> {covered_by}")
 
     head = next(iter(info.get("heads", {}).values()), tid)
-    if data_branch:
-        _push_data(tid, data_branch, remote)
     if publish:
         _publish(destination, site_repo, head)
     state["canonical_run"] = tid
@@ -765,7 +762,6 @@ def main() -> int:
                 self_update_branch=None if args.no_self_update else args.self_update_branch,
                 site_repo=args.site_repo.resolve(),
                 publish=not args.no_publish,
-                data_branch=None if args.no_push_data else args.data_branch,
                 fetch=not args.no_fetch,
                 dry_run=args.dry_run,
             )
@@ -778,6 +774,15 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 2
+        finally:
+            # Every tick, not only the one that finishes a run: results merged by a tick that
+            # later failed, or by a version of this worker that predates the push, would
+            # otherwise stay on this machine forever.
+            if not args.no_push_data and not args.dry_run:
+                try:
+                    _push_data(args.data_branch, args.fetch_remote)
+                except Exception as error:      # noqa: BLE001 - a failed push must not fail a tick
+                    print(f"data push failed: {error}".splitlines()[0], file=sys.stderr)
 
 
 if __name__ == "__main__":
