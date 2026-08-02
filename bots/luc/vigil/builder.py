@@ -9,6 +9,7 @@ from fcode import Controller, EntityType, Environment, GameError, Position
 from atlas import identify_visible
 from constants import (
     CLAIM_SLOTS,
+    CORE_SEAL_ENABLED,
     CORE_THREAT_RADIUS_SQ,
     D4_DELTAS,
     D8,
@@ -149,8 +150,15 @@ def _run(p, ct):
     if p.is_launcher_builder:
         if not _run_launcher_ring(p, ct):
             return
-        if not _run_core_seal(p, ct):
+        if CORE_SEAL_ENABLED and not _run_core_seal(p, ct):
             return
+        # Garrison once the ring is up. Falling through to economy work put a
+        # second Builder onto a network with a single ore claim slot, so the
+        # two fought over the same deposit and neither mined it well: worth
+        # five games out of 126. Standing guard is real work -- repairs and
+        # answering fire -- and keeps this Builder out of the other's way.
+        _defend_core(p, ct)
+        return
     if p.is_attacker:
         p.phase = "rush"
     if p.phase == "rush":
@@ -690,9 +698,16 @@ def _step(p, ct, target, exact, allow_launcher=True):
         return False
 
     p.path_failures += 1
-    # An enemy Launcher across the path is a target, not an obstacle.
-    if (_only_launchers_block(p, tuple(source), tuple(target), exact)
-            and _build_launcher_breaker_gunner(p, ct)):
+    # An enemy Launcher across the path is a target, not an obstacle -- but
+    # only the ones the route actually runs into.
+    if (p.enemy_launchers
+            and _bfs_path(p, tuple(source), tuple(target), exact,
+                          avoid_launchers=False) is not None
+            and _build_launcher_breaker_gunner(
+                p, ct,
+                blocking=_blocking_launchers(
+                    p, tuple(source), tuple(target), exact),
+                route=target)):
         return True
     if (allow_launcher and not launch_rejected and not p.launch_blocked
             and p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
@@ -928,12 +943,23 @@ def _move_while_stuck(p, ct, target):
 
 
 def _bfs_step(p, source, target, exact, avoid_launchers=True):
+    """First move of the cardinal route, or None when there is no route."""
+    path = _bfs_path(p, source, target, exact, avoid_launchers=avoid_launchers)
+    if path is None or len(path) < 2:
+        return None
+    return path[1]
+
+
+def _bfs_path(p, source, target, exact, avoid_launchers=True, extra_blocked=()):
+    """Full cardinal route from source to a goal tile, or None."""
     goals = {target} if exact else _adjacent(p, target)
     if source in goals:
-        return None
+        return [source]
     blocked = p.walls | p.foot | p.solids | (p.bot_occupied - {source})
     if avoid_launchers:
         blocked = blocked | (_launcher_hazards(p) - {source})
+    if extra_blocked:
+        blocked = blocked | (set(extra_blocked) - {source})
     prev, queue = {source: None}, deque([source])
     found = None
     while queue:
@@ -949,23 +975,54 @@ def _bfs_step(p, source, target, exact, avoid_launchers=True):
             queue.append(nxt)
     if found is None:
         return None
-    while prev[found] != source:
+    path = []
+    while found is not None:
+        path.append(found)
         found = prev[found]
-    return found
+    path.reverse()
+    return path
 
 
-def _only_launchers_block(p, source, target, exact):
-    """True when the route exists but for an enemy Launcher's pickup zone.
+def _blocking_launchers(p, source, target, exact):
+    """Only the Launchers whose pickup zone the open route actually crosses.
 
-    The distinction matters. A route blocked by terrain is a route to walk
-    around; a route blocked by a Launcher is one to shoot open. Detouring gives
-    them the tempo the Launcher was built to take, and on a narrow map the
-    detour frequently does not exist at all -- the Builder then spends the rest
-    of the game failing to path, which is the behaviour this replaces.
+    The old breaker took whichever Launcher was cheapest to line up on, which
+    is frequently one standing harmlessly off to the side. Shooting that one
+    costs a Gunner and a turn and opens nothing, and the route stays shut.
+
+    Take the route that would exist if their Launchers were gone, see which
+    hazard tiles it runs through, and blame only the Launchers casting them.
+    A Launcher covers the eight tiles around itself, so it owns a crossed tile
+    exactly when that tile is one Chebyshev step away.
     """
-    if not p.enemy_launchers:
-        return False
-    return _bfs_step(p, source, target, exact, avoid_launchers=False) is not None
+    hazards = _launcher_hazards(p)
+    if not hazards:
+        return set()
+    path = _bfs_path(p, source, target, exact, avoid_launchers=False)
+    if path is None:
+        return set()
+    crossed = set(path) & hazards
+    return {launcher for launcher in p.enemy_launchers
+            if any(_chebyshev(launcher, tile) == 1 for tile in crossed)}
+
+
+def _keeps_route_open(p, spot, source, target, exact):
+    """True when spot can be built on without cutting our own way forward.
+
+    Turrets are solid. Dropping one on the single corridor to the enemy Core
+    walls the attacker out of the game it was built to fight -- and nothing
+    checked for it: _preserves_friendly_turret_lanes guards firing lines, not
+    footpaths. Building onto the goal itself is exempt, since arriving is not
+    the objective there.
+    """
+    if spot == tuple(target) or spot == source:
+        return True
+    if _bfs_path(p, source, tuple(target), exact) is None:
+        # Already no route; a turret cannot make that worse, and refusing here
+        # would disable the breaker in exactly the case it exists for.
+        return True
+    return _bfs_path(p, source, tuple(target), exact,
+                     extra_blocked=(spot,)) is not None
 
 
 def _distance(p, source, goals):
@@ -1468,7 +1525,9 @@ def _build_basic_gunner(p, ct, enemy_core):
                         )
                         or not _preserves_friendly_turret_lanes(
                             ct, Position(*spot), protected_lanes,
-                        )):
+                        )
+                        or not _keeps_route_open(
+                            p, spot, me, Position(*enemy_core), False)):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
                          - _launcher_hazards(p))
@@ -1479,7 +1538,9 @@ def _build_basic_gunner(p, ct, enemy_core):
                 if distance is not None:
                     choices.append((distance, spot, D8.index(facing), facing))
     if not choices:
-        if _build_launcher_breaker_gunner(p, ct):
+        blocking = _blocking_launchers(p, me, tuple(enemy_core), False)
+        if _build_launcher_breaker_gunner(
+                p, ct, blocking=blocking, route=Position(*enemy_core)):
             return True
         _explore(p, ct)
         return True
@@ -1501,15 +1562,24 @@ def _build_basic_gunner(p, ct, enemy_core):
     return True
 
 
-def _build_launcher_breaker_gunner(p, ct):
-    """Reach a safe build tile and place a Gunner aimed at a blocking Launcher."""
+def _build_launcher_breaker_gunner(p, ct, blocking=None, route=None):
+    """Reach a safe build tile and place a Gunner aimed at a blocking Launcher.
+
+    `blocking` restricts the target set to Launchers actually standing in the
+    route; without it every visible Launcher is fair game, which is how the bot
+    used to spend Gunners on ones that were never in the way.
+    """
     if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
         return False
     me = tuple(ct.get_position())
+    blocking = set() if blocking is None else set(blocking)
+    targets = sorted(p.enemy_launchers)
+    if not targets:
+        return False
     distances = _distance_map(p, me)
     protected_lanes = _friendly_turret_lanes(ct)
     choices = []
-    for launcher_position in sorted(p.enemy_launchers):
+    for launcher_position in targets:
         if launcher_position in p.launcher_breakers:
             continue
         for dx in range(-3, 4):
@@ -1528,7 +1598,10 @@ def _build_launcher_breaker_gunner(p, ct):
                         )
                         or not _preserves_friendly_turret_lanes(
                             ct, Position(*spot), protected_lanes,
-                        )):
+                        )
+                        or (route is not None
+                            and not _keeps_route_open(
+                                p, spot, me, route, False))):
                     continue
                 goals = (_cardinal_adjacent(p, spot) - p.walls - p.solids
                          - p.bot_occupied - _launcher_hazards(p))
@@ -1538,6 +1611,12 @@ def _build_launcher_breaker_gunner(p, ct):
                 )
                 if distance is not None:
                     choices.append((
+                        # A Launcher genuinely standing in the route always
+                        # outranks a convenient one standing off to the side;
+                        # the side one is still better than doing nothing,
+                        # since a dead Launcher is mobility they no longer
+                        # have.
+                        0 if launcher_position in blocking else 1,
                         distance,
                         _distance_sq(spot, launcher_position),
                         launcher_position,
@@ -1548,7 +1627,7 @@ def _build_launcher_breaker_gunner(p, ct):
     if not choices:
         return False
 
-    _, _, launcher_position, spot, _, facing = min(choices)
+    _, _, _, launcher_position, spot, _, facing = min(choices)
     position = Position(*spot)
     if _cardinal_distance(me, spot) != 1:
         _move_cardinal_adjacent(p, ct, spot)
