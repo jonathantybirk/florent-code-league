@@ -8,8 +8,12 @@ FACING = dict(zip(D4_DELTAS, (Direction.NORTH, Direction.EAST, Direction.SOUTH, 
 WALKABLE_BUILDINGS = (EntityType.CONVEYOR, EntityType.SPLITTER)
 
 ECONOMY_BUILDERS = 1
-SCOUT_BUILDERS = 3
-LAUNCHER_BUILDERS = 1
+# The third attacker never paid for itself: two Builders already cover every
+# unresolved symmetry candidate, and the rest of the opening rush arrived too
+# thin to threaten anything. That slot builds the screen instead, so the wall
+# goes up at two sites at once rather than one.
+SCOUT_BUILDERS = 2
+LAUNCHER_BUILDERS = 2
 LAUNCHER_BUILDER_INDEX = ECONOMY_BUILDERS + SCOUT_BUILDERS
 MAX_OPENING_BUILDERS = ECONOMY_BUILDERS + SCOUT_BUILDERS + LAUNCHER_BUILDERS
 
