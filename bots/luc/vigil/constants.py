@@ -29,6 +29,17 @@ RING_EDGE_MARGIN = 5
 # inside the Launcher's pickup radius.
 RING_RADIUS = 2
 
+# --- Core seal -------------------------------------------------------------
+# A Gunner's attack radius squared. Any tile this close to the Core footprint
+# is a tile an enemy turret could shoot the Core from, so the seal has to keep
+# enemy Builders out of it -- and out of the shell around it too, since a
+# Builder builds onto an orthogonally adjacent tile rather than its own.
+CORE_THREAT_RADIUS_SQ = 13
+# Barriers are 3 Ti base and +1% scale, against a Launcher's 20 Ti and +10%,
+# and they block line of sight as well as movement. They are the only building
+# cheap enough to run a closed perimeter out of.
+SEAL_TITANIUM_RESERVE = 25
+
 # --- Turret meta -----------------------------------------------------------
 # Rounds a Gunner must go without seeing any enemy at all before it removes
 # itself. Long, deliberately: standing down is irreversible, and a turret that

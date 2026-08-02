@@ -9,6 +9,7 @@ from fcode import Controller, EntityType, Environment, GameError, Position
 from atlas import identify_visible
 from constants import (
     CLAIM_SLOTS,
+    CORE_THREAT_RADIUS_SQ,
     D4_DELTAS,
     D8,
     ECONOMY_BUILDERS,
@@ -22,6 +23,7 @@ from constants import (
     LAUNCH_REQUEST_SLOTS,
     MAX_FIELD_GUNNERS,
     RING_EDGE_MARGIN,
+    SEAL_TITANIUM_RESERVE,
     RING_RADIUS,
     SLOT_BUILDER_HEARTBEAT,
     SLOT_BUILDER_TICKET,
@@ -144,8 +146,11 @@ def _run(p, ct):
     # this Builder was on, wherever on the map that happens to be.
     if _engage_with_turret(p, ct):
         return
-    if p.is_launcher_builder and not _run_launcher_ring(p, ct):
-        return
+    if p.is_launcher_builder:
+        if not _run_launcher_ring(p, ct):
+            return
+        if not _run_core_seal(p, ct):
+            return
     if p.is_attacker:
         p.phase = "rush"
     if p.phase == "rush":
@@ -1097,6 +1102,94 @@ def _run_launcher_ring(p, ct):
         elif _build_failure(
                 p, ct, key, "ring launcher", ct.get_launcher_cost()):
             p.launcher_ring_done.add(key)
+        return False
+    return True
+
+
+def _core_seal_targets(p, enemy_core):
+    """Tiles that, once solid, put every Core-threatening tile out of reach.
+
+    An enemy turret hurts the Core from any tile within CORE_THREAT_RADIUS_SQ
+    of the footprint, and an enemy Builder builds onto a tile orthogonally
+    adjacent to itself. So the set an enemy Builder must never stand in is the
+    threat disc expanded by one, and the seal is the shell immediately outside
+    that. Fill the shell and no cardinal path leads in -- which is the point,
+    because ringing the Core more tightly only made them place turrets a little
+    further out and shoot over the gap.
+
+    Barriers, not Launchers. Three titanium and +1% each against twenty and
+    +10%, and they block line of sight too, so even a turret built outside the
+    seal loses its firing line to the Core.
+
+    Terrain walls and the map edge already seal; they are simply absent from
+    the shell. Ore is skipped because it cannot be built on, which does leave a
+    hole -- an honest one, not one this function can close.
+    """
+    threat = set()
+    for tile in p.foot:
+        for x in range(tile[0] - 4, tile[0] + 5):
+            for y in range(tile[1] - 4, tile[1] + 5):
+                if _distance_sq((x, y), tile) <= CORE_THREAT_RADIUS_SQ:
+                    threat.add((x, y))
+    forbidden = set(threat)
+    for tile in threat:
+        for dx, dy in D4_DELTAS:
+            forbidden.add((tile[0] + dx, tile[1] + dy))
+
+    shell = set()
+    for tile in forbidden:
+        for dx, dy in D4_DELTAS:
+            spot = (tile[0] + dx, tile[1] + dy)
+            if spot in forbidden or not _inside(p, spot):
+                continue
+            if spot in p.walls or spot in p.ores or spot in p.foot:
+                continue
+            shell.add(spot)
+    # Enemy-facing arc first: a half-built seal should be closed on the side
+    # they are actually coming from.
+    return [Position(*spot) for spot in
+            sorted(shell, key=lambda s: (_distance_sq(s, enemy_core), s))]
+
+
+def _run_core_seal(p, ct):
+    """Wall off the Core's threat zone, returning true when there is nothing left.
+
+    Deliberately after the Launcher ring: the ring is the attacker's throw pad
+    and is up in a few rounds, while the seal is dozens of tiles and will often
+    not finish before the game does. Getting the enemy-facing arc closed is
+    most of the value.
+    """
+    packed = ct.read_store(SLOT_ENEMY_CORE)
+    if packed == 0:
+        return True
+    enemy_core = unpack_pos(packed)
+    if not hasattr(p, "seal_targets"):
+        p.seal_targets = _core_seal_targets(p, enemy_core)
+        p.seal_done = set()
+
+    for target in p.seal_targets:
+        key = tuple(target)
+        if key in p.seal_done:
+            continue
+        if ct.is_in_vision(target) and ct.get_tile_building_id(target) is not None:
+            p.seal_done.add(key)
+            continue
+        cost = ct.get_barrier_cost()
+        if ct.get_global_resources() < cost + SEAL_TITANIUM_RESERVE:
+            # Hold a reserve: a perimeter is worth less than the Harvester or
+            # the ammunition it would otherwise have starved.
+            return False
+        here = ct.get_position()
+        if _cardinal_distance(tuple(here), key) != 1:
+            _move_cardinal_adjacent(p, ct, key)
+            return False
+        if ct.can_build_barrier(target):
+            ct.build_barrier(target)
+            _mark_progress(p, ct, "built seal barrier", key)
+            p.solids.add(key)
+            p.seal_done.add(key)
+        elif _build_failure(p, ct, key, "seal barrier", cost):
+            p.seal_done.add(key)
         return False
     return True
 
