@@ -1,0 +1,5 @@
+source_commit = "1b5f3d1b8"
+source_path = "bots/luc/prospect + bots/jon/fair/vanguard@x/luc"
+engine = "2.3.3"
+status = "fair"
+variant = "two lineages, chosen by whether the Core sits in a corner"
