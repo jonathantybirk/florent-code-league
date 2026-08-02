@@ -39,7 +39,7 @@ RING_EDGE_MARGIN = 5
 # cheap radius-2 compass ring scores 26/42, and 22 against prospect where the
 # compass ring scores 27. Denying the shell with barriers instead is what
 # CORE_SEAL_ENABLED does, at 3 Ti and +1% a tile.
-RING_COVER_SHELL = False
+RING_COVER_SHELL = True
 # Two geometries, two radii, kept separate so flipping the switch cannot leave
 # the cover computing against the compass ring's shell.
 RING_SHELL_RADIUS = 4   # distance denied by _shell_cover_targets
