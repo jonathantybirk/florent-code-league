@@ -1,4 +1,4 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-prospect@bf9b3e3,prospect,bf9b3e3,pending,21,0,0,0,,,,,,0,0,9000,10000
-prospect_rushonly@bf9b3e3,prospect_rushonly,bf9b3e3,pending,21,0,0,0,,,,,,0,0,9000,10000
-vigil@bf9b3e3,vigil,bf9b3e3,pending,21,0,0,0,,,,,,0,0,9000,10000
+prospect@bf9b3e3,prospect,bf9b3e3,pass,21,21,21,3242,12,30,107,831,5592,0,0,9000,10000
+prospect_rushonly@bf9b3e3,prospect_rushonly,bf9b3e3,pass,21,21,21,3242,12,23,89,721,3427,0,0,9000,10000
+vigil@bf9b3e3,vigil,bf9b3e3,pass,21,21,21,4409,12,21,29,368,3895,0,0,9000,10000
