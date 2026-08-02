@@ -256,6 +256,46 @@ sighted-bit in the store so a real sighting always outranks a guess. Waiting
 optimises being certain, and the game pays for being right early: that one
 change is worth **+25 games / 252** to the fair bot.
 
+### The turn limit is a correctness bug, not a performance one
+
+The first build **exceeded the ladder's 10 ms per-unit budget** — 13,480 µs on
+`longship`. A unit that overruns is interrupted mid-`run()` and does not act at
+all that round, so this is not slowness, it is a Builder that randomly skips
+turns on one map.
+
+`benchmarks/timing.py` measures it the way `tournament/compliance.py` does:
+wrap the Player, read the engine's own `get_cpu_time_elapsed()`, and recover
+the markers from the replay (bot stdout is embedded there and is the only
+channel that survives). Cost is extremely map-dependent — the worst map was 9×
+the cheapest — so a three-map sample cannot distinguish "fast" from "not yet
+measured on the slow map".
+
+The cause was one line in the wrong place: `_keeps_route_open`, which runs two
+full map searches, sat *inside* a 196-candidate loop, so siting one Gunner
+searched the map up to 392 times. Two changes, both exact rather than
+approximate:
+
+- a candidate site that the existing route does not use cannot close that
+  route, so only sites *on* the route need the second search;
+- rank candidates first and pay for the check until one survives, instead of
+  checking all of them and then taking the best.
+
+| | worst turn | p99 | turns over 10 ms |
+|---|---|---|---|
+| before | 13,480 µs | 7,087 µs | 2 |
+| after | **2,995 µs** | 2,273 µs | **0** |
+
+Verified behaviour-preserving rather than assumed: against a frozen opponent,
+before and after produce **42/42 byte-identical games**. A `CPU_SOFT_BUDGET_US`
+guard now also stops the widest search once a turn has spent 4 ms, so a future
+change cannot silently reintroduce this.
+
+*Caveat on the panel numbers above:* `vigil` is under active development and
+changed on disk between two of these runs, which moved that column by 3 games.
+Every other opponent was byte-identical across 336 games. Scores against a
+moving opponent are only meaningful with the date attached — the same lesson
+recorded for the earlier tournament snapshot.
+
 Reproduce: `uv run python -m benchmarks.suite --run-dir benchmarks/runs/<name>`
 then `uv run python -m benchmarks.report --run-dir <same>`; ablations with
 `uv run python -m benchmarks.ablate --run-dir benchmarks/runs/<name>`. Raw

@@ -57,6 +57,15 @@ ROTATE_TITANIUM_RESERVE = 40
 # (measured: a roaming enemy walks away from the turret), 2 under FORTIFY
 # where the enemy has to come down a lane.
 
+# --- CPU budget -------------------------------------------------------------
+# Each unit gets 10 ms of CPU per round, plus a 5% bank. Overrunning does not
+# truncate the work -- the unit is interrupted and does not act at all that
+# round -- so optional searches stop here and leave the rest of the turn for
+# the ordinary action. Deliberately well under the limit: the ladder runs on
+# AWS Graviton3 rather than this machine, and the measurement that set this
+# number is a local one.
+CPU_SOFT_BUDGET_US = 4000
+
 # --- Sentinel siege ---------------------------------------------------------
 # When the attacker can find no Gunner lane onto the enemy Core -- walls,
 # barriers, or a sealed turtle -- it falls back to the one weapon nothing

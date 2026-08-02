@@ -20,6 +20,7 @@ behind a win rate.
 | `report.py` | aggregates a run into per-suite tables and an h2h matrix |
 | `ablate.py` | builds single-change variants of a bot and scores each against a panel |
 | `export.py` | flattens a run directory into one committable CSV |
+| `timing.py` | per-unit turn CPU time against the ladder's 10 ms limit, by map and entity type |
 
 One match runs per OS process. The engine hosts both bots in sub-interpreters
 inside the calling process (see `tournament/run_match.py`), so reuse is unsafe
@@ -56,6 +57,18 @@ uv run python -m benchmarks.ablate --run-dir benchmarks/runs/<name>
 
 uv run python -m benchmarks.export --run-dir benchmarks/runs/<name>
 ```
+
+Before submitting anything, check it fits the turn limit:
+
+```sh
+uv run python -m benchmarks.timing --bot bots/luc/ragnarok --maps all
+```
+
+This exits non-zero if any unit turn exceeds 10 ms. Turn cost is strongly
+map-dependent — ragnarok's worst map was 9x its cheapest — so a three-map
+sample cannot tell "fast" from "not yet measured on the slow map". A unit that
+overruns is interrupted mid-`run()` and does not act at all that round, so
+this is a correctness check, not a performance nicety.
 
 Re-running a run directory skips matches that already have a result, so an
 interrupted run resumes. Matches use seed 1 and `--tle 0`, which the harness
