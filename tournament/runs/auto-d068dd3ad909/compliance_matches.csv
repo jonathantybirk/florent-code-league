@@ -2,6 +2,11 @@ match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,m
 f27ad87beca9679e,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,atoll,1,12,pass,ok,,27,228,8,34,310,1880,2326,6,0,0,0,9000,10000,n-62-11-59,29004186,2026-08-02T13:28:39+0200
 a8089280814a3fcb,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,aurora,1,12,pass,ok,,27,228,10,31,291,483,3281,11,0,0,0,9000,10000,n-62-11-59,29004186,2026-08-02T13:28:41+0200
 6451cc87d21f8847,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,bridge,1,12,pass,ok,,27,231,9,30,246,699,2701,23,0,0,0,9000,10000,n-62-11-59,29004186,2026-08-02T13:28:43+0200
+fa45109e52868c62,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,crossfire,1,12,pass,ok,,27,233,8,32,325,1892,2347,22,0,0,0,9000,10000,n-62-11-59,29004186,2026-08-02T13:28:45+0200
+b7a9c225a2c59ffb,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,duel,1,12,pass,ok,,27,232,10,30,311,1427,2021,2,0,0,0,9000,10000,n-62-11-59,29004186,2026-08-02T13:28:47+0200
+13e8b49ad888d83f,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,fjord,1,12,pass,ok,,25,228,8,26,213,368,2650,6,0,0,0,9000,10000,n-62-11-59,29004186,2026-08-02T13:28:50+0200
+23a63c20843a6711,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,hive,1,12,pass,ok,,27,223,11,31,350,1032,3204,9,0,0,0,9000,10000,n-62-11-59,29004186,2026-08-02T13:28:52+0200
+e1b5c9987068d25a,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,jackpot,1,12,pass,ok,,27,234,8,25,229,590,1494,19,0,0,0,9000,10000,n-62-11-59,29004186,2026-08-02T13:28:54+0200
 49a127e7b1345dad,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,longship,1,12,pass,ok,,27,223,7,25,321,811,2902,26,0,0,0,9000,10000,n-62-11-55,29004186,2026-08-02T13:27:45+0200
 968dd487b019f619,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,pinch,1,12,pass,ok,,21,182,6,21,223,612,2209,8,0,0,0,9000,10000,n-62-11-55,29004186,2026-08-02T13:27:47+0200
 efc605a452dd3dad,auto-d068dd3ad909,tempest_reinforcements@3d5ab38,tempest_reinforcements,3d5ab38,quarry,1,12,pass,ok,,27,240,7,23,262,971,3011,11,0,0,0,9000,10000,n-62-11-55,29004186,2026-08-02T13:27:49+0200
