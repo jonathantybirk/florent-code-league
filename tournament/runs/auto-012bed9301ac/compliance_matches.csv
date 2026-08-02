@@ -1,5 +1,8 @@
 match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
 3ccc3ee49366a57b,auto-012bed9301ac,vigil@18b749d,vigil,18b749d,atoll,1,12,pass,ok,,27,218,17,28,34,662,2326,15,0,0,0,9000,10000,n-62-12-5,29004312,2026-08-02T14:26:44+0200
+645bb29df5545306,auto-012bed9301ac,vigil@18b749d,vigil,18b749d,aurora,1,12,pass,ok,,27,243,16,27,32,361,3298,8,0,0,0,9000,10000,n-62-12-5,29004312,2026-08-02T14:26:47+0200
+e8534ae7ec01fcb1,auto-012bed9301ac,vigil@18b749d,vigil,18b749d,bridge,1,12,pass,ok,,27,207,18,26,33,469,3049,9,0,0,0,9000,10000,n-62-12-5,29004312,2026-08-02T14:26:49+0200
+e62378a214fa4d24,auto-012bed9301ac,vigil@18b749d,vigil,18b749d,crossfire,1,12,pass,ok,,22,186,18,26,33,380,2292,4,0,0,0,9000,10000,n-62-12-5,29004312,2026-08-02T14:26:51+0200
 4c3c79aaf96d68eb,auto-012bed9301ac,vigil@18b749d,vigil,18b749d,duel,1,12,pass,ok,,23,181,16,25,32,462,1983,2,0,0,0,9000,10000,n-62-12-6,29004312,2026-08-02T14:25:39+0200
 f366e21dd86e5f9e,auto-012bed9301ac,vigil@18b749d,vigil,18b749d,fjord,1,12,pass,ok,,24,209,13,21,28,331,2559,6,0,0,0,9000,10000,n-62-12-6,29004312,2026-08-02T14:25:42+0200
 d235480fa2f3575e,auto-012bed9301ac,vigil@18b749d,vigil,18b749d,hive,1,12,pass,ok,,27,242,12,21,28,345,3134,8,0,0,0,9000,10000,n-62-12-6,29004312,2026-08-02T14:25:44+0200
