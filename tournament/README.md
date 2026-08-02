@@ -393,17 +393,20 @@ On each invocation it:
 5. runs the v4 10 ms compliance probes and records per-turn min/p25/median/p75/max;
 6. detects behavioural duplicates from the completed full evidence, excludes new duplicates from
    the distinct matrix, and recalculates mElo and Nash;
-7. commits the finished run's durable artefacts and pushes them to `origin/x/tournament`, so the
-   match and rating CSVs are on the remote for everyone else to analyse;
-8. generates the split data bundle for `/botrankings`, builds the portfolio, commits and pushes
-   the changed data, then deploys the finished site directly to Cloudflare.
+7. generates the split data bundle for `/botrankings`, builds the portfolio, commits and pushes
+   the changed data, then deploys the finished site directly to Cloudflare;
+8. commits whatever run data the tick gained and pushes it to `origin/x/tournament`, so the match
+   and rating CSVs are on the remote for everyone else to analyse.
 
-Step 7 pushes only when this checkout is on `--data-branch` (default `x/tournament`) and has no
-uncommitted changes outside `tournament/runs/`; otherwise it logs why and the next tick retries.
-`.gitignore` keeps the commit to the durable files — manifest, matches, ratings and compliance
-CSVs — while staged bots, per-match JSON and LSF logs stay local. If somebody pushed to the branch
-during the cluster run, the data commit is rebased onto theirs and retried, never forced.
-`--no-push-data` turns the step off.
+Step 8 runs on every tick in a `finally`, over all of `tournament/runs/` rather than per finished
+run: a run still mid-collection travels too, and results stranded by a crashed tick get picked up
+rather than lost. It pushes only when this checkout is on `--data-branch` (default
+`x/tournament`) and has no uncommitted changes outside `tournament/runs/`; otherwise it logs why
+and the next tick retries. `.gitignore` keeps the commit to the durable files — manifest, matches,
+ratings and compliance CSVs — while staged bots, per-match JSON and LSF logs stay local. If
+somebody pushed to the branch during the cluster run, the data commit is rebased onto theirs and
+retried, never forced. A failed push is reported but never fails the tick. `--no-push-data` turns
+the step off.
 
 The worker never falls back to local matches. If the eight-hour SSH master is unavailable it exits
 with the exact `SSH_ASKPASS_REQUIRE=never ssh dtu true` login instruction; the next timer event
