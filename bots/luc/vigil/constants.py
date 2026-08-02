@@ -27,7 +27,23 @@ RING_EDGE_MARGIN = 5
 # the Core. Radius 2 leaves that lane open, and a Builder standing on the shell
 # between the two is still diagonally adjacent to the ring site, so it remains
 # inside the Launcher's pickup radius.
-RING_RADIUS = 2
+# The reasoning behind RING_COVER_SHELL is sound and the implementation is
+# verified: a Gunner reaches 3 tiles and a Builder builds one step from itself,
+# so an enemy standing 4 out can plant a turret 3 out and shoot the Core, and
+# _shell_cover_targets returns a set of Launcher sites whose pickup zones cover
+# that entire shell -- 13/13 tiles on a corner Core, 36/36 on an open one.
+#
+# It is off because denying that shell with Launchers costs more than the
+# attack does. A cover needs 5 sites in a corner and 13 in the open, at 20 Ti
+# and +10% scale each; against tempest_reinforcements it scores 20/42 where the
+# cheap radius-2 compass ring scores 26/42, and 22 against prospect where the
+# compass ring scores 27. Denying the shell with barriers instead is what
+# CORE_SEAL_ENABLED does, at 3 Ti and +1% a tile.
+RING_COVER_SHELL = False
+# Two geometries, two radii, kept separate so flipping the switch cannot leave
+# the cover computing against the compass ring's shell.
+RING_SHELL_RADIUS = 4   # distance denied by _shell_cover_targets
+RING_RADIUS = 2         # where _compass_ring_targets puts its Launchers
 
 # --- Core seal -------------------------------------------------------------
 # A Gunner's attack radius squared. Any tile this close to the Core footprint
@@ -91,5 +107,12 @@ SLOT_CORE_DAMAGED = 12
 SLOT_ENEMY_CORE = 13
 SLOT_OWN_CORE = 14
 SLOT_BUILDER_HEARTBEAT = 15
+# Rounds of failed pathing before a Builder is written off as unable to act.
+STUCK_ROUNDS_BEFORE_STANDDOWN = 40
+# Rounds blocked before spending a Launcher to jump the blockage outright.
+BLOCKED_ROUNDS_BEFORE_LAUNCHER = 5
+# A Harvester this close is worth finishing before turning back to repairs:
+# four ores in a cluster should not each trigger a trip back down the line.
+HARVESTER_FINISH_STEPS = 2
 
 LAUNCH_RANGE_SQ = 26
