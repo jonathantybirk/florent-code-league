@@ -7,15 +7,27 @@ D4_DELTAS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 FACING = dict(zip(D4_DELTAS, (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)))
 WALKABLE_BUILDINGS = (EntityType.CONVEYOR, EntityType.SPLITTER)
 
+# One Builder per job: mine, defend, attack. Every Builder Bot adds +20% to
+# every build cost the team will ever pay -- the largest single term in cost
+# scaling -- so a spare Builder is not free labour, it is a permanent tax on
+# the Launchers and Harvesters it was spawned to help build. Six of them took
+# the Launcher price from 20 Ti to 44 before the first one went up.
 ECONOMY_BUILDERS = 1
-# The third attacker never paid for itself: two Builders already cover every
-# unresolved symmetry candidate, and the rest of the opening rush arrived too
-# thin to threaten anything. That slot builds the screen instead, so the wall
-# goes up at two sites at once rather than one.
-SCOUT_BUILDERS = 2
-LAUNCHER_BUILDERS = 2
+SCOUT_BUILDERS = 1
+LAUNCHER_BUILDERS = 1
 LAUNCHER_BUILDER_INDEX = ECONOMY_BUILDERS + SCOUT_BUILDERS
 MAX_OPENING_BUILDERS = ECONOMY_BUILDERS + SCOUT_BUILDERS + LAUNCHER_BUILDERS
+
+# Drop a ring direction when the map edge is this close behind it: nothing can
+# approach from off the map, so a Launcher there guards nothing and still costs
+# its +10%.
+RING_EDGE_MARGIN = 5
+# Tiles between the Core footprint and the ring. Launchers block movement, so
+# at radius 1 the ring sits on the tiles a conveyor line has to cross to reach
+# the Core. Radius 2 leaves that lane open, and a Builder standing on the shell
+# between the two is still diagonally adjacent to the ring site, so it remains
+# inside the Launcher's pickup radius.
+RING_RADIUS = 2
 
 SLOT_BUILDER_TICKET = 0
 # There is one economy Builder, so one ore reservation is sufficient. Slots

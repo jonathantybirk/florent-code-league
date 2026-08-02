@@ -20,6 +20,8 @@ from constants import (
     LAUNCH_REJECTION_POSITION_BITS,
     LAUNCH_REJECTION_POSITION_MASK,
     LAUNCH_REQUEST_SLOTS,
+    RING_EDGE_MARGIN,
+    RING_RADIUS,
     SLOT_BUILDER_HEARTBEAT,
     SLOT_BUILDER_TICKET,
     SLOT_CONSTRUCTION_LOCK,
@@ -37,6 +39,9 @@ if TYPE_CHECKING:
 
 HARASS_PRIORITY = {EntityType.SPLITTER: 0, EntityType.CONVEYOR: 1}
 GUNNER_RANGE_SQ = 13
+# Clockwise from north-west; one ring site per compass direction.
+RING_DELTAS = ((-1, -1), (0, -1), (1, -1), (1, 0),
+               (1, 1), (0, 1), (-1, 1), (-1, 0))
 PATH_FAILURES_BEFORE_LAUNCHER = 1
 LAUNCH_REQUEST_ROUNDS = 4
 BLOCKER_GUNNER_RETRY_ROUNDS = 4
@@ -83,8 +88,8 @@ def _run(p, ct):
         p.network_tiles = set()
         p.network_load = 0
         p.economy_lines_completed = 0
-        p.wall_slot = p.builder_index - LAUNCHER_BUILDER_INDEX
-        p.is_launcher_builder = 0 <= p.wall_slot < LAUNCHER_BUILDERS
+        p.ring_slot = p.builder_index - LAUNCHER_BUILDER_INDEX
+        p.is_launcher_builder = 0 <= p.ring_slot < LAUNCHER_BUILDERS
         p.is_attacker = (p.builder_index >= ECONOMY_BUILDERS
                          and not p.is_launcher_builder)
         p.lock_required = False
@@ -126,7 +131,7 @@ def _run(p, ct):
     if p.builder_index == 0 and ct.read_store(SLOT_CORE_DAMAGED):
         _defend_core(p, ct)
         return
-    if p.is_launcher_builder and not _run_launcher_wall(p, ct):
+    if p.is_launcher_builder and not _run_launcher_ring(p, ct):
         return
     if p.is_attacker:
         p.phase = "rush"
@@ -1040,32 +1045,31 @@ def _heal_core(p, ct):
     _step(p, ct, Position(*p.core), False)
 
 
-def _run_launcher_wall(p, ct):
-    """Build the Launcher screen, returning true when economy work can resume."""
+def _run_launcher_ring(p, ct):
+    """Build the Launcher ring, returning true when economy work can resume."""
     packed = ct.read_store(SLOT_ENEMY_CORE)
     if packed == 0:
         _explore(p, ct)
         return False
     enemy_core = unpack_pos(packed)
-    if not hasattr(p, "launcher_wall_targets"):
-        p.launcher_wall_targets = _launcher_wall_targets(p, enemy_core)
-        p.launcher_wall_done = set()
+    if not hasattr(p, "launcher_ring_targets"):
+        p.launcher_ring_targets = _launcher_ring_targets(p, enemy_core)
+        p.launcher_ring_done = set()
 
-    # Two Builders share one screen and there is no store slot left to claim
-    # sites in, so they stride through the list from different offsets. Each
-    # then falls through to the whole list, so whoever finishes its own lanes
-    # reinforces the other's half instead of idling; the site is skipped anyway
-    # once a building is visible on it.
-    ordered = (p.launcher_wall_targets[p.wall_slot::LAUNCHER_BUILDERS]
-               + p.launcher_wall_targets)
+    # With more than one ring Builder there is no store slot left to claim
+    # sites in, so they stride the list from different offsets and then fall
+    # through to the whole of it; a site is skipped anyway once a building is
+    # visible on it.
+    ordered = (p.launcher_ring_targets[p.ring_slot::LAUNCHER_BUILDERS]
+               + p.launcher_ring_targets)
     for target in ordered:
         key = tuple(target)
-        if key in p.launcher_wall_done:
+        if key in p.launcher_ring_done:
             continue
         if ct.is_in_vision(target):
             building_id = ct.get_tile_building_id(target)
             if building_id is not None:
-                p.launcher_wall_done.add(key)
+                p.launcher_ring_done.add(key)
                 continue
         here = ct.get_position()
         if _cardinal_distance(tuple(here), key) != 1:
@@ -1074,58 +1078,75 @@ def _run_launcher_wall(p, ct):
         if (ct.get_global_resources() >= ct.get_launcher_cost()
                 and ct.can_build_launcher(target)):
             ct.build_launcher(target)
-            _mark_progress(p, ct, "built wall launcher", key)
+            _mark_progress(p, ct, "built ring launcher", key)
             p.solids.add(key)
-            p.launcher_wall_done.add(key)
+            p.launcher_ring_done.add(key)
         elif _build_failure(
-                p, ct, key, "wall launcher", ct.get_launcher_cost()):
-            p.launcher_wall_done.add(key)
+                p, ct, key, "ring launcher", ct.get_launcher_cost()):
+            p.launcher_ring_done.add(key)
         return False
     return True
 
 
-def _launcher_wall_targets(p, enemy_core):
-    """Return sites two tiles apart, the enemy's likely approach lane first.
+def _launcher_ring_targets(p, enemy_core):
+    """Ring the Core at RING_RADIUS, enemy-facing site first.
 
-    The screen is built one Launcher at a time, so the order decides which lane
-    is covered during the turns that decide the game. Centring it on our own
-    Core put the opening Launcher wherever we happened to sit, which is the
-    enemy's route only when the two Cores are level. Everything they send walks
-    the line between the Cores instead, so the first site is the one that line
-    crosses and the rest fan out from there.
+    A screen thrown out towards the enemy covers one approach and is worthless
+    the moment they come around it, and it is four tiles from home, so the
+    Builder walks before it can build. Ringing our own Core covers every
+    direction at once and the first Launcher is up almost immediately.
+
+    The ring is also the attacker's throw pad. A Launcher picks up a Builder
+    within radius squared 2, so a Builder leaving the Core is adjacent to a ring
+    site and gets thrown out rather than building a second Launcher purely to
+    escape with. Sorting enemy-first is what makes that work -- the pad has to
+    be the one site that exists when the attacker asks for it.
     """
     core_x, core_y = p.core
-    # Both Cores are 2x2, so the approach runs between footprint centres.
-    from_x, from_y = core_x + 0.5, core_y + 0.5
-    delta_x = enemy_core[0] + 0.5 - from_x
-    delta_y = enemy_core[1] + 0.5 - from_y
     targets = []
-    if abs(delta_x) >= abs(delta_y):
-        line_x = core_x + (4 if delta_x >= 0 else -3)
-        line_x = min(max(line_x, 0), p.w - 1)
-        coordinates = list(range(1, p.h, 3))
-        center = _approach_crossing(from_y, delta_y, line_x + 0.5 - from_x, delta_x)
-        sites = [(line_x, coordinate) for coordinate in coordinates]
-        sites.sort(key=lambda site: (abs(site[1] - center), site[1]))
-    else:
-        line_y = core_y + (4 if delta_y >= 0 else -3)
-        line_y = min(max(line_y, 0), p.h - 1)
-        coordinates = list(range(1, p.w, 3))
-        center = _approach_crossing(from_x, delta_x, line_y + 0.5 - from_y, delta_y)
-        sites = [(coordinate, line_y) for coordinate in coordinates]
-        sites.sort(key=lambda site: (abs(site[0] - center), site[0]))
+    for dx, dy in RING_DELTAS:
+        if _edge_distance(p, dx, dy) <= RING_EDGE_MARGIN:
+            continue
+        # The Core is 2x2, so a diagonal has one ring tile but a cardinal has
+        # two. Take whichever of the pair leans towards the enemy.
+        if dx > 0:
+            x = core_x + 1 + RING_RADIUS
+        elif dx < 0:
+            x = core_x - RING_RADIUS
+        else:
+            x = min((core_x, core_x + 1), key=lambda v: abs(enemy_core[0] - v))
+        if dy > 0:
+            y = core_y + 1 + RING_RADIUS
+        elif dy < 0:
+            y = core_y - RING_RADIUS
+        else:
+            y = min((core_y, core_y + 1), key=lambda v: abs(enemy_core[1] - v))
+        site = (x, y)
+        if not _inside(p, site) or site in targets:
+            continue
+        if site in p.walls or site in p.ores or site in p.foot:
+            continue
+        targets.append(site)
 
-    for site in sites:
-        if site not in p.walls and site not in p.ores and site not in p.foot:
-            targets.append(Position(*site))
-    return targets
+    targets.sort(key=lambda site: (_distance_sq(site, enemy_core), site))
+    return [Position(*site) for site in targets]
 
 
-def _approach_crossing(base, along, span, across):
-    """Where the Core-to-Core line sits on the screen, in the screen's axis."""
-    if across == 0:
-        return base
-    return base + along * span / across
+def _edge_distance(p, dx, dy):
+    """Tiles between the Core footprint and the map edge along one direction."""
+    spans = []
+    if dx > 0:
+        spans.append(p.w - 1 - (p.core[0] + 1))
+    elif dx < 0:
+        spans.append(p.core[0])
+    if dy > 0:
+        spans.append(p.h - 1 - (p.core[1] + 1))
+    elif dy < 0:
+        spans.append(p.core[1])
+    # A diagonal needs room in both of its components, so the tighter one
+    # decides: an enemy cannot come from the south-east of a Core sitting
+    # two tiles off the east edge.
+    return min(spans) if spans else p.w + p.h
 
 
 def _defend_core(p, ct):
