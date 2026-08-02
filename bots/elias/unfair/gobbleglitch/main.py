@@ -2159,10 +2159,29 @@ class Player:
             live = siege.alive(w, h, anchor, self.sym_mask)
             if live:
                 if self.enemy_anchor not in live:
-                    # Closest first: if the guess is wrong we find out on arrival, and we find out
-                    # after the shortest possible detour.
-                    self.enemy_anchor = min(
-                        live, key=lambda c: (c[0] - anchor[0]) ** 2 + (c[1] - anchor[1]) ** 2)
+                    # FARTHEST first. This was "closest first", on the reasoning that a wrong guess
+                    # is then discovered after the shortest possible detour -- which optimises the
+                    # price of being wrong instead of the odds of being right, and it was wrong
+                    # almost always. Measured over all 21 published maps from both sides: closest
+                    # first names the true enemy Core on 4 of 42 map-sides, **9.5%**. It cannot do
+                    # better, because it can never once pick the 180-degree rotation -- the rotation
+                    # is by construction the farthest of the three candidates -- and rotation is the
+                    # truth on 28 of those 42.
+                    #
+                    # Farthest first scores 28 of 42 (66.7%) on the published pool and 14 of 48
+                    # (29.2%) on generated maps against closest first's 8 of 48, so it is better on
+                    # BOTH map sets rather than tuned to one. The reason is a property of map design
+                    # rather than of this pool: a two-player map is built to be fair, so the two
+                    # Cores are placed as far apart as the symmetry allows.
+                    #
+                    # This single line is the whole atlas dependency. Ablating the atlas seed by
+                    # seed against `vanguard`: seeding the full static wall set is worth exactly
+                    # nothing (19-23, identical to seeding nothing), while seeding the enemy anchor
+                    # alone restores full strength (32-10, 31 core kills). The atlas was never a map
+                    # memory that mattered -- it was a correct answer to this guess.
+                    self.enemy_anchor = max(
+                        live, key=lambda c: ((c[0] - anchor[0]) ** 2 + (c[1] - anchor[1]) ** 2,
+                                             c[0], c[1]))
             elif self.enemy_anchor is None:
                 return
 

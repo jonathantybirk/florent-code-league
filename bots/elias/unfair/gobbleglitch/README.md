@@ -71,25 +71,55 @@ neutral; kept because a throw is 0 Ti, 0 ammo and a measured +4 tiles of displac
 - **A walking guard Launcher.** Returning True while in transit hijacks the round from healing and
   the economy every round, for a Launcher that may never see anything enter its 8-tile ring.
 
+**5. Farthest-first enemy-Core inference — the atlas dependency, fixed.**
+
+AutistimusPrime's README claimed the atlas "only accelerates this; the same code runs on
+unrecognised maps." Deleting `atlas.py` and re-running the known-map sweep showed otherwise —
+about 12 games per 42, the same size as the 83%/69% known-vs-unseen gap. Ablating the seeds one at
+a time located it exactly:
+
+| seeded from the atlas | vs vanguard |
+|---|---|
+| nothing | 19–23 |
+| the full static wall set | **19–23** — worth precisely nothing |
+| the enemy Core anchor alone | **32–10, 31 kills** — full strength |
+
+So the atlas was never a map memory that mattered. It was a correct answer to one guess: which of
+the three symmetry candidates holds the enemy Core. Without it, that guess was made **closest
+first**, on the reasoning that a wrong guess is discovered after the shortest detour — optimising
+the price of being wrong rather than the odds of being right.
+
+Measured over the published pool from both sides, closest-first names the true enemy Core on
+**4 of 42 map-sides — 9.5%**. It cannot do better: the 180° rotation is by construction the
+*farthest* of the three candidates, so closest-first can never pick it, and rotation is the truth
+on 28 of those 42.
+
+**Farthest first** scores 28/42 (66.7%) on the published pool and 14/48 (29.2%) on generated maps,
+against closest-first's 8/48 — better on *both* map sets rather than tuned to one. The rationale is
+map design, not this pool: a two-player map is built to be fair, so the Cores sit as far apart as
+the symmetry allows.
+
+Effect, with the atlas deleted entirely:
+
+| opponent | closest-first | farthest-first |
+|---|---|---|
+| vanguard | 19–23 | **26–16** |
+| tempest_fast | 20–22 | **30–12** |
+| undertow | 22–20 | **24–18** |
+
+and on unseen maps, where there is no atlas and the guess always runs, 57/120 → **62/120**.
+Known-map results are unchanged, because with the atlas the guess never runs at all.
+
 ## Known weakness, stated plainly
 
-**The atlas is not an accelerator, and the generalisation gap is the atlas.** AutistimusPrime's
-README claimed "the atlas only accelerates this; the same code runs on unrecognised maps." Measured
-directly by deleting `atlas.py` and re-running the known-map sweep:
+The atlas still buys about 15 games per 126 on known maps, so this is still tagged **unfair**. But
+the fair version is now genuinely competitive rather than crippled — 80–46 across vanguard,
+tempest_fast and undertow with no map data at all — and is worth publishing as a separate fair
+entry.
 
-| opponent | with atlas | without |
-|---|---|---|
-| vanguard | 32–10 | **19–23** |
-| tempest_fast | 32–10 | **20–22** |
-| undertow | 31–11 | **22–20** |
-
-About 12 games per 42. That is the same size as the 83% known / 69% unseen gap, and it explains it:
-on an unseen map there is no atlas and we play like the right-hand column. The runtime siege planner
-is not yet as good as the table it falls back from.
-
-This is the single highest-value work item left, and it is worth more than any exploit in the hunt.
-The published pool went 15 → 21 maps once already; if it moves again, the right-hand column is what
-ships.
+Unseen play is now positive overall (62/120) but `mistral` still wins the matchup 14–10. It is 767
+lines with no map data, so its performance is identical in kind on both map sets; whatever it does
+better is a real strategic difference, not an information advantage.
 
 ## Where the evidence lives
 
