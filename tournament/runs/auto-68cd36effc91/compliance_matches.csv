@@ -2,6 +2,9 @@ match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,m
 9a8dd990761e0819,auto-68cd36effc91,tempest_reinforcements@38f9c23,tempest_reinforcements,38f9c23,atoll,1,12,pass,ok,,27,218,5,20,26,626,3357,12,0,0,0,9000,10000,n-62-11-58,29004285,2026-08-02T14:10:40+0200
 7064f062fa6a7991,auto-68cd36effc91,tempest_reinforcements@38f9c23,tempest_reinforcements,38f9c23,aurora,1,12,pass,ok,,27,243,5,20,26,342,3239,8,0,0,0,9000,10000,n-62-11-58,29004285,2026-08-02T14:10:42+0200
 27f20d4263f36f24,auto-68cd36effc91,tempest_reinforcements@38f9c23,tempest_reinforcements,38f9c23,bridge,1,12,pass,ok,,27,207,5,19,25,432,3462,16,0,0,0,9000,10000,n-62-11-58,29004285,2026-08-02T14:10:44+0200
+fb10fc7207789914,auto-68cd36effc91,tempest_reinforcements@38f9c23,tempest_reinforcements,38f9c23,crossfire,1,12,pass,ok,,22,186,6,19,27,433,2709,14,0,0,0,9000,10000,n-62-11-58,29004285,2026-08-02T14:10:46+0200
+313940cdd9c9810c,auto-68cd36effc91,tempest_reinforcements@38f9c23,tempest_reinforcements,38f9c23,duel,1,12,pass,ok,,23,181,5,22,35,445,2057,2,0,0,0,9000,10000,n-62-11-58,29004285,2026-08-02T14:10:48+0200
+848d0052a64ff592,auto-68cd36effc91,tempest_reinforcements@38f9c23,tempest_reinforcements,38f9c23,fjord,1,12,pass,ok,,24,209,13,22,30,346,3508,11,0,0,0,9000,10000,n-62-11-58,29004285,2026-08-02T14:10:51+0200
 443b8877acc73768,auto-68cd36effc91,tempest_reinforcements@38f9c23,tempest_reinforcements,38f9c23,hive,1,12,pass,ok,,27,242,7,23,29,354,3156,8,0,0,0,9000,10000,n-62-11-53,29004285,2026-08-02T14:09:38+0200
 dfbb474653fa46ec,auto-68cd36effc91,tempest_reinforcements@38f9c23,tempest_reinforcements,38f9c23,jackpot,1,12,pass,ok,,27,218,5,21,28,526,1494,6,0,0,0,9000,10000,n-62-11-53,29004285,2026-08-02T14:09:40+0200
 d1855a28c014232a,auto-68cd36effc91,tempest_reinforcements@38f9c23,tempest_reinforcements,38f9c23,longship,1,12,pass,ok,,27,253,7,22,27,347,2892,11,0,0,0,9000,10000,n-62-11-53,29004285,2026-08-02T14:09:42+0200
