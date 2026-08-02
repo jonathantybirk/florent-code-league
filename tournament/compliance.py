@@ -17,9 +17,10 @@ import shutil
 from pathlib import Path
 
 from tournament.maps import label
+from tournament.gitutil import REPO_ROOT
 from tournament.registry import BotSpec
 
-VERSION = 4
+VERSION = 5
 LIMIT_US = 10_000
 CLOSE_US = 9_000
 # The probe measures against LIMIT_US itself.  A slightly looser engine watchdog prevents the
@@ -27,7 +28,14 @@ CLOSE_US = 9_000
 # followed by the same entity running next round, still proves that it hit this looser guard.
 GUARD_TLE_MS = 12
 SAMPLE_ROUNDS = 25
-MAPS = ("atoll", "duel", "quarry")
+# Every official map, not a three-map sample. Turn cost is map-dependent: across the probes we
+# have run, a bot's worst map is a median 1.6x its best and up to 5.1x, and three bots exceeded
+# the limit on one of these maps while passing the other two -- casemate_oracle runs 3.4ms on
+# duel and 12.6ms on quarry. With twelve bots passing at 5-10ms, a three-map sample cannot
+# distinguish "fast" from "not yet measured on the map that is slow for it".
+MAPS = tuple(
+    path.stem for path in sorted((REPO_ROOT / "maps").glob("*.map26"))
+)
 BASELINE_ID = f"__compliance_baseline__@v{VERSION}"
 START_MARKER = f"FCL_COMPLIANCE_START:v{VERSION}"
 END_MARKER = f"FCL_COMPLIANCE_END:v{VERSION}"
