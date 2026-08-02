@@ -39,6 +39,18 @@ CORE_THREAT_RADIUS_SQ = 13
 # and they block line of sight as well as movement. They are the only building
 # cheap enough to run a closed perimeter out of.
 SEAL_TITANIUM_RESERVE = 25
+# Off, on measurement. The seal is correct -- a flood fill from the map edge
+# reaches none of the tiles an enemy could shoot the Core from -- but it costs
+# five games out of 126 against mistral_fast / mistral / vanguard_oracle,
+# 119 with it off against 114 with it on. Those games end around turn 30 and
+# the ring Builder lays roughly one barrier per game before the game is over,
+# so the perimeter is paid for and never finished, and while it is half-built
+# it walls our own economy Builder in as readily as it walls them out.
+#
+# Kept rather than deleted because the ladder is not this pool: Pantheon's
+# wins in match 0a9a756d run 162, 310, 321 and 409 turns, which is the regime
+# where a perimeter has time to close. Turn back on to test that.
+CORE_SEAL_ENABLED = False
 
 # --- Turret meta -----------------------------------------------------------
 # Rounds a Gunner must go without seeing any enemy at all before it removes
