@@ -441,3 +441,86 @@ def test_self_update_adopts_a_passing_commit(tmp_path, monkeypatch):
     monkeypatch.setattr(automation.subprocess, "run",
                         lambda *a, **k: type("R", (), {"returncode": 0, "stdout": ""})())
     assert automation.self_update("x/tournament") is True
+
+
+def _push_data_calls(monkeypatch, *, branch_head, status, push_fails=False):
+    """Drive _push_data with a scripted git, returning the commands it issued."""
+    from tournament import automation
+
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        if command[:3] == ["git", "rev-parse", "--abbrev-ref"]:
+            return branch_head + "\n"
+        if command[:2] == ["git", "status"]:
+            return status
+        if command[:2] == ["git", "push"] and push_fails and calls.count(command) == 1:
+            raise RuntimeError("command failed (1): git push\n! [rejected] non-fast-forward")
+        return ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    # A non-zero `git diff --cached --quiet` means there is something staged to commit.
+    monkeypatch.setattr(automation.subprocess, "run",
+                        lambda *a, **k: type("R", (), {"returncode": 1})())
+    automation._push_data("auto-x", "x/tournament")
+    return calls
+
+
+def test_push_data_commits_and_pushes_finished_run_data(monkeypatch):
+    calls = _push_data_calls(monkeypatch, branch_head="x/tournament",
+                             status="?? tournament/runs/auto-x/\n")
+    assert ["git", "add", "--", "tournament/runs"] in calls
+    assert any(c[:2] == ["git", "commit"] for c in calls)
+    assert ["git", "push", "origin", "x/tournament:x/tournament"] in calls
+
+
+def test_push_data_refuses_when_the_checkout_is_on_another_branch(monkeypatch):
+    """Committing run data onto whatever branch happens to be checked out would be wrong."""
+    calls = _push_data_calls(monkeypatch, branch_head="x/luc", status="")
+    assert not any(c[:2] == ["git", "commit"] for c in calls)
+    assert not any(c[:2] == ["git", "push"] for c in calls)
+
+
+def test_push_data_refuses_when_the_tree_is_dirty_outside_the_run_data(monkeypatch):
+    """Half-edited harness code must not be swept into a results commit."""
+    calls = _push_data_calls(monkeypatch, branch_head="x/tournament",
+                             status=" M tournament/rating.py\n")
+    assert not any(c[:2] == ["git", "commit"] for c in calls)
+    assert not any(c[:2] == ["git", "push"] for c in calls)
+
+
+def test_push_data_rebases_and_retries_when_the_branch_moved(monkeypatch):
+    """Someone else pushing during a cluster run must not silently drop the results."""
+    calls = _push_data_calls(monkeypatch, branch_head="x/tournament",
+                             status="?? tournament/runs/auto-x/\n", push_fails=True)
+    assert ["git", "rebase", "origin/x/tournament"] in calls
+    assert calls.count(["git", "push", "origin", "x/tournament:x/tournament"]) == 2
+
+
+def test_push_data_is_skipped_when_no_data_branch_is_configured(tmp_path, monkeypatch):
+    """--no-push-data has to reach finalise, not just the argument parser."""
+    from tournament import automation
+
+    runs = tmp_path / "runs"
+    run = _write_run(runs, "auto-z", [_entry("m1")], merged_ids=["m1"])
+    (run / "automation.json").write_text(json.dumps({"challengers": [], "heads": {}}))
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", runs)
+    monkeypatch.setattr(automation.planning, "run_dir", lambda tid: runs / tid)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "check_connection", lambda host: None)
+    monkeypatch.setattr(automation.hpc, "fetch", lambda tid, settings: None)
+    monkeypatch.setattr(automation, "merge", lambda dest: (None, 1))
+    monkeypatch.setattr(automation, "_push_data",
+                        lambda *a, **k: pytest.fail("must not push with --no-push-data"))
+    monkeypatch.setattr(automation, "pooled_matches", lambda: [])
+    monkeypatch.setattr(automation, "canonical_field", lambda: ([], []))
+    monkeypatch.setattr(automation, "evaluate",
+                        lambda rows: type("R", (), {"complete": True, "missing_pairs": []})())
+    monkeypatch.setattr(automation.report, "write_csv", lambda *a, **k: None)
+    monkeypatch.setattr(automation.duplicates, "behaviour_groups", lambda rows: [])
+    monkeypatch.setattr(automation.duplicates, "write_csv", lambda groups, path: None)
+    monkeypatch.setattr(automation, "_write_csv", lambda path, rows: None)
+
+    assert automation.finalise("auto-z", state={}, state_path=tmp_path / "s.json",
+                               site_repo=tmp_path, publish=False, data_branch=None) is True
