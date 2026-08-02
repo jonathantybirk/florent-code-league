@@ -17,6 +17,7 @@ from pathlib import Path
 from maps.generated.generate_maps import read_map
 from tournament import plan as planning
 from tournament import registry
+from tournament.fairness import is_unfair
 from tournament import report
 from tournament.maps import resolve as resolve_map
 from tournament.outcome import score_a as evaluation_score_a
@@ -172,7 +173,7 @@ def _ranking_rows(
                 "commit": rating.get("commit") or info.get("commit", "")[:7],
                 "slug": _slug(bot_id),
                 "tags": tags,
-                "unfair": "unfair" in tags,
+                "unfair": is_unfair(tags, info.get("commit", ""), info.get("path", "")),
                 "games": int(rating["games"]),
                 "wins": int(rating["wins"]),
                 "draws": int(rating["draws"]),
@@ -274,17 +275,32 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     detail_matches = [row for row in benchmark_matches if row.get("kind") == "rating"]
     metadata = _metadata(run_dir)
     compliance = _compliance(run_dir)
-    all_matches, ranking_rows_including_over_time = _benchmark(
-        benchmark_matches, rated_ids, metadata, compliance
-    )
     within_time_ids = {
         bot_id
         for bot_id in rated_ids
         if compliance.get(bot_id, {}).get("status", "unknown") != "exceeded"
     }
-    within_time_matches, ranking_rows = _benchmark(
-        benchmark_matches, within_time_ids, metadata, compliance
-    )
+    fair_ids = {
+        bot_id
+        for bot_id in rated_ids
+        if "unfair" not in metadata.get(bot_id, {}).get("tags", [])
+    }
+    # Both switches on the page narrow the field, and a rating is only meaningful against the
+    # field it was computed over. Filtering a larger field's numbers client-side would show, say,
+    # a fair bot's mElo earned partly against unfair opponents that are no longer on screen. So
+    # every combination is evaluated separately here.
+    fields = {
+        "": within_time_ids,
+        "_including_over_time": rated_ids,
+        "_fair": within_time_ids & fair_ids,
+        "_fair_including_over_time": rated_ids & fair_ids,
+    }
+    benchmarks = {
+        suffix: _benchmark(benchmark_matches, ids, metadata, compliance)
+        for suffix, ids in fields.items()
+    }
+    within_time_matches, ranking_rows = benchmarks[""]
+    all_matches, ranking_rows_including_over_time = benchmarks["_including_over_time"]
 
     rating_by_id = {
         row["bot_id"]: row for row in ranking_rows_including_over_time
@@ -395,20 +411,17 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     expected_map_files = set()
     for map_info in map_catalog:
         map_rows = [row for row in benchmark_matches if row["map"] == map_info["name"]]
-        _, map_ranking_rows = _benchmark(
-            map_rows, within_time_ids, metadata, compliance
-        )
-        _, map_ranking_rows_including_over_time = _benchmark(
-            map_rows, rated_ids, metadata, compliance
-        )
+        map_rankings = {
+            f"rankings{suffix}": _benchmark(map_rows, ids, metadata, compliance)[1]
+            for suffix, ids in fields.items()
+        }
         filename = f"{map_info['slug']}.json"
         expected_map_files.add(filename)
         (maps_dir / filename).write_text(
             json.dumps(
                 {
                     "map": map_info,
-                    "rankings": map_ranking_rows,
-                    "rankings_including_over_time": map_ranking_rows_including_over_time,
+                    **map_rankings,
                 },
                 separators=(",", ":"),
                 ensure_ascii=False,
@@ -422,22 +435,18 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     index = {
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "run_id": run_dir.name,
-        "field": {
-            "bots": len(within_time_ids),
-            "matches": len(within_time_matches),
-            "maps": len(maps),
-            "games_per_pair": 2 * len(maps),
-        },
-        "field_including_over_time": {
-            "bots": len(rated_ids),
-            "matches": len(all_matches),
-            "maps": len(maps),
-            "games_per_pair": 2 * len(maps),
+        **{
+            f"field{suffix}": {
+                "bots": len(fields[suffix]),
+                "matches": len(benchmarks[suffix][0]),
+                "maps": len(maps),
+                "games_per_pair": 2 * len(maps),
+            }
+            for suffix in fields
         },
         "maps": maps,
         "map_catalog": map_catalog,
-        "rankings": ranking_rows,
-        "rankings_including_over_time": ranking_rows_including_over_time,
+        **{f"rankings{suffix}": benchmarks[suffix][1] for suffix in fields},
         "duplicates": duplicate_rows,
         "methodology": {
             "primary": "pooled agent vs agent",
