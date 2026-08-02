@@ -29,3 +29,9 @@ tournament/runs/*/job_*.sh
 tournament/runs/*/work_*.txt
 tournament/automation-state.json
 tournament/automation.lock
+
+# Benchmark scratch: raw per-match JSON and staged bot copies.
+# Staged copies contain main.py and must never land under bots/,
+# where tournament discovery would register a duplicate bot name.
+benchmarks/runs/
+benchmarks/ablations/
