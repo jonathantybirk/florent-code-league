@@ -240,6 +240,71 @@ def test_bots_under_test_are_not_scheduled_again(tmp_path, monkeypatch):
     ) == 0
 
 
+def test_a_new_bot_waits_while_another_run_is_still_in_flight(tmp_path, monkeypatch):
+    """The 2026-08-02 wedge: canonical_field() grows when the in-flight run lands, so a
+    challenger planned now is finalised against entrants it was never scheduled against."""
+    from tournament import automation
+    from tournament.registry import BotSpec
+
+    other = BotSpec(name="other", commit="b" * 40, path="bots/luc/other")
+    fresh = BotSpec(name="fresh", commit="c" * 40, path="bots/jon/fair/fresh")
+    state_path = tmp_path / "state.json"
+    state_path.write_text(json.dumps({"version": STATE_VERSION, "canonical_run": "r"}))
+    runs = tmp_path / "runs"
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", runs)
+    # A different bot is under test and its run is only half merged.
+    _write_run(runs, "inflight", [_entry("m1", a=other.bot_id, b="rival@9")], merged_ids=[])
+
+    monkeypatch.setattr(automation, "_run", lambda command, cwd=None: "")
+    monkeypatch.setattr(automation, "resolve_commit", lambda ref: "a" * 40)
+    monkeypatch.setattr(automation.duplicates, "code_hash",
+                        lambda commit, path: "otherhash" if "other" in path else "freshhash")
+    monkeypatch.setattr(automation, "derive_ledger", lambda: ({}, {other.bot_id: other}))
+    monkeypatch.setattr(automation, "discover",
+                        lambda ref, prefix, excludes=(): [fresh] if prefix == "bots/jon" else [])
+    monkeypatch.setattr(automation.hpc, "config",
+                        lambda: pytest.fail("planned a run while another was in flight"))
+
+    assert automation.run_once(
+        state_path=state_path, canonical_run=None, sources=DEFAULT_SOURCES,
+        fetch_remote="origin", site_repo=tmp_path, publish=False, fetch=False, dry_run=False,
+    ) == 0
+
+
+def test_in_flight_detection_survives_a_reminted_bot_id(tmp_path, monkeypatch):
+    """bot_id is name@<branch-tip-sha>, so any push re-mints an id for untouched code too.
+    The same implementation under test must not read as unseen under its new id."""
+    from tournament import automation
+    from tournament.registry import BotSpec
+
+    old = BotSpec(name="prospect", commit="1" * 40, path="bots/luc/prospect")
+    new = BotSpec(name="prospect", commit="2" * 40, path="bots/luc/prospect")
+    assert old.bot_id != new.bot_id
+    state_path = tmp_path / "state.json"
+    state_path.write_text(json.dumps({"version": STATE_VERSION, "canonical_run": "r"}))
+    runs = tmp_path / "runs"
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", runs)
+    _write_run(runs, "inflight", [_entry("m1", a=old.bot_id, b="rival@9")], merged_ids=[])
+
+    monkeypatch.setattr(automation, "_run", lambda command, cwd=None: "")
+    monkeypatch.setattr(automation, "resolve_commit", lambda ref: "2" * 40)
+    # Same path -> same code -> same hash, whichever commit minted the id.
+    monkeypatch.setattr(automation.duplicates, "code_hash", lambda commit, path: "prospecthash")
+    monkeypatch.setattr(automation, "derive_ledger", lambda: ({}, {old.bot_id: old}))
+    monkeypatch.setattr(automation, "discover",
+                        lambda ref, prefix, excludes=(): [new] if prefix == "bots/luc" else [])
+    monkeypatch.setattr(automation.hpc, "config",
+                        lambda: pytest.fail("re-scheduled code already under test"))
+
+    captured = []
+    monkeypatch.setattr("builtins.print", lambda *a, **k: captured.append(" ".join(map(str, a))))
+    assert automation.run_once(
+        state_path=state_path, canonical_run=None, sources=DEFAULT_SOURCES,
+        fetch_remote="origin", site_repo=tmp_path, publish=False, fetch=False, dry_run=False,
+    ) == 0
+    assert any("no unseen Python implementations" in line for line in captured), captured
+
+
 def test_tid_is_stable_when_an_unrelated_branch_moves():
     """A stranded partial run was the cause of the manual gap-fill; the tid must not move."""
     import hashlib
