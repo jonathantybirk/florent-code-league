@@ -690,6 +690,10 @@ def _step(p, ct, target, exact, allow_launcher=True):
         return False
 
     p.path_failures += 1
+    # An enemy Launcher across the path is a target, not an obstacle.
+    if (_only_launchers_block(p, tuple(source), tuple(target), exact)
+            and _build_launcher_breaker_gunner(p, ct)):
+        return True
     if (allow_launcher and not launch_rejected and not p.launch_blocked
             and p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
             and _build_escape_launcher(p, ct, target)):
@@ -923,12 +927,13 @@ def _move_while_stuck(p, ct, target):
     return True
 
 
-def _bfs_step(p, source, target, exact):
+def _bfs_step(p, source, target, exact, avoid_launchers=True):
     goals = {target} if exact else _adjacent(p, target)
     if source in goals:
         return None
-    blocked = (p.walls | p.foot | p.solids | (p.bot_occupied - {source})
-               | (_launcher_hazards(p) - {source}))
+    blocked = p.walls | p.foot | p.solids | (p.bot_occupied - {source})
+    if avoid_launchers:
+        blocked = blocked | (_launcher_hazards(p) - {source})
     prev, queue = {source: None}, deque([source])
     found = None
     while queue:
@@ -947,6 +952,20 @@ def _bfs_step(p, source, target, exact):
     while prev[found] != source:
         found = prev[found]
     return found
+
+
+def _only_launchers_block(p, source, target, exact):
+    """True when the route exists but for an enemy Launcher's pickup zone.
+
+    The distinction matters. A route blocked by terrain is a route to walk
+    around; a route blocked by a Launcher is one to shoot open. Detouring gives
+    them the tempo the Launcher was built to take, and on a narrow map the
+    detour frequently does not exist at all -- the Builder then spends the rest
+    of the game failing to path, which is the behaviour this replaces.
+    """
+    if not p.enemy_launchers:
+        return False
+    return _bfs_step(p, source, target, exact, avoid_launchers=False) is not None
 
 
 def _distance(p, source, goals):
