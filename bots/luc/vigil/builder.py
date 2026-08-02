@@ -8,6 +8,7 @@ from fcode import Controller, EntityType, Environment, GameError, Position
 
 from atlas import identify_visible
 from constants import (
+    BLOCKED_ROUNDS_BEFORE_LAUNCHER,
     CLAIM_SLOTS,
     CORE_SEAL_ENABLED,
     CORE_THREAT_RADIUS_SQ,
@@ -22,8 +23,12 @@ from constants import (
     LAUNCH_REJECTION_POSITION_BITS,
     LAUNCH_REJECTION_POSITION_MASK,
     LAUNCH_REQUEST_SLOTS,
+    HARVESTER_FINISH_STEPS,
+    STUCK_ROUNDS_BEFORE_STANDDOWN,
     MAX_FIELD_GUNNERS,
+    RING_COVER_SHELL,
     RING_EDGE_MARGIN,
+    RING_SHELL_RADIUS,
     SEAL_TITANIUM_RESERVE,
     RING_RADIUS,
     SLOT_BUILDER_HEARTBEAT,
@@ -97,6 +102,7 @@ def _run(p, ct):
         p.rejected_symmetries = 0
         p.current_route_tiles = set()
         p.network_tiles = set()
+        p.network_plan = {}
         p.network_load = 0
         p.economy_lines_completed = 0
         p.ring_slot = p.builder_index - LAUNCHER_BUILDER_INDEX
@@ -140,6 +146,8 @@ def _run(p, ct):
         _update_enemy_core_inference(p, ct)
     if p.core is None:
         return
+    if _write_off(p, ct):
+        return
     if p.builder_index == 0 and ct.read_store(SLOT_CORE_DAMAGED):
         _defend_core(p, ct)
         return
@@ -152,11 +160,15 @@ def _run(p, ct):
             return
         if CORE_SEAL_ENABLED and not _run_core_seal(p, ct):
             return
-        # Garrison once the ring is up. Falling through to economy work put a
-        # second Builder onto a network with a single ore claim slot, so the
-        # two fought over the same deposit and neither mined it well: worth
-        # five games out of 126. Standing guard is real work -- repairs and
-        # answering fire -- and keeps this Builder out of the other's way.
+        # Maintenance once the ring is up. Falling through to ordinary economy
+        # work put a second Builder onto a network with a single ore claim
+        # slot, so the two fought over the same deposit -- worth five games.
+        # But simply standing guard left this Builder idle for 984 rounds of a
+        # 1000-round game, which is a hole whether or not this pool punishes
+        # it. Repairing the line is work only it is free to do, and it does not
+        # touch the claim slot.
+        if _repair_network(p, ct):
+            return
         _defend_core(p, ct)
         return
     if p.is_attacker:
@@ -168,6 +180,8 @@ def _run(p, ct):
         p.phase = "harass"
     if p.phase == "harass":
         _harass(p, ct)
+        return
+    if _repair_network(p, ct):
         return
     if p.phase == "scout":
         _pick(p, ct)
@@ -183,6 +197,32 @@ def _run(p, ct):
         _lay(p, ct)
     else:
         _explore(p, ct)
+
+
+def _write_off(p, ct):
+    """Destroy a Builder that has proved it cannot act, if one can be replaced.
+
+    A Builder walled in behind buildings is not merely idle: it holds +20% on
+    every price the team pays for the rest of the game, and while it keeps
+    answering the heartbeat the Core will never replace it. Removing it refunds
+    the scale and frees the Core to try again from a spawn tile that may not be
+    trapped.
+
+    The guard is affordability, not a headcount. Counting live Builders is not
+    possible here -- store writes are invisible to other units until the next
+    round, so a shared per-Builder bitmask can never accumulate -- but the
+    headcount was the wrong question anyway. Standing down is safe even for the
+    last Builder, because the Core respawns one the moment the heartbeat
+    lapses. It is only unsafe when the Core cannot afford the replacement, and
+    that is exactly how a team ends a game with nothing on the board.
+    """
+    if p.path_failures < STUCK_ROUNDS_BEFORE_STANDDOWN:
+        return False
+    if ct.get_global_resources() < ct.get_builder_bot_cost():
+        return False
+    # Nothing after this call runs; the engine tears the unit down inside it.
+    ct.self_destruct()
+    return True
 
 
 def _sense(p, ct):
@@ -423,6 +463,7 @@ def _prelay(p, ct):
         ct.build_conveyor(target, facing)
         _mark_progress(p, ct, "built conveyor", tile)
         p.conveyors[tile] = facing
+        p.network_plan[tile] = facing
         p.current_route_tiles.add(tile)
     else:
         building_id = ct.get_tile_building_id(target)
@@ -439,6 +480,7 @@ def _prelay(p, ct):
                 _reject_route_tile(p, ct, tile, outward=True)
             return
         _mark_progress(p, ct, "found existing conveyor", tile)
+        p.network_plan[tile] = facing
     p.route_i -= 1
     if p.route_i >= 0:
         _step(p, ct, Position(*p.route[p.route_i][0]), True)
@@ -464,6 +506,7 @@ def _lay(p, ct):
         ct.build_conveyor(target, facing)
         _mark_progress(p, ct, "built conveyor", tile)
         p.conveyors[tile] = facing
+        p.network_plan[tile] = facing
         p.current_route_tiles.add(tile)
     else:
         building_id = ct.get_tile_building_id(target)
@@ -484,6 +527,7 @@ def _lay(p, ct):
                 _reject_route_tile(p, ct, tile)
             return
         _mark_progress(p, ct, "found existing conveyor", tile)
+        p.network_plan[tile] = facing
     p.route_i += 1
     if p.route_i < len(p.route):
         _step(p, ct, Position(*p.route[p.route_i][0]), True)
@@ -712,6 +756,15 @@ def _step(p, ct, target, exact, allow_launcher=True):
     if (allow_launcher and not launch_rejected and not p.launch_blocked
             and p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
             and _build_escape_launcher(p, ct, target)):
+        return True
+    # Stuck long enough that whatever is in the way is not going to move. The
+    # earlier attempt declines while a launch rejection is outstanding or the
+    # team is flagged launch-blocked; by now those cautions have cost more than
+    # a Launcher does, so try once more without them.
+    if (allow_launcher
+            and p.path_failures >= BLOCKED_ROUNDS_BEFORE_LAUNCHER
+            and _build_escape_launcher(p, ct, target)):
+        p.launch_blocked = False
         return True
     if _build_blocker_gunner(p, ct, target):
         return True
@@ -1128,6 +1181,58 @@ def _harass(p, ct):
     _explore(p, ct)
 
 
+def _broken_network_tiles(p, ct):
+    """Conveyor tiles we laid that are now visibly empty.
+
+    p.conveyors is rebuilt from vision every round, so it cannot tell a
+    conveyor that was destroyed from one that is simply out of sight.
+    p.network_plan is the record of what we built and never forgot, which is
+    what makes a gap detectable at all.
+    """
+    broken = []
+    for tile in p.network_plan:
+        position = Position(*tile)
+        if not ct.is_in_vision(position):
+            continue
+        if ct.get_tile_building_id(position) is None:
+            broken.append(tile)
+    return broken
+
+
+def _repair_network(p, ct):
+    """Rebuild the nearest hole in our own conveyor line.
+
+    A broken line pays nothing at all -- every Harvester upstream of the gap
+    is mining into a dead end -- so a repair is worth more than the next
+    Harvester almost always. Almost: a Harvester already within a couple of
+    steps is finished first, because a cluster of ores should not send the
+    Builder back down the line between each one.
+    """
+    broken = _broken_network_tiles(p, ct)
+    if not broken:
+        return False
+    me = tuple(ct.get_position())
+    if p.task is not None and _cardinal_distance(me, p.task) <= HARVESTER_FINISH_STEPS:
+        return False
+    broken.sort(key=lambda tile: (_cardinal_distance(me, tile), tile))
+    tile = broken[0]
+    facing = p.network_plan[tile]
+    target = Position(*tile)
+    if _cardinal_distance(me, tile) != 1:
+        _move_cardinal_adjacent(p, ct, tile)
+        return True
+    if ct.can_build_conveyor(target, facing):
+        ct.build_conveyor(target, facing)
+        _mark_progress(p, ct, "repaired conveyor", tile)
+        p.conveyors[tile] = facing
+        return True
+    if _build_failure(p, ct, tile, "conveyor repair", ct.get_conveyor_cost()):
+        # Something else stands there now; the line has to be re-planned
+        # rather than patched.
+        del p.network_plan[tile]
+    return True
+
+
 def _heal_core(p, ct):
     """Return the economy Builder to repair a Core under active fire."""
     for tile in sorted(p.foot):
@@ -1270,7 +1375,73 @@ def _run_core_seal(p, ct):
     return True
 
 
-def _launcher_ring_targets(p, enemy_core):
+def _core_shell(p, distance):
+    """Tiles exactly `distance` Chebyshev steps from the Core footprint."""
+    shell = set()
+    for tile in p.foot:
+        for dx in range(-distance, distance + 1):
+            for dy in range(-distance, distance + 1):
+                spot = (tile[0] + dx, tile[1] + dy)
+                if _inside(p, spot):
+                    shell.add(spot)
+    inner = set()
+    for tile in p.foot:
+        for dx in range(-distance + 1, distance):
+            for dy in range(-distance + 1, distance):
+                inner.add((tile[0] + dx, tile[1] + dy))
+    return shell - inner
+
+
+def _shell_cover_targets(p, enemy_core):
+    """Launcher sites that between them cover the whole RING_SHELL_RADIUS shell.
+
+    An enemy Builder standing RING_RADIUS out can plant a turret one step in
+    and shoot the Core from there, so every tile of that shell has to be a tile
+    we can throw them off. A Launcher picks up anything within the eight tiles
+    around it, so this is a covering problem, not a compass problem: the old
+    ring put one Launcher per direction and left the gaps between them wide
+    open, which is exactly the approach that kept getting used.
+
+    Greedy set cover, enemy-facing first. Greedy is not optimal, but the sets
+    are tiny and the alternative is an exact cover nobody can afford to compute
+    inside a 10 ms turn.
+
+    Directions the map edge already closes off are skipped: their shell tiles
+    are off the map, so they never enter the cover in the first place.
+    """
+    shell = _core_shell(p, RING_SHELL_RADIUS)
+    buildable = {spot for spot in shell
+                 if spot not in p.walls and spot not in p.ores
+                 and spot not in p.foot}
+    # Precomputed once: recomputing coverage inside the greedy loop made this
+    # 6 ms on an open map, which is most of a 10 ms turn on its own.
+    covers = {}
+    for site in buildable:
+        covers[site] = {(site[0] + dx, site[1] + dy)
+                        for dx in (-1, 0, 1) for dy in (-1, 0, 1)} & shell
+
+    uncovered = set(shell)
+    targets = []
+    while uncovered:
+        best = None
+        for site, covered in covers.items():
+            gain = len(covered & uncovered)
+            if gain == 0:
+                continue
+            key = (-gain, _distance_sq(site, enemy_core), site)
+            if best is None or key < best[0]:
+                best = (key, site)
+        if best is None:
+            # What is left is wall, ore or off-map, and no Launcher we are
+            # allowed to build can deny it.
+            break
+        site = best[1]
+        targets.append(site)
+        uncovered -= covers.pop(site)
+    return [Position(*site) for site in targets]
+
+
+def _compass_ring_targets(p, enemy_core):
     """Ring the Core at RING_RADIUS, enemy-facing site first.
 
     A screen thrown out towards the enemy covers one approach and is worthless
@@ -1312,6 +1483,13 @@ def _launcher_ring_targets(p, enemy_core):
 
     targets.sort(key=lambda site: (_distance_sq(site, enemy_core), site))
     return [Position(*site) for site in targets]
+
+
+def _launcher_ring_targets(p, enemy_core):
+    """The ring, in whichever geometry RING_COVER_SHELL selects."""
+    if RING_COVER_SHELL:
+        return _shell_cover_targets(p, enemy_core)
+    return _compass_ring_targets(p, enemy_core)
 
 
 def _edge_distance(p, dx, dy):
