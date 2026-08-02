@@ -14,6 +14,7 @@ from constants import (
     ECONOMY_BUILDERS,
     FACING,
     LAUNCHER_BUILDER_INDEX,
+    LAUNCHER_BUILDERS,
     LAUNCH_DIRECTION_BITS,
     LAUNCH_REJECTION_FLAG,
     LAUNCH_REJECTION_POSITION_BITS,
@@ -82,7 +83,8 @@ def _run(p, ct):
         p.network_tiles = set()
         p.network_load = 0
         p.economy_lines_completed = 0
-        p.is_launcher_builder = p.builder_index == LAUNCHER_BUILDER_INDEX
+        p.wall_slot = p.builder_index - LAUNCHER_BUILDER_INDEX
+        p.is_launcher_builder = 0 <= p.wall_slot < LAUNCHER_BUILDERS
         p.is_attacker = (p.builder_index >= ECONOMY_BUILDERS
                          and not p.is_launcher_builder)
         p.lock_required = False
@@ -1049,7 +1051,14 @@ def _run_launcher_wall(p, ct):
         p.launcher_wall_targets = _launcher_wall_targets(p, enemy_core)
         p.launcher_wall_done = set()
 
-    for target in p.launcher_wall_targets:
+    # Two Builders share one screen and there is no store slot left to claim
+    # sites in, so they stride through the list from different offsets. Each
+    # then falls through to the whole list, so whoever finishes its own lanes
+    # reinforces the other's half instead of idling; the site is skipped anyway
+    # once a building is visible on it.
+    ordered = (p.launcher_wall_targets[p.wall_slot::LAUNCHER_BUILDERS]
+               + p.launcher_wall_targets)
+    for target in ordered:
         key = tuple(target)
         if key in p.launcher_wall_done:
             continue
@@ -1076,23 +1085,33 @@ def _run_launcher_wall(p, ct):
 
 
 def _launcher_wall_targets(p, enemy_core):
-    """Return center-first sites with two intervening tiles per Launcher."""
+    """Return sites two tiles apart, the enemy's likely approach lane first.
+
+    The screen is built one Launcher at a time, so the order decides which lane
+    is covered during the turns that decide the game. Centring it on our own
+    Core put the opening Launcher wherever we happened to sit, which is the
+    enemy's route only when the two Cores are level. Everything they send walks
+    the line between the Cores instead, so the first site is the one that line
+    crosses and the rest fan out from there.
+    """
     core_x, core_y = p.core
-    delta_x = enemy_core[0] - core_x
-    delta_y = enemy_core[1] - core_y
+    # Both Cores are 2x2, so the approach runs between footprint centres.
+    from_x, from_y = core_x + 0.5, core_y + 0.5
+    delta_x = enemy_core[0] + 0.5 - from_x
+    delta_y = enemy_core[1] + 0.5 - from_y
     targets = []
     if abs(delta_x) >= abs(delta_y):
         line_x = core_x + (4 if delta_x >= 0 else -3)
         line_x = min(max(line_x, 0), p.w - 1)
         coordinates = list(range(1, p.h, 3))
-        center = core_y + 1
+        center = _approach_crossing(from_y, delta_y, line_x + 0.5 - from_x, delta_x)
         sites = [(line_x, coordinate) for coordinate in coordinates]
         sites.sort(key=lambda site: (abs(site[1] - center), site[1]))
     else:
         line_y = core_y + (4 if delta_y >= 0 else -3)
         line_y = min(max(line_y, 0), p.h - 1)
         coordinates = list(range(1, p.w, 3))
-        center = core_x + 1
+        center = _approach_crossing(from_x, delta_x, line_y + 0.5 - from_y, delta_y)
         sites = [(coordinate, line_y) for coordinate in coordinates]
         sites.sort(key=lambda site: (abs(site[0] - center), site[0]))
 
@@ -1100,6 +1119,13 @@ def _launcher_wall_targets(p, enemy_core):
         if site not in p.walls and site not in p.ores and site not in p.foot:
             targets.append(Position(*site))
     return targets
+
+
+def _approach_crossing(base, along, span, across):
+    """Where the Core-to-Core line sits on the screen, in the screen's axis."""
+    if across == 0:
+        return base
+    return base + along * span / across
 
 
 def _defend_core(p, ct):
