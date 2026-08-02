@@ -1,0 +1,5 @@
+source_commit = "18b749dc7"
+source_path = "bots/luc/vigil"
+engine = "2.3.3"
+status = "fair"
+variant = "A/B baseline: doctrine pinned to rush"
