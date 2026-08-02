@@ -5,9 +5,11 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/Ucals/projects/florent-code-league-llm-rl
+# site_data build alone is ~50s; a collect+publish tick is minutes.
+TimeoutStartSec=3600
+WorkingDirectory=/home/Ucals/projects/florent-code-league-ci
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/home/Ucals/projects/florent-code-league-llm-rl/.venv/bin/python -m tournament.automation \
+ExecStart=/home/Ucals/projects/florent-code-league-ci/.venv/bin/python -m tournament.automation \
     --canonical-run jon-vanguard-818f3b4 \
     --source x/jon:bots/jon \
     --source x/luc:bots/luc \

@@ -9,10 +9,22 @@ from pathlib import Path
 
 import pytest
 
+from tournament import registry
 from tournament.gitutil import REPO_ROOT
 from tournament.maps import label, resolve
 from tournament.plan import build_schedule, match_id
 from tournament.registry import BotSpec
+
+
+# --------------------------------------------------------------------------------------------
+# Registry metadata
+# --------------------------------------------------------------------------------------------
+
+
+def test_every_registered_bot_has_one_fairness_tag():
+    for spec in registry.load(validate=False):
+        fairness = {"fair", "unfair"}.intersection(spec.tags)
+        assert len(fairness) == 1, f"{spec.bot_id} has fairness tags {sorted(fairness)}"
 
 
 # --------------------------------------------------------------------------------------------

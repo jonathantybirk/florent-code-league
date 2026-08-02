@@ -4,54 +4,57 @@
 # da3fd8a = Jon's newer work: tempest (new), jonbot/undertow/vanguard (changed code),
 # and his commit-addressed version snapshots. The other 31 bots are unchanged at
 # da3fd8a apart from an added BOT_VERSION.toml, so they are not re-entered.
+# `fair` means the implementation uses only runtime observations and general game
+# rules. `unfair` means it reads or embeds data from the published official maps.
+# Every registered implementation carries exactly one of these two tags.
 
 [[bot]]
 name   = "adaptive_v1"
 commit = "9713344"
 path   = "bots/jon/archive/adaptive_v1"
-tags   = ["jon", "archive"]
+tags   = ["jon", "archive", "fair"]
 
 [[bot]]
 name   = "attack_wave_v1"
 commit = "9713344"
 path   = "bots/jon/archive/attack_wave_v1"
-tags   = ["jon", "archive"]
+tags   = ["jon", "archive", "fair"]
 
 [[bot]]
 name   = "frontier"
 commit = "9713344"
 path   = "bots/jon/archive/frontier"
-tags   = ["jon", "archive"]
+tags   = ["jon", "archive", "fair"]
 
 [[bot]]
 name   = "frontier_v1"
 commit = "9713344"
 path   = "bots/jon/archive/frontier_v1"
-tags   = ["jon", "archive"]
+tags   = ["jon", "archive", "fair"]
 
 [[bot]]
 name   = "frontier_v2"
 commit = "9713344"
 path   = "bots/jon/archive/frontier_v2"
-tags   = ["jon", "archive"]
+tags   = ["jon", "archive", "fair"]
 
 [[bot]]
 name   = "siege_v1"
 commit = "9713344"
 path   = "bots/jon/archive/siege_v1"
-tags   = ["jon", "archive"]
+tags   = ["jon", "archive", "fair"]
 
 [[bot]]
 name   = "siege_v2"
 commit = "9713344"
 path   = "bots/jon/archive/siege_v2"
-tags   = ["jon", "archive"]
+tags   = ["jon", "archive", "fair"]
 
 [[bot]]
 name   = "titanium_v1"
 commit = "9713344"
 path   = "bots/jon/archive/titanium_v1"
-tags   = ["jon", "archive"]
+tags   = ["jon", "archive", "fair"]
 
 [[bot]]
 name   = "jonbot"
@@ -75,133 +78,133 @@ tags   = ["jon", "fair"]
 name   = "baiter"
 commit = "9713344"
 path   = "bots/jon/legacy/baiter"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "nemesis"
 commit = "9713344"
 path   = "bots/jon/legacy/nemesis"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "reaver"
 commit = "9713344"
 path   = "bots/jon/legacy/reaver"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "riptide"
 commit = "9713344"
 path   = "bots/jon/legacy/riptide"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "turtle"
 commit = "9713344"
 path   = "bots/jon/legacy/turtle"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "vg_v1"
 commit = "9713344"
 path   = "bots/jon/legacy/vg_v1"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "vg_v2"
 commit = "9713344"
 path   = "bots/jon/legacy/vg_v2"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "vg_v3"
 commit = "9713344"
 path   = "bots/jon/legacy/vg_v3"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "vg_v4"
 commit = "9713344"
 path   = "bots/jon/legacy/vg_v4"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "vg_v5"
 commit = "9713344"
 path   = "bots/jon/legacy/vg_v5"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "vg_v6"
 commit = "9713344"
 path   = "bots/jon/legacy/vg_v6"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "vg_v7"
 commit = "9713344"
 path   = "bots/jon/legacy/vg_v7"
-tags   = ["jon", "legacy"]
+tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "uw_v1"
 commit = "9713344"
 path   = "bots/jon/probes/uw_v1"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "uw_v2"
 commit = "9713344"
 path   = "bots/jon/probes/uw_v2"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "v233_a"
 commit = "9713344"
 path   = "bots/jon/probes/v233_a"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "v233_b"
 commit = "9713344"
 path   = "bots/jon/probes/v233_b"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "v233_c"
 commit = "9713344"
 path   = "bots/jon/probes/v233_c"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "v233_d"
 commit = "9713344"
 path   = "bots/jon/probes/v233_d"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "v233_e"
 commit = "9713344"
 path   = "bots/jon/probes/v233_e"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "v233_f"
 commit = "9713344"
 path   = "bots/jon/probes/v233_f"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "v233_g"
 commit = "9713344"
 path   = "bots/jon/probes/v233_g"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "v233_h"
 commit = "9713344"
 path   = "bots/jon/probes/v233_h"
-tags   = ["jon", "probes"]
+tags   = ["jon", "probes", "fair"]
 
 [[bot]]
 name   = "lockin"
@@ -237,25 +240,25 @@ tags   = ["jon", "fair"]
 name   = "jonbot_190003d"
 commit = "da3fd8a"
 path   = "bots/jon/versions/jonbot_190003d"
-tags   = ["jon", "versions"]
+tags   = ["jon", "versions", "fair"]
 
 [[bot]]
 name   = "undertow_1ac7ac4"
 commit = "da3fd8a"
 path   = "bots/jon/versions/undertow_1ac7ac4"
-tags   = ["jon", "versions"]
+tags   = ["jon", "versions", "fair"]
 
 [[bot]]
 name   = "undertow_df5e698"
 commit = "da3fd8a"
 path   = "bots/jon/versions/undertow_df5e698"
-tags   = ["jon", "versions"]
+tags   = ["jon", "versions", "fair"]
 
 [[bot]]
 name   = "vanguard_1e88ae8"
 commit = "da3fd8a"
 path   = "bots/jon/versions/vanguard_1e88ae8"
-tags   = ["jon", "versions"]
+tags   = ["jon", "versions", "fair"]
 
 # Challengers added after the original jon-full + jon-new pool.
 
@@ -367,7 +370,7 @@ tags   = ["jon", "unfair"]
 name   = "v233_j"
 commit = "818f3b4"
 path   = "bots/jon/versions/probes/v233_j"
-tags   = ["jon", "versions", "probes"]
+tags   = ["jon", "versions", "probes", "fair"]
 
 [[bot]]
 name   = "vanguard"
@@ -416,55 +419,55 @@ tags   = ["jon", "unfair"]
 name   = "tempest_blindfire"
 commit = "fdc1e1f"
 path   = "bots/jon/versions/probes/tempest_blindfire"
-tags   = ["jon", "versions", "probes"]
+tags   = ["jon", "versions", "probes", "fair"]
 
 [[bot]]
 name   = "tempest_oracle_guarded"
 commit = "fdc1e1f"
 path   = "bots/jon/versions/probes/tempest_oracle_guarded"
-tags   = ["jon", "versions", "probes"]
+tags   = ["jon", "versions", "probes", "unfair"]
 
 [[bot]]
 name   = "tempest_outer"
 commit = "fdc1e1f"
 path   = "bots/jon/versions/probes/tempest_outer"
-tags   = ["jon", "versions", "probes"]
+tags   = ["jon", "versions", "probes", "fair"]
 
 [[bot]]
 name   = "tempest_picket"
 commit = "fdc1e1f"
 path   = "bots/jon/versions/probes/tempest_picket"
-tags   = ["jon", "versions", "probes"]
+tags   = ["jon", "versions", "probes", "fair"]
 
 [[bot]]
 name   = "tempest_sentinel"
 commit = "fdc1e1f"
 path   = "bots/jon/versions/probes/tempest_sentinel"
-tags   = ["jon", "versions", "probes"]
+tags   = ["jon", "versions", "probes", "fair"]
 
 [[bot]]
 name   = "undertow_adjacent"
 commit = "fdc1e1f"
 path   = "bots/jon/versions/probes/undertow_adjacent"
-tags   = ["jon", "versions", "probes"]
+tags   = ["jon", "versions", "probes", "fair"]
 
 [[bot]]
 name   = "claude_challenger_1"
 commit = "fdc1e1f"
 path   = "bots/lucas/claude_challenger_1"
-tags   = ["lucas"]
+tags   = ["lucas", "unfair"]
 
 [[bot]]
 name   = "claude_challenger_2"
 commit = "fdc1e1f"
 path   = "bots/lucas/claude_challenger_2"
-tags   = ["lucas"]
+tags   = ["lucas", "unfair"]
 
 [[bot]]
 name   = "claude_challenger_3"
 commit = "fdc1e1f"
 path   = "bots/lucas/claude_challenger_3"
-tags   = ["lucas"]
+tags   = ["lucas", "unfair"]
 
 # ---------------------------------------------------------------------------------------------
 # x/jon @902be71: four bots whose .py no rated entrant had.
@@ -491,7 +494,7 @@ tags   = ["jon", "unfair"]
 name   = "v233_i"
 commit = "902be71"
 path   = "bots/jon/versions/probes/v233_i"
-tags   = ["jon", "versions", "probes"]
+tags   = ["jon", "versions", "probes", "fair"]
 
 # ---------------------------------------------------------------------------------------------
 # elias_dev, sampled rather than enumerated. His 64-variant cand/ grid was an ablation search
@@ -510,37 +513,37 @@ tags   = ["elias", "unfair"]
 name   = "e9cand"
 commit = "9e77076"
 path   = "bots/e9cand"
-tags   = ["elias"]
+tags   = ["elias", "unfair"]
 
 [[bot]]
 name   = "e_final"
 commit = "9e77076"
 path   = "bots/cand/FINAL"
-tags   = ["elias", "cand"]
+tags   = ["elias", "cand", "unfair"]
 
 [[bot]]
 name   = "e_t4l7"
 commit = "9e77076"
 path   = "bots/cand/T4L7"
-tags   = ["elias", "cand"]
+tags   = ["elias", "cand", "unfair"]
 
 [[bot]]
 name   = "e_post2"
 commit = "4a95297"
 path   = "bots/cand/POST2"
-tags   = ["elias", "cand"]
+tags   = ["elias", "cand", "unfair"]
 
 [[bot]]
 name   = "e_harc"
 commit = "6db8844"
 path   = "bots/cand/HARC"
-tags   = ["elias", "cand"]
+tags   = ["elias", "cand", "unfair"]
 
 [[bot]]
 name   = "e_condc"
 commit = "6db8844"
 path   = "bots/cand/CONDC"
-tags   = ["elias", "cand"]
+tags   = ["elias", "cand", "unfair"]
 
 # x/luc @87724ec.
 
@@ -548,10 +551,24 @@ tags   = ["elias", "cand"]
 name   = "tempest_reinforcements"
 commit = "87724ec"
 path   = "bots/luc/tempest_reinforcements"
-tags   = ["luc"]
+tags   = ["luc", "unfair"]
 
 [[bot]]
 name   = "tempest_reinforcements"
 commit = "e1dc316"
 path   = "bots/luc/tempest_reinforcements"
-tags   = ["luc"]
+tags   = ["luc", "unfair"]
+
+# Published entrants discovered by automation after the hand-maintained roster.
+
+[[bot]]
+name   = "tempest_reinforcements"
+commit = "edf93ad"
+path   = "bots/luc/tempest_reinforcements"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "opponent_luc"
+commit = "e83a42c"
+path   = "bots/opponent_luc"
+tags   = ["llm-RL", "unfair"]

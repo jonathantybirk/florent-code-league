@@ -1,0 +1,2 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+tempest_reinforcements@51ad530,tempest_reinforcements,51ad530,exceeded,3,3,3,698,5,25,293,3556,>12000,4,0,9000,10000

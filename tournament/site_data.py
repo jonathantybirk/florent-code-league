@@ -46,6 +46,11 @@ def _timing_value(value: str | None) -> int | str | None:
     return value if value.startswith(">") else int(value)
 
 
+def _is_rating_match(row: dict) -> bool:
+    """Historical rating rows predate the `kind` column and read back as an empty string."""
+    return row.get("kind") in (None, "", "rating")
+
+
 def _record(rows: list[dict], bot_id: str) -> dict:
     scores = [_score(row, bot_id) for row in rows]
     wins = sum(score == 1.0 for score in scores)
@@ -196,6 +201,33 @@ def _ranking_rows(
     return rows
 
 
+def _benchmark(
+    matches: list[dict],
+    bot_ids: set[str],
+    metadata: dict[str, dict],
+    compliance: dict[str, dict],
+) -> tuple[list[dict], list[dict]]:
+    """Re-evaluate one field and return its match and ranking rows.
+
+    Ratings are relative to the field: removing an entrant changes every remaining bot's mElo and
+    Nash values.  Keeping this operation explicit prevents the website's timing toggle from being
+    implemented as a misleading client-side filter of ratings calculated against a larger field.
+    """
+    scoped_matches = [
+        row for row in matches if row["bot_a"] in bot_ids and row["bot_b"] in bot_ids
+    ]
+    rating_rows = report.records(evaluate(scoped_matches), metadata)
+    return (
+        scoped_matches,
+        _ranking_rows(
+            rating_rows,
+            metadata,
+            compliance,
+            _series(scoped_matches, bot_ids),
+        ),
+    )
+
+
 def _map_catalog(map_names: list[str]) -> list[dict]:
     result = []
     for name in map_names:
@@ -227,32 +259,51 @@ def build(run_dir: Path, output_dir: Path) -> dict:
 
     ratings = _read(ratings_path)
     rated_ids = {row["bot_id"] for row in ratings}
-    matches = [
+    benchmark_matches = [
         row
         for row in _read(matches_path)
         if row.get("status") == "ok"
         and row.get("winner")
         and row["bot_a"] in rated_ids
         and row["bot_b"] in rated_ids
-        and row.get("kind", "rating") == "rating"
+        and _is_rating_match(row)
     ]
+    # Keep detail documents stable for now. Their existing contract contains the explicitly typed
+    # rows from the current pooled run; the benchmark additionally needs the older rating rows
+    # whose pre-`kind` CSV cells are empty.
+    detail_matches = [row for row in benchmark_matches if row.get("kind") == "rating"]
     metadata = _metadata(run_dir)
     compliance = _compliance(run_dir)
-    rating_by_id = {row["bot_id"]: row for row in ratings}
+    all_matches, ranking_rows_including_over_time = _benchmark(
+        benchmark_matches, rated_ids, metadata, compliance
+    )
+    within_time_ids = {
+        bot_id
+        for bot_id in rated_ids
+        if compliance.get(bot_id, {}).get("status", "unknown") != "exceeded"
+    }
+    within_time_matches, ranking_rows = _benchmark(
+        benchmark_matches, within_time_ids, metadata, compliance
+    )
+
+    rating_by_id = {
+        row["bot_id"]: row for row in ranking_rows_including_over_time
+    }
     slug_by_id = {bot_id: _slug(bot_id) for bot_id in rated_ids}
-    rank_by_id = {row["bot_id"]: int(row["rank"]) for row in ratings}
+    rank_by_id = {
+        row["bot_id"]: int(row["rank"])
+        for row in ranking_rows_including_over_time
+    }
 
     by_bot: dict[str, list[dict]] = defaultdict(list)
-    for row in matches:
+    for row in detail_matches:
         a, b = row["bot_a"], row["bot_b"]
         by_bot[a].append(row)
         by_bot[b].append(row)
-    ranking_rows = _ranking_rows(ratings, metadata, compliance, _series(matches, rated_ids))
-
     details_dir = output_dir / "bots"
     details_dir.mkdir(parents=True, exist_ok=True)
     expected_files = set()
-    for ranking in ranking_rows:
+    for ranking in ranking_rows_including_over_time:
         bot_id = ranking["bot_id"]
         bot_rows = by_bot[bot_id]
         opponent_groups: dict[str, list[dict]] = defaultdict(list)
@@ -337,22 +388,28 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     if duplicate_path.exists():
         duplicate_rows = _read(duplicate_path)
 
-    maps = sorted({row["map"] for row in matches})
+    maps = sorted({row["map"] for row in benchmark_matches})
     map_catalog = _map_catalog(maps)
     maps_dir = output_dir / "maps"
     maps_dir.mkdir(parents=True, exist_ok=True)
     expected_map_files = set()
     for map_info in map_catalog:
-        map_rows = [row for row in matches if row["map"] == map_info["name"]]
-        map_ratings = report.records(evaluate(map_rows), metadata)
-        map_ranking_rows = _ranking_rows(
-            map_ratings, metadata, compliance, _series(map_rows, rated_ids)
+        map_rows = [row for row in benchmark_matches if row["map"] == map_info["name"]]
+        _, map_ranking_rows = _benchmark(
+            map_rows, within_time_ids, metadata, compliance
+        )
+        _, map_ranking_rows_including_over_time = _benchmark(
+            map_rows, rated_ids, metadata, compliance
         )
         filename = f"{map_info['slug']}.json"
         expected_map_files.add(filename)
         (maps_dir / filename).write_text(
             json.dumps(
-                {"map": map_info, "rankings": map_ranking_rows},
+                {
+                    "map": map_info,
+                    "rankings": map_ranking_rows,
+                    "rankings_including_over_time": map_ranking_rows_including_over_time,
+                },
                 separators=(",", ":"),
                 ensure_ascii=False,
             )
@@ -366,14 +423,21 @@ def build(run_dir: Path, output_dir: Path) -> dict:
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "run_id": run_dir.name,
         "field": {
+            "bots": len(within_time_ids),
+            "matches": len(within_time_matches),
+            "maps": len(maps),
+            "games_per_pair": 2 * len(maps),
+        },
+        "field_including_over_time": {
             "bots": len(rated_ids),
-            "matches": len(matches),
+            "matches": len(all_matches),
             "maps": len(maps),
             "games_per_pair": 2 * len(maps),
         },
         "maps": maps,
         "map_catalog": map_catalog,
         "rankings": ranking_rows,
+        "rankings_including_over_time": ranking_rows_including_over_time,
         "duplicates": duplicate_rows,
         "methodology": {
             "primary": "pooled agent vs agent",
