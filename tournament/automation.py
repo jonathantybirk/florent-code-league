@@ -517,11 +517,24 @@ def run_once(
             raise
         if not done:
             in_flight_bots |= bots
-    in_flight_hashes = {
-        digest
-        for digest, specs in by_hash.items()
-        if any(spec.bot_id in in_flight_bots for spec in specs)
-    }
+    # Resolve each in-flight bot to the code it actually is, not to whatever currently sits at
+    # that bot_id. A bot_id is name@<branch-tip-sha>, so any push to a bot branch re-mints an id
+    # for every bot on it -- including bots the push did not touch. Matching in-flight ids only
+    # against freshly discovered specs therefore misses the common case: `prospect@1b5f3d1` is
+    # under test, the branch moves, and the identical code comes back as `prospect@bf9b3e3` and
+    # reads as never seen. all_specs covers ids that have already recorded a result; by_hash
+    # covers ids at the current heads. A bot in a run with no results yet and an id no longer at
+    # any head is in neither, which is why this is a second line of defence and not the fix.
+    known_specs = dict(all_specs)
+    for specs in by_hash.values():
+        for spec in specs:
+            known_specs.setdefault(spec.bot_id, spec)
+    in_flight_hashes = set()
+    for bot_id in in_flight_bots:
+        spec = known_specs.get(bot_id)
+        digest = duplicates.code_hash(spec.commit, spec.path) if spec else None
+        if digest:
+            in_flight_hashes.add(digest)
 
     unseen = {
         digest: specs
@@ -556,6 +569,28 @@ def run_once(
     for spec in representatives:
         print(f"  {spec.bot_id:<30} {spec.path}")
     if dry_run:
+        return 0
+
+    if in_flight_bots:
+        # One run at a time, because canonical_field() is not constant. It contains only bots
+        # that have already played, so it grows the moment an in-flight run lands. A challenger
+        # planned now is scheduled against the field as it stands now, but finalise() rates it
+        # against the field as it stands then -- and every entrant that arrived in between is a
+        # pair that was never played and can only be imputed as a draw. finalise() is right to
+        # refuse that, so the cost of planning early is not a worse ladder, it is a wedged one:
+        # on 2026-08-02 two pushes ten minutes apart left 9 such pairs and the site went stale
+        # for eighteen consecutive ticks until the gap was filled by hand.
+        #
+        # Deferring costs a run's latency and nothing else. `unseen` is re-derived from the
+        # match data every tick, so the first tick after the in-flight run publishes will plan
+        # exactly this work against a field that has stopped moving.
+        waiting = ", ".join(spec.bot_id for spec in representatives)
+        print(
+            f"deferring {len(representatives)} unseen implementation(s) until "
+            f"{len(in_flight_bots)} bot(s) under test have landed: {waiting}"
+        )
+        if publish:
+            _deploy(site_repo)
         return 0
 
     settings = hpc.config()
