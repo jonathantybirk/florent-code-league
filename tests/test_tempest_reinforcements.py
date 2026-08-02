@@ -105,14 +105,31 @@ class FakeController:
 
 
 class PersistentSpawningTests(unittest.TestCase):
-    def test_ammo_conversion_preserves_scaled_construction_cost(self) -> None:
+    def test_ammo_conversion_arms_the_team_before_reserving_build_budget(self) -> None:
+        """An unarmed team converts past the construction reserve.
+
+        With no ammunition no turret can fire and no Builder may start one,
+        so holding titanium back for a scaled Harvester is strictly worse
+        than being able to shoot.
+        """
         ct = FakeController(80)
         ct.ammo = 0
 
         core._keep_ammunition(ct)
 
+        self.assertEqual(ct.titanium, core.EMERGENCY_RESERVE)
+        self.assertEqual(ct.ammo, 80 - core.EMERGENCY_RESERVE)
+
+    def test_ammo_conversion_preserves_scaled_construction_cost(self) -> None:
+        """Above the combat floor the scaled construction reserve applies."""
+        ct = FakeController(80)
+        ct.ammo = core.COMBAT_AMMO_FLOOR
+
+        core._keep_ammunition(ct)
+
+        # get_launcher_cost() of 70 outranks MIN_TITANIUM_RESERVE.
         self.assertEqual(ct.titanium, 70)
-        self.assertEqual(ct.ammo, 10)
+        self.assertEqual(ct.ammo, core.COMBAT_AMMO_FLOOR + 10)
 
     def test_does_not_reinforce_at_threshold(self) -> None:
         player = object_with_builders_spawned(core.MAX_OPENING_BUILDERS)

@@ -22,6 +22,13 @@ CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 REINFORCEMENT_TITANIUM_THRESHOLD = 120
 MIN_TITANIUM_RESERVE = 60
 AMMO_TARGET = 120
+# Below this much ammunition the team is effectively disarmed: no turret can
+# fire, and MIN_AMMO_FOR_GUNNER gates every Builder turret-building path.
+# Refilling to here outranks the construction reserve, which otherwise left
+# the pool pinned at 0-1 for whole matches.
+COMBAT_AMMO_FLOOR = 80
+# The only titanium held back while restoring that floor.
+EMERGENCY_RESERVE = 10
 
 
 def run(player: "Player", ct: Controller) -> None:
@@ -133,6 +140,11 @@ def _keep_ammunition(ct) -> None:
             AMMO_TARGET - held,
             ct.get_global_resources() - construction_reserve,
         )
+        if held < COMBAT_AMMO_FLOOR:
+            amount = max(amount, min(
+                COMBAT_AMMO_FLOOR - held,
+                ct.get_global_resources() - EMERGENCY_RESERVE,
+            ))
         if amount > 0 and ct.can_convert_ammo(amount):
             ct.convert_ammo(amount)
     except Exception as error:  # noqa: BLE001 - never let this kill the Core
