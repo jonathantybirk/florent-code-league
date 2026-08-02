@@ -330,13 +330,7 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
 
 
 def _publish(run_dir: Path, site_repo: Path, ref: str) -> None:
-    """Refresh the site's data bundle, commit it, and deploy -- but only committed source.
-
-    `npm run build` compiles the working tree, so building here while somebody edits the site
-    deploys their unfinished work, including a file saved mid-edit. The data is still committed
-    and pushed either way, so nothing is lost: the deploy simply waits until the source is clean,
-    and then goes out with the next tick.
-    """
+    """Refresh the site's data bundle and commit it, then deploy if the source is clean."""
     output = site_repo / "public" / "botrankings" / "data"
     build_site_data(run_dir, output)
     _run(["git", "add", "public/botrankings/data"], site_repo)
@@ -345,7 +339,22 @@ def _publish(run_dir: Path, site_repo: Path, ref: str) -> None:
         _run(["git", "commit", "-m", f"Update bot rankings for {ref[:7]}"], site_repo)
         _run(["git", "push", "origin", "main"], site_repo)
         print("pushed updated ranking data")
+    _deploy(site_repo)
 
+
+def _deploy(site_repo: Path) -> None:
+    """Build and deploy the site, but only from a clean tree and only if it has moved.
+
+    Called on every tick, not just after a run finishes: a commit that changes the page without
+    producing new results -- a UI fix, a rebuilt component -- still has to reach production.
+    Keying on the site's HEAD makes that cheap, two git commands when there is nothing to do.
+
+    `npm run build` compiles the working tree, so building while somebody edits the site would
+    deploy their unfinished work, including a file saved mid-edit. Ranking data is committed and
+    pushed regardless; only the deploy waits for a clean tree.
+    """
+    if not site_repo.exists():
+        return
     dirty = [
         line for line in _run(["git", "status", "--porcelain"], site_repo).splitlines()
         if line and not line[3:].startswith("public/botrankings/data")
@@ -359,14 +368,11 @@ def _publish(run_dir: Path, site_repo: Path, ref: str) -> None:
             print(f"    {line}")
         return
 
-    # Deploy whenever the committed site has moved, not only when the data changed -- a UI commit
-    # with no new results still needs to reach the live site.
     head = _run(["git", "rev-parse", "HEAD"], site_repo).strip()
     stamp = site_repo / ".last-deployed-commit"
     if stamp.exists() and stamp.read_text().strip() == head:
-        print("live site already matches this commit")
         return
-
+    print(f"site moved to {head[:7]}; building and deploying")
     _run(["npm", "run", "build"], site_repo)
     _run(["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"], site_repo)
     stamp.write_text(head + "\n")
@@ -493,6 +499,8 @@ def run_once(
         state["updated_at"] = datetime.now(UTC).isoformat(timespec="seconds")
         _save_state(state_path, state)
         print(f"no unseen Python implementations in {len(current)} bot directories")
+        if publish:
+            _deploy(site_repo)
         return 0
 
     representatives = [_preferred(specs) for specs in unseen.values()]
