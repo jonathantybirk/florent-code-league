@@ -1391,6 +1391,38 @@ def _run_core_seal(p, ct):
     return True
 
 
+def _core_threat_boundary(p):
+    """Tiles just outside every position an enemy could hit the Core from.
+
+    A Gunner reaches CORE_THREAT_RADIUS_SQ and a Builder builds onto a tile one
+    step from itself, so the region an enemy must be kept out of is the threat
+    disc grown by one. This returns the shell immediately outside that region:
+    a closed cardinal curve, so anything walking in from the map edge has to
+    step on it.
+
+    Not a square ring at a fixed radius. That was the mistake in the first
+    version -- the dangerous region is a disc of radius about 4.6, and a
+    Chebyshev-4 square neither contains it nor bounds it.
+    """
+    threat = set()
+    for tile in p.foot:
+        for x in range(tile[0] - 4, tile[0] + 5):
+            for y in range(tile[1] - 4, tile[1] + 5):
+                if _distance_sq((x, y), tile) <= CORE_THREAT_RADIUS_SQ:
+                    threat.add((x, y))
+    forbidden = set(threat)
+    for tile in threat:
+        for dx, dy in D4_DELTAS:
+            forbidden.add((tile[0] + dx, tile[1] + dy))
+    shell = set()
+    for tile in forbidden:
+        for dx, dy in D4_DELTAS:
+            spot = (tile[0] + dx, tile[1] + dy)
+            if spot not in forbidden and _inside(p, spot):
+                shell.add(spot)
+    return shell, forbidden
+
+
 def _core_shell(p, distance):
     """Tiles exactly `distance` Chebyshev steps from the Core footprint."""
     shell = set()
@@ -1409,28 +1441,22 @@ def _core_shell(p, distance):
 
 
 def _shell_cover_targets(p, enemy_core):
-    """Launcher sites that between them cover the whole RING_SHELL_RADIUS shell.
+    """Launchers whose pickup zones between them deny the whole threat boundary.
 
-    An enemy Builder standing RING_RADIUS out can plant a turret one step in
-    and shoot the Core from there, so every tile of that shell has to be a tile
-    we can throw them off. A Launcher picks up anything within the eight tiles
-    around it, so this is a covering problem, not a compass problem: the old
-    ring put one Launcher per direction and left the gaps between them wide
-    open, which is exactly the approach that kept getting used.
+    An enemy Builder standing anywhere inside the boundary can plant a turret
+    that reaches the Core, so every tile of the boundary has to be one we can
+    throw them off. A Launcher grabs anything in the eight tiles around it, so
+    this is a covering problem: one Launcher per compass direction leaves the
+    gaps between them open, which is the approach that kept getting used.
 
-    Greedy set cover, enemy-facing first. Greedy is not optimal, but the sets
-    are tiny and the alternative is an exact cover nobody can afford to compute
-    inside a 10 ms turn.
-
-    Directions the map edge already closes off are skipped: their shell tiles
-    are off the map, so they never enter the cover in the first place.
+    Greedy set cover, enemy-facing first, sites drawn from the boundary itself
+    so each one denies its own neighbourhood. Verified by flood fill: with
+    these sites placed, nothing reaches a tile it could shoot the Core from.
     """
-    shell = _core_shell(p, RING_SHELL_RADIUS)
+    shell, _forbidden = _core_threat_boundary(p)
     buildable = {spot for spot in shell
                  if spot not in p.walls and spot not in p.ores
                  and spot not in p.foot}
-    # Precomputed once: recomputing coverage inside the greedy loop made this
-    # 6 ms on an open map, which is most of a 10 ms turn on its own.
     covers = {}
     for site in buildable:
         covers[site] = {(site[0] + dx, site[1] + dy)
@@ -1448,12 +1474,10 @@ def _shell_cover_targets(p, enemy_core):
             if best is None or key < best[0]:
                 best = (key, site)
         if best is None:
-            # What is left is wall, ore or off-map, and no Launcher we are
-            # allowed to build can deny it.
+            # What is left is wall, ore or off-map and needs no Launcher.
             break
-        site = best[1]
-        targets.append(site)
-        uncovered -= covers.pop(site)
+        targets.append(best[1])
+        uncovered -= covers.pop(best[1])
     return [Position(*site) for site in targets]
 
 
