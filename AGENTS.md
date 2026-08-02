@@ -29,7 +29,7 @@ persists every match to CSV, and ranks with mElo and Nash averaging. Design rati
 
 ```sh
 uv sync
-uv run pytest tournament/          # 87 tests; validates the maths and harness
+uv run pytest tournament/          # 126 tests; validates the maths and harness
 ```
 
 If you will touch the cluster, open the SSH master once (it lasts 8h):
@@ -184,6 +184,92 @@ all gameplay tiebreakers were equal and the engine selected A or B randomly, so 
 bots. Preserve the raw selection as `engine_winner` for auditability; never let it become a win or
 loss merely because historical `winner`/`score_a` columns contain the engine's random choice.
 
+# The automated evaluator
+
+Everything above is the manual path. In normal operation a systemd user timer runs it for you.
+
+```sh
+systemctl --user status  botrankings-evaluator.timer     # is it on?
+journalctl --user -u botrankings-evaluator.service -f    # what is it doing?
+systemctl --user stop    botrankings-evaluator.timer     # pause (safe mid-run)
+systemctl --user start   botrankings-evaluator.timer     # resume
+```
+
+It runs from a **separate git worktree** at `~/projects/florent-code-league-ci` on `x/tournament`,
+so the main checkout is free to switch branches without breaking it. Every two minutes it:
+
+1. **Self-updates** — fast-forwards onto `origin/x/tournament`, but adopts the new commit only if
+   `pytest tournament/` passes on it, otherwise resets back. A broken evaluator does not merely
+   fail; it submits cluster jobs and publishes to a live website.
+2. **Collects** any submitted run — fetch, merge, and if complete, rate and publish. It never
+   blocks on the cluster: submission and collection are separate visits.
+3. **Discovers** new bots on `x/jon`, `x/luc` and `elias_dev`, and submits them.
+4. **Deploys** the site when its committed HEAD has moved.
+
+## What counts as already evaluated
+
+Derived from `runs/*/matches.csv` on every tick, never cached. A bot counts as rated when its
+`.py` content hash appears in the match data, regardless of which branch, run, or person produced
+it. There is no ledger file to get out of date, and no bootstrap step to get wrong. If a bot has
+played but its source cannot be resolved or hashed, the tick **fails loudly** rather than
+re-evaluating it forever.
+
+Work already scheduled in a run that has not finished is treated as in flight, so a tick firing
+mid-evaluation never schedules the same bot twice. Run ids are keyed on the implementations under
+test and nothing else — an unrelated branch moving must not change the id, because the run
+directory is where partial results live.
+
+## Rules it enforces that you should not work around
+
+- **A rating is only meaningful against the field it was computed over.** The site ships four
+  independently rated fields (fair/all x compliant/including-over-time). Never filter a larger
+  field's ratings client-side to fake a smaller one.
+- **It refuses to publish a matrix with unplayed pairs**, naming them. An unplayed pair enters
+  `A` as 0, which is indistinguishable from a measured draw.
+- **It refuses to build the site from a dirty tree.** `npm run build` compiles the working tree,
+  so building while someone edits the site deploys their unfinished work. Ranking data is still
+  committed and pushed; only the deploy waits.
+
+## Fairness is read from the code, not the directory
+
+`tournament/fairness.py` flags a bot unfair when it imports a bundled map atlas. Path convention
+alone was wrong for eleven entrants: Elias' `cand/` snapshots and every `tempest_reinforcements`
+carry the same offline atlas as bots their own authors filed under `unfair/`. A path tag still
+wins when present, and detection only ever *adds* flags.
+
+## Timing compliance
+
+`--tle 0` rating matches cannot measure turn time, so timing is a separate `kind=compliance`
+probe that never enters a win matrix. **Compliance is per-map**: across the probes run so far a
+bot's worst map is a median 1.6x its best and up to 5.1x, and three bots exceeded the 10 ms limit
+on one map while passing others — `casemate_oracle` runs 3.4 ms on duel and 12.6 ms on quarry.
+Version 5 therefore probes **all 21 official maps**; versions 1-4 sampled three and their passes
+mean only "not measured where it is slow".
+
+Results merge by `(version, mtime)` per bot, so a newer version supersedes an older one and the
+two are never averaged. Re-probe the whole roster after a version bump:
+
+```sh
+uv run python -m tournament plan --tid compliance-vN-all --compliance-only \
+    --bots "$(uv run python -c "
+from tournament.automation import canonical_field
+print(','.join(sorted(s.bot_id for s in canonical_field()[0])))")" --maps official
+uv run python -m tournament hpc push --tid compliance-vN-all
+uv run python -m tournament hpc submit --tid compliance-vN-all
+```
+
+## Connectivity
+
+DTU's `login1` refuses IPv4 SSH from off-campus and demands key + passphrase + password on
+`login2`, so in practice the cluster is reachable only over **IPv6 or the DTU VPN**. A
+`dtu-ssh-master.service` user unit holds the multiplexed connection open and retries every 30 s,
+so an outage self-heals. When it is down the evaluator exits 2 each tick and prints the remedy;
+nothing is lost, because finished results wait on the cluster and match ids are content-addressed.
+
+`ssh -O check dtu` reports only that the local control socket exists — **not** that the network
+path works. Do not treat it as proof the cluster is reachable, and never `ssh -O exit` a working
+master without first confirming a fresh connection can be made.
+
 ## Traps
 
 Each of these cost real debugging time.
@@ -222,6 +308,10 @@ Most matches run the full 1000 rounds. Do not assume matches are cheap.
 | `tournament/runs/<tid>/duplicates.csv` | bots that play identically |
 | `tournament/runs/<tid>/compliance.csv` | per-bot 10 ms timing status |
 | `tournament/runs/<tid>/compliance_matches.csv` | raw per-probe timing evidence |
+| `tournament/automation.py` | the evaluator loop: discover, submit, collect, publish |
+| `tournament/fairness.py` | unfair detection from bot source |
+| `tournament/site_data.py` | the four rated fields the website consumes |
+| `tournament/systemd/` | the timer and service units |
 | `tournament/README.md` | design rationale, and the departures from the paper |
 | `articles/1806.02643v2.pdf` | Balduzzi et al., the source for mElo and Nash averaging |
 
