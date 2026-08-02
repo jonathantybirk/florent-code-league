@@ -16,10 +16,12 @@ if TYPE_CHECKING:
 
 CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 
-# After Tempest's four-bot opening, turn surplus titanium into more Builders.
-# This leaves enough titanium for repairs, construction, and ammunition while
-# ensuring a healthy economy continually replaces bots lost in combat.
-REINFORCEMENT_TITANIUM_THRESHOLD = 120
+# Surplus titanium no longer becomes extra Builders. Each one adds +20% to
+# every future build cost, so spending a healthy bank on Builders is the most
+# expensive way there is to convert titanium into nothing: it drained the
+# opening 380 Ti to 18 by round 7 and tripled the price of the defence it was
+# meant to build. Reinforcements now mean replacing a dead Builder, nothing
+# more; surplus goes into Launchers and Harvesters instead.
 MIN_TITANIUM_RESERVE = 60
 AMMO_TARGET = 120
 # Below this much ammunition the team is effectively disarmed: no turret can
@@ -67,9 +69,7 @@ def run(player: "Player", ct: Controller) -> None:
     has_live_builder = (
         ct.read_store(SLOT_BUILDER_HEARTBEAT) >= ct.get_current_round()
     )
-    if (role >= MAX_OPENING_BUILDERS
-            and has_live_builder
-            and resources <= REINFORCEMENT_TITANIUM_THRESHOLD):
+    if role >= MAX_OPENING_BUILDERS and has_live_builder:
         return
 
     if role < ECONOMY_BUILDERS and role < len(player.opening_ore_targets):
