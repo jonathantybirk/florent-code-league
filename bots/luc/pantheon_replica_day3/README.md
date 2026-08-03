@@ -46,9 +46,10 @@ Same maps, same seats, replica in Pantheon's seat B:
 | jackpot | WON r34 | WON r43 | +9 |
 | bridge | WON (r1000 tiebreak) | WON r95 | — |
 | duel | **LOST** | WON r26 | diverges, our way |
-| sweden | WON r18 | WON r212 | **+194, unexplained** |
+| sweden | WON r18 | WON r33 | +15 |
 
-Outcome agreement 12/13; median timing delta +2 rounds.
+Outcome agreement 12/13, median timing delta +2 rounds, three maps matching the
+real kill round exactly.
 
 Two things came out of chasing the per-map gaps rather than the aggregate:
 
@@ -64,13 +65,24 @@ capped to one we lose the Core on round 50. The real Pantheon does not kill on
 bridge either -- its win there ran the full 1000 rounds -- so closed maps keep
 a second Launcher as the displacement screen (`PANTHEON_RING_SITES_FORTIFY`).
 
-**sweden is the one real outlier and is not yet solved.** Pantheon kills on
-round 18; we take 212. Its pad sits at (1,11), one tile in from the map edge;
-ours lands on (0,11) flat against it, so half the throw disc is off-map and the
-opening throws land at (2,8) instead of Pantheon's (2,6) at maximum range. An
-edge-aware pad ranking (prefer the site whose throw disc stays on the map) was
-tried and is a **measured failure**: sweden 71 -> 68, but twins 21 -> 27 and
-aurora 43 -> 50. The right fix is narrower than that and is not in yet.
+**The pad is placed for what it can deliver, not for where it is.** This was
+sweden: Pantheon kills on round 18 and we took 212. Our Core is at (0,13) and
+the nearest ring site, (0,11), lies flat against the west edge -- half its
+throw disc is off the map, and the best tile it can reach is (2,8). One tile
+inward at (1,11) the disc is whole and the same throw reaches (2,6), two tiles
+nearer the enemy Core. That is where the real Pantheon puts it.
+
+So ring sites are now ranked by the shortest *walk* from the best tile they can
+throw a passenger onto to the enemy Core -- the same objective the throw itself
+uses, lifted one level: choosing where to put the pad rather than where to
+throw from it. It is general, not a sweden special case, and it costs nothing
+anywhere else. **sweden 212 -> 33**, and twins, aurora and longship still match
+the real kill round exactly.
+
+Ranking by raw disc *area* was tried first and is a **measured failure**
+recorded in the code (sweden 71 -> 68, twins 21 -> 27, aurora 43 -> 50): area
+is only a proxy for delivery, and maximising it drags the pad off the line the
+raid actually walks.
 
 Getting there took two fixes, both found by asking why it *wasn't* matching:
 
