@@ -439,6 +439,45 @@ the belt *looks* right -- Harvester on (1, 7) at round 14, conveyors (1, 2)
 through (1, 6), and the mirror-image opponent delivers 2,450 from the identical
 shape. Something about that line does not carry. Next session starts there.
 
+### vase seat a: a third zero-economy bug, diagnosed and NOT fixed
+
+With both ferry fixes in, vase seat a still collects **zero** titanium over
+1000 rounds against warden_walk's 2,450. Two distinct faults, both confirmed
+from the replay and both resistant to the obvious repair:
+
+**The belt loses its last tile and never gets it back.** The conveyor at
+(1, 2) -- the one feeding the Core -- dies on round 7. The rest of the line
+(1, 3)-(1, 6) and the Harvester on (1, 7) survive all 1000 rounds, so the ore
+is mined into a dead end. warden_walk loses (9, 5) twice on the same map and
+rebuilds it both times. Ours does not, because `_broken_network_tiles` skips
+any tile not currently `is_in_vision`, a Builder sees r^2 20, and the miner
+never goes back within sight of the Core.
+
+**The miner is trapped in a pocket.** From round 20 it sits at (0, 8) --
+row 8 is `.#.......#.`, a one-wide dead end -- and never moves again. `_explore`
+picks a stride point it cannot reach, `_step` fails through to
+`_move_while_stuck`, which chooses the neighbour nearest the target; that
+choice reverses the moment it steps, so it oscillates. Worse, it calls
+`_mark_progress("moved while blocked")` every round, so `p.last_progress_round`
+is always fresh, `_report_stall` never fires and `_write_off` never retires it.
+
+Three attempted fixes, all measured on vase both seats and all failing:
+
+    walk the belt when idle              still 0 -- the miner is never idle,
+                                         it explores forever
+    walk the belt every 50 rounds        still 0 -- `_explore` is reached but
+                                         the miner is stuck before it matters
+    explore only reachable stride points still 0 in seat a, and seat b went
+                                         from a win to a loss
+
+So the diagnosis is solid and the cure is not. The next attempt should probably
+start at `_move_while_stuck`: a move that oscillates should not count as
+progress, and a Builder that has not changed tile in N rounds should be treated
+as stuck no matter what it reports. That interacts with `_write_off`, which
+retires the Builder for good because the Core only replaces one when *every*
+Builder is dead -- so it likely needs the reinforcement path too, and that
+measured -30pp when tried on its own.
+
 ### Three washes, and the point at which to stop
 
 Traced a `heimdall` loss on a generated map (`random3/r10`, 30x10, RUSH): vigil
