@@ -231,8 +231,27 @@ LAUNCH_REJECTION_POSITION_MASK = (1 << LAUNCH_REJECTION_POSITION_BITS) - 1
 SLOT_SYMMETRY_REJECT_START = 9  # slots 9..10, one writer per opening Builder
 SLOT_CONSTRUCTION_LOCK = 11
 SLOT_CORE_DAMAGED = 12
+# Bit 2 of SLOT_CORE_DAMAGED: titanium has stopped arriving. Bits 0-1 are
+# the Core's own damage alarm and are read separately.
+ECONOMY_DEAD_FLAG = 4
 SLOT_ENEMY_CORE = 13
 SLOT_OWN_CORE = 14
 SLOT_BUILDER_HEARTBEAT = 15
+# Heartbeat layout: (round + 1) << HEARTBEAT_SHIFT, with one bit per Builder
+# index below it. Eight bits is more Builders than the scale factor will ever
+# make worth spawning.
+HEARTBEAT_SHIFT = 8
+HEARTBEAT_MASK = (1 << HEARTBEAT_SHIFT) - 1
+# Builders the Core will field at once, replacements included. The opening
+# headcount is three and is not in question -- this is the ceiling on replacing
+# one the enemy killed.
+MAX_LIVE_BUILDERS = 3
+# Total Builders one game may spawn. A replacement is +20% on every price the
+# team pays for the rest of the game, so an attrition war fought by respawning
+# is one we lose on cost even while winning it on bodies.
+MAX_TOTAL_BUILDERS = 5
+# Held back before a replacement is bought, so reinforcing never starves the
+# turrets and ammunition that the dead Builder was on its way to buy.
+REINFORCE_RESERVE = 40
 
 LAUNCH_RANGE_SQ = 26

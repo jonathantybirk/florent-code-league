@@ -6,8 +6,12 @@ from typing import TYPE_CHECKING
 import doctrine
 from fcode import Controller, Direction, Environment, Position
 
-from constants import (MAX_OPENING_BUILDERS, PAD_FIRST_ORDER,
+from constants import (HEARTBEAT_MASK, HEARTBEAT_SHIFT,
+                       MAX_LIVE_BUILDERS, MAX_OPENING_BUILDERS,
+                       MAX_TOTAL_BUILDERS, PAD_FIRST_ORDER,
+                       REINFORCE_RESERVE,
                        SLOT_BUILDER_HEARTBEAT,
+                       ECONOMY_DEAD_FLAG,
                        SLOT_CORE_DAMAGED, SLOT_OWN_CORE)
 from utils import pack_core
 
@@ -41,6 +45,7 @@ CRITICAL_HP = 300
 
 def run(player: "Player", ct: Controller) -> None:
     """Run the opening, then keep spawning attackers from surplus titanium."""
+    _watch_income(player, ct)
     _keep_ammunition(ct)
     if not hasattr(player, "repair_alert"):
         player.repair_alert = False
@@ -67,6 +72,10 @@ def run(player: "Player", ct: Controller) -> None:
     alarm = int(player.repair_alert)
     if player.repair_alert and hp <= CRITICAL_HP:
         alarm = 2
+    # Bit 2 is the economy, not the Core: no free store slot was left, and the
+    # two alarms are read by different code paths anyway.
+    if getattr(player, "income_dead", False):
+        alarm |= ECONOMY_DEAD_FLAG
     ct.write_store(SLOT_CORE_DAMAGED, alarm)
 
     economy_builders = doctrine.economy_builders(player.doctrine)
@@ -75,11 +84,20 @@ def run(player: "Player", ct: Controller) -> None:
     builder_cost = ct.get_builder_bot_cost()
     if resources < builder_cost:
         return
-    has_live_builder = (
-        ct.read_store(SLOT_BUILDER_HEARTBEAT) >= ct.get_current_round()
-    )
-    if role >= MAX_OPENING_BUILDERS and has_live_builder:
-        return
+    # Count the Builders that answered last round, rather than asking only
+    # whether any did. The guard at the enemy's Core kills attackers -- ours
+    # included -- and a lineage that waits for *every* Builder to die before
+    # replacing one plays the rest of the game a body down.
+    stamp = ct.read_store(SLOT_BUILDER_HEARTBEAT)
+    fresh = (stamp >> HEARTBEAT_SHIFT) >= ct.get_current_round()
+    live = bin(stamp & HEARTBEAT_MASK).count("1") if fresh else 0
+    if role >= MAX_OPENING_BUILDERS:
+        if not getattr(player, "income_dead", False):
+            return
+        if live >= MAX_LIVE_BUILDERS or role >= MAX_TOTAL_BUILDERS:
+            return
+        if resources < builder_cost + REINFORCE_RESERVE:
+            return
 
     # Spawn order has to agree with the role order the Builders assign
     # themselves in builder.py, or a Builder spawns at the wrong end of the
@@ -110,6 +128,50 @@ def run(player: "Player", ct: Controller) -> None:
     if candidates:
         ct.spawn_builder(candidates[0])
         player.builders_spawned += 1
+
+
+# Rounds of income the watchdog averages over, and the per-round titanium below
+# which the economy counts as dead. Passive income is 10 every 4 rounds, i.e.
+# 2.5 a round, and arrives whatever happens; a single connected Harvester adds
+# the same again. So anything at or under the passive rate means no Harvester
+# is delivering, however many we think we built.
+INCOME_WINDOW = 60
+DEAD_INCOME_PER_ROUND = 2.8
+# Nothing is judged before this: the opening legitimately has no Harvester yet.
+INCOME_GRACE_ROUND = 60
+
+
+def _watch_income(player, ct) -> None:
+    """Raise a flag when titanium stops arriving.
+
+    A hole in the conveyor line is invisible to a Builder that has walked away
+    -- `_broken_network_tiles` only reports tiles it can currently see -- but
+    it is perfectly visible here, because the titanium stops coming. Traced on
+    vase: the tile feeding the Core died on round 7 and the Harvester upstream
+    of it mined into a dead end for the remaining 993 rounds while every
+    Builder reported itself busy and healthy.
+
+    Income is measured as the sum of the positive round-to-round changes in the
+    team balance. Spending only ever makes a change negative, so this is a
+    lower bound on income and never a false alarm from a spending spree.
+    """
+    resources = ct.get_global_resources()
+    previous = getattr(player, "last_resources", None)
+    if previous is not None and resources > previous:
+        player.income_seen = getattr(player, "income_seen", 0) + (resources - previous)
+    player.last_resources = resources
+    round_number = ct.get_current_round()
+    if round_number < INCOME_GRACE_ROUND:
+        player.income_dead = False
+        player.income_window_start = round_number
+        player.income_seen = 0
+        return
+    span = round_number - getattr(player, "income_window_start", 0)
+    if span >= INCOME_WINDOW:
+        rate = getattr(player, "income_seen", 0) / max(span, 1)
+        player.income_dead = rate <= DEAD_INCOME_PER_ROUND
+        player.income_window_start = round_number
+        player.income_seen = 0
 
 
 def _scout_target(ct: Controller, index: int) -> Position:
