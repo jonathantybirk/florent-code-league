@@ -398,6 +398,47 @@ Revisit with the cluster's 4,000-game samples, where six games is not noise.
 The detector is committed either way -- it is cheap, it found both of this
 session's livelocks, and a healthy Builder sits at 0-2%.
 
+### The ferry was throwing the wrong Builders, and never gave up
+
+Five of the eighteen losses to `warden_walk` show **zero titanium collected**:
+sweden in both seats, vase, sprint, and (against valkyrie) bridge. Not a small
+economy -- none at all. Traced on sweden, and it is two separate defects in the
+Launcher relay.
+
+**The miner asks to be thrown.** `_move_cardinal_adjacent` calls `_step` with
+`allow_launcher` defaulting on, so *any* Builder that fails to path once will
+buy or request a throw. On sweden the economy Builder asked to be thrown **two
+tiles** -- (2, 2) to (4, 2), (2, 1) to (3, 0) -- and the throws landed it off
+the conveyor run it was laying, so it re-planned, walked back, and asked again.
+It finished with fifteen conveyors, **zero Harvesters** and zero titanium, on a
+map where the same chassis with an atlas has two Harvesters by round 19. Gating
+the relay on `p.is_attacker` -- the ferry exists to carry one Builder across
+the map, everyone else works on ground it can walk -- takes sweden seat a from
+0 to 4,820 titanium and flips seat b and vase seat b from losses to wins.
+
+**Nobody gives up on an impossible throw.** A Launcher can only throw to a
+bot-passable tile within r^2 26 in the requested direction. Where that
+direction is wall -- sweden's band -- there is no legal landing, the request is
+silently ignored, and `_opening_ferry` re-armed its four-round timer on *every*
+round, so it never expired. The attacker stood beside its own Launcher asking
+to be thrown on every round from 30 to 999 and never attacked at all: 969
+requests in one game. Counting consecutive unserviced rounds and walking after
+four takes that to 19.
+
+    shipped                        270/336  0.804   110/160  0.688
+    + ferry for the attacker only  272/336  0.810   110/160  0.688
+    + give up on a dead request    271/336  0.807   110/160  0.688
+
+Both shipped. The score moves by one or two games -- these are 42-game cells --
+but a Builder that lays fifteen conveyors and no Harvester, and an attacker
+frozen for 970 rounds, are defects whether or not this panel can see them.
+`warden_walk`, the worst matchup, goes 24/42 to 26/42.
+
+**Still open: vase seat a.** With both fixes it still collects zero, and there
+the belt *looks* right -- Harvester on (1, 7) at round 14, conveyors (1, 2)
+through (1, 6), and the mirror-image opponent delivers 2,450 from the identical
+shape. Something about that line does not carry. Next session starts there.
+
 ### Three washes, and the point at which to stop
 
 Traced a `heimdall` loss on a generated map (`random3/r10`, 30x10, RUSH): vigil

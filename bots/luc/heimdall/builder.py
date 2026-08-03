@@ -127,6 +127,7 @@ def _run(p, ct):
         p.attack_gunners_built = 0
         p.path_failures = 0
         p.awaiting_launch = 0
+        p.launch_waited = 0
         p.launch_origin = None
         p.launch_blocked = False
         p.launch_blocking_launchers = set()
@@ -871,7 +872,16 @@ def _step(p, ct, target, exact, allow_launcher=True):
     if blocking and _build_launcher_breaker_gunner(
             p, ct, blocking=blocking, route=target):
         return True
-    if (allow_launcher and not launch_rejected and not p.launch_blocked
+    # Only the attacker rides the ferry. The relay exists to carry one Builder
+    # across the map; every other Builder works within a few tiles of ground it
+    # can walk. Traced on sweden: the economy Builder asked to be *thrown two
+    # tiles* -- (2, 2) to (4, 2) -- and the throws landed it off the conveyor
+    # run it was laying, so it re-planned, walked back, and asked again. It
+    # finished the game with fifteen conveyors, zero Harvesters and zero
+    # titanium collected, on a map where the same chassis with an atlas builds
+    # two Harvesters by round 19.
+    if (allow_launcher and p.is_attacker and not launch_rejected
+            and not p.launch_blocked
             and p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
             and _build_escape_launcher(p, ct, target)):
         return True
@@ -2124,6 +2134,24 @@ def _opening_ferry(p, ct, enemy_core, sighted=False):
     launchers = _visible_friendly_launchers(ct)
     adjacent = _adjacent_visible_launcher(ct, target, launchers)
     if adjacent is not None:
+        # A request nobody can service must not be repeated forever. A Launcher
+        # throws only to a bot-passable tile within r^2 26 in the requested
+        # direction; where the ground that way is wall -- sweden's band, for
+        # one -- there is no legal landing, the request is silently ignored,
+        # and the old code re-armed the four-round timer on every round so it
+        # never expired. Traced: the attacker stood beside its own Launcher
+        # asking to be thrown on every round from 30 to 999 and never attacked.
+        if p.launch_origin == here:
+            p.launch_waited += 1
+        else:
+            p.launch_waited = 0
+        if p.launch_waited > LAUNCH_REQUEST_ROUNDS:
+            p.launch_blocked = True
+            p.awaiting_launch = 0
+            p.launch_origin = None
+            _plan_failed(p, ct, "await launch", target,
+                         f"unserviced for {p.launch_waited} rounds; walking")
+            return False
         p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
         p.launch_origin = here
         if _announce_launch(p, ct, target, adjacent[1]):
