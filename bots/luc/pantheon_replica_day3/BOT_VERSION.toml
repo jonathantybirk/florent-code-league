@@ -1,0 +1,3 @@
+source_path = "bots/luc/pantheon_replica_day3"
+engine = "2.3.3"
+status = "development"
