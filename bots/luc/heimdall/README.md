@@ -86,19 +86,19 @@ surviving candidate is the truth on 28 of 42 published map-sides.
 | opponent | | |
 |---|---|---|
 | `casemate` | 42/42 | 1.00 |
-| `vigil` | 36/42 | 0.86 |
+| `vigil` | 37/42 | 0.88 |
 | `vanguard` | 36/42 | 0.86 |
-| `gobbleglitch` | 33/42 | 0.79 |
-| `warden` | 32/42 | 0.76 |
+| `gobbleglitch` | 35/42 | 0.83 |
 | `valkyrie` | 31/42 | 0.74 |
 | `ragnarok` | 31/42 | 0.74 |
-| `warden_walk` | 20/42 | 0.48 |
-| **total** | **261/336** | **0.777** |
+| `warden` | 30/42 | 0.71 |
+| `warden_walk` | 24/42 | 0.57 |
+| **total** | **266/336** | **0.792** |
 
-Seven of eight matchups at 0.74 or better. The exception is `warden_walk`,
-which is this bot's own chassis *with* the atlas and without the guard — on
-the pool the two advantages cancel almost exactly. Off the pool they do not,
-because only one of them still exists.
+The weakest matchups are `warden` and `warden_walk`, which are this bot's own
+chassis *with* the atlas. On the published pool the oracle and the guard very
+nearly cancel; off it they do not, because only one of them still exists. The
+escalating allowance is what moved `warden_walk` from 20/42 to 24/42.
 
 ### The guard's allowance escalates on emplaced turrets, not on damage
 
