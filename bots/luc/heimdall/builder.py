@@ -1686,6 +1686,38 @@ def _engage_with_turret(p, ct):
     return True
 
 
+def _guard_allowance(p, ct, team):
+    """Guard turrets allowed: the standing cap, plus one per emplaced threat.
+
+    A flat cap is the wrong shape once the enemy stops walking past our Core
+    and starts building at it. Traced on runestone: the guard answered their
+    Builder on rounds 10 and 12, spent its allowance, and then watched two more
+    Gunners go up on tiles none of our turrets could reach -- a Gunner fires
+    along eight rays only, so a turret sited to hit a Builder that was standing
+    somewhere else frequently cannot engage what replaces it.
+
+    The escalation that already existed is `_defend_core`'s, and it is keyed on
+    damage taken: `1 + damage // 180`. A Gunner three tiles from the Core deals
+    10 a round for as long as it stands, so waiting for 180 of them before
+    allowing a second answer concedes eighteen rounds. The emplaced turret is
+    the signal; how much damage it has managed so far is not.
+
+    Measured, pre-registered and replicated on independent generated sets --
+    30 maps 74/120 -> 81/120, 40 maps 99/160 -> 108/160 -- and neutral on the
+    official pool at 134/168 -> 135/168.
+    """
+    threats = 0
+    for building_id in ct.get_nearby_buildings():
+        if (ct.get_team(building_id) == team
+                or ct.get_entity_type(building_id)
+                not in (EntityType.GUNNER, EntityType.SENTINEL)):
+            continue
+        spot = tuple(ct.get_position(building_id))
+        if min(_distance_sq(spot, tile) for tile in p.foot) <= GUARD_RADIUS_SQ:
+            threats += 1
+    return MAX_GUARD_GUNNERS + threats
+
+
 def _guard_home(p, ct):
     """Turret an enemy that has come to our Core, before the alarm would fire.
 
@@ -1712,11 +1744,11 @@ def _guard_home(p, ct):
     the economy Builder abandons the belt it is laying and the miner stops
     mining, and the games that buys back are fewer than the ones it costs.
     """
-    if (p.guard_gunners_built >= MAX_GUARD_GUNNERS
+    team = ct.get_team()
+    if (p.guard_gunners_built >= _guard_allowance(p, ct, team)
             or ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER
             or ct.get_global_resources() < ct.get_gunner_cost()):
         return False
-    team = ct.get_team()
     enemies = []
     for entity_id in ct.get_nearby_entities():
         if ct.get_team(entity_id) == team:

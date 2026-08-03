@@ -187,6 +187,30 @@ Same story, smaller: leashing the guard's ore claims to within 8 tiles of the
 Core (130/168 pool, 75/120 set 2, both +1 or +2) and rebuilding guard turrets
 that have been shot off (76/120 set 2, +2). All inside noise.
 
+### The guard's cap was the next real thing, and it replicated
+
+Tracing a loss beat guessing again. On `runestone` the guard fired on rounds 10
+and 12, spent its cap of two, and then watched valkyrie put two more Gunners on
+tiles none of our turrets could reach. A Gunner has eight rays; a turret placed
+to hit a Builder standing somewhere else usually cannot engage what replaces
+it, and `_defend_core`'s own escalation needs `180` damage before it will allow
+a second answer.
+
+`_guard_allowance` = `MAX_GUARD_GUNNERS` + one per live enemy turret inside the
+guard radius. Pre-registered before the replication ran ("beats 74/120 on set 2
+by roughly +5pp"):
+
+    30 generated maps (set 2)   74/120 -> 82/120   +6.6pp
+    40 generated maps (set 3)   99/160 -> 108/160  +5.6pp
+    21 official maps           134/168 -> 135/168  +0.6pp
+
+Pooled over both unknown sets: 173/280 -> 190/280, +17 games. Shipped.
+
+Tried at the same time and *not* shipped: falling back to healing the Core when
+the guard has no firing solution (heal is 4 HP for a flat 1 Ti and needs no
+alignment, so it looked like the natural partner). Pool 135/168, set 3 101/160
+-- +1 and +2. A wash.
+
 ### Three washes, and the point at which to stop
 
 Traced a `heimdall` loss on a generated map (`random3/r10`, 30x10, RUSH): vigil
