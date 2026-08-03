@@ -134,6 +134,25 @@ def _compliance(run_dir: Path) -> dict[str, dict]:
     return found
 
 
+def _historical_duplicate_groups(run_dir: Path) -> list[tuple[str, ...]]:
+    """Every duplicate group any run has ever recorded, current run included."""
+    paths = set(planning.RUNS_ROOT.glob("*/duplicates.csv"))
+    own = run_dir / "duplicates.csv"
+    if own.exists():
+        paths.add(own)
+    groups: list[tuple[str, ...]] = []
+    for path in sorted(paths):
+        try:
+            rows = _read(path)
+        except OSError:
+            continue
+        for row in rows:
+            members = (row.get("members") or "").split()
+            if len(members) > 1:
+                groups.append(tuple(members))
+    return groups
+
+
 def _series(rows: list[dict], bot_ids: set[str]) -> dict[str, dict[str, int]]:
     by_pair: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for row in rows:
@@ -295,9 +314,12 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     # was first published. Duplicate groups collapse to the oldest member: the survivor stands
     # for the whole group, and dating it by its own commit would make a re-run of old work look
     # new. Carried on the metadata so it reaches map-scoped rows too, which show commits as well.
+    # Groups come from every run that ever recorded one, not just this one. A behavioural
+    # duplicate's original is usually the member that got pruned, so it is absent from the
+    # current field and from the current duplicates.csv -- and its date is the one worth having.
+    # `metadata` spans all historical manifests, so those bots can still be dated.
     ages = ages_module.apply_duplicate_groups(
-        ages_module.resolve(metadata),
-        [tuple(row["members"].split()) for row in duplicate_rows if row.get("members")],
+        ages_module.resolve(metadata), _historical_duplicate_groups(run_dir)
     )
     for bot_id, record in ages.items():
         if bot_id in metadata:

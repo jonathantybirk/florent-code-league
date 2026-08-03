@@ -145,14 +145,48 @@ def apply_duplicate_groups(
     same player by their results can have different source, and pruning keeps only one of them.
     The survivor stands for the whole group, so it should carry the group's earliest date rather
     than its own.
+
+    Groups are merged transitively before the minimum is taken. They are collected across every
+    run that ever recorded them, and the same implementations get regrouped run after run under
+    re-minted ids, so {a, b} from one run and {b, c} from another are one group of three. Taking
+    each group's minimum independently would give c a date that a already disproved.
+
+    A member that has no date is skipped, not fatal, but a member that is no longer in the rated
+    field still counts: the original of a behavioural duplicate is usually the one that got
+    pruned, and its date is exactly the one worth keeping.
     """
-    resolved = dict(ages)
+    parent: dict[str, str] = {}
+
+    def find(node: str) -> str:
+        parent.setdefault(node, node)
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    def union(left: str, right: str) -> None:
+        left_root, right_root = find(left), find(right)
+        if left_root != right_root:
+            parent[left_root] = right_root
+
     for members in groups:
-        dated = [resolved[bot_id] for bot_id in members if bot_id in resolved]
-        if len(dated) < 2:
+        for member in members[1:]:
+            union(members[0], member)
+
+    oldest_by_root: dict[str, dict] = {}
+    for bot_id in parent:
+        record = ages.get(bot_id)
+        if not record or not record.get("date"):
             continue
-        oldest = min(dated, key=lambda record: _instant(record["date"]))
-        for bot_id in members:
-            if bot_id in resolved:
+        root = find(bot_id)
+        current = oldest_by_root.get(root)
+        if current is None or _instant(record["date"]) < _instant(current["date"]):
+            oldest_by_root[root] = record
+
+    resolved = dict(ages)
+    for bot_id in list(resolved):
+        if bot_id in parent:
+            oldest = oldest_by_root.get(find(bot_id))
+            if oldest:
                 resolved[bot_id] = oldest
     return resolved
