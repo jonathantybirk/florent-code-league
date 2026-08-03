@@ -8,7 +8,7 @@ from fcode import Controller, EntityType, Environment, GameError, Position
 
 import doctrine
 from atlas import identify_visible
-from constants import (PANTHEON_RAIDERS, PANTHEON_RING_SITES,
+from constants import (LAUNCH_RANGE_SQ, PANTHEON_RAIDERS, PANTHEON_RING_SITES,
                        PANTHEON_RING_SITES_FORTIFY,
     CLAIM_SLOTS,
     CORE_THREAT_RADIUS_SQ,
@@ -1448,12 +1448,37 @@ def _launcher_ring_targets(p, enemy_core):
             continue
         targets.append(site)
 
-    # Enemy-facing first. An edge-aware variant that ranked sites by how much
-    # of their throw disc stays on the map was tried here to fix sweden, where
-    # our pad lands on (0,13)'s edge while Pantheon's sits one tile in at
-    # (1,11): it moved sweden 71 -> 68 and cost twins 21 -> 27 and aurora
-    # 43 -> 50, so it is recorded as a measured failure rather than kept.
-    targets.sort(key=lambda site: (_distance_sq(site, enemy_core), site))
+    # Rank the pad by what it can actually deliver: the shortest *walk* from
+    # the best tile it can throw a passenger onto to the enemy Core. That is
+    # the same objective the throw itself uses, lifted one level -- choosing
+    # where to put the pad rather than where to throw from it.
+    #
+    # It matters wherever the map clips the throw disc. On sweden our Core is
+    # at (0,13) and the nearest ring site, (0,11), lies flat against the west
+    # edge: half its disc is off the map and the best it can reach is (2,8).
+    # One tile inward at (1,11) the disc is whole and the same throw reaches
+    # (2,6), two tiles nearer the enemy Core -- which is exactly where the real
+    # Pantheon puts it, and it kills on round 18 where the edge pad takes 212.
+    #
+    # Ranking by raw disc *area* was tried first and is a measured failure
+    # (sweden 71 -> 68, twins 21 -> 27, aurora 43 -> 50): area is only a proxy,
+    # and maximising it drags the pad off the line the raid actually walks.
+    # Distance-to-delivery is the objective itself and costs nothing elsewhere.
+    reach = _distance_map(p, tuple(enemy_core))
+
+    def delivery(site):
+        best = None
+        for dx in range(-5, 6):
+            for dy in range(-5, 6):
+                if dx * dx + dy * dy > LAUNCH_RANGE_SQ:
+                    continue
+                walk = reach.get((site[0] + dx, site[1] + dy))
+                if walk is not None and (best is None or walk < best):
+                    best = walk
+        return best if best is not None else 1 << 20
+
+    targets.sort(key=lambda site: (delivery(site),
+                                   _distance_sq(site, enemy_core), site))
     return [Position(*site) for site in targets]
 
 
