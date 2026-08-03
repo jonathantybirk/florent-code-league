@@ -100,6 +100,32 @@ which is this bot's own chassis *with* the atlas and without the guard — on
 the pool the two advantages cancel almost exactly. Off the pool they do not,
 because only one of them still exists.
 
+### The guard's allowance escalates on emplaced turrets, not on damage
+
+A flat cap of two is the right shape while the enemy is *walking* to our Core
+and the wrong one once they are building at it. Traced on `runestone`: the
+guard answered their Builder on rounds 10 and 12, spent its allowance, then
+watched two more Gunners go up on tiles none of our turrets could reach — a
+Gunner fires along eight rays only, so a turret sited to hit a Builder that was
+standing somewhere else frequently cannot engage what replaces it.
+
+The escalation that already existed is `_defend_core`'s `1 + damage // 180`.
+A Gunner three tiles out deals 10 a round for as long as it stands, so waiting
+for 180 of them before allowing a second answer concedes eighteen rounds. The
+emplaced turret is the signal; how much damage it has managed is not.
+`_guard_allowance` therefore returns `MAX_GUARD_GUNNERS + one per live enemy
+turret inside the guard radius`.
+
+Found on a traced loss, then **pre-registered and replicated** on an
+independent map set before shipping — the same discipline that killed the
+counter-battery idea:
+
+| | control | escalating |
+|---|---|---|
+| 30 generated maps (set 2) | 74/120 0.617 | **82/120 0.683** |
+| 40 generated maps (set 3) | 99/160 0.619 | **108/160 0.675** |
+| 21 official maps | 134/168 0.798 | 135/168 0.804 |
+
 ### On terrain nobody has tuned against
 
 24 random symmetric maps from `tools/generate_maps.py`, both seats, against the
