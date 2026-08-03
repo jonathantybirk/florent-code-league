@@ -7,6 +7,7 @@ from another, and that an existing single-branch state file survives the upgrade
 
 from __future__ import annotations
 
+import csv
 import json
 
 import pytest
@@ -134,7 +135,11 @@ def test_implementation_rated_from_one_branch_is_not_rescheduled_from_another(tm
 
     monkeypatch.setattr(automation, "discover", fake_discover)
     # hpc must never be reached: nothing here is unseen.
-    monkeypatch.setattr(automation.hpc, "config", lambda: pytest.fail("scheduled a known copy"))
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status",
+                        lambda tid, s=None: {"total": 1, "done": 0})
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda *a, **k: pytest.fail("scheduled a known copy"))
 
     assert automation.run_once(
         state_path=state_path, canonical_run=None, sources=DEFAULT_SOURCES,
@@ -237,8 +242,11 @@ def test_bots_under_test_are_not_scheduled_again(tmp_path, monkeypatch):
     monkeypatch.setattr(automation, "derive_ledger", lambda: ({}, {spec.bot_id: spec}))
     monkeypatch.setattr(automation, "discover",
                         lambda ref, prefix, excludes=(): [spec] if prefix == "bots/jon" else [])
-    monkeypatch.setattr(automation.hpc, "config",
-                        lambda: pytest.fail("scheduled a bot that is already under test"))
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status",
+                        lambda tid, s=None: {"total": 1, "done": 0})
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda *a, **k: pytest.fail("scheduled a bot that is already under test"))
 
     assert automation.run_once(
         state_path=state_path, canonical_run=None, sources=DEFAULT_SOURCES,
@@ -268,8 +276,11 @@ def test_a_new_bot_waits_while_another_run_is_still_in_flight(tmp_path, monkeypa
     monkeypatch.setattr(automation, "derive_ledger", lambda: ({}, {other.bot_id: other}))
     monkeypatch.setattr(automation, "discover",
                         lambda ref, prefix, excludes=(): [fresh] if prefix == "bots/jon" else [])
-    monkeypatch.setattr(automation.hpc, "config",
-                        lambda: pytest.fail("planned a run while another was in flight"))
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status",
+                        lambda tid, s=None: {"total": 1, "done": 0})
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda *a, **k: pytest.fail("planned a run while another was in flight"))
 
     assert automation.run_once(
         state_path=state_path, canonical_run=None, sources=DEFAULT_SOURCES,
@@ -299,8 +310,11 @@ def test_in_flight_detection_survives_a_reminted_bot_id(tmp_path, monkeypatch):
     monkeypatch.setattr(automation, "derive_ledger", lambda: ({}, {old.bot_id: old}))
     monkeypatch.setattr(automation, "discover",
                         lambda ref, prefix, excludes=(): [new] if prefix == "bots/luc" else [])
-    monkeypatch.setattr(automation.hpc, "config",
-                        lambda: pytest.fail("re-scheduled code already under test"))
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status",
+                        lambda tid, s=None: {"total": 1, "done": 0})
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda *a, **k: pytest.fail("re-scheduled code already under test"))
 
     captured = []
     monkeypatch.setattr("builtins.print", lambda *a, **k: captured.append(" ".join(map(str, a))))
@@ -578,3 +592,90 @@ def test_push_data_names_the_runs_it_is_committing(monkeypatch):
                              status="?? tournament/runs/auto-x/\n")
     commit = next(c for c in calls if c[:2] == ["git", "commit"])
     assert commit[-1] == "Add tournament results for auto-x"
+
+
+def _stranded_run(root, tid, *, merged: int, scheduled: int) -> None:
+    """A run whose schedule is only partly present in matches.csv."""
+    run_dir = root / tid
+    run_dir.mkdir(parents=True)
+    entries = [
+        {"match_id": f"m{i}", "bot_a": "alpha", "bot_b": "beta", "kind": "rating"}
+        for i in range(scheduled)
+    ]
+    (run_dir / "schedule.jsonl").write_text(
+        "\n".join(json.dumps(entry) for entry in entries) + "\n"
+    )
+    with open(run_dir / "matches.csv", "w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["match_id", "bot_a", "bot_b", "kind"])
+        writer.writeheader()
+        for entry in entries[:merged]:
+            writer.writerow(entry)
+
+
+def test_a_finished_run_missing_local_results_is_fetched_not_waited_on(tmp_path, monkeypatch):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-stranded", merged=95, scheduled=100)
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    # The cluster says every match is done; the five that never arrived are a transfer problem.
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {"total": 100, "done": 100})
+
+    fetched = []
+
+    def fake_fetch(tid, settings=None):
+        fetched.append(tid)
+        _stranded_run(root, "tmp", merged=0, scheduled=0)  # no-op guard against reuse
+        run_dir = root / tid
+        entries = [
+            {"match_id": f"m{i}", "bot_a": "alpha", "bot_b": "beta", "kind": "rating"}
+            for i in range(100)
+        ]
+        with open(run_dir / "matches.csv", "w", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=["match_id", "bot_a", "bot_b", "kind"])
+            writer.writeheader()
+            writer.writerows(entries)
+        return 100
+
+    monkeypatch.setattr(automation.hpc, "fetch", fake_fetch)
+
+    assert automation.unfinished_runs()  # blocked before
+    recovered = automation.recover_stranded_results(["auto-stranded"])
+    assert fetched == ["auto-stranded"]
+    assert recovered == ["auto-stranded"]
+    assert not automation.unfinished_runs()  # unblocked after
+
+
+def test_a_run_still_executing_is_left_alone(tmp_path, monkeypatch):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-running", merged=40, scheduled=100)
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {"total": 100, "done": 40})
+    monkeypatch.setattr(
+        automation.hpc, "fetch",
+        lambda tid, settings=None: pytest.fail("must not fetch a run that is still executing"),
+    )
+
+    assert automation.recover_stranded_results(["auto-running"]) == []
+    assert automation.unfinished_runs()  # still correctly treated as in flight
+
+
+def test_an_unreachable_cluster_leaves_the_run_in_flight(tmp_path, monkeypatch):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-offline", merged=95, scheduled=100)
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+
+    def boom(tid, settings=None):
+        raise automation.hpc.HpcError("ssh: connection refused")
+
+    monkeypatch.setattr(automation.hpc, "status", boom)
+    # Deferring is the safe outcome, so a cluster hiccup must not raise out of the tick.
+    assert automation.recover_stranded_results(["auto-offline"]) == []
+    assert automation.unfinished_runs()
