@@ -32,10 +32,16 @@ def test_source_rejects_malformed_input():
         Source.parse("x/jon")
 
 
-def test_default_sources_cover_the_three_active_branches():
-    assert {source.branch for source in DEFAULT_SOURCES} == {"x/jon", "x/luc", "elias_dev"}
-    # Each contributor's own subtree, so vendored copies of rivals are never discovered.
-    assert all(source.prefix.startswith("bots/") for source in DEFAULT_SOURCES)
+def test_default_sources_cover_the_active_branches():
+    assert {source.branch for source in DEFAULT_SOURCES} == {
+        "x/jon", "x/luc", "elias_dev", "viktor",
+    }
+    # Every source is scoped under bots/. Contributors with their own directory get that subtree,
+    # so vendored copies of rivals are never discovered; viktor works at the top level and instead
+    # names its non-entrants explicitly.
+    assert all(source.prefix.startswith("bots") for source in DEFAULT_SOURCES)
+    for source in DEFAULT_SOURCES:
+        assert source.prefix.startswith("bots/") or source.excludes
 
 
 def test_state_v1_migrates_to_multi_branch(tmp_path, monkeypatch):
@@ -77,7 +83,7 @@ def test_state_v1_migrates_to_multi_branch(tmp_path, monkeypatch):
     state = json.loads(state_path.read_text())
     assert state["version"] == STATE_VERSION
     assert state["tested_hashes"] == {"deadbeef": {"representative": "a@1111111", "aliases": []}}
-    assert set(state["last_seen_refs"]) == {"x/jon", "x/luc", "elias_dev"}
+    assert set(state["last_seen_refs"]) == {source.branch for source in DEFAULT_SOURCES}
 
 
 def test_every_watched_branch_is_fetched(tmp_path, monkeypatch):
@@ -100,7 +106,7 @@ def test_every_watched_branch_is_fetched(tmp_path, monkeypatch):
         fetch_remote="origin", site_repo=tmp_path, publish=False, fetch=True, dry_run=False,
     )
     fetch = next(c for c in calls if c[:2] == ["git", "fetch"])
-    assert set(fetch[3:]) == {"x/jon", "x/luc", "elias_dev"}
+    assert set(fetch[3:]) == {source.branch for source in DEFAULT_SOURCES}
 
 
 def test_implementation_rated_from_one_branch_is_not_rescheduled_from_another(tmp_path, monkeypatch):

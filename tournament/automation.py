@@ -75,6 +75,15 @@ DEFAULT_SOURCES = (
     Source("x/jon", "bots/jon"),
     Source("x/luc", "bots/luc"),
     Source("elias_dev", "bots/elias"),
+    # Viktor keeps his bots at the top level instead of a personal directory, so the prefix is all
+    # of bots/ minus the scratch bots and the starter template that also lives on main. bots/test
+    # is planned as a directory holding many scratch bots, so it needs the subtree glob as well as
+    # its own path; named exactly so a real bot like bots/testudo still enters.
+    Source(
+        "viktor",
+        "bots",
+        excludes=("bots/tester", "bots/test", "bots/test/*", "bots/starter"),
+    ),
 )
 DEFAULT_STATE = REPO_ROOT / "tournament" / "automation-state.json"
 DEFAULT_LOCK = REPO_ROOT / "tournament" / "automation.lock"
