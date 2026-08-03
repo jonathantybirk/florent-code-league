@@ -15,9 +15,18 @@ ahead of raw coverage:
 `.replay26` is protobuf. The full schema is embedded as a JSON blob in the
 bundled visualiser (`fcode/data/visualiser/assets/main-DFlSC1w7.js`, search
 `nested:{battlecode:`) — extract it and the whole match decodes: every
-placement, move, throw, shot, HP delta, ammo conversion, **and `botOutput`,
-which carries the other team's stdout**. Our own `PLAN_FAILED` lines come back
-out of a replay this way, which is by far the fastest way to debug an opening.
+placement, move, throw, shot, HP delta and ammo conversion.
+
+**Downloaded replays carry no stdout.** The `BotOutput` message survives, but
+only its `id` and `execTimeUs` fields: across 20 ladder replays, 0 stdout
+events and 0 `tled` flags. Locally (`fcode run`) stdout *is* recorded, which is
+how our own `PLAN_FAILED` lines come back out of a replay — the fastest way
+there is to debug an opening. Do not expect to read anyone else's prints; the
+schema has the field but the server strips it.
+
+What downloaded replays *do* give away is `execTimeUs` per unit per round —
+the opponent's real CPU time. Pantheon samples at 304-1,749 us, so the top of
+the ladder is nowhere near the 10 ms limit.
 
 Pull replays with `fcode match replay <match-id>`; `fcode match list --team
 <id>` finds top-vs-top games (widen with `COLUMNS=250` to get full IDs).
