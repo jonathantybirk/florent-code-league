@@ -147,6 +147,37 @@ turn drops from 4,198 us to 2,994 us. Worth having, because the cluster's
 compliance stage measured valkyrie at 5,944 us where this laptop said 3,993 --
 cluster hardware is materially slower and the 10 ms limit is enforced there.
 
+### The Launcher caps made a new Nash pillar, not a better bot
+
+Full ledger, auto-f11bf027e3d4: 98 bots, 285,183 matches.
+
+    rank  bot                    melo    win rate   nash prob
+    1     vigil@18b749d          457.0   0.8731     0
+    2     vigil@e22eda8          456.0   0.8832     0.500001
+    3     vigil@e267eeb          452.0   0.8824     0
+    4     warden@3318ffd         451.5   0.8851     0
+    5     ragnarok@79582fc       451.1   0.8839     0
+    6     valkyrie@d181312       450.0   0.8834     0
+    7     warden_walk@3318ffd    435.1   0.8698     0.499999   (rank_delta +6)
+    13    ragnarok_fair@79582fc  347.0   0.7899     0          (rank_delta -5)
+
+**The Nash support is now {vigil@e22eda8, warden_walk} at 50/50.** The capped
+build displaced ragnarok *and* ragnarok_fair from the core outright.
+
+Read that carefully, because it is not the win it first looks like.
+warden_walk has the *lowest* mElo and the *lowest* win rate of the six bots
+above it. It is not a better bot on average; it is a strategically distinct one
+-- it beats things the others cannot, which is exactly what earns Nash support
+and exactly what mElo discounts. Capping Launchers did not collapse the cycle,
+it added a pillar to it.
+
+For "beat everything on 70% of maps" the bot to build on is **warden**, which
+carries the highest raw win rate in the entire field (0.8851) at rank 4 --
+though warden, ragnarok and valkyrie sit within 0.2 points of each other over
+4,074 games apiece, which is inside the noise. The honest summary is that the
+ragnarok line has four bots statistically tied at the top and one specialist
+that is half of the equilibrium.
+
 ### Cluster verdicts, full samples only
 
     valkyrie@d181312   89.7%  (3906)
