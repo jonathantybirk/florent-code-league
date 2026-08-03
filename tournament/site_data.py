@@ -16,6 +16,7 @@ from pathlib import Path
 
 from maps.generated.generate_maps import read_map
 from tournament import plan as planning
+from tournament import ages as ages_module
 from tournament import registry
 from tournament.fairness import is_unfair
 from tournament import report
@@ -172,6 +173,7 @@ def _ranking_rows(
                 "bot_id": bot_id,
                 "name": info.get("name", rating.get("name") or bot_id.split("@")[0]),
                 "commit": rating.get("commit") or info.get("commit", "")[:7],
+                "first_published": info.get("first_published"),
                 "slug": _slug(bot_id),
                 "tags": tags,
                 "unfair": is_unfair(tags, info.get("commit", ""), info.get("path", "")),
@@ -285,6 +287,21 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     # whose pre-`kind` CSV cells are empty.
     detail_matches = [row for row in benchmark_matches if row.get("kind") == "rating"]
     metadata = _metadata(run_dir)
+    duplicate_rows = []
+    duplicate_path = run_dir / "duplicates.csv"
+    if duplicate_path.exists():
+        duplicate_rows = _read(duplicate_path)
+    # A pinned sha only says when the branch moved, so every row also carries the date its code
+    # was first published. Duplicate groups collapse to the oldest member: the survivor stands
+    # for the whole group, and dating it by its own commit would make a re-run of old work look
+    # new. Carried on the metadata so it reaches map-scoped rows too, which show commits as well.
+    ages = ages_module.apply_duplicate_groups(
+        ages_module.resolve(metadata),
+        [tuple(row["members"].split()) for row in duplicate_rows if row.get("members")],
+    )
+    for bot_id, record in ages.items():
+        if bot_id in metadata:
+            metadata[bot_id] = {**metadata[bot_id], "first_published": record}
     compliance = _compliance(run_dir)
     within_time_ids = {
         bot_id
@@ -485,11 +502,6 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     for path in details_dir.glob("*.json"):
         if path.name not in expected_files:
             path.unlink()
-
-    duplicate_rows = []
-    duplicate_path = run_dir / "duplicates.csv"
-    if duplicate_path.exists():
-        duplicate_rows = _read(duplicate_path)
 
     maps_dir = output_dir / "maps"
     maps_dir.mkdir(parents=True, exist_ok=True)
