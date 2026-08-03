@@ -322,9 +322,9 @@ actually seen, and it was **static**, not a patrol.
 `_threat_bearing` aims the post along the mean *direction* of those sightings.
 The direction, not the centroid: sightings are recorded near our Core by
 construction, so their mean sits almost on top of it and the first version of
-this collapsed to standing at home (bridge: 7,240 titanium, exactly the
-"go home" number). Projecting the bearing back out past the picket band fixes
-it (9,480 again). `_picket_route` then spreads three posts >= 4 apart across
+this collapsed to standing at home (bridge against vigil: 7,240 titanium
+collected, exactly the "go home" number). Projecting the bearing back out past
+the picket band fixes it (9,480, level with the shipped build's 9,490). `_picket_route` then spreads three posts >= 4 apart across
 that sector and walks them in a cycle.
 
     shipped (paces)                     131/168  0.780   110/160  0.688
