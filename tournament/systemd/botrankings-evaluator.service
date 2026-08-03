@@ -1,5 +1,5 @@
 [Unit]
-Description=Discover, evaluate, and publish new Florent Code League bots (jon, luc, elias)
+Description=Discover, evaluate, and publish new Florent Code League bots (jon, luc, elias, viktor)
 After=network-online.target
 Wants=network-online.target
 
@@ -13,7 +13,9 @@ ExecStart=/home/Ucals/projects/florent-code-league-ci/.venv/bin/python -m tourna
     --canonical-run jon-vanguard-818f3b4 \
     --source x/jon:bots/jon \
     --source x/luc:bots/luc \
-    --source elias_dev:bots/elias
+    --source elias_dev:bots/elias \
+    --source viktor:bots:bots/tester,bots/test,bots/test/*,bots/starter \
+    --self-update-branch x/tournament
 Nice=10
 IOSchedulingClass=idle
 
