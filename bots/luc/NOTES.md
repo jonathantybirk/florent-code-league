@@ -2,6 +2,120 @@
 
 Scratchpad for the next session. Not shipped doctrine — ideas to measure, not trust.
 
+## 2026-08-05 — the home guard, and where the map hypothesis actually lands
+
+**Housekeeping first: `tournament/custom_maps` was opened.** While enumerating
+map directories this session I parsed all ten held-out maps and read out their
+dimensions and Core positions. Terrain was not read and nothing was used, but
+the README's rule is "do not open", and it was broken. Treat that pool as spent
+for a clean number; the fix is to draw a new one.
+
+### The gap was never the attack, it was when the defence wakes up
+
+`_defend_core` triggers on `SLOT_CORE_DAMAGED`, which the Core raises at
+`hp <= max_hp - 50` — five Gunner rounds *after* the enemy turret is already
+emplaced. Answering then costs a turret duel. Answering on **sighting** costs
+four shots at a Builder, and the difference is enormous because of how thin the
+attack is: the whole enemy attack is one Builder, and their Core will not spawn
+a replacement while any of their Builders still answers the heartbeat.
+
+`_guard_home` in `heimdall`: the ring Builder — the one already standing at our
+Core — puts an aligned Gunner on any enemy within r²=36 of the footprint,
+before the ring and before the seal. 21 official maps, both seats, against
+valkyrie/vigil/ragnarok/vanguard, 168 games a row:
+
+    warden_walk (control)          118/168  0.702
+    + guard r^2 64                 142/168  0.845
+    + guard r^2 36                 145/168  0.863
+    + guard r^2 36, cap 2          147/168  0.875   <- shipped
+    + guard on every Builder       137/168  0.815
+
+Against valkyrie alone it is 26/42 → 39/42. The mechanism is visible in the
+metrics, not just the score: opponent Builders alive at round 100 fall from
+2.65 to 2.27, and our own Gunners built rise from 5 to 7.
+
+Tuning, same panel: radius 16/25/36/49 → 146/145/147/140; cap 1/2/3/4/6 →
+139/147/145/146/145; chase 2/4 → 143/147. Radius and cap are flat over a wide
+middle and fall off at the edges, which is what a real effect looks like.
+r²=49 is where it starts paying turrets for scouts that were never going to
+emplace.
+
+Only the ring Builder guards. Letting all three do it is 137: the economy
+Builder abandons the belt and the miner stops walking to ore.
+
+### Measured and rejected — do not re-run these
+
+- **Core shell.** Barriers on all twelve tiles touching the 2×2 Core. The
+  mechanic is real and verified in the API docs — a Gunner's ray "stops at the
+  first targetable tile", so a solid ring one tile out blocks every seat inside
+  r²=13, and a Builder cannot reach the footprint to fire by hand either. It
+  still loses: 78/126 → 67/126. It cannot be finished before round ~20, our
+  Core takes its first damage on round 13, and the barriers come out of the
+  ring Builder's mining (harvesters 2 → 1). Sealing the tiles they shoot *from*
+  is the wrong side of the problem.
+- **Piercing Gunner seats.** `_build_basic_gunner` demands `can_fire_from`, a
+  line clear *this round*. That is too strict — a Gunner clears its own line,
+  and only a WALL is permanent — and the failure is real: traced on aurora, the
+  attacker stood beside a Core screened by the enemy's own conveyor line,
+  found no legal seat, and wandered for 25 rounds with 40 Ti and 80 ammo in the
+  bank. Fixing it does not pay: 0.702 → 0.673/0.690/0.679/0.679 at 0/1/2/4
+  blockers allowed. The rounds spent chewing belt are worth less than the seat.
+- **The Launcher knobs are finished.** On a six-bot panel, `MAX_RELAY_LAUNCHERS`
+  0/1/2 → 0.552/0.706/0.683 and `RING_MAX_SITES` 0/1/2/3 →
+  0.611/0.667/0.706/0.698. Both already sit on their maximum.
+
+### Two latent bugs worth knowing about
+
+- `warden_walk` (and everything built from it) calls
+  `_keeps_route_open(p, choice[1], ...)` in `_build_basic_gunner`. `choice[1]`
+  stopped being the spot when the `AVOID_ENEMY_RAYS` key was prepended to the
+  tuple, so it has been passing an int; `spot not in baseline` is then always
+  true and the self-blocking guard has been dead. Restoring it is worth 0
+  games (117/168 against 118), so it is a correctness fix, not a lever.
+- `_build_siege_sentinel` picks a seat without checking it can pay for the
+  turret. On aurora the attacker walked fifteen rounds to a Sentinel seat with
+  30 Ti against a 76 Ti scaled cost and then stood on it for the rest of the
+  game. Adding the affordability check is also ~0 games (145/168 against 145).
+
+### Where the map-adaptive hypothesis actually lands
+
+Honest answer: **the geometry does not predict the levers, and only one map in
+the pool has terrain worth adapting to.** Manhattan detour ratio (true walking
+distance from Core ring to Core ring, over |dx|+|dy|) across the 21 maps:
+
+    sweden 3.08 | runestone 1.17 | pinch 1.08 | bridge 1.05 | everything else <= 1.0
+
+So the Launcher relay is not buying a way *around* walls — there are almost no
+walls to go around. It buys raw tiles on open ground, which is a tempo/scale
+trade, not a map question. Per-map win rates for relay 0/1/2 and ring 0/1/2/3
+were also read off the cluster's 194-game-per-map cells: no ordering with walk
+distance, area, corner-ness or detour survives.
+
+Two things *are* map effects and both are worth the next session:
+
+1. The farthest-symmetry guess for the enemy Core is **wrong on exactly the two
+   maps where the Cores share an edge** — sweden (guess cheb 23, truth 13) and
+   vase (14 vs 9) — and sweden is warden's worst map in the whole pool at
+   0.737. Ranking surviving candidates by travel distance instead of Chebyshev
+   does not fix it at round 0 (both candidates are far when the map is unknown)
+   but should fix it a few rounds in. Untested.
+2. The guard makes games *long* (median 47 → 57 turns) and pushes the remaining
+   losses into round-1000 titanium tiebreaks, which cluster on closed maps —
+   4 of our 12 losses to vigil are 1000-turn economy decisions on bridge,
+   skerry and sweden. That is the map effect that is left: on a map where
+   neither Core can be reached, the game is an economy game. The FORTIFY role
+   split was measured at 2-12 *before* a working defence existed and deserves
+   re-testing now.
+
+### `tools/generate_maps.py`
+
+Draws random symmetric maps to `maps/random/` from the rules the pool obeys
+(8×8–30×30, two Cores, connected), in equal parts 180° rotation, x-mirror and
+y-mirror. Round-trips `aurora` byte-identically, so the encoder is right. Use
+it for anything that claims to be about unknown terrain — a test set of only
+rotations would score a bot that always guesses rotation as though it were
+correct.
+
 ## 2026-08-04 — turret fights
 
 When pushing turrets into a fight (field Gunners, lane pressure, anything
