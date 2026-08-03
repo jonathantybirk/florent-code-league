@@ -470,13 +470,39 @@ Three attempted fixes, all measured on vase both seats and all failing:
     explore only reachable stride points still 0 in seat a, and seat b went
                                          from a win to a loss
 
-So the diagnosis is solid and the cure is not. The next attempt should probably
-start at `_move_while_stuck`: a move that oscillates should not count as
-progress, and a Builder that has not changed tile in N rounds should be treated
-as stuck no matter what it reports. That interacts with `_write_off`, which
-retires the Builder for good because the Core only replaces one when *every*
-Builder is dead -- so it likely needs the reinforcement path too, and that
-measured -30pp when tried on its own.
+**Solved, and it needed four links, not one.** The root cause is not the miner
+at all: an enemy Gunner shoots the tile feeding our Core on round 7, and
+`p.network_plan` -- the only record that a conveyor belonged there -- is
+*per-Builder*. The miner that laid it has walked away and cannot see the hole;
+every other Builder, including every replacement the Core spawns, has no record
+of it. The line can never be mended by anyone.
+
+What works is a chain, and each link alone does nothing:
+
+1. **See the hole without remembering it.** A Conveyor delivers to the tile it
+   faces; if that tile is empty the line ends in mid-air. That is inferable
+   from vision by any Builder standing near it, no shared memory needed.
+2. **Notice the economy is dead at all.** The Core cannot see the belt but it
+   can see that titanium has stopped arriving -- sum the positive round-to-round
+   changes in the team balance over 60 rounds and compare against the passive
+   rate of 2.5/round. `income_dead` fires correctly on vase at round 120.
+   Published as bit 2 of `SLOT_CORE_DAMAGED`; there was no free slot left.
+3. **Replace the body**, but *only* when income is dead and we are under the
+   opening headcount. Unconditional refilling measured -30pp; this fires
+   almost never.
+4. **Make the replacement a miner.** Roles are derived from spawn order, so
+   everything past the opening is an attacker -- the Builder spawned to restart
+   a dead economy walked off to fight and the economy stayed dead. This was the
+   link that made the other three pay.
+
+vase seat a goes from **0 to 2,230** titanium collected. Cost: exactly nothing
+on the pool (154/210, identical per-opponent to the build without it) and one
+game in 160 on generated maps. Shipped on that basis -- a game with no economy
+at all is an automatic loss whenever it happens, and the panel simply does not
+contain many of them.
+
+Credit where due: the income watchdog was Lucas's suggestion, and it is the
+right instrument precisely because it does not depend on any Builder's vision.
 
 ### Three washes, and the point at which to stop
 

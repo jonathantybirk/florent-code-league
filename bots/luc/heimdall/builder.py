@@ -14,11 +14,13 @@ from constants import (
     MAX_GUARD_GUNNERS,
     CORE_THREAT_RADIUS_SQ,
     CPU_SOFT_BUDGET_US,
+    ECONOMY_DEAD_FLAG,
     D4_DELTAS,
     D8,
     ECON_EXPAND_ROUND,
     FACING,
     LAUNCHER_BUILDER_INDEX,
+    MAX_OPENING_BUILDERS,
     LAUNCHER_BUILDERS,
     LAUNCH_DIRECTION_BITS,
     LAUNCH_REJECTION_FLAG,
@@ -44,6 +46,8 @@ from constants import (
     SIEGE_BARRIER_ENABLED,
     SIEGE_BARRIER_RESERVE,
     RING_RADIUS,
+    HEARTBEAT_MASK,
+    HEARTBEAT_SHIFT,
     SLOT_BUILDER_HEARTBEAT,
     SLOT_BUILDER_TICKET,
     SLOT_CONSTRUCTION_LOCK,
@@ -79,6 +83,10 @@ MOVABLE_BUILD_BLOCKER_GRACE = 3
 STALL_REPORT_ROUNDS = 5
 DEFERRED_ORE_ROUNDS = 8
 MIN_AMMO_FOR_GUNNER = 20
+# A Builder confined to this few distinct tiles over this many rounds of
+# blocked movement is not making progress, whatever it reports.
+CONFINEMENT_WINDOW = 24
+CONFINEMENT_TILES = 3
 
 
 def run(p: "Player", ct: Controller) -> None:
@@ -96,10 +104,6 @@ def run(p: "Player", ct: Controller) -> None:
 
 
 def _run(p, ct):
-    # Store round + 1 so zero remains the unambiguous "no Builder seen" value.
-    # All Builders publish the same value; the Core only needs proof that at
-    # least one of them was alive during the preceding round.
-    ct.write_store(SLOT_BUILDER_HEARTBEAT, ct.get_current_round() + 1)
     if not hasattr(p, "builder_index"):
         p.builder_index = ct.read_store(SLOT_BUILDER_TICKET)
         ct.write_store(SLOT_BUILDER_TICKET, p.builder_index + 1)
@@ -138,6 +142,7 @@ def _run(p, ct):
         p.pending_build = None
         p.rejected_build_sites = set()
         p.deferred_ores = {}
+        p.recent_tiles = []
         p.last_progress_round = ct.get_current_round()
         p.last_progress = "spawned"
         p.stall_reported = False
@@ -165,12 +170,31 @@ def _run(p, ct):
             )
             p.is_attacker = (p.builder_index >= p.economy_builders
                              and not p.is_launcher_builder)
+        # A Builder spawned *because* the titanium stopped arriving is a miner,
+        # whatever its index says: the role table is derived from spawn order
+        # and makes everything past the opening an attacker.
+        if (p.builder_index >= MAX_OPENING_BUILDERS
+                and (ct.read_store(SLOT_CORE_DAMAGED) & ECONOMY_DEAD_FLAG)):
+            p.is_attacker = False
+            p.is_launcher_builder = False
+            p.economy_builders = p.builder_index + 1
         p.siege_sentinel = None
         p.sentinel_wrap = []
         # No map oracle. Terrain, ore and the enemy Core come only from what
         # this Builder has seen and from the symmetry inference below, so the
         # bot plays a generated map, the held-out set and the final exactly the
         # way it plays the published pool.
+    # Heartbeat: round stamp in the high bits, one bit per Builder in the low
+    # ones. Store round + 1 so zero stays the unambiguous "no Builder seen"
+    # value. Builders run in spawn order within a round, so the first one to
+    # write in a new round resets the mask and the rest OR themselves into it;
+    # the Core, which runs before all of them, reads the previous round's mask
+    # and sees exactly who was alive.
+    stamp = ct.get_current_round() + 1
+    previous = ct.read_store(SLOT_BUILDER_HEARTBEAT)
+    mask = previous & HEARTBEAT_MASK if previous >> HEARTBEAT_SHIFT == stamp else 0
+    mask |= 1 << min(p.builder_index, HEARTBEAT_SHIFT - 1)
+    ct.write_store(SLOT_BUILDER_HEARTBEAT, (stamp << HEARTBEAT_SHIFT) | mask)
     _sense(p, ct)
     _report_stall(p, ct)
     _update_enemy_core_inference(p, ct)
@@ -180,7 +204,16 @@ def _run(p, ct):
     # price the team pays. Retire it before it gets a turn to do anything else.
     if _write_off(p, ct):
         return
-    alarm = ct.read_store(SLOT_CORE_DAMAGED)
+    raw_alarm = ct.read_store(SLOT_CORE_DAMAGED)
+    alarm = raw_alarm & ~ECONOMY_DEAD_FLAG
+    # Titanium has stopped arriving. Somewhere upstream a conveyor is gone and
+    # no Builder can see it, so walk the line until it is in sight -- that is
+    # all `_repair_network` needs to mend it.
+    if (raw_alarm & ECONOMY_DEAD_FLAG) and p.builder_index == 0 and p.network_plan:
+        hole = _unseen_network_tile(p, ct)
+        if hole is not None:
+            _step(p, ct, Position(*hole), False, allow_launcher=False)
+            return
     if p.builder_index == 0 and alarm:
         _defend_core(p, ct)
         return
@@ -475,7 +508,20 @@ def _wait_for_construction_lock(p, ct):
 
 
 def _broken_network_tiles(p, ct):
-    """Conveyor tiles we laid that are now visibly empty."""
+    """Holes in our belt: ones we remember laying, and ones anyone can see.
+
+    `p.network_plan` is per-Builder, so a Builder that did not lay a line has no
+    record of it and could never mend it -- which includes every replacement the
+    Core spawns after a miner dies. Traced on vase: an enemy Gunner shot the
+    tile feeding our Core on round 7, the Harvester upstream mined into a dead
+    end for the remaining 993 rounds, and the fresh miner spawned *onto that
+    very tile* did not know a conveyor belonged there.
+
+    The second rule needs no memory at all. A Conveyor delivers to the tile it
+    faces; if that tile is empty, the line ends in mid-air and everything
+    upstream of it is mining into nothing. That is visible to anyone standing
+    close enough to see both tiles.
+    """
     broken = []
     for tile in p.network_plan:
         position = Position(*tile)
@@ -483,6 +529,18 @@ def _broken_network_tiles(p, ct):
             continue
         if ct.get_tile_building_id(position) is None:
             broken.append(tile)
+    for tile, facing in p.conveyors.items():
+        dx, dy = facing.delta()
+        spot = (tile[0] + dx, tile[1] + dy)
+        if (spot in broken or not _inside(p, spot) or spot in p.walls
+                or spot in p.ores or spot in p.foot):
+            continue
+        position = Position(*spot)
+        if not ct.is_in_vision(position):
+            continue
+        if ct.get_tile_building_id(position) is None:
+            broken.append(spot)
+            p.network_plan.setdefault(spot, facing)
     return broken
 
 
@@ -1125,7 +1183,21 @@ def _move_while_stuck(p, ct, target):
         return False
     *_, direction = min(candidates)
     ct.move(direction)
-    _mark_progress(p, ct, "moved while blocked", tuple(ct.get_position()))
+    here = tuple(ct.get_position())
+    # Moving is not progress if it is the same two tiles over and over. This
+    # function picks the neighbour nearest the target, and that choice reverses
+    # the moment the Builder steps, so a Builder with an unreachable goal
+    # oscillates -- and the old unconditional _mark_progress kept
+    # `last_progress_round` fresh, so `_report_stall` and `_write_off` never
+    # fired. Traced on vase: the miner sat in the pocket at (0, 8) from round 20
+    # to round 1000, reporting "moved while blocked" every single round.
+    p.recent_tiles.append(here)
+    if len(p.recent_tiles) > CONFINEMENT_WINDOW:
+        del p.recent_tiles[:-CONFINEMENT_WINDOW]
+    confined = (len(p.recent_tiles) >= CONFINEMENT_WINDOW
+                and len(set(p.recent_tiles)) <= CONFINEMENT_TILES)
+    if not confined:
+        _mark_progress(p, ct, "moved while blocked", here)
     return True
 
 
@@ -1284,6 +1356,18 @@ def _distance_map(p, source):
             dist[nxt] = dist[cur] + 1
             queue.append(nxt)
     return dist
+
+
+def _unseen_network_tile(p, ct):
+    """The nearest tile of our own belt this Builder cannot currently see."""
+    if not p.network_plan:
+        return None
+    me = tuple(ct.get_position())
+    unseen = [tile for tile in p.network_plan
+              if not ct.is_in_vision(Position(*tile))]
+    if not unseen:
+        return None
+    return min(unseen, key=lambda tile: (_cardinal_distance(me, tile), tile))
 
 
 def _explore(p, ct):
