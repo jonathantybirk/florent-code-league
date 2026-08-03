@@ -544,6 +544,26 @@ escalating allowance, sticky guess, attacker-only ferry, give-up -- and never
 re-measured it. **Re-test the flags you flipped after any change that alters
 what the bot spends on.**
 
+### The local gate is deterministic -- there is no measurement noise
+
+A variant was built whose edit silently failed to apply, so it was a byte-copy
+of the shipped bot. It scored **exactly** 98/126 with identical per-opponent
+splits. The engine is deterministic given (bot, opponent, map, seat, seed), and
+`benchmarks/run_one` fixes the seed, so a 42-game cell has *zero* variance from
+the harness.
+
+That changes how to read every table in this file. A one- or two-game
+difference is **not sampling noise** -- it is a real behavioural difference on
+specific maps. What it is not is evidence of *generalisation*: 42 games is 21
+maps in two seats, so a two-game edge can be one map behaving differently, and
+that will not necessarily transfer to the cluster's field or to the final.
+
+So "inside noise" was the wrong phrase throughout the earlier entries. The
+right one is "too few maps to say whether it generalises". The remedy is the
+same -- more maps, ideally the cluster -- but the reasoning is different, and a
+consistent +2 across several independent map sets is worth more than the phrase
+"noise" suggested.
+
 ### Three washes, and the point at which to stop
 
 Traced a `heimdall` loss on a generated map (`random3/r10`, 30x10, RUSH): vigil
