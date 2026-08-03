@@ -80,14 +80,27 @@ ALL_REJECTED = 0b111
 
 # Cardinal reach of a Gunner at r^2 = 13.
 GUNNER_REACH = 3
-# At range 1 the Gunner touches the enemy footprint and NOTHING can ever get between the two. At
-# range >= 2 every tile short of the Core is a tile the defender can put a 30 HP Barrier on, and a
-# Barrier two Builders are healing at 4 HP a shot beats one Gunner outright. Measured against
-# `vanguard` over 14 games: of 256 shots our single range-2/3 turret fired, 154 were absorbed by
-# its Barrier ring -- 2 of 25 reached the Core on crossfire/a. The penalty is therefore charged
-# PER TILE OF STANDOFF, not once: six rounds of extra walk is a cheap price for a lane that
-# cannot be bricked. The unit is rounds-of-walking, the same as the approach term it is added to.
-STANDOFF_PENALTY = 6
+# Extra score, per tile of standoff, charged to a firing position that is not at range 1.
+#
+# WAS 6, NOW 0, and the old reasoning is worth keeping because it is a good example of a true
+# observation driving a wrong constant. At range 1 the Gunner touches the enemy footprint and
+# nothing can get between the two; at range >= 2 every tile short of the Core is a tile the
+# defender can brick, and a Barrier two Builders are healing at 4 HP a shot beats one Gunner
+# outright. That was measured, and it is real: against `vanguard` over 14 games, 154 of 256 shots
+# from a range-2/3 turret were absorbed by its Barrier ring.
+#
+# But 14 games against ONE opponent is not enough to price a term that is added to every candidate
+# on every map. Re-measured over 810 games -- 9 opponents x 21 published maps x 2 sides, plus all
+# 24 generated maps x 2 -- dropping it to 0 is worth about +25 games. The penalty is denominated
+# in ROUNDS OF WALKING, so charging 6 per tile made a range-3 position cost 12 extra rounds of
+# apparent approach; that is more than most maps' entire walk, so the ranking was discarding
+# lanes that were strictly closer in order to avoid a brick the defender usually never lays.
+# Getting there first beats getting there unbrickable.
+#
+# The bricking risk did not go away -- it is simply not worth 6 rounds a tile. If a defender that
+# actually bricks its lane shows up on the ladder, this is the first constant to re-open, and the
+# right form is probably conditional on having SEEN a barrier go up, not a flat prior.
+STANDOFF_PENALTY = 0
 # Survivability, and the only new term. Every open tile orthogonally adjacent to the turret is a
 # tile an enemy Builder Bot can stand on and chew it from: G13 is REVERSED on 2.3.3, so a builder
 # does 2 damage for 2 Ti to an orthogonal neighbour, and a 40 HP Gunner dies to 20 such actions --
