@@ -1703,8 +1703,10 @@ def _guard_home(p, ct):
 
     Measured on the 21 official maps in both seats against valkyrie, vigil,
     ragnarok and vanguard, 168 games: the warden_walk chassis takes 118 with
-    this off and 145 with it on, and against valkyrie alone it goes from 26/42
-    to 40/42. Both the trigger radius and the cap were measured, not chosen.
+    this off and 147 with it on at the shipped radius and cap, and against
+    valkyrie alone it goes from 26/42 to 39/42. On this bot's own atlas-free
+    chassis the same comparison is 96 and 119. Both the trigger radius and the
+    cap were measured, not chosen -- see constants.py.
 
     Deliberately *only* this Builder. Letting every Builder guard scores 137 --
     the economy Builder abandons the belt it is laying and the miner stops
