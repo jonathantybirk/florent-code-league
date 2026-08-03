@@ -117,9 +117,10 @@ published pool the atlas is inert, so an atlas bot and its atlas-free twin play
 the identical game. The 11-13pp the oracle is worth on the pool is worth
 nothing here — and the guard is worth twenty.
 
-A second, independent set of 30 maps (`--seed 4242`) says the same thing:
-heimdall 74/120, and the atlas-free no-guard control 22/60 against vigil where
-heimdall takes 41/60.
+A second, independent set of 30 maps (`--seed 4242`) reproduces the size of the
+effect exactly: heimdall 74/120 **0.617** against the same atlas-free no-guard
+control's 50/120 **0.417**. Twenty points on both sets, drawn from different
+seeds, against the two strongest bots in the field.
 
 ### CPU
 

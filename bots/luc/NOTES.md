@@ -89,6 +89,10 @@ is inert, so an atlas bot and its atlas-free twin play the identical game.
 Whatever the oracle is worth on the ladder, it is worth nothing in the final,
 and the guard is worth twenty points there.
 
+A second, independent set of 30 maps (`--seed 4242`) reproduces the size of it
+exactly: heimdall 74/120 (0.617) against the same control's 50/120 (0.417).
+Twenty points on both sets, from different seeds.
+
 ### Measured and rejected — do not re-run these
 
 - **Core shell.** Barriers on all twelve tiles touching the 2×2 Core. The
