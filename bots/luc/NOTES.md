@@ -134,9 +134,18 @@ while the map is empty and is worth 20 Ti; hops after it are not. Two ring
 sites are the throw pad plus one approach; below that the screen covers
 nothing, above it the sites are bought with the turrets that kill Cores.
 
-Things checked at the same time and left alone: the siege Sentinel is *earning*
-its +20% (disabling it is 29% against 33%), and the attack-Gunner cap does not
-bind above 7 (5 -> 7 is +1 game, 7 and 10 are identical).
+Things checked at the same time and left alone, all on the same metric against
+33% for the shipped build: the siege Sentinel earns its +20% (off is 29%),
+FORTIFY's field Gunners earn theirs (off is 24%), and the attack-Gunner cap
+does not bind above seven (5 -> 7 is +1 game; 7 and 10 are identical). So the
+scale-discipline vein is mined out at the two Launcher caps -- every other
+spender in the bot is already paying for itself.
+
+The caps also bought CPU headroom, which was not the point but matters: fewer
+Launchers means fewer launcher hazards to path around, and the worst Builder
+turn drops from 4,198 us to 2,994 us. Worth having, because the cluster's
+compliance stage measured valkyrie at 5,944 us where this laptop said 3,993 --
+cluster hardware is materially slower and the 10 ms limit is enforced there.
 
 ### Measured failures worth not repeating
 
