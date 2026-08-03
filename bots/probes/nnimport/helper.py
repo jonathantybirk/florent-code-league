@@ -1,0 +1,1 @@
+VALUE = "sibling-import-works"

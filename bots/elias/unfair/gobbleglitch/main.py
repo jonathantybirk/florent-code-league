@@ -282,7 +282,15 @@ VAULT_MAX = 3
 # Manhattan gap below which a hop is not worth 28 Ti -- and, just as important, the radius inside
 # which no Launcher of ours may be planted: a friendly building anywhere in a Gunner's lane becomes
 # its target and jams it for the rest of the match (G11).
-VAULT_MIN_GAP = 9
+#
+# WAS 9, NOW 5. Swept over 810 games (9 opponents x 21 published maps x 2 sides, plus all 24
+# generated maps x 2) the basin is clean and unimodal, not a cliff:
+#     10: -12    9: baseline    7: +30    6: +34    5: +40    4: +27    3: +25
+# So 9 was sitting on the wrong side of the peak and every step down to 5 paid. Below 5 the jamming
+# risk the constant exists to prevent starts to bite and it turns over again. The old value was a
+# guess at where a hop stops being worth 28 Ti; the measured answer is that hops stay worth it much
+# closer to the target than assumed, because a hop skipped is 4-6 rounds of walking paid in full.
+VAULT_MIN_GAP = 5
 # Titanium the vault leaves behind. The Gunner and its Harvester are the whole point; arriving
 # early with nothing to build is the most expensive way to lose the race.
 VAULT_FLOOR = 70

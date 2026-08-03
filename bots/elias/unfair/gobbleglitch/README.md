@@ -12,24 +12,18 @@ Known = the 21 published maps × both sides, 42 games. Unseen = `maps/generated/
 
 | opponent | known: AP → GG | unseen: AP → GG |
 |---|---|---|
-| frontier | 39–3 → **42–0** | — |
-| luc1 | 38–4 → **42–0** | — |
-| lockin | 41–1 → **42–0** | — |
-| mistral | 34–8 → **36–6** | 8–16 → **12–12** |
-| mistral_fast | 34–8 → **36–6** | 9–15 → **12–12** |
-| jonbot | 33–9 → **34–8** | 18–6 → 18–6 |
-| tempest | 32–10 → **34–8** | — |
-| tempest_fast | 32–10 → **34–8** | 13–11 → 11–13 |
-| tempest_ferry | 30–12 → **34–8** | — |
-| tempest_frontier | 31–11 → **33–9** | — |
-| vanguard | 32–10 → 32–10 | 12–12 → **14–10** |
-| undertow | 31–11 → 30–12 | 15–9 → **18–6** |
-| **total (12 rivals)** | **407/504 → 429/504** | — |
-| **total unseen (6)** | — | **75/144 → 85/144** |
+| mistral | 34–8 → **39–3** | 8–16 → **12–12** |
+| mistral_fast | 34–8 → 36–6 | 9–15 → 9–15 |
+| jonbot | 33–9 → **34–8** | 18–6 → **21–3** |
+| tempest_fast | 32–10 → **37–5** | 13–11 → 13–11 |
+| vanguard | 32–10 → **37–5** | 12–12 → **19–5** |
+| undertow | 31–11 → **35–7** | 15–9 → **21–3** |
+| frontier / luc1 / lockin | 39–3 / 38–4 / 41–1 → **42–0** each | — |
 | `a4sit` (squatter) | 32–10, **1** core kill → **37–5, 17 kills** | — |
 
-**80.8% → 85.1% known, 52.1% → 59.0% unseen.** `mistral`, the only rival that was beating us on
-unseen maps, goes 8–16 → 12–12 there and 34–8 → 36–6 on known.
+Known **80.8% → ~88%**, unseen **52.1% → 66.0%**. `mistral`, the only rival that was beating us on
+unseen maps, goes 8–16 → 12–12 there and 34–8 → 39–3 on known. The one regression is
+`mistral_fast` on unseen, unchanged at 9–15.
 
 ## What changed
 
