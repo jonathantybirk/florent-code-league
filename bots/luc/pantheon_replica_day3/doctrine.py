@@ -126,8 +126,20 @@ def classify(ct) -> int:
 def _classify(ct) -> int:
     width, height = ct.get_map_width(), ct.get_map_height()
     core = ct.get_position()
+    # No BLITZ. Ragnarok drops the pad and every economy Builder when the Cores
+    # are close, on the theory that a short map is a pure race. Pantheon does
+    # not branch at all: the same opening appears in 150 of 150 replays on
+    # every map and against every opponent, close Cores included. On showdown
+    # (Cores 6 apart, BLITZ in ragnarok) the real bot still builds its pad on
+    # round 1, throws four, puts Gunners on the enemy Core's doorstep by round
+    # 3 *and* Gunners around its own Core on rounds 6-9 -- and wins on round
+    # 42. Blitzing there loses the Core on round 21 with nothing at home.
+    #
+    # Close Cores take FORTIFY instead: same Pantheon opening, but field
+    # Gunners switched on, which is the branch that actually puts turrets up
+    # around our own Core early enough to survive the counter-rush.
     if core_distance(ct) <= BLITZ_MAX_DISTANCE:
-        return BLITZ
+        return FORTIFY
     # The Core is 2x2 and get_position reports its north-west cell, so the far
     # edges sit at width - 2 and height - 2.
     on_side = core.x <= CORNER_MARGIN or core.x >= width - 2 - CORNER_MARGIN
