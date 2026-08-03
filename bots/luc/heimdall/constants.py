@@ -59,22 +59,32 @@ RING_MAX_SITES = 2
 # Ferry toward the symmetry inference's committed guess as well as toward a
 # Core a unit has actually seen.
 #
-# This was measured OFF in the atlas-carrying ancestors, at 17/42 against 21/42
-# over the pool, and the reasoning was that a wrong throw costs more than a
-# right one gains. That measurement does not survive being redone on a bot with
-# no atlas at all, which is what this one is: with an atlas the `sighted` flag
-# is set on round 0 and the relay always runs, so the flag only ever governed
-# the handful of games where the lookup missed. Here it governs every game --
-# a unit does not physically see the enemy Core until it has walked most of the
-# way there, and by then the relay it would have asked for is pointless. The
-# whole 20pp the relay is worth (MAX_RELAY_LAUNCHERS 0 scores 0.506 against
-# 0.702) was being left on the table.
+# This has now been measured three times on three different bots and the answer
+# has changed twice, which is the whole lesson: a flag measured on a chassis is
+# not measured for the chassis it becomes.
 #
-# Measured on this chassis, 21 official maps both seats against valkyrie,
-# vigil, ragnarok and vanguard, 168 games: 119 off, 128 on. The guess is right
-# on 28 of 42 published map-sides and self-corrects on the rest -- the symmetry
-# test strikes a candidate the moment observed terrain contradicts it.
-FERRY_ON_INFERENCE = True
+#   atlas-carrying ancestors            17/42 on  against 21/42 off   -> OFF
+#   this bot, before the home guard    128/168 on against 119/168 off -> ON
+#   this bot, as it now stands         282/336 off against 271/336 on -> OFF
+#
+# The third measurement is the one that matters and it is not close. Full
+# 8-bot pool, 21 official maps both seats, and 40 generated maps:
+#
+#                    pool            generated
+#     ferry on     271/336  0.807    109/160  0.681
+#     ferry off    282/336  0.839    115/160  0.719
+#
+# Per opponent the gain is concentrated exactly where this bot was weakest:
+# warden_walk 26/42 -> 32/42, warden 32 -> 34, ragnarok 30 -> 33.
+#
+# The reason is recorded further up this file and was found long before this
+# bot existed: `ragnarok_fair` beats `valkyrie` where `ragnarok` only draws,
+# because the atlas-free twin *cannot* ferry and is therefore forced to walk --
+# and the walking bot ends with more Gunners and Harvesters where the chaining
+# one ends with more Launchers. Every Launcher is +10% on every price the team
+# pays thereafter. Committing the attacker to a guessed Core buys tempo and
+# pays for it in the only two things that win.
+FERRY_ON_INFERENCE = False
 
 # Drop a ring direction when the map edge is this close behind it: nothing can
 # approach from off the map, so a Launcher there guards nothing and still costs
