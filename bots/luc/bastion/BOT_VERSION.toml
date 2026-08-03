@@ -1,0 +1,5 @@
+source_commit = "90bdaf703"
+source_path = "bots/luc/steward"
+engine = "2.3.3"
+status = "development"
+variant = "home-guard-after-pad"
