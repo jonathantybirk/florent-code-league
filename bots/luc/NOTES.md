@@ -43,6 +43,42 @@ emplace.
 Only the ring Builder guards. Letting all three do it is 137: the economy
 Builder abandons the belt and the miner stops walking to ore.
 
+### Correction: "ferrying on the symmetry guess is worse" does not hold off-atlas
+
+The pool-era measurement (17/42 against 21/42, `FERRY_ON_INFERENCE` off) was
+made on bots that *carry* an atlas. With one, `sighted` is set on round 0 and
+the relay always runs, so the flag only ever governed the few games where the
+lookup missed. On a bot with no atlas at all it governs **every** game: a unit
+does not physically see the enemy Core until it has walked most of the way
+there, and the relay it would then ask for is pointless. The flag was quietly
+throwing away the whole 20pp the relay is worth (`MAX_RELAY_LAUNCHERS = 0`
+scores 0.506 against 0.702).
+
+Redone on the atlas-free chassis, 168 games against valkyrie/vigil/ragnarok/
+vanguard: **119 off, 128 on**. It is now on in `heimdall`.
+
+This is the general shape of the atlas problem and worth remembering: a flag
+measured on a bot that has the oracle is not measured for a bot that does not.
+
+### What fairness actually costs, separated from the guard
+
+Same panel, 168 games a row, so the four rows are directly comparable:
+
+    warden_walk         atlas, no guard    118/168  0.702
+    ww_fair             fair,  no guard     96/168  0.571
+    heimdall (v1)       fair,  guard       119/168  0.708
+    heimdall + ferry    fair,  guard       128/168  0.762
+    gd_r36_c2           atlas, guard       147/168  0.875
+
+So on the **published pool**, against opponents that all carry the atlas, the
+oracle is worth about 13pp without the guard and 11pp with it. The guard is
+worth 17pp with the atlas and 14pp without. They are close to additive and
+neither explains the other.
+
+That 11-13pp is the price of fairness *on maps the atlas knows*. It is zero on
+maps it does not, which is where the final is played — see the generated-map
+numbers in `heimdall/README.md`.
+
 ### Measured and rejected — do not re-run these
 
 - **Core shell.** Barriers on all twelve tiles touching the 2×2 Core. The
@@ -63,6 +99,19 @@ Builder abandons the belt and the miner stops walking to ore.
 - **The Launcher knobs are finished.** On a six-bot panel, `MAX_RELAY_LAUNCHERS`
   0/1/2 → 0.552/0.706/0.683 and `RING_MAX_SITES` 0/1/2/3 →
   0.611/0.667/0.706/0.698. Both already sit on their maximum.
+- **Replacing Builders the enemy killed is a large regression here.** The Core
+  gates respawning on `has_live_builder`, which only proves *one* Builder is
+  alive; widening the heartbeat slot to a round stamp plus one bit per Builder
+  lets the Core count them and refill to three. It looks obviously right — the
+  guard kills attackers, so both sides lose bodies — and it is not: on the same
+  168-game panel, guard + refill scores **85/168 (0.506)** against the guard's
+  147, and refilling to a ceiling of eight is worse still at 70/168. Every
+  replacement is +20% on every price the team pays for the rest of the game,
+  and an attrition war fought by respawning is lost on cost while being won on
+  bodies. Note `steward` on this branch ships the same idea from the other
+  direction (its trace shows a team dying at T103 holding 358 Ti), so the two
+  measurements disagree and the difference is worth finding — mine adds the
+  guard, which changes how many Builders die and when.
 
 ### Two latent bugs worth knowing about
 

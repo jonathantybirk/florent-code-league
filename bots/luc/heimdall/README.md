@@ -47,6 +47,45 @@ The mechanism shows in the metrics as well as the score: opponent Builders
 alive at round 100 fall from 2.65 to 2.27, and our own Gunners built rise from
 5 to 7.
 
+The same panel with the atlas taken away, which is what this bot actually is.
+Four directly comparable rows, and the one that ships is the last:
+
+| build | atlas | guard | ferry on inference | total |
+|---|---|---|---|---|
+| `warden_walk` | yes | no | no | 118/168 0.702 |
+| `ww_fair` | no | no | no | 96/168 0.571 |
+| — | no | no | **yes** | 97/168 0.577 |
+| — | no | **yes** | no | 119/168 0.708 |
+| **`heimdall`** | no | **yes** | **yes** | **128/168 0.762** |
+
+Two things to read off that. The guard is worth 14pp without the atlas and
+17pp with it, so it is not an artefact of map knowledge. And ferrying on the
+symmetry inference is worth *nothing* on its own (96 → 97) and +5pp on top of
+the guard (119 → 128) — arriving early only pays if you are still alive at
+home when you get there.
+
+### Why this bot ferries at a guess when its ancestors would not
+
+`FERRY_ON_INFERENCE` was measured off in the atlas-carrying ancestors at 17/42
+against 21/42. That measurement does not transfer. With an atlas the `sighted`
+flag is set on round 0 and the relay always runs, so the flag only governed the
+handful of games where the lookup missed. With no atlas it governs every game:
+a unit does not physically see the enemy Core until it has walked most of the
+way there, and the relay it would then ask for is pointless. The flag was
+throwing away the entire 20pp the relay is worth (`MAX_RELAY_LAUNCHERS = 0`
+scores 0.506 against 0.702). Redone here at 168 games: 119 off, 128 on.
+
+A wrong guess is cheap and self-correcting — the symmetry test strikes a
+candidate the moment observed terrain contradicts it — and the farthest
+surviving candidate is the truth on 28 of 42 published map-sides.
+
+### CPU
+
+Worst Builder turn 4,987 µs on `longship`, 0 turns over the 10 ms limit across
+4,311 unit-turns. The cluster's hardware measured `valkyrie` at 5,944 µs where
+this laptop said 3,993, so scale by ~1.5: ~7.5 ms worst case there. Inside the
+limit, but not with much room.
+
 Both constants were measured, not chosen. Radius² 16/25/36/49 →
 146/145/147/140; cap 1/2/3/4/6 → 139/147/145/146/145; chase 2/4 → 143/147.
 Flat across a wide middle and falling off at both edges, which is the shape a
