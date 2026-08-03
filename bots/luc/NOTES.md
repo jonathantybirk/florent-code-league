@@ -147,6 +147,58 @@ turn drops from 4,198 us to 2,994 us. Worth having, because the cluster's
 compliance stage measured valkyrie at 5,944 us where this laptop said 3,993 --
 cluster hardware is materially slower and the 10 ms limit is enforced there.
 
+### The goal is both mElo and *sole* Nash support, and they pull apart
+
+Specialising is easy; dominating is not. warden_walk earned Nash support at 0.5
+by capping Launchers, and paid for it with the lowest mElo of the top seven.
+Broken down per opponent the blanket cap is two effects added:
+
+    gains                    losses
+    ragnarok_fair  +14pp     vigil@60d5afa      -24pp
+    valkyrie       +12pp     vanguard_oracle    -19pp
+    ragnarok       +10pp     casemate_oracle    -12pp
+
+It beats Launcher-heavy bots, which overspend on scale once we stop, and loses
+to bots that wall us out, where the chain is the only way through. It sells
+40/42 matchups to buy 21/42 ones -- exactly the trade that earns Nash support
+and costs mElo.
+
+**The trade is a frontier, and the "am I stuck" signal does not break it.**
+aegis caps only the routine ferry and leaves the stuck-recovery Launcher
+uncapped, on the theory that being walled out is distinguishable from routine
+chaining. Measured, it just slides along the same line:
+
+    build                       vs prospect   vs ragnarok_fair   total
+    warden                         30              18             48
+    aegis (conditional cap)        27              20             47
+    aegis, stuck threshold 5       26              23             49
+    warden_walk (blanket cap)      26              24             50
+    steward (replace losses)       31              21             52
+
+### What is off the frontier: unspent titanium
+
+steward is the first change that improves both columns instead of trading them,
+and it is not a strategy change at all. `core.py` gates respawning on
+`has_live_builder`, and that heartbeat proves only that *one* Builder is alive,
+so a team that loses two of three never replaces them:
+
+    T15  Ti=154  builders=3
+    T45  Ti=139  builders=1
+    T90  Ti=298  builders=1     dies T103 holding 358 titanium
+
+Beaten, on sweden, by an opponent that mined nothing at all. The bank is the
+trigger, because a live headcount is not available -- comms writes are
+invisible to other units until the next round, so a bitmask never accumulates,
+while a working team spends income as it arrives and therefore never banks
+much. After the fix the same game runs to 138 and mines 360 against 150.
+
+That failure mode is now closed: across 38 gate losses, **zero** end holding
+100 titanium or more. The remaining losses are genuine.
+
+The lesson to carry: look for resources the bot fails to convert before looking
+for tactics it fails to execute. Trades between matchups are usually a
+frontier; waste is usually free.
+
 ### The Launcher caps made a new Nash pillar, not a better bot
 
 Full ledger, auto-f11bf027e3d4: 98 bots, 285,183 matches.
