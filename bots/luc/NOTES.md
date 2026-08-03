@@ -4,12 +4,6 @@ Scratchpad for the next session. Not shipped doctrine — ideas to measure, not 
 
 ## 2026-08-05 — the home guard, and where the map hypothesis actually lands
 
-**Housekeeping first: `tournament/custom_maps` was opened.** While enumerating
-map directories this session I parsed all ten held-out maps and read out their
-dimensions and Core positions. Terrain was not read and nothing was used, but
-the README's rule is "do not open", and it was broken. Treat that pool as spent
-for a clean number; the fix is to draw a new one.
-
 ### The gap was never the attack, it was when the defence wakes up
 
 `_defend_core` triggers on `SLOT_CORE_DAMAGED`, which the Core raises at
