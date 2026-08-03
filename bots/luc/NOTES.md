@@ -187,6 +187,30 @@ Same story, smaller: leashing the guard's ore claims to within 8 tiles of the
 Core (130/168 pool, 75/120 set 2, both +1 or +2) and rebuilding guard turrets
 that have been shot off (76/120 set 2, +2). All inside noise.
 
+### Three washes, and the point at which to stop
+
+Traced a `heimdall` loss on a generated map (`random3/r10`, 30x10, RUSH): vigil
+put three turrets on our Core on rounds 12, 14 and 15, and our first guard
+Gunner went up on round 22. Ten rounds late. The obvious culprit is price --
+`_keep_ammunition` converts the bank down to `EMERGENCY_RESERVE` (10 Ti) every
+round the ammunition floor is unmet, and a scaled Gunner is ~20, so the guard
+can be priced out of the turret that ammunition exists to feed.
+
+Never converting below one Gunner's price:
+
+    40 generated maps   99/160 -> 102/160   +3
+    21 official maps   134/168 -> 131/168   -3
+
+Net zero. So the price is not what made the guard late in that game, and the
+fix does not ship despite being the tidier code. Same shape for turning
+`FERRY_ON_INFERENCE` off on generated maps (+3 there, -9 on the pool) and for
+the guard leash (+1, +2).
+
+Three independent ideas all landing at plus-or-minus three games in 160 is the
+signal that this chassis is out of reach of a 168-game gate. The next real step
+needs either the cluster's 4,000-game samples or a different mechanism, not
+another knob.
+
 ### Two latent bugs worth knowing about
 
 - `warden_walk` (and everything built from it) calls
