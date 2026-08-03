@@ -230,6 +230,39 @@ Two things *are* map effects and both are worth the next session:
    split was measured at 2-12 *before* a working defence existed and deserves
    re-testing now.
 
+### Why the generated maps are harder than the pool, in exactly one respect
+
+The farthest-symmetry guess is right **28/42 (0.67)** on the official pool and
+**60/184 (0.33)** on the generated maps. That is not the bot behaving worse; it
+is one number showing up twice. Of the three candidates, the farthest is always
+the 180-degree rotation wherever they differ, so "farthest-first accuracy" *is*
+"the share of maps built by rotation":
+
+    official pool     rotation 14, x-mirror 3, y-mirror 4     -> 0.67
+    generated (94)    rotation 32, x-mirror 31, y-mirror 31   -> 0.33
+
+The pool's designers prefer rotation two to one. `generate_maps.py` draws the
+three symmetries uniformly on purpose, so it is a faithful test of everything
+except this convention, where it is deliberately pessimistic. The final is
+presumably drawn by the same people as the pool, so the convention probably
+holds there and the generated-map scores understate the bot by whatever the
+guess is worth.
+
+Which is: on the pool, ferrying at the guess is +9 games in 168. On 40
+generated maps it is **-3 in 160** — ferry-off scores 102/160 against
+ferry-on's 99/160. Both are inside noise on their own, but they point opposite
+ways and the mechanism explains why. `FERRY_ON_INFERENCE` stays **on**, betting
+on the convention; if that bet looks wrong later, turning it off costs 9 games
+on the pool and buys 3 on uniform terrain.
+
+A margin rule was tried and is impossible: for a Core at (cx, cy) the rotation
+candidate's Chebyshev distance always ties the larger of the two reflections,
+so the margin is 0 on 184 of 188 map-sides and carries no signal.
+
+What does *not* depend on the guess is the outcome. Splitting all 376 generated
+games by whether the guess was right: 0.664 when right, 0.617 when wrong. The
+symmetry test strikes a wrong candidate quickly enough that the bot recovers.
+
 ### `tools/generate_maps.py`
 
 Draws random symmetric maps to `maps/random/` from the rules the pool obeys
