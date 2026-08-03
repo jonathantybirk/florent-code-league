@@ -175,3 +175,34 @@ def test_build_rates_each_map_pool_separately_and_counts_core_maps(tmp_path):
     # And the held-out map's own page still publishes no terrain.
     page = json.loads((tmp_path / "site" / "maps" / held_out.replace("/", "--")).with_suffix(".json").read_text())
     assert page["map"]["terrain"] == []
+
+
+@pytest.mark.skipif(not any(SECRET_ROOT.glob("*.map26")), reason="no held-out maps present")
+def test_build_refuses_to_publish_a_pool_with_unplayed_pairs(tmp_path, capsys):
+    held_out = f"secret/{sorted(SECRET_ROOT.glob('*.map26'))[0].stem}"
+    # gamma reaches the held-out map, but never plays beta there. An unplayed pair enters the
+    # payoff matrix as 0, which reads exactly like a measured draw -- so the pool must not ship.
+    matches = [
+        _match("alpha", "beta", "atoll", 1),
+        _match("beta", "gamma", "atoll", 1),
+        _match("gamma", "alpha", "atoll", 1),
+        _match("alpha", "beta", held_out, 1),
+        _match("gamma", "alpha", held_out, 1),
+    ]
+    _write_run(tmp_path / "run", ["alpha", "beta", "gamma"], matches)
+    index = build(tmp_path / "run", tmp_path / "site")
+
+    # Only the held-out pool has the hole. Pooled over both map sets every pair has played
+    # something, so the combined matrix is full and stays publishable.
+    assert [pool["id"] for pool in index["map_pools"]] == ["", "_combined"]
+    assert "rankings_secret" not in index
+    assert "rankings_combined" in index
+    output = capsys.readouterr().out
+    assert "_secret" in output and "beta" in output and "gamma" in output
+
+
+def test_build_raises_when_the_standard_pool_itself_is_incomplete(tmp_path):
+    matches = [_match("alpha", "beta", "atoll", 1), _match("gamma", "alpha", "atoll", 1)]
+    _write_run(tmp_path / "run", ["alpha", "beta", "gamma"], matches)
+    with pytest.raises(RuntimeError, match="standard map pool is incomplete"):
+        build(tmp_path / "run", tmp_path / "site")
