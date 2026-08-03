@@ -147,6 +147,25 @@ turn drops from 4,198 us to 2,994 us. Worth having, because the cluster's
 compliance stage measured valkyrie at 5,944 us where this laptop said 3,993 --
 cluster hardware is materially slower and the 10 ms limit is enforced there.
 
+### Cluster verdicts, full samples only
+
+    valkyrie@d181312   89.7%  (3906)
+    warden             89.0%  (4029)   repair + write-off ported from vigil
+    vigil, shell off   88.7%  (4032)   was losing 15/42 to its own last commit
+
+warden draws valkyrie 21/42 -- an exact split. **The vigil port is neutral.**
+The capability gap is real (ragnarok genuinely cannot mend a belt and never
+calls self_destruct) but it does not pay in this field, where the median game
+is short and belts are rarely shot. At 2,407 of 4,029 matches it read 90.5% and
+looked like a win; that was the partial-run trap for the second time in one
+session, and the only reason it was not reported as a result is that the
+hedge was made explicit.
+
+The vigil fix is confirmed the other way: 21/42 against vigil@e267eeb on the
+cluster, exactly the mirror the 84-game local gate predicted. So the local gate
+is a trustworthy *screen* when an effect is real -- it just cannot see small
+ones, which is how it called the 25-game pad-first regression noise.
+
 ### Measured failures worth not repeating
 
 - **Pad-first spawn order** (Launcher-ring Builder first, Pantheon-style):
