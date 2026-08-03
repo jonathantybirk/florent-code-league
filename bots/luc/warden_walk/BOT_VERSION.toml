@@ -1,0 +1,5 @@
+source_commit = "eec645f42"
+source_path = "bots/luc/warden"
+engine = "2.3.3"
+status = "development"
+variant = "relay-capped-at-one-hop"
