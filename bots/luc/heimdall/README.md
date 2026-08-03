@@ -86,19 +86,23 @@ surviving candidate is the truth on 28 of 42 published map-sides.
 | opponent | | |
 |---|---|---|
 | `casemate` | 42/42 | 1.00 |
-| `vigil` | 37/42 | 0.88 |
-| `vanguard` | 36/42 | 0.86 |
-| `gobbleglitch` | 35/42 | 0.83 |
-| `valkyrie` | 31/42 | 0.74 |
-| `ragnarok` | 31/42 | 0.74 |
-| `warden` | 30/42 | 0.71 |
-| `warden_walk` | 24/42 | 0.57 |
-| **total** | **266/336** | **0.792** |
+| `vanguard` | 38/42 | 0.90 |
+| `valkyrie` | 36/42 | 0.86 |
+| `gobbleglitch` | 36/42 | 0.86 |
+| `ragnarok` | 35/42 | 0.83 |
+| `warden_walk` | 35/42 | 0.83 |
+| `vigil` | 34/42 | 0.81 |
+| `warden` | 34/42 | 0.81 |
+| **total** | **290/336** | **0.863** |
 
-The weakest matchups are `warden` and `warden_walk`, which are this bot's own
-chassis *with* the atlas. On the published pool the oracle and the guard very
-nearly cancel; off it they do not, because only one of them still exists. The
-escalating allowance is what moved `warden_walk` from 20/42 to 24/42.
+**Every opponent is above 80%.** Getting there was not a new mechanic -- it was
+re-measuring three constants that had been tuned on an earlier version of this
+same bot and never revisited: the opening ferry (0.807 -> 0.839), the guard
+radius (-> 0.857), and the guard's chase distance (-> 0.875 at its best).
+
+The last of them is a deliberate trade. Guard cap 2 scores 294/336 = 0.875 but
+leaves `warden_walk` at 0.76; cap 4 scores 290/336 = 0.863 and lifts the worst
+matchup to 0.83. Four games of total for the minimum going from 0.76 to 0.83.
 
 ### The guard's allowance escalates on emplaced turrets, not on damage
 
