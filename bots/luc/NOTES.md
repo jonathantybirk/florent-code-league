@@ -103,11 +103,40 @@ valkyrie_econ2 (second miner) 83.4%, against valkyrie's 89.7%, and 12/42 and
 either a second battery or a second belt. Pantheon opens with four anyway; that
 is a difference in what the rest of the bot does, not a lever to copy.
 
-vigil's own tip is a regression: working-tree vigil (commit 64e40cba4, "Place
-the ring on the real threat boundary, and turn it on") loses **15/42** to
-vigil@e267eeb, one commit earlier. That commit flips RING_COVER_SHELL on, which
-ragnarok's constants had already recorded as worse (20/42 against 26/42 for the
-cheap radius-2 compass ring). Turning it back off is probably free rating.
+vigil's own tip was a regression and is now fixed (c71a543fc): commit 64e40cba4
+("Place the ring on the real threat boundary, and turn it on") flipped
+RING_COVER_SHELL to True and left the paragraph arguing against it standing.
+With it on, vigil loses **15/42** to vigil@e267eeb, its own previous commit;
+with it off the same comparison is 21/42 and every one of the 21 maps splits
+1-1 -- an exact mirror, so the shell was the whole regression.
+
+### The one lever that has moved anything: stop buying Launchers
+
+Every Launcher is +10% on every price the team pays for the rest of the game,
+and the bill lands on the only two things that win: Gunners and Harvesters.
+Both changes that moved the map metric are this same observation applied twice.
+
+Found by chasing an anomaly rather than by tuning: `ragnarok_fair` beats
+`valkyrie` 25/42 where `ragnarok` itself only draws 21/42. The fair twin is the
+same bot with the atlas removed, and `_opening_ferry` is gated on the atlas, so
+it *cannot ferry* -- it is forced to walk, and that handicap is why it wins. On
+aurora the chaining bot ends with 6 Launchers, 1 Harvester and 4 Gunners; the
+walking bot ends with 3, 2 and 7.
+
+Both caps are non-monotonic, so neither "chain" nor "walk" was the right answer
+(worst-target map rate, 21 maps x both seats vs the two Nash-core agents):
+
+    MAX_RELAY_LAUNCHERS   0:14%   1:29%   2:24%   uncapped:5%
+    RING_MAX_SITES        1:24%   2:33%   3:29%   8 (all):29%
+
+5% -> 33% overall. The first relay hop clears the Builder out of its own half
+while the map is empty and is worth 20 Ti; hops after it are not. Two ring
+sites are the throw pad plus one approach; below that the screen covers
+nothing, above it the sites are bought with the turrets that kill Cores.
+
+Things checked at the same time and left alone: the siege Sentinel is *earning*
+its +20% (disabling it is 29% against 33%), and the attack-Gunner cap does not
+bind above 7 (5 -> 7 is +1 game, 7 and 10 are identical).
 
 ### Measured failures worth not repeating
 
