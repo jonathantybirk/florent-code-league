@@ -297,14 +297,25 @@ maps**, and on bridge it is transformative: 9,480 titanium collected against 70
 and the round-1000 tiebreak won, where the shipped build loses that map and
 "go home" managed 7,240. It still costs six games on the pool.
 
-Two attempts to separate "stand *beside* the lane" from "stand *in* it" -- our
-own attacker and our own belt have to use the chokepoint -- both produced
-byte-identical results (125 and 126 of 168 against 125). The rank is
-`(distance to enemy Core, openings, tile)` and the first term is unique per
-tile, so the openings term never fires; bucketing it did not help either,
-because in open ground every candidate has four openings. **That hypothesis is
-untested, not refuted.** Expressing it properly means excluding tiles on our
-own Core-to-enemy-Core `_bfs_path`, which is the obvious next thing to try.
+"Stand *beside* the lane, not *in* it" was the obvious refinement -- our own
+attacker and our own belt have to use the chokepoint, and a body in it blocks
+them exactly as well as it blocks theirs. Three ways of asking, on the four
+pool opponents (shipped 131/168) and the 40 generated maps (shipped 110/160):
+
+    picket, narrowest tile           125/168   112/160
+    prefer open tiles (tie-break)    125/168     --
+    same, distance bucketed          126/168   112/160
+    exclude our own _bfs_path,
+      require adjacency to it        126/168   112/160
+
+The first two tie-breaks never fired: the rank's leading term is the distance
+to the enemy Core, which is unique per tile, and bucketing it does not help
+because in open ground every candidate has four openings. Only the last one
+actually moves the chosen tile, and it is worth **+1 game in 168**. The
+hypothesis is right in direction and far too small to matter.
+
+So the whole family costs five or six games on the pool and gains two on
+generated maps, whichever way the post is chosen.
 
 **Five livelock and idle-behaviour fixes across two different Builders, and
 only the picket is positive anywhere.** Take that
