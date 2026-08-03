@@ -504,6 +504,46 @@ contain many of them.
 Credit where due: the income watchdog was Lucas's suggestion, and it is the
 right instrument precisely because it does not depend on any Builder's vision.
 
+### The atlas was never the problem, and our own ferry was
+
+I spent several rounds asserting that the four sub-80% matchups were hard
+because those bots carry the atlas on the maps it covers. **That is wrong**, and
+one control settles it. `ragnarok_fair` is `ragnarok` with the atlas removed:
+
+    heimdall vs ragnarok       (atlas)     30/42  0.714
+    heimdall vs ragnarok_fair  (no atlas)  28/42  0.667
+
+The atlas-free twin is *harder*. Which this file already knew -- the 2026-08-03
+entry records `ragnarok_fair` beating `valkyrie` where `ragnarok` only draws,
+because the atlas gates `_opening_ferry`, so the fair twin **cannot ferry and is
+forced to walk**, and the walking bot ends with more Gunners and Harvesters
+where the chaining one ends with more Launchers.
+
+heimdall ferried. Turning `FERRY_ON_INFERENCE` off:
+
+                     8-bot pool        40 generated maps
+      ferry on      271/336  0.807     109/160  0.681
+      ferry off     282/336  0.839     115/160  0.719
+
+    warden_walk  26/42 -> 32/42      warden    32/42 -> 34/42
+    ragnarok     30/42 -> 33/42      valkyrie  32/42 -> 33/42
+
+The gain lands exactly on the matchups that were weakest. Every opponent on the
+panel is now at 0.76 or better, against 0.62 at the bottom before.
+
+**The lesson is one this file states elsewhere and I did not apply to myself.**
+`FERRY_ON_INFERENCE` has now been measured three times on three chassis and the
+answer changed twice:
+
+    atlas-carrying ancestors        17/42 on vs 21/42 off    -> OFF
+    this bot, before the guard     128/168 on vs 119/168 off -> ON
+    this bot, as it now stands     282/336 off vs 271/336 on -> OFF
+
+I turned it on early, then changed the bot underneath it five times -- guard,
+escalating allowance, sticky guess, attacker-only ferry, give-up -- and never
+re-measured it. **Re-test the flags you flipped after any change that alters
+what the bot spends on.**
+
 ### Three washes, and the point at which to stop
 
 Traced a `heimdall` loss on a generated map (`random3/r10`, 30x10, RUSH): vigil
