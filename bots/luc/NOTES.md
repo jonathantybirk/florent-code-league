@@ -244,6 +244,42 @@ min(builder_index, 1)` gives three Builders two slots, so Builders 1 and 2
 clobber each other's rejection masks -- benign only because each writes the
 team OR it read, so bits re-propagate.
 
+### A 918-round livelock that costs nothing, and the tool that found it
+
+`benchmarks/pathology.py` counts Builder rounds spent stepping back onto the
+tile just left. On the shipped bot across the pool it reports:
+
+    bridge 31.3%   twins 27.6%   string 21.6%   runestone 14.3%   strait 13.3%
+
+bridge, traced: the economy Builder spent **918 of 1000 rounds** alternating
+between (10, 6) and (11, 6). The cause is in `_explore`'s fallback. Once every
+stride point is explored it walks to the farthest of the four corners *from the
+current position* -- and the two farthest corners are symmetric about the
+Builder, so stepping toward one makes the other farther and it flips back next
+round. A patrol of two tiles, forever.
+
+Two fixes, both obviously more correct than the livelock, both measured on the
+8-bot pool panel and 40 generated maps:
+
+    shipped (livelock present)   270/336  0.804   110/160  0.688
+    latch the chosen corner      268/336  0.798   110/160  0.688
+    go home when idle            264/336  0.786
+
+**Neither is worth shipping.** Which is the finding: a Builder that has no ore
+left to claim and no ground left to see has nothing valuable to do either way,
+so the wasted rounds are a symptom rather than a cost. Pacing near the middle
+of the map at least keeps vision there; walking home gives that up, which is
+probably why it is the worst of the three.
+
+The exception is real and worth remembering: on bridge alone, latching turns a
+1000-round titanium *loss* into a win on round 400, and going home turns it
+into 7,240 titanium collected against 70. Whatever the aggregate says, a
+saturated economy on a corridor map is a case where those rounds do matter.
+
+Revisit with the cluster's 4,000-game samples, where six games is not noise.
+The detector is committed either way -- it is cheap, it found both of this
+session's livelocks, and a healthy Builder sits at 0-2%.
+
 ### Three washes, and the point at which to stop
 
 Traced a `heimdall` loss on a generated map (`random3/r10`, 30x10, RUSH): vigil
