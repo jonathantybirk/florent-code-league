@@ -211,6 +211,78 @@ def unfinished_runs() -> dict[str, set[str]]:
     return pending
 
 
+def outstanding_matches(run_dir: Path) -> set[str]:
+    """Rating match ids this run scheduled but has not merged locally."""
+    schedule_path = run_dir / "schedule.jsonl"
+    if not schedule_path.exists():
+        return set()
+    scheduled = set()
+    for line in schedule_path.read_text().splitlines():
+        if not line.strip():
+            continue
+        entry = json.loads(line)
+        if entry.get("kind") == "compliance":
+            continue
+        scheduled.add(entry["match_id"])
+    merged: set[str] = set()
+    matches = run_dir / "matches.csv"
+    if matches.exists():
+        with open(matches, newline="") as handle:
+            for row in csv.DictReader(handle):
+                merged.add(row["match_id"])
+    return scheduled - merged
+
+
+def recover_stranded_results(run_names: list[str], *, dry_run: bool = False) -> list[str]:
+    """Fetch runs the cluster has finished but whose results never reached this machine.
+
+    A run is "in flight" here iff its schedule is not fully merged locally, and that is derived
+    from files on disk -- so a handful of result files that never came down keeps a *finished*
+    run flagged forever, and every tick defers new bots behind it while printing nothing more
+    alarming than "deferring". auto-f11bf027e3d4 sat that way on five results out of 12,285,
+    holding three bots out of evaluation for about an hour.
+
+    Deferring is correct when work really is running; it is only wrong when the cluster is done
+    and the gap is a transfer that did not happen. So ask the cluster, and if it says the run is
+    finished, pull it rather than waiting for a landing that has already happened.
+
+    Returns the run ids that were recovered.
+    """
+    recovered: list[str] = []
+    for tid in run_names:
+        run_dir = planning.RUNS_ROOT / tid
+        missing = outstanding_matches(run_dir)
+        if not missing:
+            continue
+        try:
+            settings = hpc.config()
+            state = hpc.status(tid, settings)
+        except (hpc.HpcError, OSError, KeyError) as error:
+            # Never let a cluster hiccup stop a tick: deferring is still the safe outcome.
+            print(f"  {tid}: cannot ask the cluster whether it finished ({error})")
+            continue
+        if state["done"] < state["total"]:
+            continue
+        print(
+            f"  {tid}: cluster finished all {state['total']} matches but {len(missing)} result(s) "
+            f"never reached this machine; fetching rather than deferring behind it"
+        )
+        if dry_run:
+            recovered.append(tid)
+            continue
+        try:
+            hpc.fetch(tid, settings)
+        except (hpc.HpcError, OSError) as error:
+            print(f"  {tid}: fetch failed ({error}); still treating it as in flight")
+            continue
+        left = outstanding_matches(run_dir)
+        if left:
+            print(f"  {tid}: {len(left)} result(s) still missing after fetch")
+        else:
+            recovered.append(tid)
+    return recovered
+
+
 def self_update(branch: str) -> bool:
     """Fast-forward this checkout onto origin/<branch>. Returns True if the code moved.
 
@@ -513,8 +585,16 @@ def run_once(
     # Phase 1: make progress on work already submitted. Each visit either collects and publishes
     # a finished run or reports it as still going; nothing here blocks on the cluster.
     in_flight_bots = set()
+    # Before treating anything as in flight, separate "still running" from "finished, but its
+    # results never got here". Only the first is a reason to wait, and this runs ahead of the
+    # deferral decision so a tick that closes the gap acts on it immediately instead of
+    # deferring once more on state it just fixed.
+    half_merged = unfinished_runs()
+    if half_merged:
+        recover_stranded_results(sorted(half_merged), dry_run=dry_run)
+        half_merged = unfinished_runs()
     # Bots in a half-merged run of any kind are under test, automation-owned or not.
-    for run_name, bots in sorted(unfinished_runs().items()):
+    for run_name, bots in sorted(half_merged.items()):
         in_flight_bots |= bots
     pending = pending_runs()
     for run_name, bots in sorted(pending.items()):
