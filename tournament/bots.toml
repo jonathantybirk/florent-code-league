@@ -260,8 +260,6 @@ commit = "da3fd8a"
 path   = "bots/jon/versions/vanguard_1e88ae8"
 tags   = ["jon", "versions", "fair"]
 
-# Challengers added after the original jon-full + jon-new pool.
-
 [[bot]]
 name   = "mistral"
 commit = "ba943b9"
@@ -285,8 +283,6 @@ name   = "luc_1"
 commit = "604349b"
 path   = "bots/1"
 tags   = ["luc", "unfair"]
-
-# Untested code-bearing commits added to x/jon after ba943b9.
 
 [[bot]]
 name   = "vanguard"
@@ -378,13 +374,6 @@ commit = "818f3b4"
 path   = "bots/jon/fair/vanguard"
 tags   = ["jon", "fair"]
 
-# ---------------------------------------------------------------------------------------------
-# fdc1e1f (x/jon tip, 2026-08-02). Every bot below has .py content that no previously rated entrant
-# had -- established by hashing the .py files of every bot directory at every commit on every
-# branch and diffing against the 54 distinct code hashes already in this registry. Diagnostic
-# probes, bots/rl (needs its inference server) and the stock starter/shell/donothing baselines
-# are deliberately absent; see AGENTS.md.
-
 [[bot]]
 name   = "tempest_frontier"
 commit = "fdc1e1f"
@@ -469,9 +458,6 @@ commit = "fdc1e1f"
 path   = "bots/lucas/claude_challenger_3"
 tags   = ["lucas", "unfair"]
 
-# ---------------------------------------------------------------------------------------------
-# x/jon @902be71: four bots whose .py no rated entrant had.
-
 [[bot]]
 name   = "casemate"
 commit = "902be71"
@@ -495,13 +481,6 @@ name   = "v233_i"
 commit = "902be71"
 path   = "bots/jon/versions/probes/v233_i"
 tags   = ["jon", "versions", "probes", "fair"]
-
-# ---------------------------------------------------------------------------------------------
-# elias_dev, sampled rather than enumerated. His 64-variant cand/ grid was an ablation search
-# of near-identical bots and he deleted it himself at ecd4d24 ("Remove 64 spent agent
-# variants"), so rating all of it would have burned ~200k matches separating bots he had
-# already discarded. These seven are snapshots along his development instead, newest first.
-# cand/FINAL is byte-identical across f7006a9..9e77076, so those four commits are one point.
 
 [[bot]]
 name   = "autistimusprime"
@@ -545,8 +524,6 @@ commit = "6db8844"
 path   = "bots/cand/CONDC"
 tags   = ["elias", "cand", "unfair"]
 
-# x/luc @87724ec.
-
 [[bot]]
 name   = "tempest_reinforcements"
 commit = "87724ec"
@@ -558,8 +535,6 @@ name   = "tempest_reinforcements"
 commit = "e1dc316"
 path   = "bots/luc/tempest_reinforcements"
 tags   = ["luc", "unfair"]
-
-# Published entrants discovered by automation after the hand-maintained roster.
 
 [[bot]]
 name   = "tempest_reinforcements"
@@ -573,9 +548,6 @@ commit = "e83a42c"
 path   = "bots/opponent_luc"
 tags   = ["llm-RL", "unfair"]
 
-# Discovered by the evaluator from the watched branches; registered so the CLI can
-# schedule them (plan resolves bot ids from this file, the evaluator also reads manifests).
-
 [[bot]]
 name   = "tempest_reinforcements"
 commit = "025dd51"
@@ -586,4 +558,118 @@ tags   = ["luc", "unfair"]
 name   = "tempest_reinforcements"
 commit = "51ad530"
 path   = "bots/luc/tempest_reinforcements"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "gobbleglitch"
+commit = "6cdc440"
+path   = "bots/elias/unfair/gobbleglitch"
+tags   = ["elias", "unfair"]
+
+[[bot]]
+name   = "gobbleglitch"
+commit = "a79dd98"
+path   = "bots/elias/unfair/gobbleglitch"
+tags   = ["elias", "unfair"]
+
+[[bot]]
+name   = "gobbleglitch"
+commit = "e808e1d"
+path   = "bots/elias/unfair/gobbleglitch"
+tags   = ["elias", "unfair"]
+
+[[bot]]
+name   = "janus"
+commit = "8a1e7a1"
+path   = "bots/luc/janus"
+tags   = ["luc", "fair"]
+
+[[bot]]
+name   = "prospect"
+commit = "bf9b3e3"
+path   = "bots/luc/prospect"
+tags   = ["luc", "fair"]
+
+[[bot]]
+name   = "prospect_rushonly"
+commit = "bf9b3e3"
+path   = "bots/luc/prospect_rushonly"
+tags   = ["luc", "fair"]
+
+[[bot]]
+name   = "ragnarok"
+commit = "79582fc"
+path   = "bots/luc/ragnarok"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "ragnarok_fair"
+commit = "79582fc"
+path   = "bots/luc/ragnarok_fair"
+tags   = ["luc", "fair"]
+
+[[bot]]
+name   = "tempest_reinforcements"
+commit = "38f9c23"
+path   = "bots/luc/tempest_reinforcements"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "tempest_reinforcements"
+commit = "3d5ab38"
+path   = "bots/luc/tempest_reinforcements"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "tempest_reinforcements"
+commit = "65ddc55"
+path   = "bots/luc/tempest_reinforcements"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "valkyrie"
+commit = "30d0491"
+path   = "bots/luc/valkyrie"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "vigil"
+commit = "18b749d"
+path   = "bots/luc/vigil"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "vigil"
+commit = "1b5f3d1"
+path   = "bots/luc/vigil"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "vigil"
+commit = "60d5afa"
+path   = "bots/luc/vigil"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "vigil"
+commit = "bf9b3e3"
+path   = "bots/luc/vigil"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "vigil"
+commit = "e22eda8"
+path   = "bots/luc/vigil"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "vigil"
+commit = "e267eeb"
+path   = "bots/luc/vigil"
+tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "vigil_reinforcements"
+commit = "60d5afa"
+path   = "bots/luc/vigil_reinforcements"
 tags   = ["luc", "unfair"]

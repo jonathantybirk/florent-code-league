@@ -1,0 +1,1077 @@
+{
+  "tournament_id": "secret-eval-gapfill",
+  "map_set": "secret",
+  "maps": [
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "duel",
+    "fjord",
+    "hive",
+    "jackpot",
+    "longship",
+    "pinch",
+    "quarry",
+    "runestone",
+    "secret/aggression",
+    "secret/distant",
+    "secret/firepit",
+    "secret/geode",
+    "secret/launcherheaven",
+    "secret/longway",
+    "secret/race",
+    "secret/spacey",
+    "secret/spaceywall",
+    "secret/tightspace",
+    "showdown",
+    "skerry",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 31939,
+  "rating_matches": 31540,
+  "mode": "challenger",
+  "challengers": [
+    "gobbleglitch@6cdc440",
+    "gobbleglitch@a79dd98",
+    "gobbleglitch@e808e1d",
+    "janus@8a1e7a1",
+    "prospect@bf9b3e3",
+    "prospect_rushonly@bf9b3e3",
+    "ragnarok@79582fc",
+    "ragnarok_fair@79582fc",
+    "tempest_reinforcements@38f9c23",
+    "tempest_reinforcements@3d5ab38",
+    "tempest_reinforcements@65ddc55",
+    "valkyrie@30d0491",
+    "vigil@18b749d",
+    "vigil@1b5f3d1",
+    "vigil@60d5afa",
+    "vigil@bf9b3e3",
+    "vigil@e22eda8",
+    "vigil@e267eeb",
+    "vigil_reinforcements@60d5afa"
+  ],
+  "bots": [
+    {
+      "bot_id": "gobbleglitch@6cdc440",
+      "name": "gobbleglitch",
+      "commit": "6cdc4409dc3944ad658b07880933800e4a80f902",
+      "path": "bots/elias/unfair/gobbleglitch",
+      "tags": [
+        "elias",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "gobbleglitch@a79dd98",
+      "name": "gobbleglitch",
+      "commit": "a79dd98ef6108ab75cd6ca55bb13d657f029ec3c",
+      "path": "bots/elias/unfair/gobbleglitch",
+      "tags": [
+        "elias",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "gobbleglitch@e808e1d",
+      "name": "gobbleglitch",
+      "commit": "e808e1dba0e506515ddbcbd8894535b7d1608755",
+      "path": "bots/elias/unfair/gobbleglitch",
+      "tags": [
+        "elias",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "janus@8a1e7a1",
+      "name": "janus",
+      "commit": "8a1e7a1eceaa9adc2f0ff0bb40586f7179210982",
+      "path": "bots/luc/janus",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "prospect@bf9b3e3",
+      "name": "prospect",
+      "commit": "bf9b3e37484490d179d08c376dc6d9bb2d1f997f",
+      "path": "bots/luc/prospect",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "prospect_rushonly@bf9b3e3",
+      "name": "prospect_rushonly",
+      "commit": "bf9b3e37484490d179d08c376dc6d9bb2d1f997f",
+      "path": "bots/luc/prospect_rushonly",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "ragnarok@79582fc",
+      "name": "ragnarok",
+      "commit": "79582fccd9dde1f7e58153880d5c20a768297c4e",
+      "path": "bots/luc/ragnarok",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "ragnarok_fair@79582fc",
+      "name": "ragnarok_fair",
+      "commit": "79582fccd9dde1f7e58153880d5c20a768297c4e",
+      "path": "bots/luc/ragnarok_fair",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@38f9c23",
+      "name": "tempest_reinforcements",
+      "commit": "38f9c239f5e5b1cb1937c528cc2306f07a64696c",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@3d5ab38",
+      "name": "tempest_reinforcements",
+      "commit": "3d5ab38bf5ccea7465b8f2519b4089c77daf2bc5",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@65ddc55",
+      "name": "tempest_reinforcements",
+      "commit": "65ddc55455e678bf6f0be791a12a0091187efc6c",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "valkyrie@30d0491",
+      "name": "valkyrie",
+      "commit": "30d049116f05ffa7e3be883a68b26eb4a9ce9b85",
+      "path": "bots/luc/valkyrie",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@18b749d",
+      "name": "vigil",
+      "commit": "18b749dc7bd6341473d356ef71919bd5bb04e9da",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@1b5f3d1",
+      "name": "vigil",
+      "commit": "1b5f3d1b8e1d5eff336dc93e3eb642c55fd733dc",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@60d5afa",
+      "name": "vigil",
+      "commit": "60d5afa662e1da22ee40bae21720b214ce8edb04",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@bf9b3e3",
+      "name": "vigil",
+      "commit": "bf9b3e37484490d179d08c376dc6d9bb2d1f997f",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@e22eda8",
+      "name": "vigil",
+      "commit": "e22eda8d69196d216fbbcf8e3b85d666399a60ff",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@e267eeb",
+      "name": "vigil",
+      "commit": "e267eeb419825e12262d3b358f0205c8ae62c022",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil_reinforcements@60d5afa",
+      "name": "vigil_reinforcements",
+      "commit": "60d5afa662e1da22ee40bae21720b214ce8edb04",
+      "path": "bots/luc/vigil_reinforcements",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "attack_wave_v1@9713344",
+      "name": "attack_wave_v1",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/archive/attack_wave_v1",
+      "tags": [
+        "jon",
+        "archive",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "autistimusprime@ecd4d24",
+      "name": "autistimusprime",
+      "commit": "ecd4d249f79737bf99632d3298ee9f5a85d06839",
+      "path": "bots/elias/unfair/autistimusprime",
+      "tags": [
+        "elias",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "baiter@9713344",
+      "name": "baiter",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/baiter",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "casemate@902be71",
+      "name": "casemate",
+      "commit": "902be71c12fe64badadf6b77103b3059399b7f8a",
+      "path": "bots/jon/fair/casemate",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "casemate_oracle@902be71",
+      "name": "casemate_oracle",
+      "commit": "902be71c12fe64badadf6b77103b3059399b7f8a",
+      "path": "bots/jon/unfair/casemate_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "claude_challenger_1@fdc1e1f",
+      "name": "claude_challenger_1",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/lucas/claude_challenger_1",
+      "tags": [
+        "lucas",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "claude_challenger_2@fdc1e1f",
+      "name": "claude_challenger_2",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/lucas/claude_challenger_2",
+      "tags": [
+        "lucas",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "claude_challenger_3@fdc1e1f",
+      "name": "claude_challenger_3",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/lucas/claude_challenger_3",
+      "tags": [
+        "lucas",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "e9cand@9e77076",
+      "name": "e9cand",
+      "commit": "9e770763b877ff276547204173fb0ee4c9a06df1",
+      "path": "bots/e9cand",
+      "tags": [
+        "elias",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "e_condc@6db8844",
+      "name": "e_condc",
+      "commit": "6db8844e73fd73037eb0673e28eb213ce8cff8bd",
+      "path": "bots/cand/CONDC",
+      "tags": [
+        "elias",
+        "cand",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "e_final@9e77076",
+      "name": "e_final",
+      "commit": "9e770763b877ff276547204173fb0ee4c9a06df1",
+      "path": "bots/cand/FINAL",
+      "tags": [
+        "elias",
+        "cand",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "e_harc@6db8844",
+      "name": "e_harc",
+      "commit": "6db8844e73fd73037eb0673e28eb213ce8cff8bd",
+      "path": "bots/cand/HARC",
+      "tags": [
+        "elias",
+        "cand",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "e_post2@4a95297",
+      "name": "e_post2",
+      "commit": "4a952970b4a1a0986c6b70f9e13aea74d69f03f5",
+      "path": "bots/cand/POST2",
+      "tags": [
+        "elias",
+        "cand",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "e_t4l7@9e77076",
+      "name": "e_t4l7",
+      "commit": "9e770763b877ff276547204173fb0ee4c9a06df1",
+      "path": "bots/cand/T4L7",
+      "tags": [
+        "elias",
+        "cand",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "frontier_v1@9713344",
+      "name": "frontier_v1",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/archive/frontier_v1",
+      "tags": [
+        "jon",
+        "archive",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "frontier_v2@9713344",
+      "name": "frontier_v2",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/archive/frontier_v2",
+      "tags": [
+        "jon",
+        "archive",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "jonbot@9713344",
+      "name": "jonbot",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/fair/jonbot",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "jonbot@da3fd8a",
+      "name": "jonbot",
+      "commit": "da3fd8a0ef76d67a597feebbb523172965c472e5",
+      "path": "bots/jon/fair/jonbot",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "jonbot_190003d@da3fd8a",
+      "name": "jonbot_190003d",
+      "commit": "da3fd8a0ef76d67a597feebbb523172965c472e5",
+      "path": "bots/jon/versions/jonbot_190003d",
+      "tags": [
+        "jon",
+        "versions",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "lockin@9713344",
+      "name": "lockin",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/unfair/lockin",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "mistral@ba943b9",
+      "name": "mistral",
+      "commit": "ba943b9f1c4381a90e0b6ea647b35d9b15d84643",
+      "path": "bots/jon/fair/mistral",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "mistral_fast@26b5aa1",
+      "name": "mistral_fast",
+      "commit": "26b5aa195ef92ebe6dee4fd31727544a5e2c7174",
+      "path": "bots/jon/fair/mistral_fast",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "nemesis@9713344",
+      "name": "nemesis",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/nemesis",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "opponent_luc@e83a42c",
+      "name": "opponent_luc",
+      "commit": "e83a42c85fa3e17b4557377422caad6f35d13a82",
+      "path": "bots/opponent_luc",
+      "tags": [
+        "llm-RL",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "reaver@9713344",
+      "name": "reaver",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/reaver",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "riptide@9713344",
+      "name": "riptide",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/riptide",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "siege_v1@9713344",
+      "name": "siege_v1",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/archive/siege_v1",
+      "tags": [
+        "jon",
+        "archive",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "siege_v2@9713344",
+      "name": "siege_v2",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/archive/siege_v2",
+      "tags": [
+        "jon",
+        "archive",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "tempest@da3fd8a",
+      "name": "tempest",
+      "commit": "da3fd8a0ef76d67a597feebbb523172965c472e5",
+      "path": "bots/jon/fair/tempest",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "tempest_blindfire@fdc1e1f",
+      "name": "tempest_blindfire",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/versions/probes/tempest_blindfire",
+      "tags": [
+        "jon",
+        "versions",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "tempest_fast@eb1f0f3",
+      "name": "tempest_fast",
+      "commit": "eb1f0f33a60df14aa27fbd74927634f41082a469",
+      "path": "bots/jon/fair/tempest_fast",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "tempest_ferry@26b5aa1",
+      "name": "tempest_ferry",
+      "commit": "26b5aa195ef92ebe6dee4fd31727544a5e2c7174",
+      "path": "bots/jon/fair/tempest_ferry",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "tempest_frontier@fdc1e1f",
+      "name": "tempest_frontier",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/fair/tempest_frontier",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "tempest_oracle_ferry@fdc1e1f",
+      "name": "tempest_oracle_ferry",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/unfair/tempest_oracle_ferry",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "tempest_outer@fdc1e1f",
+      "name": "tempest_outer",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/versions/probes/tempest_outer",
+      "tags": [
+        "jon",
+        "versions",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "tempest_picket@fdc1e1f",
+      "name": "tempest_picket",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/versions/probes/tempest_picket",
+      "tags": [
+        "jon",
+        "versions",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@025dd51",
+      "name": "tempest_reinforcements",
+      "commit": "025dd519fdfe28d18b38e2f9a4f02c8f9e3bcc4a",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@51ad530",
+      "name": "tempest_reinforcements",
+      "commit": "51ad530620609147df9ec865d77ab113718a982f",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@87724ec",
+      "name": "tempest_reinforcements",
+      "commit": "87724ecb36b7d9920cd36d87ba5cf198f0f96f12",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@e1dc316",
+      "name": "tempest_reinforcements",
+      "commit": "e1dc316348eccb9195b67474ead5225df833f312",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@edf93ad",
+      "name": "tempest_reinforcements",
+      "commit": "edf93ad3ee905b579b6baa4842b150659ba583a6",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "tempest_sentinel@fdc1e1f",
+      "name": "tempest_sentinel",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/versions/probes/tempest_sentinel",
+      "tags": [
+        "jon",
+        "versions",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "titanium_v1@9713344",
+      "name": "titanium_v1",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/archive/titanium_v1",
+      "tags": [
+        "jon",
+        "archive",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "turtle@9713344",
+      "name": "turtle",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/turtle",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "undertow@9713344",
+      "name": "undertow",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/fair/undertow",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "undertow@da3fd8a",
+      "name": "undertow",
+      "commit": "da3fd8a0ef76d67a597feebbb523172965c472e5",
+      "path": "bots/jon/fair/undertow",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "undertow@fdc1e1f",
+      "name": "undertow",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/fair/undertow",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "undertow_1ac7ac4@da3fd8a",
+      "name": "undertow_1ac7ac4",
+      "commit": "da3fd8a0ef76d67a597feebbb523172965c472e5",
+      "path": "bots/jon/versions/undertow_1ac7ac4",
+      "tags": [
+        "jon",
+        "versions",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "undertow_oracle@75591b7",
+      "name": "undertow_oracle",
+      "commit": "75591b72a86ea02f57e4e5d02c04b1dda988d710",
+      "path": "bots/jon/unfair/undertow_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "undertow_oracle@fdc1e1f",
+      "name": "undertow_oracle",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/unfair/undertow_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "uw_v1@9713344",
+      "name": "uw_v1",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/probes/uw_v1",
+      "tags": [
+        "jon",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "uw_v2@9713344",
+      "name": "uw_v2",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/probes/uw_v2",
+      "tags": [
+        "jon",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "v233_a@9713344",
+      "name": "v233_a",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/probes/v233_a",
+      "tags": [
+        "jon",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "v233_b@9713344",
+      "name": "v233_b",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/probes/v233_b",
+      "tags": [
+        "jon",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "v233_c@9713344",
+      "name": "v233_c",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/probes/v233_c",
+      "tags": [
+        "jon",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "v233_d@9713344",
+      "name": "v233_d",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/probes/v233_d",
+      "tags": [
+        "jon",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "v233_e@9713344",
+      "name": "v233_e",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/probes/v233_e",
+      "tags": [
+        "jon",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "v233_f@9713344",
+      "name": "v233_f",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/probes/v233_f",
+      "tags": [
+        "jon",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "v233_g@9713344",
+      "name": "v233_g",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/probes/v233_g",
+      "tags": [
+        "jon",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "v233_i@902be71",
+      "name": "v233_i",
+      "commit": "902be71c12fe64badadf6b77103b3059399b7f8a",
+      "path": "bots/jon/versions/probes/v233_i",
+      "tags": [
+        "jon",
+        "versions",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard@818f3b4",
+      "name": "vanguard",
+      "commit": "818f3b4a45aac4f468feab1937085f6fa37b752c",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard@9932bec",
+      "name": "vanguard",
+      "commit": "9932bec4586c051510301c7d8c1e0eb8830c0611",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard@c407e79",
+      "name": "vanguard",
+      "commit": "c407e79202ec2a4d7beb3c75b57e61b8f40e8b56",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard@da3fd8a",
+      "name": "vanguard",
+      "commit": "da3fd8a0ef76d67a597feebbb523172965c472e5",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard_oracle@75591b7",
+      "name": "vanguard_oracle",
+      "commit": "75591b72a86ea02f57e4e5d02c04b1dda988d710",
+      "path": "bots/jon/unfair/vanguard_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "vanguard_oracle@902be71",
+      "name": "vanguard_oracle",
+      "commit": "902be71c12fe64badadf6b77103b3059399b7f8a",
+      "path": "bots/jon/unfair/vanguard_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "vanguard_oracle@fdc1e1f",
+      "name": "vanguard_oracle",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/unfair/vanguard_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "vg_v1@9713344",
+      "name": "vg_v1",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/vg_v1",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vg_v2@9713344",
+      "name": "vg_v2",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/vg_v2",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vg_v3@9713344",
+      "name": "vg_v3",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/vg_v3",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vg_v4@9713344",
+      "name": "vg_v4",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/vg_v4",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vg_v5@9713344",
+      "name": "vg_v5",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/vg_v5",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vg_v6@9713344",
+      "name": "vg_v6",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/vg_v6",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vg_v7@9713344",
+      "name": "vg_v7",
+      "commit": "971334489cae0e40ec1e35392e89ac226770bd2e",
+      "path": "bots/jon/legacy/vg_v7",
+      "tags": [
+        "jon",
+        "legacy",
+        "fair"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 5,
+    "targets": [
+      "gobbleglitch@6cdc440",
+      "gobbleglitch@a79dd98",
+      "gobbleglitch@e808e1d",
+      "janus@8a1e7a1",
+      "prospect@bf9b3e3",
+      "prospect_rushonly@bf9b3e3",
+      "ragnarok@79582fc",
+      "ragnarok_fair@79582fc",
+      "tempest_reinforcements@38f9c23",
+      "tempest_reinforcements@3d5ab38",
+      "tempest_reinforcements@65ddc55",
+      "valkyrie@30d0491",
+      "vigil@18b749d",
+      "vigil@1b5f3d1",
+      "vigil@60d5afa",
+      "vigil@bf9b3e3",
+      "vigil@e22eda8",
+      "vigil@e267eeb",
+      "vigil_reinforcements@60d5afa"
+    ],
+    "maps": [
+      "atoll",
+      "aurora",
+      "bridge",
+      "crossfire",
+      "duel",
+      "fjord",
+      "hive",
+      "jackpot",
+      "longship",
+      "pinch",
+      "quarry",
+      "runestone",
+      "showdown",
+      "skerry",
+      "sprint",
+      "strait",
+      "string",
+      "sweden",
+      "twins",
+      "vase",
+      "vault"
+    ],
+    "matches_per_bot": 21,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}
