@@ -86,21 +86,28 @@ surviving candidate is the truth on 28 of 42 published map-sides.
 | opponent | | |
 |---|---|---|
 | `casemate` | 42/42 | 1.00 |
-| `vanguard` | 39/42 | 0.93 |
-| `valkyrie` | 37/42 | 0.88 |
-| `vigil` | 36/42 | 0.86 |
-| `ragnarok` | 36/42 | 0.86 |
-| `gobbleglitch` | 36/42 | 0.86 |
-| `warden_walk` | 35/42 | 0.83 |
-| `warden` | 34/42 | 0.81 |
-| **total** | **295/336** | **0.878** |
+| `gobbleglitch` | 40/42 | 0.95 |
+| `vigil` | 39/42 | 0.93 |
+| `ragnarok` | 39/42 | 0.93 |
+| `valkyrie` | 38/42 | 0.90 |
+| `warden` | 36/42 | 0.86 |
+| `vanguard` | 36/42 | 0.86 |
+| `warden_walk` | 34/42 | 0.81 |
+| **total** | **304/336** | **0.905** |
 
-On 40 generated maps nobody has tuned against: 122/160 = **0.762**.
+On 40 generated maps nobody has tuned against: 134/160 = **0.838**.
 
 **Every opponent is above 80%.** Getting there was not a new mechanic -- it was
-re-measuring three constants that had been tuned on an earlier version of this
+re-measuring five constants that had been tuned on an earlier version of this
 same bot and never revisited: the opening ferry (0.807 -> 0.839), the guard
-radius (-> 0.857), and the guard's chase distance (-> 0.875 at its best).
+radius (-> 0.857), the guard's chase distance (-> 0.875 at its best), the relay
+cap (-> 0.878) and the Launcher ring (-> 0.905).
+
+Not one of them was a new idea. Every one had a comment next to it explaining
+why its value was right, and the comments were honest about a measurement that
+had genuinely been taken -- on a chassis that no longer existed. The lesson is
+in "Measured and rejected" below: a constant is only measured for the bot it
+was measured on.
 
 The last of them is a deliberate trade. Guard cap 2 scores 294/336 = 0.875 but
 leaves `warden_walk` at 0.76; cap 4 scores 290/336 = 0.863 and lifts the worst
@@ -179,9 +186,29 @@ seeds, against the two strongest bots in the field.
 ### CPU
 
 Worst Builder turn 4,987 µs on `longship`, 0 turns over the 10 ms limit across
-4,311 unit-turns. The cluster's hardware measured `valkyrie` at 5,944 µs where
-this laptop said 3,993, so scale by ~1.5: ~7.5 ms worst case there. Inside the
-limit, but not with much room.
+4,311 unit-turns.
+
+Measured a second way, because that figure came from a replay field and it is
+worth checking against the engine's own enforcement. `fcode run --tle N` drops
+an over-budget turn rather than reporting it, so the probe is to tighten N until
+outcomes move:
+
+| `--tle` | vs 3-bot panel, 5 maps, both seats |
+|---|---|
+| 0 (off) | baseline |
+| 10, 8 | identical to baseline, all 30 games |
+| 6 | 1/30 games differ |
+| 4 | 5/30 |
+| 2 | 24/30 |
+
+`--tle` binds *both* bots, so that 6 ms divergence does not say whose turn was
+slow. Running mirrors attributes it: `heimdall` v `heimdall` is identical to
+unlimited down to **4 ms** on all five maps, as are the three opponents against
+themselves. The over-budget turn at 6 ms is in a cross-matchup, not in our code.
+
+So heimdall's own worst turn is under 4 ms here. The cluster measured `valkyrie`
+at 5,944 µs where this laptop said 3,993, so scale by ~1.5: under ~6 ms there,
+against a 10 ms limit.
 
 Both constants were measured, not chosen. Radius² 16/25/36/49 →
 146/145/147/140; cap 1/2/3/4/6 → 139/147/145/146/145; chase 2/4 → 143/147.
@@ -211,6 +238,13 @@ Kept here so the next session does not re-run them.
   and wanders. Scoring it is a wash to a small loss — 0.702 →
   0.673/0.690/0.679/0.679 at 0/1/2/4 blockers allowed. The rounds spent
   chewing belt are worth less than the seat.
-- **Launcher knobs.** `MAX_RELAY_LAUNCHERS` 0/1/2 → 0.552/0.706/0.683 and
+- ~~**Launcher knobs.** `MAX_RELAY_LAUNCHERS` 0/1/2 → 0.552/0.706/0.683 and
   `RING_MAX_SITES` 0/1/2/3 → 0.611/0.667/0.706/0.698 on a six-bot panel. Both
-  were already on their maximum; there is nothing left in that vein.
+  were already on their maximum; there is nothing left in that vein.~~
+  **Wrong, and left here as the warning it is.** Both knobs moved on the full
+  eight-bot panel: the relay went 1 → 2 (+5 games) and the ring went 2 → 1
+  (+9 more, and +12 on the generated set). That is the single biggest gain of
+  the session, and it was sitting behind a "nothing left in that vein" written
+  from a narrower panel on an older chassis. The two constants interact — see
+  the note on `RING_MAX_SITES` in `constants.py` — so neither reading was ever
+  valid once the other had changed.

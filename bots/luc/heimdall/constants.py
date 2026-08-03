@@ -43,18 +43,27 @@ PAD_FIRST_ORDER = False
 #
 # The same shape as MAX_RELAY_LAUNCHERS and for the same reason: a Launcher is
 # +10% on every price the team pays thereafter, so the ring is a scale bill as
-# much as a screen. Measured on the warden_walk chassis over the 21 official
-# maps in both seats, as maps won 2-0 against the two Nash-core agents:
+# much as a screen. Two was measured on the *warden_walk* chassis, as maps won
+# 2-0 against the two Nash-core agents: cap 8/3/2/1 -> worst matchup
+# 29/29/33/24%. Re-measured here on the full 8-bot pool and 40 generated maps:
 #
-#   cap 8 (all of it)   6 vs ragnarok, 6 vs vigil   worst 29%
-#   cap 3               6, 6                        worst 29%
-#   cap 2               7, 7                        worst 33%   <- shipped
-#   cap 1               7, 5                        worst 24%
+#                 pool                     generated
+#     0      286/336  0.851  min 0.76    129/160  0.806
+#     1      304/336  0.905  min 0.81    134/160  0.838   <- shipped
+#     2      295/336  0.878  min 0.81    122/160  0.762
 #
-# Two is the pad plus one more approach. Below that the screen stops covering
-# anything; above it the extra sites are bought with the Gunners and Harvesters
-# that would otherwise have been built.
-RING_MAX_SITES = 2
+# The old number did not survive the chassis it was tuned on, and the reason is
+# MAX_RELAY_LAUNCHERS going to 2. The costs compound: the second ring site is a
+# third Launcher, so it raises the price of both relay Launchers by 10% each,
+# and _run_launcher_ring returns False for every round the Builder spends
+# walking to it -- rounds that Builder owes to the belt and to _guard_home.
+# The relay now buys the forward hop the second ring site used to; paying for
+# both is paying twice.
+#
+# Not zero: one site is the pad, and dropping it costs 5 games on the generated
+# set and 20 on the pool. The falloff at both edges is the shape a real effect
+# has.
+RING_MAX_SITES = 1
 
 # Ferry toward the symmetry inference's committed guess as well as toward a
 # Core a unit has actually seen.
@@ -225,7 +234,6 @@ HARVESTER_FINISH_STEPS = 2
 # ragnarok_fair is forced to do -- and ragnarok_fair takes 25/42 off valkyrie
 # where ragnarok itself only draws 21/42. On aurora the chaining bot ends with
 # 6 Launchers, 1 Harvester and 4 Gunners against the walking bot's 3, 2 and 7.
-# Escape Launchers one Builder will buy to throw itself forward.
 #
 # One, from warden_walk, chosen when the relay fired from round 2 on a guessed
 # Core. With FERRY_ON_INFERENCE off the relay only runs once a unit has
