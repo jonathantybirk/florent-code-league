@@ -117,6 +117,10 @@ published pool the atlas is inert, so an atlas bot and its atlas-free twin play
 the identical game. The 11-13pp the oracle is worth on the pool is worth
 nothing here — and the guard is worth twenty.
 
+A second, independent set of 30 maps (`--seed 4242`) says the same thing:
+heimdall 74/120, and the atlas-free no-guard control 22/60 against vigil where
+heimdall takes 41/60.
+
 ### CPU
 
 Worst Builder turn 4,987 µs on `longship`, 0 turns over the 10 ms limit across

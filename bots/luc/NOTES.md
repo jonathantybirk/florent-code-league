@@ -149,6 +149,33 @@ at 2-12 long before a working defence existed, and the obvious hypothesis was
 that a bot which cannot be killed should take the closed maps to the round-1000
 economy tiebreak. It is still wrong, by more than the original margin.
 
+### Counter-battery: a +11-game result that did not replicate
+
+Worth writing down as a worked example of the trap this file keeps warning
+about. `_engage_with_turret` is capped at zero field Gunners under RUSH, so
+the attacker never answers the defender shooting its battery. Letting it build
+two, but only within 6 tiles of the *enemy* Core (where a defender cannot walk
+away from the turret, which is the measured reason field Gunners fail on open
+ground), looked like a real find:
+
+    30 fresh generated maps, vs vigil and ragnarok
+      heimdall            74/120  0.617
+      + counter-battery   85/120  0.708      <- +11 games, all of it ragnarok
+
+Then it was replayed on the other, independent generated set and on the pool:
+
+    24 generated maps (set 1)   65/96 -> 66/96    +1
+    21 official maps            128/168 -> 129/168 +1
+
+So the whole effect is one opponent on one map set: +13 games in 384. Not
+shipped. The mechanism is still sound and it may be worth revisiting with a
+sample that can actually resolve it, but "it worked on the set I found it on"
+is not a measurement.
+
+Same story, smaller: leashing the guard's ore claims to within 8 tiles of the
+Core (130/168 pool, 75/120 set 2, both +1 or +2) and rebuilding guard turrets
+that have been shot off (76/120 set 2, +2). All inside noise.
+
 ### Two latent bugs worth knowing about
 
 - `warden_walk` (and everything built from it) calls
