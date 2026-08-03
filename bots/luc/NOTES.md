@@ -285,7 +285,35 @@ to a win at round 413 and takes its pacing from 30.7% to 0.9%.
 Also neutral: -2 and +1 over 496 games. It does redistribute -- valkyrie and
 warden each +1, vigil -3 -- but the total does not move.
 
-**Four livelock fixes across two different Builders, all neutral.** Take that
+### Posting the idle Builder as a picket -- the best of the five, still not enough
+
+Suggested rather than derived, and the reasoning is better than "stop pacing":
+the whole defence triggers on *sighting*, sighting needs vision, a Builder sees
+r^2 20, and Builders block movement. So an idle body posted between the two
+Cores buys the guard warning *and* plugs a tile. `_picket_post` picks the
+enemy-facing, narrowest known tile 4-7 from our own Core, walks there once and
+stands still.
+
+    shipped                     270/336  0.804   110/160  0.688
+    picket, 4-7 out             264/336  0.786   112/160  0.700
+    picket, 6-10 out              --             112/160  0.700
+
+It is the only one of the five idle behaviours that is **positive on unknown
+maps**, and on bridge it is transformative: 9,480 titanium collected against 70
+and the round-1000 tiebreak won, where the shipped build loses that map and
+"go home" managed 7,240. It still costs six games on the pool.
+
+Two attempts to separate "stand *beside* the lane" from "stand *in* it" -- our
+own attacker and our own belt have to use the chokepoint -- both produced
+byte-identical results (125 and 126 of 168 against 125). The rank is
+`(distance to enemy Core, openings, tile)` and the first term is unique per
+tile, so the openings term never fires; bucketing it did not help either,
+because in open ground every candidate has four openings. **That hypothesis is
+untested, not refuted.** Expressing it properly means excluding tiles on our
+own Core-to-enemy-Core `_bfs_path`, which is the obvious next thing to try.
+
+**Five livelock and idle-behaviour fixes across two different Builders, and
+only the picket is positive anywhere.** Take that
 as the finding rather than as four failures: a Builder pacing is a Builder that
 has run out of things worth doing, and giving it a tidier way to do nothing is
 still nothing. The place to look for wins is what puts it in that state -- a
