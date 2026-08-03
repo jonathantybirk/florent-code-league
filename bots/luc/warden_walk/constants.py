@@ -155,6 +155,14 @@ HARVESTER_FINISH_STEPS = 2
 # 6 Launchers, 1 Harvester and 4 Gunners against the walking bot's 3, 2 and 7.
 MAX_RELAY_LAUNCHERS = 1
 
+# Prefer Gunner seats outside every visible enemy turret's firing ray. A turret
+# built where an enemy turret already points is shot before it has fired much,
+# and the seat one tile off the ray usually reaches the same Core tile.
+# Measured on the 21 official maps in both seats: against vigil@e267eeb it is
+# 26/42 and 8 maps won 2-0, against 24/42 and 7 with it off; against
+# ragnarok@79582fc it is unchanged at 26/42.
+AVOID_ENEMY_RAYS = True
+
 # --- Siege barriers ---------------------------------------------------------
 # Barriers soaking enemy Gunner lanes aimed at our forward battery, out at the
 # enemy Core. 3 Ti and +1% scale for 30 HP absorbs three Gunner rounds and six

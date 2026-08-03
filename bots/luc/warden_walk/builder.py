@@ -26,6 +26,7 @@ from constants import (
     MIN_AMMO_FOR_SENTINEL,
     NETWORK_CAP_EARLY,
     NETWORK_CAP_LATE,
+    AVOID_ENEMY_RAYS,
     MAX_RELAY_LAUNCHERS,
     HARVESTER_FINISH_STEPS,
     REPAIR_NETWORK,
@@ -2072,6 +2073,11 @@ def _build_basic_gunner(p, ct, enemy_core):
     me = tuple(ct.get_position())
     distances = _distance_map(p, me)
     protected_lanes = _friendly_turret_lanes(ct)
+    # A Gunner seated on a tile an enemy turret already covers is shot before
+    # it has fired much. Prefer any legal seat outside their rays and take a
+    # covered one only when nothing else reaches -- it is a sort key, not a
+    # filter, so a covered seat still beats no seat.
+    enemy_cover = _enemy_turret_cover(p, ct) if AVOID_ENEMY_RAYS else frozenset()
     choices = []
     for core_tile in sorted(core_tiles):
         for dx in range(-3, 4):
@@ -2099,7 +2105,8 @@ def _build_basic_gunner(p, ct, enemy_core):
                     default=None,
                 )
                 if distance is not None:
-                    choices.append((distance, spot, D8.index(facing), facing))
+                    choices.append((spot in enemy_cover, distance, spot,
+                                    D8.index(facing), facing))
     # Self-blocking is checked in preference order and stops at the first site
     # that survives, rather than for every candidate: the cheap tests above
     # have already ruled most sites out, and the best site almost always keeps
@@ -2123,7 +2130,7 @@ def _build_basic_gunner(p, ct, enemy_core):
             return True
         _explore(p, ct)
         return True
-    _, spot, _, facing = min(choices)
+    _, _, spot, _, facing = min(choices)
     position = Position(*spot)
     if not ct.is_in_vision(position):
         _step(p, ct, position, False)
@@ -2234,6 +2241,40 @@ def _ray_direction(source, target):
     step = (0 if dx == 0 else (1 if dx > 0 else -1),
             0 if dy == 0 else (1 if dy > 0 else -1))
     return next((direction for direction in D8 if direction.delta() == step), None)
+
+
+def _enemy_turret_cover(p, ct):
+    """Tiles a visible enemy Gunner or Sentinel can currently shoot.
+
+    A Gunner's ray stops at the first targetable tile and is blocked by walls;
+    a Sentinel's pierces both, so its whole line counts. Computed once per
+    turn, not once per candidate site -- the per-site version is what put an
+    earlier build over the turn limit.
+    """
+    covered = set()
+    team = ct.get_team()
+    for turret_id in ct.get_nearby_buildings():
+        if ct.get_team(turret_id) == team:
+            continue
+        kind = ct.get_entity_type(turret_id)
+        if kind not in (EntityType.GUNNER, EntityType.SENTINEL):
+            continue
+        origin = tuple(ct.get_position(turret_id))
+        try:
+            dx, dy = ct.get_direction(turret_id).delta()
+        except Exception:  # noqa: BLE001 - a turret with no facing
+            continue
+        pierces = kind == EntityType.SENTINEL
+        reach = SENTINEL_RANGE_SQ if pierces else GUNNER_RANGE_SQ
+        tile = origin[0] + dx, origin[1] + dy
+        while _inside(p, tile) and _distance_sq(origin, tile) <= reach:
+            if tile in p.walls and not pierces:
+                break
+            covered.add(tile)
+            if not pierces and tile in p.solids:
+                break
+            tile = tile[0] + dx, tile[1] + dy
+    return covered
 
 
 def _friendly_turret_lanes(ct):
