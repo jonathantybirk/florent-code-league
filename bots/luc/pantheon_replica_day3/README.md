@@ -28,7 +28,49 @@ own v5 `tempest_fast` three times on 2026-08-03 and took **14 of 15 games**.
 | real Pantheon vs tempest_fast (15 ladder games) | 93% | ~38 |
 | this bot vs tempest_fast (42 games, full pool, both seats) | **90.5%** | **37** |
 
-On the 13 distinct maps those real matches actually used, it wins 11.
+### Per-map, against the real games
+
+Same maps, same seats, replica in Pantheon's seat B:
+
+| map | real Pantheon | replica | delta |
+|-----|---------------|---------|-------|
+| twins | WON r21 | WON r21 | **exact** |
+| aurora | WON r43 | WON r43 | **exact** |
+| longship | WON r27 | WON r27 | **exact** |
+| vault | WON r33 | WON r35 | +2 |
+| pinch | WON r16 | WON r18 | +2 |
+| runestone | WON r26 | WON r29 | +3 |
+| skerry | WON r29 | WON r36 | +7 |
+| quarry | WON r43 | WON r39 | -4 |
+| showdown | WON r42 | WON r34 | -8 |
+| jackpot | WON r34 | WON r43 | +9 |
+| bridge | WON (r1000 tiebreak) | WON r95 | — |
+| duel | **LOST** | WON r26 | diverges, our way |
+| sweden | WON r18 | WON r212 | **+194, unexplained** |
+
+Outcome agreement 12/13; median timing delta +2 rounds.
+
+Two things came out of chasing the per-map gaps rather than the aggregate:
+
+**Pantheon builds exactly one Launcher per game** — 151 across 150 replays —
+and its raiders walk the rest. Ragnarok chains relay Launchers forward *and*
+rings its own Core with three or four. On twins that built extra pads on r4,
+r9 and r12, each 20 Ti and a permanent +10% on every later build, and pushed
+the first Gunner from round 6 out to round 11: kill at round 44 instead of 21.
+Capping to one pad and walking took twins to r24, then to r21 exactly.
+
+**bridge needs the second pad.** A 21x8 corridor with the Core in the corner:
+capped to one we lose the Core on round 50. The real Pantheon does not kill on
+bridge either -- its win there ran the full 1000 rounds -- so closed maps keep
+a second Launcher as the displacement screen (`PANTHEON_RING_SITES_FORTIFY`).
+
+**sweden is the one real outlier and is not yet solved.** Pantheon kills on
+round 18; we take 212. Its pad sits at (1,11), one tile in from the map edge;
+ours lands on (0,11) flat against it, so half the throw disc is off-map and the
+opening throws land at (2,8) instead of Pantheon's (2,6) at maximum range. An
+edge-aware pad ranking (prefer the site whose throw disc stays on the map) was
+tried and is a **measured failure**: sweden 71 -> 68, but twins 21 -> 27 and
+aurora 43 -> 50. The right fix is narrower than that and is not in yet.
 
 Getting there took two fixes, both found by asking why it *wasn't* matching:
 

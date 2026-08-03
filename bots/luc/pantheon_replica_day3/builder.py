@@ -8,7 +8,8 @@ from fcode import Controller, EntityType, Environment, GameError, Position
 
 import doctrine
 from atlas import identify_visible
-from constants import (PANTHEON_RAIDERS,
+from constants import (PANTHEON_RAIDERS, PANTHEON_RING_SITES,
+                       PANTHEON_RING_SITES_FORTIFY,
     CLAIM_SLOTS,
     CORE_THREAT_RADIUS_SQ,
     CPU_SOFT_BUDGET_US,
@@ -1280,7 +1281,10 @@ def _run_launcher_ring(p, ct):
         return False
     enemy_core, _ = unpack_enemy(packed)
     if not hasattr(p, "launcher_ring_targets"):
-        p.launcher_ring_targets = _launcher_ring_targets(p, enemy_core)
+        # Enemy-facing site first, then stop: one pad, as Pantheon builds.
+        sites = (PANTHEON_RING_SITES_FORTIFY
+                 if p.doctrine == doctrine.FORTIFY else PANTHEON_RING_SITES)
+        p.launcher_ring_targets = _launcher_ring_targets(p, enemy_core)[:sites]
         p.launcher_ring_done = set()
 
     # With more than one ring Builder there is no store slot left to claim
@@ -1444,6 +1448,11 @@ def _launcher_ring_targets(p, enemy_core):
             continue
         targets.append(site)
 
+    # Enemy-facing first. An edge-aware variant that ranked sites by how much
+    # of their throw disc stays on the map was tried here to fix sweden, where
+    # our pad lands on (0,13)'s edge while Pantheon's sits one tile in at
+    # (1,11): it moved sweden 71 -> 68 and cost twins 21 -> 27 and aurora
+    # 43 -> 50, so it is recorded as a measured failure rather than kept.
     targets.sort(key=lambda site: (_distance_sq(site, enemy_core), site))
     return [Position(*site) for site in targets]
 
@@ -1804,7 +1813,15 @@ def _opening_ferry(p, ct, enemy_core):
         _step(p, ct, destination, False, allow_launcher=False)
         return True
 
-    return _build_escape_launcher(p, ct, target)
+    # One pad, then walk. Pantheon builds exactly one Launcher per game -- 151
+    # across 150 replays -- and its raiders cover the rest of the distance on
+    # foot: on twins they land at (3,10) on round 2 and have a Gunner at (3,6)
+    # by round 6. Ragnarok instead chains relay Launchers forward, and doing
+    # that here built three extra pads on twins (r4, r9, r12), each costing
+    # 20 Ti and a permanent +10% on every later build, and pushed the first
+    # Gunner from round 6 out to round 11. Same map, same opponent, kill at
+    # round 44 instead of 21. Walking is faster than building a ferry to ride.
+    return False
 
 
 def _chebyshev(a, b):

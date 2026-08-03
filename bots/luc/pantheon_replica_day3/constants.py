@@ -36,6 +36,18 @@ PANTHEON_FERRY_PASSENGERS = 4
 # 81 of 150 games are exactly RREE and RR is the prefix of every pattern seen.
 # Builder 0 builds the pad on r1 and is then thrown off it on r2 as raider one.
 PANTHEON_RAIDERS = 3
+# Launchers built per game. Pantheon builds exactly one -- 151 across 150
+# replays -- and it is the throw pad, not a ring. Ragnarok rings the Core with
+# three or four, each 20 Ti and a permanent +10% on every later build, for a
+# displacement screen this opening never gets to use because every Builder is
+# already gone by round 5.
+PANTHEON_RING_SITES = 1
+# ...except where the pad has to double as a displacement screen. bridge is a
+# 21x8 corridor with our Core in the corner: capped to one pad we lose the Core
+# on round 50, with two we hold. The real Pantheon does not kill on bridge
+# either -- its win there ran the full 1000 rounds on the tiebreak -- so a
+# second Launcher on closed ground is consistent with what it actually does.
+PANTHEON_RING_SITES_FORTIFY = 2
 
 RING_EDGE_MARGIN = 5
 # Tiles between the Core footprint and the ring. Launchers block movement, so
