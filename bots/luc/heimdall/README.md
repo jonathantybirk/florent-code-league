@@ -126,6 +126,28 @@ counter-battery idea:
 | 40 generated maps (set 3) | 99/160 0.619 | **108/160 0.675** |
 | 21 official maps | 134/168 0.798 | 135/168 0.804 |
 
+### The published enemy-Core guess is sticky
+
+Every Builder runs the symmetry inference on its own vision and publishes its
+own favourite to `SLOT_ENEMY_CORE`. Two Builders holding different rejection
+sets therefore overwrote that slot with different answers, every round, for as
+long as they disagreed.
+
+Traced on `longship`: the published target alternated between the rotation
+candidate `(24, 10)` and the x-mirror `(24, 8)` on *every single round*, and
+the attacker paced between two tiles from round 19 to round 34 instead of
+arriving. `warden_walk` — which has the atlas and so knows the answer on round
+0 — emplaced at our Core on round 14 and won 37-0 on Core damage. With the
+guess held steady it locks on at round 5 and sights the real Core at round 16.
+
+The fix is one rule: an inference already published by another Builder is
+authoritative until *this* Builder has actually disproved it. A sighting still
+outranks everything.
+
+Effect on score is small — 266/336 → 270/336 on the pool and +1 on 40 generated
+maps, both inside noise — but a target that changes every round is worse than
+either of the targets it alternates between, and that is not a tuning question.
+
 ### On terrain nobody has tuned against
 
 24 random symmetric maps from `tools/generate_maps.py`, both seats, against the
