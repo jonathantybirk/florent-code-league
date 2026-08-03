@@ -144,10 +144,21 @@ ROTATE_TITANIUM_RESERVE = 40
 # warning is now worth what six was when both sides were being thrown across
 # the map. Past r^2 64 it starts paying turrets for scouts again.
 GUARD_RADIUS_SQ = 64
-# Turrets this Builder will put up for that job. Insurance, not a garrison --
-# each is +10% on every price paid afterwards. Measured on the same panel:
-# cap 1/2/3/4/6 -> 139/147/145/146/145 of 168.
-MAX_GUARD_GUNNERS = 2
+# Turrets this Builder will put up for that job.
+#
+# This is the one constant chosen to maximise the *worst* matchup rather than
+# the total, because that is what the goal asks for. On the full 8-bot pool,
+# with the ferry off and the chase at six:
+#
+#     cap 2   294/336  0.875   but warden_walk 32/42 = 0.76
+#     cap 3   291/336  0.866   but warden_walk 33/42 = 0.79
+#     cap 4   290/336  0.863   and every opponent >= 0.81
+#
+# Four games of total buy the minimum going from 0.76 to 0.83. On 40 generated
+# maps the two are level (120/160 against 121/160). If the objective ever
+# becomes mean win rate rather than worst-case, cap 2 is the better answer and
+# this comment is the reason to change it back.
+MAX_GUARD_GUNNERS = 4
 # Steps it will take toward an intruder to find a firing seat.
 #
 # Four was chosen when the attacker was ferried across the map and the guard's
