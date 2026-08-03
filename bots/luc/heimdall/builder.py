@@ -2490,7 +2490,22 @@ def _update_enemy_core_inference(p, ct):
     best = max(surviving, key=lambda c: (_distance_sq(c, p.core), c))
     current, sighted = unpack_enemy(ct.read_store(SLOT_ENEMY_CORE))
     # A sighting is authoritative: never overwrite one with an inference.
-    if not sighted and current != best:
+    if sighted:
+        return
+    # So is an inference another Builder has already published, until *this*
+    # Builder has disproved it. Each Builder rejects candidates from its own
+    # vision, so two of them holding different rejection sets both overwrote
+    # this slot with their own favourite -- every round, forever. Traced on
+    # longship: the published target alternated between the rotation and the
+    # x-mirror on every single round, and the attacker paced between two tiles
+    # from round 19 to round 34 instead of arriving, while the opponent
+    # emplaced at our Core on round 14 and took the game 37-0 on Core damage.
+    # With the guess held steady it locks on at round 5 and sights the real
+    # Core at round 16. A target that changes every round is worse than either
+    # of the targets it alternates between.
+    if current is not None and current in surviving:
+        return
+    if current != best:
         ct.write_store(SLOT_ENEMY_CORE, pack_enemy(best))
 
 

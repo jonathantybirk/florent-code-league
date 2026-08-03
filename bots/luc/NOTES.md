@@ -211,6 +211,39 @@ the guard has no firing solution (heal is 4 HP for a flat 1 Ti and needs no
 alignment, so it looked like the natural partner). Pool 135/168, set 3 101/160
 -- +1 and +2. A wash.
 
+### A real bug: the published enemy-Core guess flip-flopped every round
+
+`_update_enemy_core_inference` ends with each Builder writing *its own*
+favourite surviving candidate to `SLOT_ENEMY_CORE`. Builders reject candidates
+from their own vision, so two of them with different rejection sets overwrite
+that slot with different answers on alternate rounds, indefinitely.
+
+Instrumented on longship, heimdall vs warden_walk:
+
+    RUSH  5 at (10, 9) target (24, 8)
+    RUSH  6 at (11, 9) target (24, 10)
+    RUSH  7 at (11,10) target (24, 8)
+    ...
+    RUSH 19 at (19, 7) target (24, 8)
+    RUSH 20 at (19, 8) target (24,10)      <- pacing, not travelling
+    ... to round 34
+
+The attacker's BFS target reversed every round, so from round 19 it walked back
+and forth between two tiles for fifteen rounds. warden_walk, which has the
+atlas and knows the answer on round 0, emplaced at our Core on round 14; its
+own Core took zero damage all game.
+
+Fix: an inference another Builder has already published stands until *this*
+Builder disproves it. Same trace afterwards locks on at round 5 and sights the
+real Core at round 16. Worth +4/336 on the pool and +1/160 on generated maps --
+inside noise both times, which is worth stating plainly: this shipped because a
+target that changes every round is a defect, not because the score moved.
+
+Worth checking the same class elsewhere. `SLOT_SYMMETRY_REJECT_START +
+min(builder_index, 1)` gives three Builders two slots, so Builders 1 and 2
+clobber each other's rejection masks -- benign only because each writes the
+team OR it read, so bits re-propagate.
+
 ### Three washes, and the point at which to stop
 
 Traced a `heimdall` loss on a generated map (`random3/r10`, 30x10, RUSH): vigil
