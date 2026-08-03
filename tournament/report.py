@@ -9,6 +9,8 @@ import numpy as np
 
 from tournament.rating import ELO_PER_LOGIT, Ratings
 
+NASH_DECIMALS = 6
+
 COLUMNS = [
     "rank",
     "bot_id",
@@ -39,8 +41,23 @@ def records(ratings: Ratings, meta: dict[str, dict]) -> list[dict]:
     losses = games - wins - draws
 
     order = np.argsort(-ratings.transitive)
-    nash_order = np.lexsort((-ratings.transitive, -np.round(ratings.nash_average, 9)))
-    nash_rank = {int(index): position + 1 for position, index in enumerate(nash_order)}
+    # Nash averages are ordered on a rounded key, then melo_r breaks ties within one score. Bots
+    # that share a score share a rank (competition ranking: 1, 1, 1, 4), because "first" here is a
+    # property of the score, not of the tiebreak -- every core agent ties at 0 by construction, and
+    # numbering them 1..4 would invent an ordering the equilibrium does not assert. melo_r still
+    # decides the order they are listed in.
+    # Ties are judged at the precision the row actually publishes. A tighter key would split the
+    # core on solver noise: every support member is 0 by construction, but the equilibrium solve
+    # returns them as 0.0 and -3e-9, which are the same published number and must rank the same.
+    nash_key = -np.round(ratings.nash_average, NASH_DECIMALS)
+    nash_order = np.lexsort((-ratings.transitive, nash_key))
+    nash_rank: dict[int, int] = {}
+    for position, index in enumerate(nash_order):
+        index = int(index)
+        if position and nash_key[index] == nash_key[int(nash_order[position - 1])]:
+            nash_rank[index] = nash_rank[int(nash_order[position - 1])]
+        else:
+            nash_rank[index] = position + 1
 
     rows = []
     for position, index in enumerate(order, start=1):
@@ -68,7 +85,7 @@ def records(ratings: Ratings, meta: dict[str, dict]) -> list[dict]:
                 if ratings.melo_c.shape[1] > 1
                 else 0.0,
                 "nash_prob": round(float(ratings.nash[index]), 6),
-                "nash_average": round(float(ratings.nash_average[index]), 6),
+                "nash_average": round(float(ratings.nash_average[index]), NASH_DECIMALS),
                 "nash_rank": nash_rank[index],
                 "rank_delta": position - nash_rank[index],
             }

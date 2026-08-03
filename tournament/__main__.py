@@ -60,7 +60,9 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     planner.add_argument(
-        "--maps", default="official", help="official | generated | all | screen | comma list"
+        "--maps",
+        default="official",
+        help="official | generated | secret | official_secret | all | screen | comma list",
     )
     planner.add_argument("--seeds", default="1", help="comma list of engine seeds")
     planner.add_argument(
