@@ -57,18 +57,24 @@ PAD_FIRST_ORDER = False
 RING_MAX_SITES = 2
 
 # Ferry toward the symmetry inference's committed guess as well as toward a
-# Core we have actually seen. Measured and OFF: the inference is right on 28 of
-# 42 published map-sides, and the reasoning that the two wrong candidates still
-# lie in the enemy half is simply not worth what a wrong throw costs. Played
-# atlas-free over the 21 official maps in both orders against the same bot with
-# this off, ferrying on the guess scores 17/42 where refusing scores 21/42.
+# Core a unit has actually seen.
 #
-# So the original `p.atlas is None` gate was right to refuse a guess and wrong
-# only about what counts as knowing: a Core a unit has physically seen is not a
-# guess, and that case is now allowed (see `_opening_ferry`). That widening is
-# worth 0 games on the published pool, where the atlas already knew, and is
-# kept because off the pool the atlas knows nothing.
-FERRY_ON_INFERENCE = False
+# This was measured OFF in the atlas-carrying ancestors, at 17/42 against 21/42
+# over the pool, and the reasoning was that a wrong throw costs more than a
+# right one gains. That measurement does not survive being redone on a bot with
+# no atlas at all, which is what this one is: with an atlas the `sighted` flag
+# is set on round 0 and the relay always runs, so the flag only ever governed
+# the handful of games where the lookup missed. Here it governs every game --
+# a unit does not physically see the enemy Core until it has walked most of the
+# way there, and by then the relay it would have asked for is pointless. The
+# whole 20pp the relay is worth (MAX_RELAY_LAUNCHERS 0 scores 0.506 against
+# 0.702) was being left on the table.
+#
+# Measured on this chassis, 21 official maps both seats against valkyrie,
+# vigil, ragnarok and vanguard, 168 games: 119 off, 128 on. The guess is right
+# on 28 of 42 published map-sides and self-corrects on the rest -- the symmetry
+# test strikes a candidate the moment observed terrain contradicts it.
+FERRY_ON_INFERENCE = True
 
 # Drop a ring direction when the map edge is this close behind it: nothing can
 # approach from off the map, so a Launcher there guards nothing and still costs
