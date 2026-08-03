@@ -1,16 +1,19 @@
 # Warden
 
-`valkyrie` with two mechanics ported back from `vigil@e267eeb`, chosen because
-that bot is the one the ragnarok line loses to.
+`valkyrie` with two mechanics ported back from `vigil@e267eeb`: mending a shot
+conveyor line, and retiring a Builder that can no longer move.
 
 ## Why these two
 
-The rated field says the ragnarok line does not beat the vigil line:
-`valkyrie@d181312` scores 90.3% over 3,038 cluster matches against 94
-opponents, and nearly all its losses are vigil commits (2/10 to `vigil@e267eeb`,
-4/10 to `vigil@e22eda8`, 17/42 to `ragnarok_fair`). The ratings already name
-this: the Nash core is `{vigil@e267eeb 0.50, ragnarok 0.25, ragnarok_fair
-0.25}`, a rock-paper-scissors.
+**Correction to the original rationale.** This bot was built on the claim that
+the ragnarok line loses to the vigil line. That claim came from a *partial*
+cluster run (2/10 against `vigil@e267eeb`) and is false: on the completed
+3,906-match run `valkyrie@d181312` takes 24/42 off `vigil@e267eeb`, 24/42 off
+`vigil@18b749d` and 23/42 off `vigil@e22eda8`. Its one losing matchup is
+`ragnarok_fair@79582fc` at 17/42.
+
+The port still stands on its own merits, which never depended on the cycle:
+ragnarok is simply missing two capabilities, and neither is a matter of taste.
 
 Diffing the two lineages function-by-function, ragnarok is *missing* things
 vigil still has. It was assembled as "the best measured mechanic from every
@@ -32,9 +35,11 @@ lineage" and two got dropped on the way:
   the Core will never replace it. Self-destructing refunds the scale and lets
   the Core respawn somewhere not trapped.
 
-Belts and stuck builders are what *long* games turn on, and long games are
-where vigil beats ragnarok — so this is the most plausible mechanism for the
-cycle that is available as a straight port rather than a redesign.
+Belts and stuck builders are what *long* games turn on. That is no longer
+offered as an explanation of a cycle that does not exist — it is just a gap: a
+bot that cannot mend a shot conveyor loses the income of every Harvester
+upstream of the hole, for the rest of the game, and a bot that never calls
+`self_destruct` pays +20% on everything to keep a Builder that cannot move.
 
 ## Measured
 

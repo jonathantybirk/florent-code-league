@@ -75,22 +75,39 @@ compliance stage. Do not grind the 252-game panel locally -- it put this laptop
 at load 24 for a worse answer. Read results with
 `git show origin/x/tournament:tournament/runs/<run>/matches.csv`.
 
-Cluster numbers for valkyrie@d181312 (3,038 matches, 94 opponents): **90.3%
-overall**, and the losses are almost all one family --
+Cluster numbers for valkyrie@d181312 over the **complete** 3,906-match run
+against 94 opponents: **89.7% overall**. Per-matchup, on full 42-game samples:
 
-    vigil@e267eeb              2/10
-    vigil@e22eda8              4/10
-    ragnarok_fair@79582fc     17/42
-    ragnarok@79582fc          21/42
-    vigil@18b749d              8/14
+    ragnarok_fair@79582fc     17/42  40%   <- the only real losing matchup
+    ragnarok@79582fc          21/42  50%
+    vigil@e22eda8             23/42  55%
+    vigil@e267eeb             24/42  57%
+    vigil@18b749d             24/42  57%
 
-The ragnarok line does not beat the vigil line. That is the rock-paper-scissors
-the ratings already record: the Nash core is {vigil@e267eeb 0.50,
-ragnarok@79582fc 0.25, ragnarok_fair@79582fc 0.25}. Beating both at once means
-collapsing that core, which is exactly the hard part -- and note the local gate
-disagrees with the cluster's small sample (locally valkyrie takes 24/42 off
-vigil@e267eeb, the cluster had 2/10 on a partial run), so wait for a full run
-before believing either.
+**Do not read a partial run.** At 10 games the same matchup showed 2/10 against
+vigil@e267eeb and I concluded the ragnarok line loses to the vigil line. It
+does not -- the full sample is 57%, and it agrees exactly with the local gate.
+A run is partial until `matches.csv` reaches the planned count; check it.
+
+The genuinely interesting result is the last line of that table inverted:
+**ragnarok_fair beats valkyrie 25/42 while ragnarok itself only draws 21/42.**
+The atlas-free twin of the same bot is the stronger opponent, which says the
+offline map oracle is not paying for itself against this bot and may be
+actively costing it. Worth chasing, and it matters doubly if the final is
+played on a map the atlas has never seen.
+
+The opening headcount is settled, in ragnarok's favour. A fourth Builder is a
+regression in *both* directions -- valkyrie_atk2 (second attacker) 83.6% and
+valkyrie_econ2 (second miner) 83.4%, against valkyrie's 89.7%, and 12/42 and
+1/4 respectively head-to-head. The +20% scale per Builder really does outweigh
+either a second battery or a second belt. Pantheon opens with four anyway; that
+is a difference in what the rest of the bot does, not a lever to copy.
+
+vigil's own tip is a regression: working-tree vigil (commit 64e40cba4, "Place
+the ring on the real threat boundary, and turn it on") loses **15/42** to
+vigil@e267eeb, one commit earlier. That commit flips RING_COVER_SHELL on, which
+ragnarok's constants had already recorded as worse (20/42 against 26/42 for the
+cheap radius-2 compass ring). Turning it back off is probably free rating.
 
 ### Measured failures worth not repeating
 
