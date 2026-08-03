@@ -263,7 +263,11 @@ Two fixes, both obviously more correct than the livelock, both measured on the
 
     shipped (livelock present)   270/336  0.804   110/160  0.688
     latch the chosen corner      268/336  0.798   110/160  0.688
-    go home when idle            264/336  0.786
+    go home when idle            264/336  0.786   110/160  0.688
+
+All three land on *exactly* 110/160 on the generated maps, which is the
+cleanest possible statement of the result: off the pool the idle Builder's
+behaviour makes no difference whatsoever.
 
 **Neither is worth shipping.** Which is the finding: a Builder that has no ore
 left to claim and no ground left to see has nothing valuable to do either way,
