@@ -116,10 +116,44 @@ Twenty points on both sets, from different seeds.
   147, and refilling to a ceiling of eight is worse still at 70/168. Every
   replacement is +20% on every price the team pays for the rest of the game,
   and an attrition war fought by respawning is lost on cost while being won on
-  bodies. Note `steward` on this branch ships the same idea from the other
-  direction (its trace shows a team dying at T103 holding 358 Ti), so the two
-  measurements disagree and the difference is worth finding — mine adds the
-  guard, which changes how many Builders die and when.
+  bodies. **Resolved** — see "the bastion lineage" below. The disagreement with
+  `steward` was not a disagreement: refill is chassis-dependent, harmless where
+  Builders rarely die and ruinous next to a guard that makes them die.
+
+### The bastion lineage, settled
+
+`warden` → `steward` (+ Builder refill) → `bastion` (+ a *static* home guard:
+the second ring site becomes a Gunner facing the likely approach). It was
+dropped mid-session without a verdict — never rated, since all three sat
+deferred behind the evaluator queue. So it is worth one clean number. Standard
+panel, 21 official maps, both seats, valkyrie/vigil/ragnarok/vanguard:
+
+    warden        107/168  0.637   <- the correct control for steward
+    steward       109/168  0.649   warden + refill          +2, noise
+    bastion       110/168  0.655   steward + static guard   +1, noise
+    warden_walk   118/168  0.702   Launcher caps
+    heimdall      136/168  0.810   atlas-free + reactive guard
+
+Three conclusions, all of them corrections:
+
+1. **Refill is neutral on this chassis, not a regression.** 107 → 109. It is
+   catastrophic only alongside the reactive guard (147 → 85), because that
+   guard is what makes both sides lose bodies. Real interaction, not a
+   contradiction.
+2. **A static guard is worth nothing: +1 game.** The reactive guard is worth
+   **+29** over the same control. Pre-placing a turret facing where the enemy
+   probably comes from is not the same mechanic as answering the intruder you
+   can actually see, and only the second one pays.
+3. **"steward is off the trade-off frontier" was a narrow-panel artefact.** It
+   was measured on three hand-picked opponents (prospect / ragnarok_fair /
+   vigil@60d5afa), scored 84/126 against warden's 79, and the four-bot panel
+   reverses the sign to noise. Two opponents chosen as poles of a trade-off are
+   a probe, not a panel; do not draw a conclusion from one.
+
+So bastion is correctly dead — not because it regresses, but because it is flat
+where the chassis it was abandoned for is 26 games better.
+
+### Everything else tried on the heimdall chassis, against 128/168
 
 ### Everything else tried on the heimdall chassis, against 128/168
 
