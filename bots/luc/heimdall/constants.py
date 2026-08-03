@@ -225,7 +225,22 @@ HARVESTER_FINISH_STEPS = 2
 # ragnarok_fair is forced to do -- and ragnarok_fair takes 25/42 off valkyrie
 # where ragnarok itself only draws 21/42. On aurora the chaining bot ends with
 # 6 Launchers, 1 Harvester and 4 Gunners against the walking bot's 3, 2 and 7.
-MAX_RELAY_LAUNCHERS = 1
+# Escape Launchers one Builder will buy to throw itself forward.
+#
+# One, from warden_walk, chosen when the relay fired from round 2 on a guessed
+# Core. With FERRY_ON_INFERENCE off the relay only runs once a unit has
+# physically *seen* the enemy Core -- so it fires late, when the attacker is
+# already close and a hop is worth more than the walk it replaces. Re-measured
+# on the current chassis, full 8-bot pool and 40 generated maps:
+#
+#                 pool                     generated
+#     0        (much worse)                --
+#     1      290/336  0.863  min 0.81    120/160  0.750
+#     2      295/336  0.878  min 0.81    122/160  0.762   <- shipped
+#     3      291/336  0.866  min 0.81    (level)
+#
+# Better on both arms without giving anything back on the worst matchup.
+MAX_RELAY_LAUNCHERS = 2
 
 # Prefer Gunner seats outside every visible enemy turret's firing ray. A turret
 # built where an enemy turret already points is shot before it has fired much,

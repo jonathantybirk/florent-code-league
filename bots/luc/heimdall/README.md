@@ -86,14 +86,16 @@ surviving candidate is the truth on 28 of 42 published map-sides.
 | opponent | | |
 |---|---|---|
 | `casemate` | 42/42 | 1.00 |
-| `vanguard` | 38/42 | 0.90 |
-| `valkyrie` | 36/42 | 0.86 |
+| `vanguard` | 39/42 | 0.93 |
+| `valkyrie` | 37/42 | 0.88 |
+| `vigil` | 36/42 | 0.86 |
+| `ragnarok` | 36/42 | 0.86 |
 | `gobbleglitch` | 36/42 | 0.86 |
-| `ragnarok` | 35/42 | 0.83 |
 | `warden_walk` | 35/42 | 0.83 |
-| `vigil` | 34/42 | 0.81 |
 | `warden` | 34/42 | 0.81 |
-| **total** | **290/336** | **0.863** |
+| **total** | **295/336** | **0.878** |
+
+On 40 generated maps nobody has tuned against: 122/160 = **0.762**.
 
 **Every opponent is above 80%.** Getting there was not a new mechanic -- it was
 re-measuring three constants that had been tuned on an earlier version of this
