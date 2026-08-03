@@ -1,0 +1,5 @@
+source_commit = "d1813124b"
+source_path = "bots/luc/valkyrie"
+engine = "2.3.3"
+status = "development"
+variant = "four-builders-econ2"
