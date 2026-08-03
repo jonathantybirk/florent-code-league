@@ -425,6 +425,35 @@ uv run python -m tournament.automation \
     --canonical-run jon-vanguard-818f3b4 --dry-run --no-publish
 ```
 
+### Where the CI actually runs, and what decides the watched branches
+
+It runs on Lucas's workstation, not on a server: user timer `botrankings-evaluator.timer`, firing
+`botrankings-evaluator.service` every two minutes, `WorkingDirectory` the sibling checkout
+`~/projects/florent-code-league-ci`, which stays on `x/tournament` and fast-forwards itself via
+`--self-update-branch`. The unit name contains neither "tournament" nor "automation", so grep for
+`botrankings` when looking for it. Nothing runs on the cluster except the matches themselves.
+
+**The installed unit passes explicit `--source` flags, and those fully replace `DEFAULT_SOURCES`.**
+Editing `DEFAULT_SOURCES` in `automation.py` therefore has no effect on the live ladder — it is
+only the fallback for a hand-run invocation. Adding a branch to the CI means editing
+`tournament/systemd/botrankings-evaluator.service` *and* reinstalling it:
+
+```sh
+cp tournament/systemd/botrankings-evaluator.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+```
+
+Keep the two in sync; `systemctl --user cat botrankings-evaluator.service` shows what is really
+running. A `--source` is `branch:prefix[:exclude,exclude]`, where the excludes are fnmatch patterns
+against the repo-relative bot directory and `*` crosses `/`. A contributor who works at the top of
+`bots/` instead of in a personal directory needs the excludes to name their non-entrants, including
+the starter template that also lives on `main`.
+
+Two facts worth knowing before concluding "the CI is broken": a tick that finds no unseen code
+hashes writes `updated_at` and exits, so a fresh timestamp in `automation-state.json` is not
+evidence that anything was evaluated; and `last_seen_refs` lists exactly the branches the *running*
+unit watches, which makes it the fastest way to check whether a source edit was actually installed.
+
 To install—but not start—the local units:
 
 ```sh

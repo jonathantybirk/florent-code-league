@@ -68,7 +68,11 @@ class Source:
         return cls(branch=branch, prefix=prefix, excludes=excludes)
 
 
-# The active branches. A contributor who starts a new top-level directory needs a line here --
+# Fallback for hand-run invocations only. The installed systemd unit passes explicit --source
+# flags that replace this list wholesale, so editing it does NOT change what the live ladder
+# watches -- see "Where the CI actually runs" in tournament/README.md.
+#
+# A contributor who starts a new top-level directory needs a line here --
 # discovery is deliberately opt-in per subtree rather than scanning all of bots/, because the
 # repo also contains vendored rivals, probes and starter templates that must never be entered.
 DEFAULT_SOURCES = (
