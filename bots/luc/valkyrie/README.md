@@ -46,6 +46,36 @@ aurora, against Pantheon's round 32 and CtrlAltDefeat's round 43. Copying
 Pantheon's cheaper single-throw opening was tried and is worse: 18/42 against
 23/42 for keeping the chain.
 
+## Siege barriers
+
+A third change, `SIEGE_BARRIER_ENABLED`. Ragnarok already inherits Elias's
+rebuild-tank (`_block_firing_lane`), but it only soaks Gunner lanes whose
+terminus is **our own Core**, and only from the defence alarm. Pantheon uses
+the same trick pointed the other way: of 33 barriers across twenty decoded
+ladder games, **31 sit in an enemy Gunner's ray**, every one 2-5 tiles from the
+*enemy* Core, and each is rebuilt on the same tile as fast as it dies -- one
+tile absorbed eighteen shots over six rebuilds.
+
+The trade is lopsided: 3 Ti and +1% scale for 30 HP eats three Gunner rounds
+and six of their ammunition, and ammunition is titanium 1:1.
+
+Two conditions, both measured:
+
+- Only once a turret is emplaced. Soaking on the Builder's own behalf scores
+  17/42 against 20/42 -- a Builder steps out of a lane for free, and rounds
+  spent laying cover are rounds the battery does not exist.
+- Only in a lane no friendly turret is firing through. Units act in spawn-id
+  order (verified: 421 turns, no exception), so a barrier blocking both ways is
+  settled by who lands the killing blow on it -- with mutual fire the
+  earlier-id turret breaks its own cover and hands the later one a clear shot.
+  Refusing shared lanes outright avoids the parity question and costs nothing,
+  because our battery faces their Core while their defence faces our battery.
+
+Scores 20/42 against ragnarok, i.e. **neutral in this pool** -- it fires only
+11 times across 42 games whose median length is 48 rounds. It is shipped
+because the regime it pays in is long sieges, and the pool underrepresents
+them: the games CtrlAltDefeat won off Pantheon ran 470, 867 and 1000 rounds.
+
 ## Measured and rejected
 
 | tried | result |

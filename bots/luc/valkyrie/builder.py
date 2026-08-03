@@ -33,6 +33,8 @@ from constants import (
     SEAL_TITANIUM_RESERVE,
     SENTINEL_RANGE_SQ,
     SENTINEL_WRAP_RESERVE,
+    SIEGE_BARRIER_ENABLED,
+    SIEGE_BARRIER_RESERVE,
     RING_RADIUS,
     SLOT_BUILDER_HEARTBEAT,
     SLOT_BUILDER_TICKET,
@@ -1652,6 +1654,93 @@ def _block_firing_lane(p, ct, enemies):
     return False
 
 
+def _block_siege_lane(p, ct):
+    """Rebuild-tank the siege: the same barrier trick, aimed the other way.
+
+    `_block_firing_lane` soaks a Gunner aimed at our own Core and only ever
+    runs from the defence alarm. This is the mirror: out at the enemy Core, the
+    lanes that matter run from their home Gunners onto the battery we are
+    building, and soaking those is what keeps the battery alive long enough to
+    finish the Core.
+
+    Pantheon does exactly this and does almost nothing else with barriers --
+    31 of the 33 barriers across twenty decoded ladder games sit in an enemy
+    Gunner's ray, every one of them 2-5 tiles from the *enemy* Core and 11-36
+    from their own, and each is rebuilt on the same tile as fast as it dies
+    (one tile took eighteen shots across six rebuilds).
+
+    The trade is lopsided. A barrier is 3 Ti and +1% scale for 30 HP, so it
+    eats three Gunner rounds and six of their ammunition -- and ammunition is
+    titanium 1:1 -- while costing a fifth of that and buying three rounds in
+    which their defence is shooting a wall instead of our turrets.
+
+    The one condition is that the lane has to be theirs alone. Units act in
+    spawn-id order (verified: 421 turns, no exception), so a barrier that
+    blocks both ways is decided by who lands the killing blow on it: with
+    mutual fire the earlier-id turret breaks its own cover and hands the later
+    one a clear shot. Rather than track parity, `_preserves_friendly_turret_
+    lanes` simply refuses any tile one of our own turrets is firing through --
+    which is free in practice, because our battery faces their Core while their
+    defence faces our battery, so the two lanes rarely coincide.
+    """
+    if not SIEGE_BARRIER_ENABLED or p.attack_gunners_built < 1:
+        # Nothing emplaced yet means nothing worth soaking for. Soaking on
+        # behalf of the Builder itself measured worse (17/42 against 20/42):
+        # the Builder can step out of a lane for free, and every round it
+        # spends laying cover instead of turrets is a round the battery that
+        # actually kills the Core does not exist.
+        return False
+    cost = ct.get_barrier_cost()
+    if ct.get_global_resources() < cost + SIEGE_BARRIER_RESERVE:
+        return False
+    me = tuple(ct.get_position())
+    team = ct.get_team()
+    protected = _friendly_turret_lanes(ct)
+    best = None
+    for enemy_id in ct.get_nearby_buildings():
+        if (ct.get_team(enemy_id) == team
+                or ct.get_entity_type(enemy_id) != EntityType.GUNNER):
+            continue
+        origin = tuple(ct.get_position(enemy_id))
+        dx, dy = ct.get_direction(enemy_id).delta()
+        tile = origin[0] + dx, origin[1] + dy
+        lane = []
+        while (_inside(p, tile) and tile not in p.walls
+               and _distance_sq(origin, tile) <= GUNNER_RANGE_SQ):
+            if not ct.is_in_vision(Position(*tile)):
+                break
+            position = Position(*tile)
+            occupant = ct.get_tile_building_id(position)
+            if occupant is None and ct.get_tile_builder_bot_id(position) is not None:
+                break  # a body already soaks this lane, and it can walk away
+            if occupant is not None:
+                # Only a *building* of ours is worth cover: it cannot dodge.
+                if ct.get_team(occupant) == team:
+                    for spot in lane:
+                        rank = (_cardinal_distance(me, spot), spot)
+                        if best is None or rank < best[0]:
+                            best = (rank, spot)
+                break
+            lane.append(tile)
+            tile = tile[0] + dx, tile[1] + dy
+    if best is None:
+        return False
+    _, spot = best
+    if (spot in p.ores or spot in p.walls
+            or not _preserves_friendly_turret_lanes(ct, Position(*spot), protected)):
+        return False
+    if _cardinal_distance(me, spot) != 1:
+        _move_cardinal_adjacent(p, ct, spot)
+        return True
+    position = Position(*spot)
+    if ct.can_build_barrier(position):
+        ct.build_barrier(position)
+        _mark_progress(p, ct, "blocked siege lane", spot)
+        p.solids.add(spot)
+        return True
+    return False
+
+
 def _rush(p, ct):
     """Walk in and build a small, conventional direct-fire attack."""
     packed = ct.read_store(SLOT_ENEMY_CORE)
@@ -1662,6 +1751,11 @@ def _rush(p, ct):
     if p.sentinel_wrap and _wrap_siege_sentinel(p, ct):
         return
     if _opening_ferry(p, ct, enemy_core, sighted):
+        return
+    # Soak before building. A battery with a live enemy lane onto it loses a
+    # turret faster than a Builder can replace one, and the barrier is a third
+    # of the price of what it is protecting.
+    if _block_siege_lane(p, ct):
         return
     if p.attack_gunners_built < 5 and _build_basic_gunner(p, ct, enemy_core):
         return
