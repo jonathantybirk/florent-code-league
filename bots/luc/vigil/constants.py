@@ -39,7 +39,15 @@ RING_EDGE_MARGIN = 5
 # cheap radius-2 compass ring scores 26/42, and 22 against prospect where the
 # compass ring scores 27. Denying the shell with barriers instead is what
 # CORE_SEAL_ENABLED does, at 3 Ti and +1% a tile.
-RING_COVER_SHELL = True
+#
+# 64e40cba4 turned it on and left this paragraph standing, so the file has been
+# arguing against its own value ever since. The measurement above was right:
+# with it on, this bot loses 15/42 to its own previous commit, vigil@e267eeb,
+# over the 21 official maps in both seats. With it off the same comparison is
+# 21/42 -- all twenty-one maps split 1-1, an exact mirror -- so the shell was
+# the whole of that regression and nothing else in 64e40cba4 changes an
+# outcome. Back off, on the evidence the comment already carried.
+RING_COVER_SHELL = False
 # Two geometries, two radii, kept separate so flipping the switch cannot leave
 # the cover computing against the compass ring's shell.
 RING_SHELL_RADIUS = 4   # distance denied by _shell_cover_targets
