@@ -269,6 +269,29 @@ All three land on *exactly* 110/160 on the generated maps, which is the
 cleanest possible statement of the result: off the pool the idle Builder's
 behaviour makes no difference whatsoever.
 
+The **attacker** livelocks the same way and it is not the idle case, so this
+looked like the one that would pay. On generated `r18`, which we lost, the
+attacker spent 81 of 193 rounds alternating between (22, 8) and (22, 7): it
+reaches the enemy Core, `_build_basic_gunner` finds no legal seat, the breaker
+and the Sentinel both decline, and the fallthrough is `_explore` -- which walks
+*away* from the only target that matters and then paces. Replacing that
+fallthrough with `_harass`, so it stays in their half shooting the belt and is
+still standing there when a seat frees up, flips r18 from a loss at round 193
+to a win at round 413 and takes its pacing from 30.7% to 0.9%.
+
+    shipped                      270/336  0.804   110/160  0.688
+    attacker harasses instead    268/336  0.798   111/160  0.694
+
+Also neutral: -2 and +1 over 496 games. It does redistribute -- valkyrie and
+warden each +1, vigil -3 -- but the total does not move.
+
+**Four livelock fixes across two different Builders, all neutral.** Take that
+as the finding rather than as four failures: a Builder pacing is a Builder that
+has run out of things worth doing, and giving it a tidier way to do nothing is
+still nothing. The place to look for wins is what puts it in that state -- a
+saturated economy with no reachable ore, or an enemy Core with no legal seat --
+not the pacing itself.
+
 **Neither is worth shipping.** Which is the finding: a Builder that has no ore
 left to claim and no ground left to see has nothing valuable to do either way,
 so the wasted rounds are a symptom rather than a cost. Pacing near the middle
