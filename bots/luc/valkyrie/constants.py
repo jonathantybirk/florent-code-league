@@ -23,19 +23,22 @@ MAX_OPENING_BUILDERS = LAUNCHER_BUILDER_INDEX + LAUNCHER_BUILDERS
 # Spawn the Launcher-ring Builder first instead of last, so the throw pad
 # exists before the attacker needs it.
 #
-# The ring is already documented as "a throw pad for the ferry", but ragnarok
-# spawns its builder third, which means the pad goes up around round 6 -- and
-# the attacker, spawned on round 1, has already given up waiting and started
-# building its own Launcher to escape from. That relay chain works, and it is
-# genuinely faster than the top of the ladder (a Gunner beside the enemy Core
-# on round 12 against Pantheon's 32), but every hop is a Launcher at +10%
-# scale, and the first hop is the one the pad would have given away free.
+# MEASURED AND OFF. The reasoning was that ragnarok documents its ring as "a
+# throw pad for the ferry" and then spawns the builder for it third, so the pad
+# lands around round 6 while the attacker, spawned on round 1, has already
+# started building its own Launcher to escape from. Pantheon (#1) pulls exactly
+# this lever: Launcher on round 1, throwing from round 2.
 #
-# This is the same tempo lever Pantheon (#1, 1941) pulls: Launcher on round 1,
-# adjacent to the Core, on the enemy-facing side, throwing from round 2. The
-# difference is that they then raze it and walk, where this keeps the pad and
-# the chain both.
-PAD_FIRST_ORDER = True
+# It costs 25 games out of 252. Scored against the six-bot ablation panel over
+# the whole map pool in both seats, ragnarok and this bot with the flag off both
+# take 209/252; with it on, 184/252.
+#
+# The reason is in the economy columns, not the combat ones: putting the pad
+# first pushes the miner from spawn index 0 to index 2, which moves the first
+# Harvester from round 7 to round 9 and drops delivered titanium from 696 to
+# 470 -- a third of the economy, every game, to buy a pad a few rounds earlier.
+# Tempo bought with the opening Harvester is not tempo, it is a loan.
+PAD_FIRST_ORDER = False
 # Ring Launchers one Builder will put up. The pad is the enemy-facing site and
 # it is the only one with a measured job; the remaining seven are a
 # displacement screen. Spawning the pad Builder first gives it the rounds to
