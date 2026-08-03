@@ -39,11 +39,22 @@ MAX_OPENING_BUILDERS = LAUNCHER_BUILDER_INDEX + LAUNCHER_BUILDERS
 # 470 -- a third of the economy, every game, to buy a pad a few rounds earlier.
 # Tempo bought with the opening Harvester is not tempo, it is a loan.
 PAD_FIRST_ORDER = False
-# Ring Launchers one Builder will put up. The pad is the enemy-facing site and
-# it is the only one with a measured job; the remaining seven are a
-# displacement screen. Spawning the pad Builder first gives it the rounds to
-# build all eight, so this is what stops it.
-RING_MAX_SITES = 8
+# Ring Launchers one Builder will put up, out of the eight compass sites.
+#
+# The same shape as MAX_RELAY_LAUNCHERS and for the same reason: a Launcher is
+# +10% on every price the team pays thereafter, so the ring is a scale bill as
+# much as a screen. Measured on the warden_walk chassis over the 21 official
+# maps in both seats, as maps won 2-0 against the two Nash-core agents:
+#
+#   cap 8 (all of it)   6 vs ragnarok, 6 vs vigil   worst 29%
+#   cap 3               6, 6                        worst 29%
+#   cap 2               7, 7                        worst 33%   <- shipped
+#   cap 1               7, 5                        worst 24%
+#
+# Two is the pad plus one more approach. Below that the screen stops covering
+# anything; above it the extra sites are bought with the Gunners and Harvesters
+# that would otherwise have been built.
+RING_MAX_SITES = 2
 
 # Ferry toward the symmetry inference's committed guess as well as toward a
 # Core we have actually seen. Measured and OFF: the inference is right on 28 of

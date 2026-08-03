@@ -42,6 +42,25 @@ it costs more than it buys. Zero is nearly as bad as unlimited, which is why
 1 and 2 are inside each other's noise on 42 games; 1 ships because it is better
 on the map metric, and the cluster can settle it.
 
+## The ring is the same bill
+
+A ring Launcher is +10% on every subsequent price exactly like a relay hop, so
+the eight-site compass ring is a scale cost as much as a screen. Capping it has
+the same non-monotonic shape, measured the same way (maps won 2-0):
+
+| ring cap | vs ragnarok@79582fc | vs vigil@e267eeb | worst map rate |
+|---|---|---|---|
+| 8 — all of it | 6 | 6 | 29% |
+| 3 | 6 | 6 | 29% |
+| **2 — shipped** | **7** | **7** | **33%** |
+| 1 | 7 | 5 | 24% |
+
+Two is the throw pad plus one more approach covered. Below that the screen
+stops covering anything; above it the extra sites are bought with the Gunners
+and Harvesters that would otherwise exist.
+
+Together the two caps take the worst-target map rate from 5% to 33%.
+
 ## Inherited
 
 Everything in `warden` (vigil's network repair and Builder write-off ported
