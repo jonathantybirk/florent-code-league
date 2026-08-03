@@ -314,8 +314,32 @@ because in open ground every candidate has four openings. Only the last one
 actually moves the chosen tile, and it is worth **+1 game in 168**. The
 hypothesis is right in direction and far too small to matter.
 
-So the whole family costs five or six games on the pool and gains two on
-generated maps, whichever way the post is chosen.
+Two things the first pass did *not* test, and should have. The post was aimed
+at the **inferred enemy Core** -- a symmetry guess -- not at where enemies were
+actually seen, and it was **static**, not a patrol.
+
+`_remember_threats` records every enemy unit seen within 12 of our own Core and
+`_threat_bearing` aims the post along the mean *direction* of those sightings.
+The direction, not the centroid: sightings are recorded near our Core by
+construction, so their mean sits almost on top of it and the first version of
+this collapsed to standing at home (bridge: 7,240 titanium, exactly the
+"go home" number). Projecting the bearing back out past the picket band fixes
+it (9,480 again). `_picket_route` then spreads three posts >= 4 apart across
+that sector and walks them in a cycle.
+
+    shipped (paces)                     131/168  0.780   110/160  0.688
+    picket at the inferred Core         125/168  0.744   112/160  0.700
+    picket at the observed bearing      126/168  0.750   111/160  0.694
+    patrol of three posts, observed     128/168  0.762   111/160  0.694
+
+Aiming at evidence rather than at the symmetry guess is worth **+1 game in
+168**. Patrolling rather than standing is worth **+2**. Both point the right
+way; neither is close to the 6 games the whole family gives up on the pool, and
+on generated maps all four sit inside one game of each other.
+
+So the answer is not about how the post is chosen or whether the body moves.
+The picket family costs about six games on the pool and gains about two on
+generated maps, and every refinement of it lands inside noise.
 
 **Five livelock and idle-behaviour fixes across two different Builders, and
 only the picket is positive anywhere.** Take that
