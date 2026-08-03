@@ -93,14 +93,24 @@ CORNER_MARGIN = 0
 _ROLES = {
     RUSH: (1, 1),
     FORTIFY: (1, 1),
-    # Nobody mines and nobody guards: three attackers.
-    BLITZ: (0, 3),
+    # Nobody mines, but somebody guards: two attackers and the home Builder.
+    # It used to be three attackers on the reasoning that a Core six tiles away
+    # is decided before economy or defence can matter. Half of that is right --
+    # nobody mines here -- and half of it stopped being right the moment
+    # `_guard_home` existed, because BLITZ was the one doctrine with no ring
+    # Builder and therefore no guard at all, on exactly the maps where their
+    # attacker arrives soonest. Measured on the 21 official maps in both seats
+    # against valkyrie, vigil, ragnarok and vanguard: 128/168 with three
+    # attackers and no guard, 134/168 with two and a guard.
+    BLITZ: (0, 2),
 }
-# Builders held back to ring our own Core with Launchers. The ring is a throw
-# pad for the ferry and a displacement screen, and BLITZ maps are shorter than
-# RELAY_STOP_DISTANCE, so on them the ferry never fires and the pad is a
-# Builder and 20 Ti spent on nothing.
-_LAUNCHER_BUILDERS = {RUSH: 1, FORTIFY: 1, BLITZ: 0}
+# Builders held back for the Launcher ring -- and, since `_guard_home`, for the
+# home guard, which is the same Builder and much the more valuable job. The
+# ring itself is still worth nothing on a BLITZ map (shorter than
+# RELAY_STOP_DISTANCE, so the ferry never fires), but the Builder is: it is
+# what answers their attacker at our Core, and on a six-tile map that attacker
+# is already walking. See _ROLES for the measurement.
+_LAUNCHER_BUILDERS = {RUSH: 1, FORTIFY: 1, BLITZ: 1}
 # Gunners a Builder will put up away from home. Off under RUSH: answering a
 # roaming enemy with a building trades a mobile Builder's turn plus a permanent
 # +10% for a turret the enemy walks around. On a closed map it is the opposite
