@@ -67,6 +67,48 @@ Ferrying at the symmetry **guess** was also tried and is worse — 17/42 against
 21/42 atlas-free. The old gate was right to refuse a guess and wrong only about
 what counts as knowing.
 
+### The cluster is the instrument, and it is cheap
+
+`git push` to x/luc schedules the bot on DTU HPC automatically: 3,900-odd
+matches against the whole rated field, collected in about three minutes, plus a
+compliance stage. Do not grind the 252-game panel locally -- it put this laptop
+at load 24 for a worse answer. Read results with
+`git show origin/x/tournament:tournament/runs/<run>/matches.csv`.
+
+Cluster numbers for valkyrie@d181312 (3,038 matches, 94 opponents): **90.3%
+overall**, and the losses are almost all one family --
+
+    vigil@e267eeb              2/10
+    vigil@e22eda8              4/10
+    ragnarok_fair@79582fc     17/42
+    ragnarok@79582fc          21/42
+    vigil@18b749d              8/14
+
+The ragnarok line does not beat the vigil line. That is the rock-paper-scissors
+the ratings already record: the Nash core is {vigil@e267eeb 0.50,
+ragnarok@79582fc 0.25, ragnarok_fair@79582fc 0.25}. Beating both at once means
+collapsing that core, which is exactly the hard part -- and note the local gate
+disagrees with the cluster's small sample (locally valkyrie takes 24/42 off
+vigil@e267eeb, the cluster had 2/10 on a partial run), so wait for a full run
+before believing either.
+
+### Measured failures worth not repeating
+
+- **Pad-first spawn order** (Launcher-ring Builder first, Pantheon-style):
+  -25 games in 252. Pushes the miner from spawn index 0 to 2; first Harvester
+  round 7 -> 9, delivered titanium 696 -> 470.
+- **Reserving the first Harvester's cost against ammo conversion**: 24/42 ->
+  15/42 against vigil@e267eeb. The bug it fixes is real -- on bridge ragnarok
+  loses both seats and mines *zero* titanium, because combat opens on round 4,
+  the COMBAT_AMMO_FLOOR override converts down to EMERGENCY_RESERVE every round
+  after, and a scale factor of 2.4x puts a 47 Ti Harvester out of reach forever
+  -- but turrets that cannot fire cost more than the Harvester is worth. The
+  bridge economy failure is still unsolved and still worth solving another way.
+- **`except Exception` around ammo conversion hides fatal typos.** A missing
+  import made `_keep_ammunition` raise NameError every round; the bot kept
+  playing with 0 ammunition and scored 1/42 without ever crashing. Always grep
+  a fresh replay for `PLAN_FAILED .* reason=NameError` before trusting a run.
+
 ### Still open
 
 - The `vigil` lineage overruns 10 ms in real matches (~0.3 TLE unit-rounds per
