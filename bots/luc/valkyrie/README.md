@@ -24,7 +24,11 @@ which means the atlas *or* a unit having physically seen it.
 ## Where the ladder evidence came from
 
 Decoded from `.replay26` protobuf (schema recovered from the bundled
-visualiser) for Pantheon (#1), Erebus (#2) and CtrlAltDefeat (#4).
+visualiser) for Pantheon (#1), Erebus (#2) and CtrlAltDefeat (#4). Everything
+below comes from observed game events — placements, moves, throws, shots. The
+schema has a `BotOutput.stdout` field, but downloaded replays are stripped of
+it: 0 stdout events across 20 ladder replays, against 101 in a local one. Their
+per-unit `execTimeUs` does survive, and Pantheon runs 304-1,749 us.
 
 - Pantheon plays one fixed opening on every map: Builder round 0, Launcher
   round 1 on the enemy-facing side at radius 2, one throw per round on rounds
