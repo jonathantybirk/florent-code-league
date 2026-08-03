@@ -1,0 +1,13 @@
+{
+  "challengers": [
+    "heimdall@daf0de0",
+    "pantheon_clone@daf0de0"
+  ],
+  "heads": {
+    "elias_dev": "6cdc4409dc3944ad658b07880933800e4a80f902",
+    "viktor": "ab8ceaf582773997fda99d18bb0f514be75c09de",
+    "x/jon": "902be71c12fe64badadf6b77103b3059399b7f8a",
+    "x/luc": "daf0de03d9b99fb7759587195d903bb262adadd5"
+  },
+  "submitted_at": "2026-08-03T19:43:14+00:00"
+}
