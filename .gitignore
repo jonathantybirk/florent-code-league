@@ -30,3 +30,6 @@ tournament/automation.lock
 # the maps themselves must never reach the repository -- see tournament/custom_maps/README.md.
 tournament/custom_maps/*
 !tournament/custom_maps/README.md
+
+# Derived first-publication dates. Content-addressed, so it is a pure cache.
+tournament/first-published.json
