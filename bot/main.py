@@ -244,7 +244,24 @@ BATTERY_EVERY = 3
 # Builders that run the siege instead of the economy. NOT an extra Builder: BUILDERS is unchanged,
 # so this is a role reassignment costing one economy chain and zero cost scale. Two attackers put
 # two turrets on two different bearings off the same early tempo.
-ATTACKERS = 2
+# Raised 2 -> 3 on 2026-08-03, which with BUILDERS = 3 means NO economy builder at all.
+#
+# That reads wrong and measures right, because titanium was never the binding constraint: an inert
+# bot ends a match with 3000 unspent, and passive income alone is 2.5 Ti/round against a Gunner's
+# 2 Ti/round of ammunition. What the third builder buys is a third independent approach, and the
+# audit had already shown the whole win condition is one geometric event -- a Gunner on the enemy
+# ring -- so approaches are the scarce resource, not titanium.
+#
+# Measured over 42 mirrored games known / 24 unseen:
+#   known   tempest_fast 32-10 -> 34-8, mistral 34-8 -> 36-6, vanguard 32-10, jonbot 34-8,
+#           undertow 31-11 -> 30-12   (net +3)
+#   unseen  mistral 10-14 -> 12-12, vanguard 12-12 -> 14-10, undertow 15-9 -> 18-6  (net +7)
+#
+# `mistral` -- the only rival that was beating us on unseen maps -- runs ECONOMY_BUILDERS = 0 and
+# SCOUT_BUILDERS = 4. This is the same trade, found independently by measurement rather than by
+# copying it: the cost is the ~2470 titanium a chain collects over a full match, and the
+# titanium_collected tiebreak only decides games that reach turn 1000, which these do not.
+ATTACKERS = 3
 
 # --- Launcher relay (G41, measured on a purpose-built arena) -------------------------------
 # A Launcher throws an ADJACENT friendly Builder Bot to any bot-passable tile inside r^2 <= 26
@@ -2179,6 +2196,24 @@ class Player:
                     # nothing (19-23, identical to seeding nothing), while seeding the enemy anchor
                     # alone restores full strength (32-10, 31 core kills). The atlas was never a map
                     # memory that mattered -- it was a correct answer to this guess.
+                    #
+                    # SPLITTING THE HYPOTHESES ACROSS THE TWO ATTACKERS WAS TRIED AND IS NOT WORTH
+                    # IT. `mistral` -- the one rival that beats us on unseen maps, and which carries
+                    # no map data at all -- sends four opening scouts to `unique[index % 3]` of
+                    # these same three candidates, so one is right by construction on every map.
+                    # Offline that looks decisive: covering the top TWO candidates instead of one
+                    # would raise the hit rate from 29.2% to 83.3% on generated maps.
+                    #
+                    # In game it changed exactly nothing -- 62/120 unseen with it and without, to
+                    # the game. The reason is that the ambiguity is already gone by the time it
+                    # would pay: instrumented at round 10 on three generated maps, `alive` held
+                    # exactly ONE candidate and the Core was already sighted, because
+                    # `reject_by_tile` and `reject_by_footprint` narrow the mask from observed
+                    # terrain within the first few rounds. There is nothing left to split.
+                    #
+                    # Which also explains why farthest-first is worth what it is worth: not because
+                    # it settles the question, but because it aims the first ten rounds of walking
+                    # correctly while the question settles itself.
                     self.enemy_anchor = max(
                         live, key=lambda c: ((c[0] - anchor[0]) ** 2 + (c[1] - anchor[1]) ** 2,
                                              c[0], c[1]))
