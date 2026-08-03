@@ -6,14 +6,19 @@ a tournament candidate, not a measured improvement.
 
 ## What changed
 
-**`PAD_FIRST_ORDER`** — spawn the Launcher-ring Builder first instead of last.
+Net effect against the six-bot ablation panel over the full pool in both
+seats: **209/252, exactly level with ragnarok.** No regression, no measured
+gain on this pool; the two live changes are aimed at cases the pool does not
+contain (maps off the published set, and long sieges).
 
-Ragnarok already calls the ring "a throw pad for the ferry" but spawns its
-builder third, so the pad is up around round 6 while the attacker, spawned on
-round 1, has already given up and started building its own Launcher to escape
-from. Pad first means the pad exists before the attacker needs it. The Core's
-spawn placement in `core.py` follows the same order, or a Builder spawns at the
-wrong end of the map for the job it picks up.
+**`PAD_FIRST_ORDER`** — spawn the Launcher-ring Builder first. **Tried, and
+off: it costs 25 games in 252.** The idea was sound and Pantheon does exactly
+it, but the cost lands somewhere the combat metrics do not show. Putting the
+pad first pushes the miner from spawn index 0 to index 2, which moves the first
+Harvester from round 7 to round 9 and cuts delivered titanium from 696 to 470.
+Panel scores: ragnarok 209/252, this bot with the flag off 209/252, with it on
+184/252. The code is kept behind the flag because the spawn-order plumbing in
+`core.py` is what a future doctrine change would need.
 
 **Ferry gate** — `_opening_ferry` refused to run whenever `p.atlas is None`.
 Off the published pool that is *always*, so on a generated map, the held-out
