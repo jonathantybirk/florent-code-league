@@ -123,6 +123,32 @@ and the guard is worth twenty points there.
   measurements disagree and the difference is worth finding — mine adds the
   guard, which changes how many Builders die and when.
 
+### Everything else tried on the heimdall chassis, against 128/168
+
+Same panel, same 168 games, all built on the shipped atlas-free bot:
+
+    BLITZ keeps a guard (2 attackers, not 3)   134/168  0.798   <- shipped
+    guard leashed to ore within 8 of the Core  130/168  0.774
+    counter-battery at the enemy Core          129/168  0.768
+    RELAY_STOP_DISTANCE 7 -> 4                 127/168  0.756
+    guard cap 3 instead of 2                   127/168  0.756
+    ferry only on a *sole* surviving symmetry  121/168  0.720
+    FORTIFY with two economy Builders          110/168  0.655
+
+Only the first is a real effect. The BLITZ hole is worth understanding: that
+doctrine was the one with no ring Builder, so it had no guard at all, on
+exactly the maps where the enemy attacker arrives soonest.
+
+The ferry row is worth reading twice: waiting until the symmetry inference has
+only one surviving candidate before ferrying is *worse* than ferrying at the
+farthest guess immediately (121 against 128). Being right early beats being
+certain late, and a wrong guess self-corrects the moment terrain contradicts it.
+
+The last row is the interesting negative. The FORTIFY role split was measured
+at 2-12 long before a working defence existed, and the obvious hypothesis was
+that a bot which cannot be killed should take the closed maps to the round-1000
+economy tiebreak. It is still wrong, by more than the original margin.
+
 ### Two latent bugs worth knowing about
 
 - `warden_walk` (and everything built from it) calls
