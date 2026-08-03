@@ -211,10 +211,53 @@ def _known_duplicates(tids: str):
     return duplicates.behaviour_groups(rows) if rows else []
 
 
+def _plannable() -> list:
+    """Every bot a run may enter: the registry, plus whatever the match data already knows.
+
+    bots.toml is written by `discover`, which only sees what is at a branch head, so it goes stale
+    against the ladder the moment an older pinned commit stops being a head -- exactly the cache
+    derive_ledger()'s docstring warns about. The automation is immune because it builds its field
+    from the ledger; this path was not, and the two disagreeing silently is how a run gets planned
+    over a field that is missing the bots people care about.
+    """
+    from tournament.automation import derive_ledger
+
+    roster = registry.load()
+    known = {spec.bot_id for spec in roster}
+    try:
+        _, ledger = derive_ledger()
+    except Exception as error:  # noqa: BLE001 -- the registry alone is still a usable field
+        print(f"warning: could not read the rated ledger ({error}); using bots.toml alone")
+        return roster
+    return roster + [spec for bot_id, spec in sorted(ledger.items()) if bot_id not in known]
+
+
+def _warn_if_narrower_than_the_ladder(specs: list, versus: list | None) -> None:
+    """Say so when a run cannot produce a complete matrix over the rated field."""
+    from tournament.automation import canonical_field
+
+    try:
+        kept, _ = canonical_field()
+    except Exception:  # noqa: BLE001 -- advisory only; never block planning on it
+        return
+    entered = {spec.bot_id for spec in specs} | {spec.bot_id for spec in (versus or [])}
+    missing = sorted({spec.bot_id for spec in kept} - entered)
+    if not missing:
+        return
+    print(
+        f"warning: {len(missing)} bot(s) in the canonical rated field are not in this run, so it "
+        f"cannot produce a complete matrix over that field:"
+    )
+    for bot_id in missing[:15]:
+        print(f"    {bot_id}")
+    if len(missing) > 15:
+        print(f"    ... and {len(missing) - 15} more")
+
+
 def cmd_plan(args) -> int:
     from tournament import duplicates
 
-    roster = registry.load()
+    roster = _plannable()
     specs = registry.select(roster, args.bots)
     compliance_specs = list(specs)
     if args.compliance_only and args.vs:
@@ -241,6 +284,8 @@ def cmd_plan(args) -> int:
             specs = pruned
 
     rating_specs = [] if args.compliance_only else specs
+    if rating_specs:
+        _warn_if_narrower_than_the_ladder(rating_specs, versus)
     destination, matches = planning.plan(
         args.tid,
         rating_specs,

@@ -341,6 +341,36 @@ def build(run_dir: Path, output_dir: Path) -> dict:
                 row["bot_id"] for row in rows if row["nash_prob"] > 0
             }
 
+    # finalise() refuses to publish an incomplete matrix, because an unplayed pair enters A as 0
+    # and is then indistinguishable from a measured draw. The same has to hold per pool: a pool
+    # whose field never finished playing would otherwise publish imputed draws as results. Bots
+    # with no matches in the pool at all are simply absent from it, which is honest; the failure
+    # this guards is a bot that played some of the pool's opponents but not all of them.
+    incomplete: dict[str, list[tuple[str, str]]] = {}
+    for pool_suffix, pool_labels in pools.items():
+        pool_set = set(pool_labels)
+        pool_rows = [row for row in benchmark_matches if row["map"] in pool_set]
+        present = sorted({row["bot_a"] for row in pool_rows} | {row["bot_b"] for row in pool_rows})
+        played = {frozenset((row["bot_a"], row["bot_b"])) for row in pool_rows}
+        gaps = [
+            (left, right)
+            for index, left in enumerate(present)
+            for right in present[index + 1:]
+            if frozenset((left, right)) not in played
+        ]
+        if gaps:
+            incomplete[pool_suffix] = gaps
+    for pool_suffix, gaps in incomplete.items():
+        print(
+            f"  skipping map pool {pool_suffix or 'standard'!r}: {len(gaps)} pair(s) among its "
+            f"own entrants have never played, so its ratings would be imputed"
+        )
+        for left, right in gaps[:5]:
+            print(f"    {left}  vs  {right}")
+        pools.pop(pool_suffix)
+    if "" not in pools:
+        raise RuntimeError("the standard map pool is incomplete; refusing to publish")
+
     benchmarks: dict[str, tuple[list[dict], list[dict]]] = {}
     for pool_suffix, pool_labels in pools.items():
         pool_set = set(pool_labels)
