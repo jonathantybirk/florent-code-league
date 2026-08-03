@@ -564,6 +564,43 @@ same -- more maps, ideally the cluster -- but the reasoning is different, and a
 consistent +2 across several independent map sets is worth more than the phrase
 "noise" suggested.
 
+### Every constant that was tuned before the ferry came off had flipped
+
+Once `FERRY_ON_INFERENCE` went off, four more constants -- every one of them
+set on an earlier version of this same bot -- turned out to have the wrong
+value. Full 8-bot pool, 336 games, and 40 generated maps:
+
+    ferry on, r^2 36, chase 4, cap 2, relay 1   271/336  0.807   109/160
+    + ferry off                                 282/336  0.839   115/160
+    + guard radius 36 -> 64                     288/336  0.857   117/160
+    + guard chase 4 -> 6                        294/336  0.875   121/160
+    + guard cap 2 -> 4                          290/336  0.863   120/160
+    + relay cap 1 -> 2                          295/336  0.878   122/160
+
+The reasons are all the same reason: with no ferry both sides *walk*, so
+enemy attackers are in sight for longer before they emplace (wider radius,
+longer chase pay), and the relay now only fires once a Core has actually been
+seen, which is late and close, where a second hop is worth more than the walk
+it replaces.
+
+Guard cap 4 is the one that costs total: cap 2 is 294/336 against cap 4's 290,
+but leaves `warden_walk` at 0.76 where cap 4 puts it at 0.83. It is in because
+the goal is the worst matchup, not the mean. If that ever changes, change this
+back first.
+
+**Final: 295/336 = 0.878, every opponent at 0.81 or better** -- casemate 1.00,
+vanguard 0.93, valkyrie 0.88, vigil/ragnarok/gobbleglitch 0.86, warden_walk
+0.83, warden 0.81. On generated maps 122/160 = 0.762.
+
+Two traps worth naming, both of which caught me:
+
+- **Tuning against the weak matchup overfits it.** `MAX_GUARD_GUNNERS = 4`
+  looked like +2 measured against warden_walk and gobbleglitch alone; on the
+  full panel that build was 283/336 against 288. Only the eight-opponent check
+  distinguished the version that generalised from the one that did not.
+- **A flag is measured for the bot it was measured on.** This file said that
+  about the atlas and I did not apply it to myself for most of a session.
+
 ### Three washes, and the point at which to stop
 
 Traced a `heimdall` loss on a generated map (`random3/r10`, 30x10, RUSH): vigil
