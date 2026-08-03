@@ -104,9 +104,32 @@ Twenty points on both sets, from different seeds.
   found no legal seat, and wandered for 25 rounds with 40 Ti and 80 ammo in the
   bank. Fixing it does not pay: 0.702 → 0.673/0.690/0.679/0.679 at 0/1/2/4
   blockers allowed. The rounds spent chewing belt are worth less than the seat.
-- **The Launcher knobs are finished.** On a six-bot panel, `MAX_RELAY_LAUNCHERS`
-  0/1/2 → 0.552/0.706/0.683 and `RING_MAX_SITES` 0/1/2/3 →
-  0.611/0.667/0.706/0.698. Both already sit on their maximum.
+- ~~**The Launcher knobs are finished.** On a six-bot panel,
+  `MAX_RELAY_LAUNCHERS` 0/1/2 → 0.552/0.706/0.683 and `RING_MAX_SITES` 0/1/2/3
+  → 0.611/0.667/0.706/0.698. Both already sit on their maximum.~~
+  **This was the most expensive wrong sentence in these notes.** Both knobs
+  moved on the full eight-bot panel: relay 1 → 2 (+5 games) and ring 2 → 1
+  (+9 more on the pool, +12 on the generated set). Together they took heimdall
+  from 0.878 to **0.905** on the pool and 0.762 to **0.838** on unknown maps —
+  the largest single gain of the session, sitting behind a note saying not to
+  look.
+
+  Three things made it wrong, and all three are general:
+  1. **A narrower panel.** Six bots, and the two that were missing are the ones
+     the ring change moves most.
+  2. **An older chassis.** It predates the guard, `FERRY_ON_INFERENCE`, and the
+     income watchdog. `_run_launcher_ring` blocks economy work while the ring
+     Builder walks, and that Builder is now also the guard — so the ring's cost
+     went up when the guard shipped, and nobody re-measured it.
+  3. **The two knobs interact and were read one at a time.** A Launcher is +10%
+     on every later price, so the second ring site raises the price of both
+     relay Launchers. Neither reading stayed valid once the other changed.
+
+  The general rule: **a constant is only measured for the bot it was measured
+  on.** Every stale constant found this session had an honest comment next to it
+  describing a real measurement taken on a bot that no longer exists. Re-measure
+  on the current chassis and the full panel before believing any of them —
+  including the ones in this file.
 - **Replacing Builders the enemy killed is a large regression here.** The Core
   gates respawning on `has_live_builder`, which only proves *one* Builder is
   alive; widening the heartbeat slot to a round stamp plus one bit per Builder
@@ -842,6 +865,16 @@ while the map is empty and is worth 20 Ti; hops after it are not. Two ring
 sites are the throw pad plus one approach; below that the screen covers
 nothing, above it the sites are bought with the turrets that kill Cores.
 
+**Both rows above were later overturned on heimdall** (see "The Launcher knobs
+are finished", struck through further up). On the current chassis and the full
+eight-bot panel the optima are the other way round: relay **2**, ring **1**,
+worth +14 games on the pool and +12 on unknown maps. The reasoning in this
+section is still right -- Launchers are a scale bill and the bill lands on
+Gunners and Harvesters -- but *which* Launcher to cut moved when the guard
+shipped, because the ring Builder is now also the guard and every round it
+spends walking the ring is a round it is not defending the Core. Keep the
+principle; re-measure the numbers.
+
 Things checked at the same time and left alone, all on the same metric against
 33% for the shipped build: the siege Sentinel earns its +20% (off is 29%),
 FORTIFY's field Gunners earn theirs (off is 24%), and the attack-Gunner cap
@@ -973,6 +1006,19 @@ ones, which is how it called the 25-game pad-first regression noise.
   import made `_keep_ammunition` raise NameError every round; the bot kept
   playing with 0 ammunition and scored 1/42 without ever crashing. Always grep
   a fresh replay for `PLAN_FAILED .* reason=NameError` before trusting a run.
+
+### Measuring CPU without a timeout flag
+
+The engine never reports a timeout. `fcode run --tle N` silently *drops* an
+over-budget turn, so a bot that is too slow plays worse rather than erroring —
+which is exactly the failure mode that would be invisible in a score table.
+`benchmarks/tle.py` probes it by tightening `--tle` until outcomes move.
+
+Two things to know when reading it. `--tle` binds both bots, so a divergence
+does not say whose turn was slow; run `--attribute`, which uses mirror matches,
+to pin it on one bot. And heimdall is identical to unlimited play down to 4 ms,
+while the cross-panel diverges at 6 ms — that 6 ms is an *opponent's* turn, and
+the `vigil` lineage's known overrun (below) is the likely source.
 
 ### Still open
 
