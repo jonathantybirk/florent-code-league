@@ -63,6 +63,10 @@ PATH_FAILURES_BEFORE_LAUNCHER = 1
 LAUNCH_REQUEST_ROUNDS = 4
 BLOCKER_GUNNER_RETRY_ROUNDS = 4
 RELAY_STOP_DISTANCE = 7
+
+# What a field Gunner is worth building against: enemy guns, not enemy errands.
+COUNTER_BATTERY_TARGETS = (EntityType.GUNNER, EntityType.SENTINEL,
+                           EntityType.LAUNCHER)
 MOVABLE_BUILD_BLOCKER_GRACE = 3
 STALL_REPORT_ROUNDS = 5
 DEFERRED_ORE_ROUNDS = 8
@@ -825,8 +829,14 @@ def _build_blocker_gunner(p, ct, target):
         return False
 
     here = ct.get_position()
+    # Turrets only. Pantheon's field Gunners are counter-battery -- 80% of the
+    # ones it builds more than four tiles from the enemy Core are aimed at an
+    # enemy Gunner -- not an answer to every builder that wanders past.
+    # Engaging everything cost 19 points against tempest_fast (90.5% -> 71.4%)
+    # because the raid stopped to build a turret for each passing scout.
     enemies = [entity_id for entity_id in ct.get_nearby_entities()
-               if ct.get_team(entity_id) != ct.get_team()]
+               if ct.get_team(entity_id) != ct.get_team()
+               and ct.get_entity_type(entity_id) in COUNTER_BATTERY_TARGETS]
     if not enemies:
         return False
 
@@ -1851,6 +1861,49 @@ def _opening_ferry(p, ct, enemy_core):
 
 def _chebyshev(a, b):
     return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
+
+def _build_counter_battery_gunner(p, ct):
+    """Answer an enemy turret that is standing in the raid's way.
+
+    Only reached once no Gunner site bearing on the enemy Core is available,
+    which is the situation Pantheon's own far Gunners are answering: of the
+    ones it builds more than four tiles from that Core, 80% are aimed at an
+    enemy Gunner rather than at the Core. They are clearing the guns covering
+    the approach, not failing to reach it.
+
+    NOT CURRENTLY CALLED, and that is a measured result, not an oversight.
+    Wired into _engage_with_turret (fires wherever a Builder stands) it cost
+    12 points against tempest_fast at a cap of one and 19 at three, because it
+    pulls the raid off course on the way in. Narrowed to here -- the raider has
+    arrived and has no Core-bearing site left -- it still cost vigil 40.5% ->
+    23.8% and the panel 54.8% -> 49.2%, while firing only three times in 21
+    games. The behaviour is real in Pantheon and this is roughly the right
+    shape for it; what is missing is whatever makes it affordable there, and
+    until that is understood the call stays out. Kept in the file because the
+    next attempt should start from this rather than rediscover it.
+    """
+    if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
+        return False
+    if ct.get_global_resources() < ct.get_gunner_cost():
+        return False
+    enemies = [entity_id for entity_id in ct.get_nearby_entities()
+               if ct.get_team(entity_id) != ct.get_team()
+               and ct.get_entity_type(entity_id) in COUNTER_BATTERY_TARGETS]
+    if not enemies:
+        return False
+    enemies.sort(key=lambda entity_id: (
+        ct.get_position(entity_id).distance_squared(ct.get_position()),
+        entity_id,
+    ))
+    site = _aligned_gunner_site(p, ct, enemies)
+    if site is None:
+        return False
+    position, facing = site
+    ct.build_gunner(position, facing)
+    _mark_progress(p, ct, "built counter-battery gunner", tuple(position))
+    p.attack_gunners_built += 1
+    return True
 
 
 def _build_basic_gunner(p, ct, enemy_core):

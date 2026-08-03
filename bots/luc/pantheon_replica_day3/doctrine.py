@@ -108,6 +108,26 @@ _LAUNCHER_BUILDERS = {RUSH: 1, FORTIFY: 1, BLITZ: 0}
 # +10% for a turret the enemy walks around. On a closed map it is the opposite
 # trade, because there is a lane and the enemy has to come down it. This is the
 # whole of the difference between the two doctrines.
+# Pantheon builds field Gunners on every map, and they are the majority of its
+# turrets rather than an afterthought. Across 275 replays, 38% of its Gunners
+# are built aimed at an enemy Gunner and only 15% at the enemy Core -- and of
+# the ones it places more than four tiles from that Core, 80% are aimed at an
+# enemy Gunner. Those are not turrets that failed to reach the Core; they are
+# counter-battery, clearing the guns that stand in the raid's way.
+#
+# Ragnarok switches them off entirely under RUSH, on the grounds that a turret
+# answering a roaming enemy is a building the enemy walks around. That holds
+# for a bot whose attacker is passing through; it does not hold for one that
+# parks a raid on the enemy's doorstep and has to survive their turrets to
+# finish the Core. With this at 0 the replica aimed 4.5% of its Gunners at an
+# enemy Gunner against Pantheon's 38%, and a third of them faced an empty lane.
+# Left OFF, as ragnarok had it, and this is a measured result rather than an
+# inherited default. Pantheon plainly does build counter-battery Gunners, but
+# routing that through _engage_with_turret -- which interrupts a Builder
+# wherever it happens to stand -- diverts the raid mid-journey and costs
+# 12 points at a cap of one (88.1% -> 76.2% against tempest_fast) and 19 at
+# three. The behaviour belongs at the siege, not en route, so it lives in
+# _build_basic_gunner's fallback instead.
 _FIELD_GUNNERS = {RUSH: 0, FORTIFY: 2, BLITZ: 0}
 
 

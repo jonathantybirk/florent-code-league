@@ -190,6 +190,50 @@ machinery for exactly that (`_build_launcher_breaker_gunner`,
 `_block_firing_lane`, `_preserves_friendly_turret_lanes`); it is not yet driven
 by Pantheon's siege pattern.
 
+## Held-out validation (125 fresh replays, pulled later the same day)
+
+Every constant this bot rests on was re-checked against 125 replays that were
+not used to derive any of them (`tools/pantheon_analysis/validate.py`). All of
+them replicate:
+
+| constant | original 150 | held-out 125 |
+|---|---|---|
+| opening r0-3 exact | 100% | 82% (remainder is the r3-Gunner variant) |
+| throws on r2,3,4,5 | yes | 129 / 132 / 131 / 109 |
+| throws at maximum range | 61% | 62% |
+| **Launchers per game = 1** | ~1 | **122/125** |
+| **Launcher lifetime = 5 rounds** | 147/151 | **122/125** |
+| pad is one cardinal step from the r0 Builder | yes | 125/125 |
+| landing tile BFS-optimal | 72.9% | 66% |
+| **tie-break = farthest from the pad** | 103/103 | **76/76** |
+
+The tie-break rule now has 179 confirmations and no counterexample.
+
+## Pantheon's far turrets are counter-battery — confirmed, not yet affordable
+
+Across all 275 replays, of the Gunners Pantheon builds **more than four tiles
+from the enemy Core, 80% are aimed at an enemy Gunner**. Overall 38% of its
+Gunners bear on an enemy Gunner and only 15% on the enemy Core. They are not
+turrets that failed to reach the Core; they are clearing the guns covering the
+approach.
+
+This bot does not reproduce that, and the attempts are recorded because the
+next one should not repeat them:
+
+| where the counter-battery logic was put | vs tempest_fast | panel |
+|---|---|---|
+| none (current) | 88.1% | 52.4% |
+| `_engage_with_turret`, cap 1 (fires anywhere) | 76.2% | — |
+| `_engage_with_turret`, cap 3 | 71.4% | — |
+| siege-only fallback in `_build_basic_gunner` | 85.7% | 49.2% |
+
+The siege-only version is the right *shape* — it lifted far-Gunner aim from 0%
+to 67% on target, against Pantheon's 80% — but it fired three times in 21 games
+and still cost vigil 40.5% -> 23.8%. `_build_counter_battery_gunner` is left in
+the file, uncalled, with this written above it. What is missing is whatever
+makes those turrets affordable for Pantheon, and guessing at it twice has been
+enough.
+
 ## Corrections to my own earlier analysis
 
 Recorded because both produced wrong constants that were live for a while:
