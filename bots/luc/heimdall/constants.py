@@ -148,10 +148,21 @@ GUARD_RADIUS_SQ = 64
 # each is +10% on every price paid afterwards. Measured on the same panel:
 # cap 1/2/3/4/6 -> 139/147/145/146/145 of 168.
 MAX_GUARD_GUNNERS = 2
-# Steps it will take toward an intruder to find a firing seat. Short on
-# purpose: this Builder's other jobs are all at home, and a guard that chases
-# is a guard that is somewhere else when the next one arrives.
-GUARD_CHASE_STEPS = 4
+# Steps it will take toward an intruder to find a firing seat.
+#
+# Four was chosen when the attacker was ferried across the map and the guard's
+# other jobs were all at home. With the ferry off both sides walk, so an
+# intruder is in sight far longer before it emplaces and there is time to close
+# on it. Re-measured on the full 8-bot pool and 40 generated maps:
+#
+#              pool            generated
+#     2      (worse)           --
+#     4    288/336  0.857    117/160  0.731
+#     6    294/336  0.875    121/160  0.756   <- shipped
+#
+# It is worth +2 games against valkyrie and +1 against vigil, ragnarok, warden
+# and gobbleglitch each -- a broad gain, not one map.
+GUARD_CHASE_STEPS = 6
 
 # Field Gunners are now set per doctrine in doctrine.py: 0 on open ground
 # (measured: a roaming enemy walks away from the turret), 2 under FORTIFY
