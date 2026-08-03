@@ -18,6 +18,42 @@ and chasing them further was not going to close the gap.
 This bot starts from `ragnarok`, which already has all of that, and changes
 only what Pantheon demonstrably does differently.
 
+## Does it beat tempest_fast the way the real bot does?
+
+Yes. This is the matchup with real ladder data behind it: Pantheon played our
+own v5 `tempest_fast` three times on 2026-08-03 and took **14 of 15 games**.
+
+| | win rate | median winning round |
+|---|---|---|
+| real Pantheon vs tempest_fast (15 ladder games) | 93% | ~38 |
+| this bot vs tempest_fast (42 games, full pool, both seats) | **90.5%** | **37** |
+
+On the 13 distinct maps those real matches actually used, it wins 11.
+
+Getting there took two fixes, both found by asking why it *wasn't* matching:
+
+1. **Two raiders was wrong for this matchup.** At `PANTHEON_RAIDERS = 2` it won
+   83% at median round 42 — winning, but visibly slower than the real bot.
+   Three raiders gives 90.5% at round 37, matching Pantheon's tempo, and
+   recovers `longship` outright (a map plain ragnarok wins and the 2-raider
+   version lost). Pantheon's throw *targets* are RREE, but a passenger thrown
+   at ore still ends up fighting later, so the modal throw pattern overstates
+   how many Builders stay on economy.
+2. **Ragnarok's BLITZ doctrine contradicts the replays.** With Cores 6 apart
+   (`showdown`) ragnarok drops the pad and every economy Builder and races;
+   it loses its Core on round 21, and so did this bot. The real Pantheon does
+   not branch on map size at all -- the same opening appears in 150 of 150
+   games -- and on `showdown` it builds the pad on round 1, puts a Gunner on
+   the enemy Core's doorstep by round 3 **and** Gunners around its own Core on
+   rounds 6-9, winning on round 42. Close Cores now take FORTIFY, which keeps
+   the pad and switches field Gunners on: `showdown` goes from a round-21 loss
+   to a round-34 win.
+
+The second one is the more interesting result: a doctrine branch that was
+measured as correct for ragnarok is measurably wrong for a bot playing
+Pantheon's opening, because it removes the home turrets the all-in raid
+depends on to survive the counter-attack.
+
 ## What was changed from ragnarok, and what each change cost
 
 Every row is the full map pool, both seats, against `ragnarok`, `vigil` and
@@ -30,6 +66,11 @@ Every row is the full map pool, both seats, against `ragnarok`, `vigil` and
 | pad Builder spawned onto the ring doorstep (pad up on r1) | 60.3% | 100% |
 | Launcher self-destructs once its four passengers are away | 58.7% | 97.6% |
 | Pantheon role order — the first two thrown raid | 49.2% | 100% |
+| three raiders instead of two | 56.3% | 100% |
+| close Cores take FORTIFY, not BLITZ | 54.8% | 100% |
+
+Against `tempest_fast` specifically the last two rows go 83.3% -> 88.1% ->
+90.5%, which is the number that matters for "does it play like the real bot".
 
 The ladder is the point. **Pantheon's opening costs about 19 points against our
 own bots**, in four independently measured steps, and none of it is a
@@ -75,6 +116,10 @@ retires ring ones. Worth testing on its own there.
 Current state: pad on r1 in most games, throws on r3-r5 against Pantheon's
 r2-r5, enemy Core killed in 32 of 63 at median round 66 against Pantheon's
 122/150 at round 38.
+
+Against `ragnarok` and `vigil` it is still well behind (23.8% and 40.5%) --
+that is the all-in opening meeting the two bots in the repo built specifically
+to rush and hold, and it is the same finding NOTES.md already recorded.
 
 Two things are known to be wrong and are the next work:
 

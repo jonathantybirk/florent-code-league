@@ -35,7 +35,7 @@ PANTHEON_FERRY_PASSENGERS = 4
 # two passengers off the pad raid the enemy Core, the last two go to ore.
 # 81 of 150 games are exactly RREE and RR is the prefix of every pattern seen.
 # Builder 0 builds the pad on r1 and is then thrown off it on r2 as raider one.
-PANTHEON_RAIDERS = 2
+PANTHEON_RAIDERS = 3
 
 RING_EDGE_MARGIN = 5
 # Tiles between the Core footprint and the ring. Launchers block movement, so
