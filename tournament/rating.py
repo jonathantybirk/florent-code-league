@@ -398,13 +398,19 @@ def maxent_nash(matrix: np.ndarray, tolerance: float = 1e-9) -> np.ndarray:
             candidate = np.exp(logits - normalizer)
             return float(normalizer), -matrix @ candidate, candidate
 
+        # Stop on the gradient, not on the objective. The dual's gradient is -Ap, so gtol *is* the
+        # primal feasibility this solve is judged by, while ftol measures progress in logsumexp --
+        # a quantity that flattens long before p is feasible. At ftol=1e-14 a 93-strategy field
+        # quit after 34 iterations at max(Ap) = 1.03e-6, a hair past the 1e-6 acceptance bound
+        # below, and the entire solve was then reported as failed; it needs 63 iterations to reach
+        # 1e-13. ftol is set below machine precision so that gtol governs.
         dual = minimize(
             lambda multiplier: entropy_dual(multiplier)[0],
             np.zeros(n),
             jac=lambda multiplier: entropy_dual(multiplier)[1],
             method="L-BFGS-B",
             bounds=[(0.0, None)] * n,
-            options={"maxiter": 5000, "ftol": 1e-14, "gtol": 1e-10},
+            options={"maxiter": 5000, "maxfun": 20000, "ftol": 1e-18, "gtol": 1e-12},
         )
         candidate = entropy_dual(dual.x)[2]
         if np.max(matrix @ candidate) <= 1e-6:
