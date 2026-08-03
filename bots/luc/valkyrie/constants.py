@@ -115,6 +115,15 @@ MIN_AMMO_FOR_SENTINEL = 40
 # its own shot does not care. Skipped when the bank is thinner than this.
 SENTINEL_WRAP_RESERVE = 20
 
+# --- Siege barriers ---------------------------------------------------------
+# Barriers soaking enemy Gunner lanes aimed at our forward battery, out at the
+# enemy Core. 3 Ti and +1% scale for 30 HP absorbs three Gunner rounds and six
+# of their ammunition, which is titanium 1:1 -- the cheapest trade on the board
+# and the one thing Pantheon does with barriers (31 of 33 across twenty games).
+SIEGE_BARRIER_ENABLED = True
+# Held back so soaking never eats the Gunner that the soaking is protecting.
+SIEGE_BARRIER_RESERVE = 12
+
 # --- Launcher retirement ----------------------------------------------------
 # A field Launcher (escape ferry, relay) that has serviced no request and seen
 # no enemy for this long hands its +10% scale back. Ring Launchers sit within
