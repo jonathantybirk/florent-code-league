@@ -79,6 +79,23 @@ A wrong guess is cheap and self-correcting — the symmetry test strikes a
 candidate the moment observed terrain contradicts it — and the farthest
 surviving candidate is the truth on 28 of 42 published map-sides.
 
+### On terrain nobody has tuned against
+
+24 random symmetric maps from `tools/generate_maps.py`, both seats, against the
+two strongest bots in the field:
+
+| bot | atlas | total | vigil | ragnarok |
+|---|---|---|---|---|
+| **`heimdall`** | no | **65/96 0.677** | 35/48 0.73 | 30/48 0.62 |
+| `warden_walk` | yes | 46/96 0.479 | 24/48 0.50 | 22/48 0.46 |
+| `valkyrie` | yes | 46/96 0.479 | 26/48 0.54 | 20/48 0.42 |
+| `ww_fair` | no | 46/96 0.479 | 24/48 0.50 | 22/48 0.46 |
+
+The three control rows landing on exactly 0.479 is the whole point: off the
+published pool the atlas is inert, so an atlas bot and its atlas-free twin play
+the identical game. The 11-13pp the oracle is worth on the pool is worth
+nothing here — and the guard is worth twenty.
+
 ### CPU
 
 Worst Builder turn 4,987 µs on `longship`, 0 turns over the 10 ms limit across

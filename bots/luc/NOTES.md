@@ -76,8 +76,18 @@ worth 17pp with the atlas and 14pp without. They are close to additive and
 neither explains the other.
 
 That 11-13pp is the price of fairness *on maps the atlas knows*. It is zero on
-maps it does not, which is where the final is played — see the generated-map
-numbers in `heimdall/README.md`.
+maps it does not, and the measurement is unusually clean. 24 generated
+symmetric maps, both seats, against vigil and ragnarok:
+
+    heimdall     (fair,  guard)   65/96  0.677
+    warden_walk  (atlas, no guard) 46/96  0.479
+    valkyrie     (atlas, no guard) 46/96  0.479
+    ww_fair      (fair,  no guard) 46/96  0.479
+
+Three controls landing on exactly 0.479 is the result: off the pool the atlas
+is inert, so an atlas bot and its atlas-free twin play the identical game.
+Whatever the oracle is worth on the ladder, it is worth nothing in the final,
+and the guard is worth twenty points there.
 
 ### Measured and rejected — do not re-run these
 
