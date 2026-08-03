@@ -171,10 +171,17 @@ Then it was replayed on the other, independent generated set and on the pool:
     24 generated maps (set 1)   65/96 -> 66/96    +1
     21 official maps            128/168 -> 129/168 +1
 
-So the whole effect is one opponent on one map set: +13 games in 384. Not
-shipped. The mechanism is still sound and it may be worth revisiting with a
-sample that can actually resolve it, but "it worked on the set I found it on"
-is not a measurement.
+Then, because two sets disagreeing is not an answer, a third set of 40 fresh
+maps was drawn and the prediction written down first: *counter-battery gains
+against ragnarok and is level against vigil.* It failed.
+
+    40 generated maps (set 3)   99/160 -> 101/160  +2 (ragnarok 55 -> 56)
+
+Full ledger: +1, +11, +2 on three unknown sets and +1 on the pool -- 15 games
+in 544, all of it one set. Not shipped. The mechanism is still sound and may
+be worth revisiting with a sample that can resolve it, but "it worked on the
+set I found it on" is not a measurement, and a pre-registered prediction is
+the cheapest way to find that out.
 
 Same story, smaller: leashing the guard's ore claims to within 8 tiles of the
 Core (130/168 pool, 75/120 set 2, both +1 or +2) and rebuilding guard turrets
