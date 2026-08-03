@@ -8,8 +8,8 @@ from fcode import Controller, Direction, Environment, Position
 
 from constants import (MAX_OPENING_BUILDERS, PAD_FIRST_ORDER,
                        SLOT_BUILDER_HEARTBEAT,
-                       SLOT_CORE_DAMAGED, SLOT_ENEMY_CORE, SLOT_OWN_CORE)
-from utils import pack_core, pack_enemy
+                       SLOT_CORE_DAMAGED, SLOT_OWN_CORE)
+from utils import pack_core
 
 if TYPE_CHECKING:
     from main import Player
