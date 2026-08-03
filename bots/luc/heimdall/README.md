@@ -79,6 +79,27 @@ A wrong guess is cheap and self-correcting — the symmetry test strikes a
 candidate the moment observed terrain contradicts it — and the farthest
 surviving candidate is the truth on 28 of 42 published map-sides.
 
+### The shipped build against the eight strongest bots in the field
+
+21 official maps, both seats, 336 games:
+
+| opponent | | |
+|---|---|---|
+| `casemate` | 42/42 | 1.00 |
+| `vigil` | 36/42 | 0.86 |
+| `vanguard` | 36/42 | 0.86 |
+| `gobbleglitch` | 33/42 | 0.79 |
+| `warden` | 32/42 | 0.76 |
+| `valkyrie` | 31/42 | 0.74 |
+| `ragnarok` | 31/42 | 0.74 |
+| `warden_walk` | 20/42 | 0.48 |
+| **total** | **261/336** | **0.777** |
+
+Seven of eight matchups at 0.74 or better. The exception is `warden_walk`,
+which is this bot's own chassis *with* the atlas and without the guard — on
+the pool the two advantages cancel almost exactly. Off the pool they do not,
+because only one of them still exists.
+
 ### On terrain nobody has tuned against
 
 24 random symmetric maps from `tools/generate_maps.py`, both seats, against the
