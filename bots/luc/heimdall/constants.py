@@ -127,11 +127,23 @@ ROTATE_TITANIUM_RESERVE = 40
 #
 #   off      118/168
 #   r^2 64   142/168
-#   r^2 36   145/168     <- shipped
+#   r^2 36   145/168
 #
-# Six tiles, not eight: the wider trigger spends turrets on scouts that were
-# never going to emplace, and each one is +10% on every price paid afterwards.
-GUARD_RADIUS_SQ = 36
+# ...on the chassis of the day. Re-measured after the opening ferry was turned
+# off, on the full 8-bot pool and 40 generated maps, the order reverses:
+#
+#                 pool            generated
+#     r^2 25    (worse)           --
+#     r^2 36    282/336  0.839    115/160  0.719
+#     r^2 64    288/336  0.857    117/160  0.731   <- shipped
+#     r^2 81    287/336  0.854    (worse)
+#     r^2 100   287/336  0.854
+#
+# Which follows: with no ferry the attacker walks, so enemy attackers arrive on
+# foot and are in sight for longer before they emplace, and eight tiles of
+# warning is now worth what six was when both sides were being thrown across
+# the map. Past r^2 64 it starts paying turrets for scouts again.
+GUARD_RADIUS_SQ = 64
 # Turrets this Builder will put up for that job. Insurance, not a garrison --
 # each is +10% on every price paid afterwards. Measured on the same panel:
 # cap 1/2/3/4/6 -> 139/147/145/146/145 of 168.
