@@ -1,6 +1,5 @@
 import random
 import math
-
 from fcode import Controller, Direction, EntityType, Environment, GameConstants, Position
 
 # All directions except CENTRE — useful for movement and spawning
