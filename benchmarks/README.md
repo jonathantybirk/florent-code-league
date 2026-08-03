@@ -21,6 +21,7 @@ behind a win rate.
 | `ablate.py` | builds single-change variants of a bot and scores each against a panel |
 | `export.py` | flattens a run directory into one committable CSV |
 | `timing.py` | per-unit turn CPU time against the ladder's 10 ms limit, by map and entity type |
+| `pathology.py` | wasted Builder rounds in a replay: pacing between two tiles, which a win rate hides and a position trace does not |
 
 One match runs per OS process. The engine hosts both bots in sub-interpreters
 inside the calling process (see `tournament/run_match.py`), so reuse is unsafe
