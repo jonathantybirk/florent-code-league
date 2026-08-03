@@ -25,3 +25,8 @@ tournament/runs/*/job_*.sh
 tournament/runs/*/work_*.txt
 tournament/automation-state.json
 tournament/automation.lock
+
+# Held-out evaluation maps. The README is tracked so the directory's purpose is documented;
+# the maps themselves must never reach the repository -- see tournament/custom_maps/README.md.
+tournament/custom_maps/*
+!tournament/custom_maps/README.md

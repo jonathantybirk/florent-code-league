@@ -186,10 +186,30 @@ which trees to glob:
 | `generated` | 82 | 164 | `maps/generated/**` |
 | `all` | 103 | 206 | both |
 | `screen` | 6 | 12 | the fast subset for iteration |
+| `secret` | 10 | 20 | `tournament/custom_maps/*.map26` |
+| `official_secret` | 31 | 62 | official + held-out |
 
 Every pair plays every map in **both orders**, which is what makes first-player advantage cancel in
 the aggregate. Generated-map labels are prefixed (`generated/stress/...`) so they can never collide
 with an official map in the CSV.
+
+### The held-out pool
+
+`secret` is the evaluation pool: terrain nobody has developed against, used to tell generalisation
+apart from fitting to the 21 official maps. It is deliberately awkward to reach by accident:
+
+- The maps live in `tournament/custom_maps/`, **outside `maps/`**, so no `maps/` glob finds them,
+  and the directory is gitignored (only its README is tracked). They exist on the evaluation
+  machine and nowhere else. See `tournament/custom_maps/README.md` for the rules.
+- Labels are prefixed `secret/<name>`, and a bare `--maps geode` **fails** rather than resolving
+  into the pool. Mixing pools has to be spelled out as `--maps official_secret`.
+- The standing automation still plays `official` only. Held-out runs are explicit:
+  `plan --tid <id> --maps secret`, then `hpc push` / `hpc submit`.
+- `ratings.csv`, `duplicates.csv` and the canonical field are computed from official matches only,
+  so a held-out run never moves the published ladder. The held-out rows do travel in
+  `matches-distinct.csv`, which is how the website offers them as a separately-rated map pool.
+- The website publishes a held-out map's **name and size only** — never its terrain or core
+  placement — and defaults to the standard pool.
 
 ## The rating pipeline
 

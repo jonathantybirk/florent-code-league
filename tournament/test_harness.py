@@ -548,3 +548,32 @@ def test_merge_survives_a_truncated_result_file(tmp_path):
 
     _, count = merge(run_dir)
     assert count == 1
+
+
+def test_secret_maps_are_a_separate_pool_that_official_never_picks_up():
+    from tournament import maps
+
+    if not any(maps.SECRET_ROOT.glob("*.map26")):
+        pytest.skip("no held-out maps present")
+
+    official = maps.resolve("official")
+    secret = maps.resolve("secret")
+    assert not set(official) & set(secret)
+    assert maps.resolve("official_secret") == official + secret
+    # Held-out maps live outside maps/, so no maps/ glob can reach them.
+    assert not any(path.is_relative_to(maps.MAPS_ROOT) for path in secret)
+
+
+def test_secret_map_labels_are_prefixed_and_bare_names_do_not_resolve():
+    from tournament import maps
+
+    if not any(maps.SECRET_ROOT.glob("*.map26")):
+        pytest.skip("no held-out maps present")
+
+    path = maps.resolve("secret")[0]
+    assert maps.label(path) == f"secret/{path.stem}"
+    assert maps.is_secret(maps.label(path))
+    assert not maps.is_secret("atoll")
+    # A bare name must not silently mix a held-out map into an official run.
+    with pytest.raises(FileNotFoundError):
+        maps.resolve(path.stem)

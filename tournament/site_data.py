@@ -19,6 +19,7 @@ from tournament import plan as planning
 from tournament import registry
 from tournament.fairness import is_unfair
 from tournament import report
+from tournament.maps import is_secret
 from tournament.maps import resolve as resolve_map
 from tournament.outcome import score_a as evaluation_score_a
 from tournament.rating import evaluate
@@ -230,18 +231,28 @@ def _benchmark(
 
 
 def _map_catalog(map_names: list[str]) -> list[dict]:
+    """Catalog entries for the website.
+
+    Held-out maps publish their name and dimensions and nothing else. Terrain and core placement
+    are exactly what the pool is protecting, and this bundle is served as a public static file --
+    so the fields are emitted empty rather than filtered client-side.
+    """
     result = []
     for name in map_names:
         [map_path] = resolve_map(name)
         game_map = read_map(map_path)
+        secret = is_secret(name)
         result.append(
             {
                 "name": name,
                 "slug": name.replace("/", "--"),
+                "secret": secret,
                 "width": game_map.width,
                 "height": game_map.height,
-                "terrain": game_map.rows,
-                "cores": [
+                "terrain": [] if secret else game_map.rows,
+                "cores": []
+                if secret
+                else [
                     {"team": core.team, "x": core.x, "y": core.y}
                     for core in game_map.cores
                 ],
@@ -280,10 +291,16 @@ def build(run_dir: Path, output_dir: Path) -> dict:
         for bot_id in rated_ids
         if compliance.get(bot_id, {}).get("status", "unknown") != "exceeded"
     }
+    # Same predicate that decides the row's `unfair` badge: a tag-only test would leave the
+    # atlas-importing bots inside the fair field while the page marks them unfair.
     fair_ids = {
         bot_id
         for bot_id in rated_ids
-        if "unfair" not in metadata.get(bot_id, {}).get("tags", [])
+        if not is_unfair(
+            metadata.get(bot_id, {}).get("tags", []),
+            metadata.get(bot_id, {}).get("commit", ""),
+            metadata.get(bot_id, {}).get("path", ""),
+        )
     }
     # Both switches on the page narrow the field, and a rating is only meaningful against the
     # field it was computed over. Filtering a larger field's numbers client-side would show, say,
@@ -295,10 +312,50 @@ def build(run_dir: Path, output_dir: Path) -> dict:
         "_fair": within_time_ids & fair_ids,
         "_fair_including_over_time": rated_ids & fair_ids,
     }
-    benchmarks = {
-        suffix: _benchmark(benchmark_matches, ids, metadata, compliance)
-        for suffix, ids in fields.items()
-    }
+    # A map pool is the second thing a rating is relative to, and for the same reason as the
+    # field: Nash averaging asks "unexploitable against which opponents, on which maps". Pooling
+    # the held-out maps into the official numbers would silently redefine every published rating,
+    # so each pool is evaluated separately and the page picks one.
+    map_labels = sorted({row["map"] for row in benchmark_matches})
+    secret_labels = [name for name in map_labels if is_secret(name)]
+    standard_labels = [name for name in map_labels if not is_secret(name)]
+    pools = {"": standard_labels}
+    if secret_labels:
+        pools["_secret"] = secret_labels
+        pools["_combined"] = map_labels
+
+    # Per-map ratings come first: a bot's Nash-core map count is an aggregate over them, so the
+    # pooled rows cannot be finished until every map has been solved.
+    map_catalog = _map_catalog(map_labels)
+    map_rankings_by_name: dict[str, dict[str, list[dict]]] = {}
+    core_maps: dict[str, dict[str, set[str]]] = {suffix: {} for suffix in fields}
+    for map_info in map_catalog:
+        map_rows = [row for row in benchmark_matches if row["map"] == map_info["name"]]
+        per_field = {
+            suffix: _benchmark(map_rows, ids, metadata, compliance)[1]
+            for suffix, ids in fields.items()
+        }
+        map_rankings_by_name[map_info["name"]] = per_field
+        for suffix, rows in per_field.items():
+            core_maps[suffix][map_info["name"]] = {
+                row["bot_id"] for row in rows if row["nash_prob"] > 0
+            }
+
+    benchmarks: dict[str, tuple[list[dict], list[dict]]] = {}
+    for pool_suffix, pool_labels in pools.items():
+        pool_set = set(pool_labels)
+        pool_matches = [row for row in benchmark_matches if row["map"] in pool_set]
+        for field_suffix, ids in fields.items():
+            matches, rows = _benchmark(pool_matches, ids, metadata, compliance)
+            for row in rows:
+                # Counted within the selected pool, against the same field: "core on 7 of these
+                # 22 maps" only means anything if both halves describe the table being read.
+                row["nash_core_maps"] = sum(
+                    row["bot_id"] in core_maps[field_suffix][name] for name in pool_labels
+                )
+                row["pool_maps"] = len(pool_labels)
+            benchmarks[f"{pool_suffix}{field_suffix}"] = (matches, rows)
+
     within_time_matches, ranking_rows = benchmarks[""]
     all_matches, ranking_rows_including_over_time = benchmarks["_including_over_time"]
 
@@ -404,16 +461,13 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     if duplicate_path.exists():
         duplicate_rows = _read(duplicate_path)
 
-    maps = sorted({row["map"] for row in benchmark_matches})
-    map_catalog = _map_catalog(maps)
     maps_dir = output_dir / "maps"
     maps_dir.mkdir(parents=True, exist_ok=True)
     expected_map_files = set()
     for map_info in map_catalog:
-        map_rows = [row for row in benchmark_matches if row["map"] == map_info["name"]]
         map_rankings = {
-            f"rankings{suffix}": _benchmark(map_rows, ids, metadata, compliance)[1]
-            for suffix, ids in fields.items()
+            f"rankings{suffix}": rows
+            for suffix, rows in map_rankings_by_name[map_info["name"]].items()
         }
         filename = f"{map_info['slug']}.json"
         expected_map_files.add(filename)
@@ -436,29 +490,45 @@ def build(run_dir: Path, output_dir: Path) -> dict:
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "run_id": run_dir.name,
         **{
-            f"field{suffix}": {
-                "bots": len(fields[suffix]),
-                "matches": len(benchmarks[suffix][0]),
-                "maps": len(maps),
-                "games_per_pair": 2 * len(maps),
+            f"field{pool_suffix}{field_suffix}": {
+                "bots": len(benchmarks[f"{pool_suffix}{field_suffix}"][1]),
+                "matches": len(benchmarks[f"{pool_suffix}{field_suffix}"][0]),
+                "maps": len(pool_labels),
+                "games_per_pair": 2 * len(pool_labels),
             }
-            for suffix in fields
+            for pool_suffix, pool_labels in pools.items()
+            for field_suffix in fields
         },
-        "maps": maps,
+        "maps": map_labels,
         "map_catalog": map_catalog,
-        **{f"rankings{suffix}": benchmarks[suffix][1] for suffix in fields},
+        "map_pools": [
+            {
+                "id": pool_suffix,
+                "label": {
+                    "": "Standard maps",
+                    "_secret": "Secret maps",
+                    "_combined": "Standard + secret maps",
+                }[pool_suffix],
+                "secret": pool_suffix != "",
+                "maps": pool_labels,
+            }
+            for pool_suffix, pool_labels in pools.items()
+        ],
+        **{
+            f"rankings{suffix}": benchmark[1] for suffix, benchmark in benchmarks.items()
+        },
         "duplicates": duplicate_rows,
         "methodology": {
             "primary": "pooled agent vs agent",
             "description": (
-                "All maps are pooled into one smoothed head-to-head probability for each bot "
-                "pair before mElo and Nash averaging."
+                "All maps in the selected pool are pooled into one smoothed head-to-head "
+                "probability for each bot pair before mElo and Nash averaging."
             ),
             "nash": (
                 "Nash averaging uses the square agent-vs-agent log-odds matrix built from those "
                 "pooled probabilities."
             ),
-            "sides": "Every pair plays every official map twice, swapping Gold and Silver.",
+            "sides": "Every pair plays every map in the pool twice, swapping Gold and Silver.",
         },
     }
     output_dir.mkdir(parents=True, exist_ok=True)

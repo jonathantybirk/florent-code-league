@@ -23,6 +23,7 @@ from tournament import duplicates, hpc, report
 from tournament import plan as planning
 from tournament.discover import DEFAULT_EXCLUDES, discover
 from tournament.gitutil import REPO_ROOT, resolve_commit
+from tournament.maps import is_secret
 from tournament.merge import merge, read
 from tournament.rating import evaluate
 from tournament.registry import BotSpec
@@ -679,7 +680,10 @@ def canonical_field() -> tuple[list[BotSpec], list[tuple[str, str]]]:
     pair imputed as a draw. Deriving both from this one function is what keeps that impossible.
     """
     _, all_specs = derive_ledger()
-    rows = pooled_matches()
+    # Official matches only. Entry to the canonical field is earned on the official pool: a bot
+    # known only from a held-out run has no official record, so admitting it would guarantee the
+    # incomplete-matrix error below. Duplicate detection is judged on the same evidence.
+    rows = [row for row in pooled_matches() if not is_secret(row["map"])]
     played = {row["bot_a"] for row in rows} | {row["bot_b"] for row in rows}
     entrants = [spec for bot_id, spec in sorted(all_specs.items()) if bot_id in played]
     groups = duplicates.behaviour_groups(rows) + duplicates.code_groups(entrants)
@@ -732,7 +736,12 @@ def finalise(
         row for row in rows if row["bot_a"] in desired and row["bot_b"] in desired
     ]
 
-    ratings = evaluate(distinct_rows)
+    # The published ladder is defined over the official pool and only that. Held-out matches still
+    # travel in matches-distinct.csv, because the website offers them as a separately-rated pool --
+    # but folding them into ratings.csv would silently redefine the canonical numbers, and would
+    # break the completeness check besides, since a held-out run covers its own field.
+    official_rows = [row for row in distinct_rows if not is_secret(row["map"])]
+    ratings = evaluate(official_rows)
     if not ratings.complete:
         # Unplayed pairs enter A as 0, which is indistinguishable from a measured draw. Publishing
         # that to a live ladder would present imputed numbers as results.
@@ -746,7 +755,9 @@ def finalise(
     metadata = {spec.bot_id: _spec_dict(spec) for spec in kept}
     report.write_csv(ratings, metadata, destination / "ratings-distinct.csv")
     report.write_csv(ratings, metadata, destination / "ratings.csv")
-    duplicates.write_csv(duplicates.behaviour_groups(distinct_rows),
+    # Judged on the official pool too: two bots that play identically there are duplicates for
+    # ladder purposes, and letting a held-out map split them would change who gets pruned.
+    duplicates.write_csv(duplicates.behaviour_groups(official_rows),
                          destination / "duplicates.csv")
 
     print(f"  {tid}: rated {len(desired)} distinct bot(s) over {len(distinct_rows)} matches")

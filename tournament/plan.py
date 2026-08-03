@@ -23,7 +23,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from tournament.gitutil import REPO_ROOT
-from tournament.maps import MAPS_ROOT, label, resolve
+from tournament.maps import label, resolve, stage_path
 from tournament.registry import BotSpec
 
 RUNS_ROOT = REPO_ROOT / "tournament" / "runs"
@@ -80,11 +80,15 @@ def stage_bots(specs: list[BotSpec], destination: Path) -> dict[str, str]:
 
 
 def stage_maps(map_paths: list[Path], destination: Path) -> dict[str, str]:
-    """Copy the selected maps in, preserving the official/generated split. Returns label -> path."""
+    """Copy the selected maps in, preserving the pool split. Returns label -> path.
+
+    Held-out maps land under maps/secret/ inside the run directory. Run maps/ is gitignored
+    wholesale, so staging never publishes them.
+    """
     staged: dict[str, str] = {}
     for path in map_paths:
         key = label(path)
-        target = destination / path.relative_to(MAPS_ROOT)
+        target = destination / stage_path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
         staged[key] = str(target.relative_to(destination.parent))
