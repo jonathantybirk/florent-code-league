@@ -8,6 +8,49 @@ No map oracle. There is no atlas module and no import of one, so this plays a
 generated map, the held-out set and the final the way it plays the published
 pool.
 
+## READ THIS FIRST: everything below is a pool-specific gain
+
+Every change in this bot was measured on the 21 official maps and gains there.
+Re-measured on 40 generated maps against the same eight opponents, **all of them
+are negative**, and plain odin is the better bot on ground nobody has seen:
+
+| build | official pool | 40 generated maps |
+|---|---|---|
+| odin `38e1456` | 242 (0.720) | **445/640 — 0.695** |
+| mjolnir, wall ON | **265 (0.789)** | 416/640 — 0.650 |
+| mjolnir, wall OFF (shipped) | 245 (0.729) | 409/640 — 0.639 |
+| odin + Sentinel promotion only | 245 (0.729) | 408/640 — 0.637 |
+
+Isolated: the wall is +20 on the pool and −45 generated. The Sentinel promotion
+is +3 on the pool and −37 generated — its headline "+9" only exists in the
+presence of the wall. The harvester cap is +4 with the wall and exactly 0
+without it (245/245 pool, 409/408 generated), because the wall is what pushes
+games to round 1000 where extra Harvesters pay.
+
+What survives is narrow and real: **this bot counters `steward`, and odin does
+not.** Steward carries a published-map atlas, so on the official pool it knows
+terrain and our Core from round 0 and emplaces on perfect firing lines without
+scouting.
+
+| | vs steward, official pool | vs steward, generated |
+|---|---|---|
+| odin | 15/42 — 0.357 | 47/80 — 0.588 |
+| mjolnir, wall ON | **34/42 — 0.810** | 46/80 — 0.575 |
+| mjolnir, wall OFF | 27/42 — 0.643 | **58/80 — 0.725** |
+
+So: a matchup pick, not a general upgrade. Note also that steward itself is
+*last* of the four against the eight-bot panel (209/336), so it is a counter to
+our old flagship rather than the field's best — three separate
+non-transitivities turned up in one session, which is why neither head-to-head
+nor a single panel ranks these bots. The 4,956-game Nash instrument on
+`x/tournament` is the only one that can.
+
+**The methodological lesson is the point of this file.** Eleven variants were
+measured pool-only before anything was checked on generated maps, and the pool
+is 21 maps. `NOTES.md` has carried the rule "re-sweep on generated maps before
+trusting a constant" since before this session started.
+
+
 ## Why the flagship needed rebuilding, not tuning
 
 The patch repriced combat and left economy alone:

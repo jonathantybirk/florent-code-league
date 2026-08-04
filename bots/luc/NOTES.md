@@ -66,6 +66,40 @@ of its damage to enemy Cores with Gunners. Promoting the Sentinel is +9 games.
 The range gap is the only strictly asymmetric advantage on the board: a seat
 beyond r²=13 hits their Core and nothing they own answers it.
 
+### CORRECTION: all of the below is a pool-only gain
+
+Re-measured on 40 generated maps against the same eight opponents, every change
+in this section is negative and plain odin is the better bot on unseen ground:
+
+| build | official pool | 40 generated maps |
+|---|---|---|
+| odin `38e1456` | 242 (0.720) | **445/640 — 0.695** |
+| mjolnir, wall ON | **265 (0.789)** | 416/640 — 0.650 |
+| mjolnir, wall OFF | 245 (0.729) | 409/640 — 0.639 |
+| odin + Sentinel promotion only | 245 (0.729) | 408/640 — 0.637 |
+
+Isolated: the wall is +20 pool / −45 generated. The Sentinel promotion is +3
+pool / −37 generated — the "+9" below only exists in the presence of the wall.
+The harvester cap is +4 with the wall and exactly 0 without it, because the wall
+is what pushes games to round 1000 where extra Harvesters pay.
+
+What survives: the wall counters an *atlas*, not a field. `steward` reads a
+published-map oracle, so on the pool it emplaces on perfect firing lines from
+round 0 without scouting, and walling every ray takes that away — odin gets
+15/42 against it, mjolnir-with-wall 34/42. On generated maps, where the atlas is
+inert, wall-off is best (58/80 against steward, to odin's 47/80). Steward is
+nonetheless *last* of the four against the eight-bot panel (209/336): a counter
+to our old flagship, not the field's best.
+
+Three separate non-transitivities in one session — mjolnir beats the panel but
+loses to odin 10/42; steward beats odin but is last on the panel; wall-off loses
+the pool and wins the steward matchup. Neither head-to-head nor a single panel
+ranks these bots. Only the 4,956-game Nash instrument does.
+
+**The process failure worth remembering:** eleven variants were measured
+pool-only before anything was checked on generated maps. The pool is 21 maps.
+This file already carried the rule.
+
 ### Shipped (bots/luc/mjolnir)
 
     odin 38e1456 baseline       242/336  0.720   core losses 70
