@@ -540,7 +540,18 @@ LAUNCHER_QUIET_ROUNDS = 45
 # round-1000 tiebreak is titanium collected and the wall sends far more games
 # there: Core losses fall from 70 to 51 across these changes, and almost all
 # of them become full-length games instead.
-NETWORK_CAP_EARLY = 6
+# Back to 4. Six came from mjolnir 67ed3ab1, measured with the twelve-tile wall
+# on -- the one mechanic from that bot that was ruled out entirely -- and the
+# wall is what sent those games to the round-1000 tiebreak that six was chosen
+# to serve. Re-measured on this bot, 336 games a cell:
+#
+#     cap 6   0.738 / 0.619
+#     cap 4   0.750 / 0.643   <- shipped
+#
+# Better on both metrics. One conveyor trunk carries one stack a round and a
+# Harvester produces one every four, so four is where a trunk saturates: past
+# it the extra Harvesters are +5% scale each for titanium that cannot move.
+NETWORK_CAP_EARLY = 4
 NETWORK_CAP_LATE = 8
 ECON_EXPAND_ROUND = 120
 
