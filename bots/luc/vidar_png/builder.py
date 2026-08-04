@@ -45,6 +45,7 @@ from constants import (
     MIN_AMMO_FOR_SENTINEL,
     MIN_AMMO_FOR_SENTINEL_SEAT,
     SIEGE_COVER_TIER,
+    ATTACK_GUNNERS,
     MAX_GUARD_SENTINELS,
     SIEGE_SENTINEL_BATTERY,
     GUARD_TURRET_SENTINEL,
@@ -2929,7 +2930,8 @@ def _rush(p, ct):
     # panel (250 -> 259), and +14 with the harvester cap (242 -> 264).
     if _build_siege_sentinel(p, ct, enemy_core):
         return
-    if p.attack_gunners_built < 5 and _build_basic_gunner(p, ct, enemy_core):
+    if (p.attack_gunners_built < ATTACK_GUNNERS
+            and _build_basic_gunner(p, ct, enemy_core)):
         return
     _harass(p, ct)
 
