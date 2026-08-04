@@ -32,6 +32,8 @@ from constants import (
     NETWORK_CAP_EARLY,
     NETWORK_CAP_LATE,
     AVOID_ENEMY_RAYS,
+    COVER_TIER_SEATS,
+    DUEL_TEND_ROUNDS,
     MAX_RELAY_LAUNCHERS,
     HARVESTER_FINISH_STEPS,
     REPAIR_NETWORK,
@@ -147,6 +149,9 @@ def _run(p, ct):
         p.build_wait_key, p.build_wait_rounds = None, 0
         p.pending_build = None
         p.rejected_build_sites = set()
+        p.duel_turret = None
+        p.duel_threat = None
+        p.duel_until = 0
         p.deferred_ores = {}
         p.recent_tiles = []
         p.last_progress_round = ct.get_current_round()
@@ -285,6 +290,10 @@ def _run(p, ct):
         if alarm or (raw_alarm & CORE_DYING_FLAG):
             _defend_core(p, ct)
             return
+    # A duel in progress outranks the errand that started it: the turret was
+    # bought into enemy fire on the promise that its Builder would keep it up.
+    if _tend_duel_turret(p, ct):
+        return
     if p.is_attacker:
         p.phase = "rush"
     if p.phase == "rush":
@@ -1754,6 +1763,11 @@ def _aligned_gunner_site(p, ct, enemies):
     """
     me = ct.get_position()
     protected_lanes = _friendly_turret_lanes(ct)
+    # Deliberately NO cover-tier preference here: the guard and the belt
+    # defence must take the first seat that fires, and the off-ray seats the
+    # tier sort prefers are exactly the tiles that do not cover the corridor
+    # the belt runs through (bridge went 12/16 -> 10/16 with tiers applied).
+    threats = ({}, frozenset())
     candidates = []
     for direction in D8:
         position = me.add(direction)
@@ -1773,6 +1787,7 @@ def _aligned_gunner_site(p, ct, enemies):
                     and ct.can_build_gunner(position, facing)):
                 candidates.append((
                     COMBAT_PRIORITY.get(ct.get_entity_type(enemy_id), 4),
+                    _cover_tier(tuple(position), threats),
                     position.distance_squared(target),
                     position.x, position.y, D8.index(facing), position, facing,
                 ))
@@ -2315,10 +2330,16 @@ def _build_basic_gunner(p, ct, enemy_core):
     distances = _distance_map(p, me)
     protected_lanes = _friendly_turret_lanes(ct)
     # A Gunner seated on a tile an enemy turret already covers is shot before
-    # it has fired much. Prefer any legal seat outside their rays and take a
-    # covered one only when nothing else reaches -- it is a sort key, not a
-    # filter, so a covered seat still beats no seat.
-    enemy_cover = _enemy_turret_cover(p, ct) if AVOID_ENEMY_RAYS else frozenset()
+    # it has fired much, and one it can rotate onto costs them only a flat
+    # 10 Ti. Prefer seats out of reach entirely, then rotation-only, and take
+    # a currently covered seat last -- under duel discipline (one at a time,
+    # facing the coverer, tended by this Builder) rather than as cannon fodder.
+    # Never under BLITZ: a cores-close race is decided before any of this
+    # pays, and both the seat detours and the healing titanium lose the
+    # mutual-kill tiebreak (showdown went 16/16 -> 13/16 with this applied).
+    tiers_on = COVER_TIER_SEATS and p.doctrine != doctrine.BLITZ
+    threats = _enemy_turret_threats(p, ct) if tiers_on else ({}, frozenset())
+    duel_busy = tiers_on and _duel_active(p, ct)
     choices = []
     for core_tile in sorted(core_tiles):
         for dx in range(-3, 4):
@@ -2346,7 +2367,12 @@ def _build_basic_gunner(p, ct, enemy_core):
                     default=None,
                 )
                 if distance is not None:
-                    choices.append((spot in enemy_cover, distance, spot,
+                    tier = _cover_tier(spot, threats)
+                    if tier == 2 and duel_busy:
+                        # One turret in enemy fire at a time; a second is
+                        # the fodder pattern this whole tier system bans.
+                        continue
+                    choices.append((tier, distance, spot,
                                     D8.index(facing), facing))
     # Self-blocking is checked in preference order and stops at the first site
     # that survives, rather than for every candidate: the cheap tests above
@@ -2371,7 +2397,7 @@ def _build_basic_gunner(p, ct, enemy_core):
             return True
         _explore(p, ct)
         return True
-    _, _, spot, _, facing = min(choices)
+    tier, _, spot, _, facing = min(choices)
     position = Position(*spot)
     if not ct.is_in_vision(position):
         _step(p, ct, position, False)
@@ -2379,11 +2405,25 @@ def _build_basic_gunner(p, ct, enemy_core):
     if _cardinal_distance(me, spot) != 1:
         _move_cardinal_adjacent(p, ct, spot)
         return True
+    if tier == 2:
+        # Forced into an enemy turret's ray: face the coverer, not the Core.
+        # It is first on the ray in both directions, so ours fires now, and
+        # once it wins the duel the Gunner's own rotation logic swings it
+        # onto the Core it was seated for. This Builder tends the duel.
+        coverer = threats[0].get(spot)
+        duel_facing = (_ray_direction(spot, coverer)
+                       if coverer is not None else None)
+        if duel_facing is not None:
+            facing = duel_facing
     if ct.can_build_gunner(position, facing):
         ct.build_gunner(position, facing)
         _mark_progress(p, ct, "built core gunner", spot)
         p.solids.add(spot)
         p.attack_gunners_built += 1
+        if tier == 2:
+            p.duel_turret = spot
+            p.duel_threat = threats[0].get(spot)
+            p.duel_until = ct.get_current_round() + DUEL_TEND_ROUNDS
     elif _build_failure(p, ct, spot, "core gunner", ct.get_gunner_cost()):
         p.rejected_build_sites.add(spot)
     return True
@@ -2516,6 +2556,104 @@ def _enemy_turret_cover(p, ct):
                 break
             tile = tile[0] + dx, tile[1] + dy
     return covered
+
+
+def _duel_active(p, ct):
+    """True while our tier-2 turret and the turret it faces both stand."""
+    spot = getattr(p, "duel_turret", None)
+    if spot is None:
+        return False
+    if ct.get_current_round() >= p.duel_until:
+        p.duel_turret = None
+        return False
+    for tile in (spot, p.duel_threat):
+        if tile is None:
+            continue
+        position = Position(*tile)
+        if not ct.is_in_vision(position):
+            continue
+        building = ct.get_tile_building_id(position)
+        if building is None:
+            # One of the duellists is gone; either way the duel is over.
+            p.duel_turret = None
+            return False
+    return True
+
+
+def _tend_duel_turret(p, ct):
+    """Stand beside the dueling turret and heal it so it wins the exchange.
+
+    Both Gunners deal 10 a round; 4 HP for a flat 1 Ti from an adjacent
+    Builder turns an even trade into a won one. The Builder that chose the
+    tier-2 seat pays for it with its own rounds until the duel is decided.
+    """
+    if not _duel_active(p, ct):
+        return False
+    spot = p.duel_turret
+    position = Position(*spot)
+    if _cardinal_distance(tuple(ct.get_position()), spot) > 1:
+        _step(p, ct, position, False, allow_launcher=False)
+        return True
+    if ct.is_in_vision(position):
+        building = ct.get_tile_building_id(position)
+        if (building is not None
+                and ct.get_hp(building) < ct.get_max_hp(building)
+                and ct.can_heal(position)):
+            ct.heal(position)
+            _mark_progress(p, ct, "healed duel turret", spot)
+            return True
+    # Full HP or heal on cooldown: hold position, the duel is not over.
+    return True
+
+
+def _enemy_turret_threats(p, ct):
+    """(ray, rotation): tiles enemy turrets shoot now, and could after turning.
+
+    `ray` maps each currently covered tile to the covering turret's position,
+    so a seat forced into tier 2 knows exactly what to face. `rotation` is the
+    union of the other seven facings' rays -- tiles a 10 Ti rotation would put
+    under fire. Computed once per turn, never per candidate site (the per-site
+    version is the shape that put an earlier build over the turn limit).
+    """
+    ray, rotation = {}, set()
+    team = ct.get_team()
+    for turret_id in ct.get_nearby_buildings():
+        if ct.get_team(turret_id) == team:
+            continue
+        kind = ct.get_entity_type(turret_id)
+        if kind not in (EntityType.GUNNER, EntityType.SENTINEL):
+            continue
+        origin = tuple(ct.get_position(turret_id))
+        try:
+            current = ct.get_direction(turret_id).delta()
+        except Exception:  # noqa: BLE001 - a turret with no facing
+            continue
+        pierces = kind == EntityType.SENTINEL
+        reach = SENTINEL_RANGE_SQ if pierces else GUNNER_RANGE_SQ
+        for direction in D8:
+            dx, dy = direction.delta()
+            tile = origin[0] + dx, origin[1] + dy
+            while _inside(p, tile) and _distance_sq(origin, tile) <= reach:
+                if tile in p.walls and not pierces:
+                    break
+                if (dx, dy) == current:
+                    ray.setdefault(tile, origin)
+                else:
+                    rotation.add(tile)
+                if not pierces and tile in p.solids:
+                    break
+                tile = tile[0] + dx, tile[1] + dy
+    return ray, rotation
+
+
+def _cover_tier(spot, threats):
+    """0 = out of reach even by rotation, 1 = rotation only, 2 = covered now."""
+    ray, rotation = threats
+    if spot in ray:
+        return 2
+    if spot in rotation:
+        return 1
+    return 0
 
 
 def _friendly_turret_lanes(ct):
