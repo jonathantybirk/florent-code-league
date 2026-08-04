@@ -151,7 +151,7 @@ SPAWN_DENIAL_RESERVE = 20
 # scored 246/336 against a 242 baseline, which is what a correct answer to a
 # problem you do not have looks like. The twelve-tile ring, walked as a cycle
 # so it actually gets built, scores 250.
-BULWARK_ENABLED = True
+BULWARK_ENABLED = False
 # Barriers are 3 Ti; there is no scenario in which holding a reserve above
 # that is worth leaving the Core's doorstep open.
 BULWARK_RESERVE = 0
