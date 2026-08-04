@@ -634,7 +634,7 @@ SIEGE_COVER_TIER = True
 # damage for 3.33 -- so most games run to round 1000 and are decided on
 # titanium collected, then live Harvesters, then titanium stored. Every one of
 # those three is made of the buildings a Sentinel was ignoring.
-STARVE_THE_ECONOMY = True
+STARVE_THE_ECONOMY = False
 # Rounds of firing at a Core whose HP has not fallen before the battery gives
 # up on it and turns to the supply line. Two menders restore 8 HP a round
 # against a two-Sentinel battery's 12 and one restores 4 against a single

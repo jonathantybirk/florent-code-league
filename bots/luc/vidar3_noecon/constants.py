@@ -658,7 +658,7 @@ SIEGE_STALL_ROUNDS = 12
 # Harvesters the opening has not bought yet. The same +20% levied at round 250
 # falls almost entirely on conveyors at 3 Ti, so it costs 0.6 Ti a tile against
 # the 2.5 Ti a round a connected Harvester returns for the rest of the game.
-ECON_EXPAND_BUILDERS = True
+ECON_EXPAND_BUILDERS = False
 # Late enough that the opening blitz has demonstrably not ended the game, and
 # early enough that a new Harvester still has most of the match to pay back.
 ECON_BUILDER_ROUND = 200
