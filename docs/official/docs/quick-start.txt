@@ -20,7 +20,9 @@ Step 2 — Authenticate and scaffold a project
 fcode login
 fcode starter
 
-fcode login opens a browser window to link the CLI to your platform account. fcode starter scaffolds a project in the current directory: an fcode.toml, a maps/ folder, and a starter bot at bots/starter/main.py.
+fcode login opens a browser window to link the CLI to your platform account. fcode starter scaffolds a project in the current directory: an fcode.toml, a starter bot at bots/starter/main.py, and a maps/ folder that it fills with the current competition map pool.
+
+Log in before scaffolding — maps are downloaded from the platform, not bundled with the CLI. If you scaffold while logged out, run fcode maps sync afterwards to fetch them.
 
 Step 3 — Run a local match
 
