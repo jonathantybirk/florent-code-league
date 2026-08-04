@@ -201,11 +201,47 @@ tempest_fast** games. Pantheon won every one of them.
 the replica in Pantheon's seat and diffs the seat's actions round by round.
 That is the 1:1 target, and it is a much harder test than any win rate.
 
-**Current: 18/250 rounds identical (7%), median kill-round delta +2.**
+**Current: 42/250 rounds identical (17%), median kill-round delta +2.**
+On `duel`, rounds 0, 1 and 2 are now action-for-action identical.
+
+This is not 1:1 yet and is not claimed to be. What follows is what has been
+pinned down, and what is still open.
 
 Nothing about the opening changed in v20 -- the same constants validate on it
 (one Launcher per game 112/115, lifetime exactly five 111/115, throws on r2-r5,
 64% at maximum range, farthest-tile tie-break 66/66).
+
+### Working one map to identical, then checking the rest
+
+`trace_map.py <map>` prints the real game and ours side by side, round by
+round. Fixing `duel` in that loop produced six rules, each then re-checked
+across all 25 games:
+
+1. **The round-0 Builder** sits on the ring of tiles orthogonally adjacent to
+   the 2x2 Core footprint (25/25) and on the ring tile with the shortest walk
+   to the enemy Core (24/25, against 11/25 for straight-line).
+2. **The pad is not chosen from the ring.** It is one cardinal step further out
+   from wherever the round-0 Builder is standing, straight along the ray from
+   the footprint. That is why it can go up on round 1 with nobody walking.
+3. **The pad throws whoever is adjacent, unasked.** Ragnarok's ferry is
+   request-driven through the store, and store writes only land the following
+   round, so its first throw cannot happen before round 3. Pantheon throws on
+   round 2 in 116 of 116 games; it is not asking.
+4. **Passengers stand still on the pad.** On duel the round-0 Builder is thrown
+   from (3,8), the exact tile it spawned on. Ours walked a step first, which
+   moved the landing and cost a round.
+5. **Every opening Builder spawns inside the pad's pickup disc** (dist_sq <= 2).
+   On duel all four go on the column beside the pad -- (3,8), (3,7), (3,9),
+   (3,8), the last reusing the tile the first vacated.
+6. **The economy passengers land directly on ore**, taken nearest-our-Core
+   first, and each steps off and builds its harvester on the tile it vacated.
+   This corrects the v16 reading of "ore far enough out that a walking Builder
+   would never reach it": it is near-home ore, ordered by distance from home.
+
+Raiders went back to **2**, not 3. Three was tuned for win rate; the replays
+show two raiders and two economy passengers, and taking the faithful number
+more than doubled action agreement (7% -> 16%) while *also* speeding the bot up
+(median winning round 36 -> 32 against tempest_fast, same 90.5%).
 
 ### What the 1:1 diff found: the round-0 Builder
 
@@ -224,10 +260,18 @@ stepped out along an eight-way ray, which was wrong on nearly every map.
 Fixing it moved round-0 agreement to 16/25, overall action agreement 3% -> 7%,
 median kill delta +3 -> +2, and tempest_fast 88.1% -> 90.5%.
 
-The residual round-0 misses are BFS *ties* broken differently. Choosing among
-tied tiles by which pad they yield (best throw delivery) scores 68% against the
-64% we get now -- too marginal to justify the joint search yet, and recorded
-here so the next attempt starts from it.
+### Still open
+
+- **Round-0 ties.** The ring usually holds two tiles the same walk from the
+  enemy Core. They are also ties on straight line *and* on what their pads can
+  deliver, and something still separates them. A fixed compass order (north,
+  east, south, west) fixes crossfire, jackpot, sprint and twins and breaks duel
+  and aurora: 14% agreement against 17%. Recorded as a measured failure.
+- **The second raider throw.** On duel Pantheon throws to (7,5) where we throw
+  to (8,5) -- ours is nearer the enemy Core by both straight line and walk, so
+  the objective for passenger two is not simply "get closest".
+- **Three maps no longer finish** (sprint, string, aurora) where the real bot
+  kills on 24, 33 and 43. Those are the next thing to look at.
 
 ## Held-out validation (125 fresh replays, pulled later the same day)
 
