@@ -1,0 +1,14 @@
+{
+  "challengers": [
+    "heimdall@38e1456",
+    "maporacle@38e1456",
+    "odin@38e1456"
+  ],
+  "heads": {
+    "elias_dev": "818eaf5dbb0cee822bb5e684731c892d4921110c",
+    "viktor": "2a19238868400e6f955206c69fc4a7317de954ee",
+    "x/jon": "902be71c12fe64badadf6b77103b3059399b7f8a",
+    "x/luc": "38e145629dbe917ca86ccf8d3e4fd38e5e96bfc2"
+  },
+  "submitted_at": "2026-08-04T13:06:27+00:00"
+}
