@@ -134,6 +134,54 @@ This file already carried the rule.
 A null result and a negative result are indistinguishable in a table. Check the
 mechanism fired before believing the number, every time.
 
+### Launchers against enemy Builders: measured, and it does not pay
+
+A Launcher picks up a Builder Bot of *either team* from an adjacent tile
+(pickup r²=2, diagonals included), throws it sqrt(26), reloads in one round and
+uses no ammunition. Builders are never replaced -- every bot on this panel
+spawns its three on rounds 0, 1, 2 and never again -- so locking one out is
+removing a third of their team permanently. The arithmetic is very attractive
+and the mechanism works. It still loses.
+
+**First, a correction.** An earlier reading of these replays counted every
+teleport of an enemy Builder as us throwing it, and reported "we throw them
+1.94/game, they throw us 0.04/game". That detector was wrong. Attributing each
+teleport to whichever team had a Launcher within pickup radius of the *origin*:
+all 62 were **their own Launchers ferrying their own Builders**. The true count
+of enemy Builders `odin` has ever thrown is **zero**.
+
+The reason is that `_launch_enemy_away` never gets the chance: instrumented over
+a full game it was called 521 times and found an enemy inside pickup radius on
+**0** of them. Both sides' pathing avoids enemy Launcher tiles, so a Launcher
+standing at our Core is a hazard the enemy simply routes around.
+
+`_ambush_launcher` answers that by building a Launcher *onto* them -- a tile
+orthogonally adjacent to our Builder that is also within Chebyshev 1 of theirs,
+so they are already inside it when it appears. That fires: 7 enemy Builders
+thrown in 16 games, from zero. And it loses anyway:
+
+| cap | official pool | 40 generated maps |
+|---|---|---|
+| odin `38e1456` | 242 (0.720) | **445/640 — 0.695** |
+| ambush ×1 | 239 | 382/640 — 0.597 |
+| ambush ×2 | 240 | 386/640 — 0.603 |
+| ambush ×4 | 239 | 392/640 — 0.613 |
+
+Neutral on the pool, about -55 games on unseen maps, and raising the cap helps
+slightly, so it is not under-triggering -- the approach does not pay. 20 Ti and
+a permanent +10% per Launcher, plus the Builder rounds to set it up, against
+0.44 throws a game.
+
+**The through-line for the whole session.** Four independent mechanisms -- the
+Core wall, the Sentinel promotion, the harvester cap and the Launcher ambush --
+all looked good on the 21-map pool or in isolated traces, and all are negative
+on 40 generated maps. Under 2.3.4 the scale tax dominates: +20% per Builder,
++20% per Gunner or Sentinel, +10% per Launcher, on every price the team pays
+afterwards. `odin@38e1456` is already near a local optimum for total spend, and
+anything added has to beat that compounding tax before it beats an opponent.
+That is the same reason a fourth opening Builder costs ~50 games in all four
+roles tried.
+
 ### Still open
 
 - The ring degrades: on jackpot it closes at round 25 with five tiles and is
