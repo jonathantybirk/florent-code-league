@@ -3,3 +3,12 @@ __pycache__/
 *.py[cod]
 .DS_Store
 replay.replay26
+training/runs/
+.claude/
+
+# Pulled from x/jon for the training harness's map pool; regenerable via
+# maps/generated/generate_maps.py + generate_profiles.py. Not committed here
+# to keep this branch's history free of another branch's generated content --
+# anyone using training/harness.py should pull it themselves, same as this
+# session did (`git checkout origin/x/jon -- maps/generated`).
+maps/generated/
