@@ -46,6 +46,7 @@ from constants import (
     MIN_AMMO_FOR_SENTINEL_SEAT,
     SIEGE_COVER_TIER,
     MAX_GUARD_SENTINELS,
+    GUARD_DYING_ALLOWANCE,
     SIEGE_SENTINEL_BATTERY,
     GUARD_TURRET_SENTINEL,
     DEFEND_TURRET_SENTINEL,
@@ -232,6 +233,8 @@ def _run(p, ct):
         p.lock_required = False
         p.home_gunners_built = 0
         p.guard_gunners_built = 0
+        # Where those guard turrets went up, so a dead one can be noticed.
+        p.guard_seats = []
         p.field_gunners_built = 0
         p.attack_gunners_built = 0
         p.path_failures = 0
@@ -2523,7 +2526,26 @@ def _guard_allowance(p, ct, team):
     # four bought turrets for scouts and left the belt unbuilt.
     base = (MAX_GUARD_SENTINELS if GUARD_TURRET_SENTINEL
             else MAX_GUARD_GUNNERS)
-    return base + threats
+    # The Core's own alarm buys allowance that this Builder's eyes cannot.
+    #
+    # `threats` counts enemy turrets *this* Builder can see, and a Builder sees
+    # r^2=20 while GUARD_RADIUS_SQ is 64 -- so the guard standing at the Core is
+    # blind to most of the disc it is supposed to be defending. Traced on
+    # random-20260731-008-mirror-x against vigil: from round 25 the guard
+    # Builder counts zero enemy turrets near our Core while the other two
+    # Builders can see one or two, the allowance stays at its floor, and the
+    # Core dies on round 44 with the guard idle.
+    #
+    # The Core needs no vision to know it is being shot, and it already
+    # publishes that. Bit 0/1 is its damage alarm and CORE_DYING_FLAG is the
+    # projection that it dies inside the horizon at the current rate. A Core
+    # losing HP is better evidence that more defence is needed than anything
+    # one Builder happens to be looking at.
+    alarm = ct.read_store(SLOT_CORE_DAMAGED)
+    extra = alarm & 0x3
+    if alarm & CORE_DYING_FLAG:
+        extra += GUARD_DYING_ALLOWANCE
+    return base + threats + extra
 
 
 def _core_threat_tiles(p):
@@ -2645,6 +2667,31 @@ def _guard_home(p, ct):
     """
     team = ct.get_team()
     kind = _turret_kind(ct, GUARD_TURRET_SENTINEL)
+    # Count the guard turrets that are *standing*, not the ones ever bought.
+    #
+    # `guard_gunners_built` only ever incremented, so a guard turret shot out
+    # consumed its allowance slot permanently and the guard could never replace
+    # it. That is precisely how the fast losses go: traced on
+    # random-20260731-008-mirror-x against vigil, the allowance is spent by
+    # round 15, enemy turrets keep arriving at our Core through round 40, the
+    # guard answers none of them, and the Core dies on round 44. 84 of 94
+    # losses to vigil on generated maps are Core kills.
+    #
+    # Same fix as the siege battery: remember the seats and prune the ones we
+    # can see are empty. Only what is visible is pruned, so a turret killed out
+    # of sight still holds its slot -- conservative in the direction that
+    # cannot overbuild.
+    if p.guard_seats:
+        standing = []
+        for spot in p.guard_seats:
+            position = Position(*spot)
+            if (ct.is_in_vision(position)
+                    and ct.get_tile_building_id(position) is None):
+                p.solids.discard(spot)
+                continue
+            standing.append(spot)
+        p.guard_seats = standing
+        p.guard_gunners_built = len(standing)
     if (p.guard_gunners_built >= _guard_allowance(p, ct, team)
             or ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER
             or ct.get_global_resources() < _turret_cost(ct, kind)):
@@ -2689,6 +2736,7 @@ def _guard_home(p, ct):
         _build_turret(ct, kind, position, facing)
         _mark_progress(p, ct, "built guard turret", tuple(position))
         p.solids.add(tuple(position))
+        p.guard_seats.append(tuple(position))
         p.guard_gunners_built += 1
         return True
     # No firing seat from here. Close the distance a little rather than let the
