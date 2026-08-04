@@ -11,15 +11,25 @@ and never has to fire. `_denial_gunner_site` spends the guard's spare allowance
 on one turret whose ray covers the Core-threat disc, scored by *uncovered* tiles
 added so a turret is bought only when it denies ground no existing one does.
 
-                   pool          generated      pantheon   vigil_reinf
-    odin      313/336 0.932   135/160 0.844      33/42       29/42
-    +denial   314/336 0.935   142/160 0.887      33/42       31/42
-    +both     315/336 0.938   139/160 0.869      34/42       32/42  <- shipped
+**The first numbers here were wrong and are corrected below — see the cache
+trap at the end of this section.** Clean A/B, both sides under names that had
+never been used, so nothing could be served from cache:
 
-**+7 on unknown maps as a single change** — the largest effect measured in this
-session, and on the arm that most resembles the final. On the pool it takes
-warden_walk 0.81 -> 0.90. Traced on quarry against the day3 replica: 14 turrets,
-69 rounds and a loss becomes 10 turrets, 59 rounds and a win.
+                   pool          generated      pantheon   vigil_reinf
+    odin      311/336 0.926   140/160 0.875   32/42 0.76   29/42 0.69
+    +both     315/336 0.938   139/160 0.869   34/42 0.81   32/42 0.76
+
++4 on the pool, +5 across the two hardest opponents, -1 on unknown maps.
+warden_walk 0.81 -> 0.88 and Pantheon crosses 0.80. Traced on quarry against
+the day3 replica: 14 turrets, 69 rounds and a loss becomes 10 turrets, 59
+rounds and a win -- fewer guns, sooner, because the ray does the work of a wall.
+
+I first reported this as +2 pool and **+7 on unknown maps**. Both were inflated
+by a stale baseline: `sweep.py` cached results in `results/<botname><tag>/` and
+replayed them whenever the *name* matched, regardless of what the bot behind
+the name had become. The odin cells were eight hours old and predated the tabu
+and line-of-sight commits, so the old build was scored as worse than it is.
+Fixed by keying the cache on a hash of the bot's source.
 
 ### The flank does not transfer, in either direction
 
@@ -43,6 +53,32 @@ bank at 2 and 16. Lowering it loses, monotonically:
 Chasing with 10 Ti rotations costs more than the missed shots, but forbidding
 rotation entirely costs 31 games, so the mechanic matters and only the gate is
 generous. Plateau 40-60; leave it alone.
+
+### The rotation policy is settled: rotate greedily, and do not get clever
+
+Four ways of being smarter about turning, all measured on odin, all worse in
+strict proportion to how often they decline to rotate:
+
+    rotate greedily at whatever is nearest (shipped)   315/336
+    aim one round ahead, but always rotate             311/336
+    rotate only when the projection says it hits       301/336
+    hold the facing within r^2 36 of our own Core      284/336
+    never rotate at all                                282/336
+
+The accounting error is valuing a rotation only by the shot it lands. Turning
+toward an enemy re-aims the ray over the ground they occupy, which deters the
+approach and catches them when they cross it later; the rotations that "miss"
+are what keep the turret relevant to where the fight is. A turret that only
+turns when sure of a kill spends most of the game pointed at nothing. Same
+lesson the denial turret teaches from the other side: **the ray works by
+covering ground, not by scoring hits.**
+
+Hold-the-lane is worth its own line because the reasoning is seductive and
+wrong. A denial turret is bought to hold a lane, so abandoning it to chase an
+intruder looks like self-harm -- but a frozen turret is trivially walked around
+(24 of the 44 tiles in its range are blind to any single facing), and it loses
+31 games on the pool, 15 on unknown maps, and 5 against Pantheon. Deterrence
+comes from *where the turret is placed*, not from what it refuses to do next.
 
 ### Measured and rejected here, with numbers
 
