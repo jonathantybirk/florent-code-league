@@ -1,0 +1,27 @@
+{
+  "submissions": [
+    {
+      "job_id": "29021916",
+      "name": "trn_secret-eval-gapfill_1",
+      "elements": 1000,
+      "chunk": 20,
+      "range": "1-1000",
+      "submitted_at": "2026-08-03T18:13:04+0200"
+    },
+    {
+      "job_id": "29021917",
+      "name": "trn_secret-eval-gapfill_2",
+      "elements": 597,
+      "chunk": 20,
+      "range": "1001-1597",
+      "submitted_at": "2026-08-03T18:13:05+0200"
+    }
+  ],
+  "job_ids": [
+    "29021916",
+    "29021917"
+  ],
+  "job_id": "29021916",
+  "host": "dtu",
+  "remote": "florent-tournament/secret-eval-gapfill"
+}

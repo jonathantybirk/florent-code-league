@@ -23,6 +23,19 @@ tournament/runs/*/schedule.jsonl
 tournament/runs/*/job.sh
 tournament/runs/*/job_*.sh
 tournament/runs/*/work_*.txt
+
+# The archived pre-2.3.4 (leaderboard v1) runs keep the same shape; the automation and the
+# rating pool glob tournament/runs/*/ and deliberately do not see this directory.
+tournament/runs-v1/*/stage/
+tournament/runs-v1/*/compliance-stage/
+tournament/runs-v1/*/maps/
+tournament/runs-v1/*/results/
+tournament/runs-v1/*/logs/
+tournament/runs-v1/*/replays/
+tournament/runs-v1/*/schedule.jsonl
+tournament/runs-v1/*/job.sh
+tournament/runs-v1/*/job_*.sh
+tournament/runs-v1/*/work_*.txt
 tournament/automation-state.json
 tournament/automation.lock
 

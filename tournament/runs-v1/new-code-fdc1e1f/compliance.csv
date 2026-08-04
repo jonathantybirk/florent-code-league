@@ -1,0 +1,15 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+tempest_frontier@fdc1e1f,tempest_frontier,fdc1e1f,pass,3,3,3,425,,,,,3254,0,0,9000,10000
+undertow@fdc1e1f,undertow,fdc1e1f,pass,3,3,3,499,,,,,3639,0,0,9000,10000
+tempest_oracle_ferry@fdc1e1f,tempest_oracle_ferry,fdc1e1f,pass,3,3,3,472,,,,,4097,0,0,9000,10000
+undertow_oracle@fdc1e1f,undertow_oracle,fdc1e1f,pass,3,3,3,503,,,,,5299,0,0,9000,10000
+vanguard_oracle@fdc1e1f,vanguard_oracle,fdc1e1f,pass,3,3,3,687,,,,,6922,0,0,9000,10000
+tempest_blindfire@fdc1e1f,tempest_blindfire,fdc1e1f,pass,3,3,3,425,,,,,3208,0,0,9000,10000
+tempest_oracle_guarded@fdc1e1f,tempest_oracle_guarded,fdc1e1f,pass,3,3,3,472,,,,,4107,0,0,9000,10000
+tempest_outer@fdc1e1f,tempest_outer,fdc1e1f,pass,3,3,3,425,,,,,3277,0,0,9000,10000
+tempest_picket@fdc1e1f,tempest_picket,fdc1e1f,pass,3,3,3,425,,,,,3223,0,0,9000,10000
+tempest_sentinel@fdc1e1f,tempest_sentinel,fdc1e1f,pass,3,3,3,452,,,,,3205,0,0,9000,10000
+undertow_adjacent@fdc1e1f,undertow_adjacent,fdc1e1f,pass,3,3,3,499,,,,,3644,0,0,9000,10000
+claude_challenger_1@fdc1e1f,claude_challenger_1,fdc1e1f,exceeded,3,3,3,429,,,,,12455,97,0,9000,10000
+claude_challenger_2@fdc1e1f,claude_challenger_2,fdc1e1f,exceeded,3,3,3,446,,,,,12549,95,0,9000,10000
+claude_challenger_3@fdc1e1f,claude_challenger_3,fdc1e1f,exceeded,3,3,3,449,,,,,12469,92,0,9000,10000

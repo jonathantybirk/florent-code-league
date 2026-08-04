@@ -1,0 +1,110 @@
+{
+  "tournament_id": "tyr-official",
+  "map_set": "official",
+  "maps": [
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "duel",
+    "fjord",
+    "hive",
+    "jackpot",
+    "longship",
+    "pinch",
+    "quarry",
+    "runestone",
+    "showdown",
+    "skerry",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 336,
+  "rating_matches": 252,
+  "mode": "round-robin",
+  "challengers": [],
+  "bots": [
+    {
+      "bot_id": "tyr@f741a18",
+      "name": "tyr",
+      "commit": "f741a180e123874d27bdb032ba742cc4e491bab6",
+      "path": "bots/luc/tyr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "mjolnir@f741a18",
+      "name": "mjolnir",
+      "commit": "f741a180e123874d27bdb032ba742cc4e491bab6",
+      "path": "bots/luc/mjolnir",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward@f741a18",
+      "name": "steward",
+      "commit": "f741a180e123874d27bdb032ba742cc4e491bab6",
+      "path": "bots/luc/steward",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "odin@f741a18",
+      "name": "odin",
+      "commit": "f741a180e123874d27bdb032ba742cc4e491bab6",
+      "path": "bots/luc/odin",
+      "tags": [
+        "luc"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 5,
+    "targets": [
+      "tyr@f741a18",
+      "mjolnir@f741a18",
+      "steward@f741a18",
+      "odin@f741a18"
+    ],
+    "maps": [
+      "atoll",
+      "aurora",
+      "bridge",
+      "crossfire",
+      "duel",
+      "fjord",
+      "hive",
+      "jackpot",
+      "longship",
+      "pinch",
+      "quarry",
+      "runestone",
+      "showdown",
+      "skerry",
+      "sprint",
+      "strait",
+      "string",
+      "sweden",
+      "twins",
+      "vase",
+      "vault"
+    ],
+    "matches_per_bot": 21,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}

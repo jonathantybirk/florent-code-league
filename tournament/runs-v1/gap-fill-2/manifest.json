@@ -1,0 +1,84 @@
+{
+  "tournament_id": "gap-fill-2",
+  "map_set": "official",
+  "maps": [
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "duel",
+    "fjord",
+    "hive",
+    "jackpot",
+    "longship",
+    "pinch",
+    "quarry",
+    "runestone",
+    "showdown",
+    "skerry",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 135,
+  "rating_matches": 126,
+  "mode": "round-robin",
+  "challengers": [],
+  "bots": [
+    {
+      "bot_id": "tempest_reinforcements@e1dc316",
+      "name": "tempest_reinforcements",
+      "commit": "e1dc316348eccb9195b67474ead5225df833f312",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tempest@da3fd8a",
+      "name": "tempest",
+      "commit": "da3fd8a0ef76d67a597feebbb523172965c472e5",
+      "path": "bots/jon/fair/tempest",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard@da3fd8a",
+      "name": "vanguard",
+      "commit": "da3fd8a0ef76d67a597feebbb523172965c472e5",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 4,
+    "targets": [
+      "tempest_reinforcements@e1dc316",
+      "tempest@da3fd8a",
+      "vanguard@da3fd8a"
+    ],
+    "maps": [
+      "atoll",
+      "duel",
+      "quarry"
+    ],
+    "matches_per_bot": 3,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}

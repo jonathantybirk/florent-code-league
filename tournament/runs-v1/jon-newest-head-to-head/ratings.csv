@@ -1,0 +1,3 @@
+rank,bot_id,name,commit,games,wins,draws,losses,win_rate,melo_r,melo_r_elo,melo_fit_r,melo_c_1,melo_c_2,nash_prob,nash_average,nash_rank,rank_delta
+1,tempest@ba943b9,tempest,ba943b9,42,25,0,17,0.5952,0.188239,32.7,0.188239,0.0,0.0,1.0,0.0,1,0
+2,mistral@ba943b9,mistral,ba943b9,42,17,0,25,0.4048,-0.188239,-32.7,-0.188239,0.0,0.0,0.0,-0.376478,2,0

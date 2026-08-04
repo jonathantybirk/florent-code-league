@@ -1,0 +1,107 @@
+{
+  "tournament_id": "gapfill-idrace-20260802",
+  "map_set": "official",
+  "maps": [
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "duel",
+    "fjord",
+    "hive",
+    "jackpot",
+    "longship",
+    "pinch",
+    "quarry",
+    "runestone",
+    "showdown",
+    "skerry",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 504,
+  "rating_matches": 504,
+  "mode": "challenger",
+  "challengers": [
+    "prospect@bf9b3e3",
+    "prospect_rushonly@bf9b3e3",
+    "vigil@bf9b3e3"
+  ],
+  "bots": [
+    {
+      "bot_id": "prospect@bf9b3e3",
+      "name": "prospect",
+      "commit": "bf9b3e37484490d179d08c376dc6d9bb2d1f997f",
+      "path": "bots/luc/prospect",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "prospect_rushonly@bf9b3e3",
+      "name": "prospect_rushonly",
+      "commit": "bf9b3e37484490d179d08c376dc6d9bb2d1f997f",
+      "path": "bots/luc/prospect_rushonly",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@bf9b3e3",
+      "name": "vigil",
+      "commit": "bf9b3e37484490d179d08c376dc6d9bb2d1f997f",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vanguard@818f3b4",
+      "name": "vanguard",
+      "commit": "818f3b4a45aac4f468feab1937085f6fa37b752c",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard@c407e79",
+      "name": "vanguard",
+      "commit": "c407e79202ec2a4d7beb3c75b57e61b8f40e8b56",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vigil@1b5f3d1",
+      "name": "vigil",
+      "commit": "1b5f3d1b8e1d5eff336dc93e3eb642c55fd733dc",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 5,
+    "targets": [],
+    "maps": [],
+    "matches_per_bot": 0,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}

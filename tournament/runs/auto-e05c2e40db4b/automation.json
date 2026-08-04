@@ -1,0 +1,30 @@
+{
+  "challengers": [
+    "casemate_oracle@90fc9f3",
+    "jonbot@90fc9f3",
+    "jonbot_190003d@90fc9f3",
+    "lockin@90fc9f3",
+    "mistral@90fc9f3",
+    "mjolnir@2e6c876",
+    "strategist@2e6eca5",
+    "tempest@90fc9f3",
+    "tempest_oracle_guarded@90fc9f3",
+    "tyr@2e6c876",
+    "tyr_belt@2e6c876",
+    "tyr_hint@2e6c876",
+    "tyr_pad@2e6c876",
+    "tyr_retgt@2e6c876",
+    "undertow_adjacent@90fc9f3",
+    "v233_h@90fc9f3",
+    "vanguard_1e88ae8@90fc9f3",
+    "vigil@2e6c876",
+    "vigil_reinforcements@2e6c876"
+  ],
+  "heads": {
+    "elias_dev": "3f7d676365bbbd14624f592c4e5e94e05f63f798",
+    "viktor": "2e6eca5e8418a65608ed2fb531fb07c7e7535cb7",
+    "x/jon": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+    "x/luc": "2e6c876abd7b4b496ee7803641e2b853e49c7f92"
+  },
+  "submitted_at": "2026-08-04T19:07:07+00:00"
+}

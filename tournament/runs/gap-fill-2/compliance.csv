@@ -1,4 +1,0 @@
-bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-tempest_reinforcements@e1dc316,tempest_reinforcements,e1dc316,pass,3,3,3,702,6,33,241,1582,8156,0,0,9000,10000
-tempest@da3fd8a,tempest,da3fd8a,exceeded,3,3,3,389,6,31,269,2212,>12000,33,0,9000,10000
-vanguard@da3fd8a,vanguard,da3fd8a,pass,3,3,3,505,7,25,326,799,2290,0,0,9000,10000
