@@ -36,6 +36,10 @@ from constants import (
     REPAIR_NETWORK,
     FLANK_MIN_TURRETS,
     FLANK_RADIUS,
+    DENIAL_GUNNERS,
+    DENIAL_MIN_TILES,
+    DENIAL_RESERVE,
+    DENIAL_START_ROUND,
     REPAIR_ATTEMPT_LIMIT,
     TABU_WINDOW,
     STUCK_ROUNDS_BEFORE_STANDDOWN,
@@ -125,6 +129,7 @@ def _run(p, ct):
         p.network_tiles = set()
         p.network_load = 0
         p.network_plan = {}
+        p.denial_gunners_built = 0
         p.known_enemy_turrets = set()
         # How many times we have rebuilt each belt tile. A tile inside an
         # enemy Gunner's ray is rebuilt for as long as we are willing to pay.
@@ -1827,6 +1832,88 @@ def _guard_allowance(p, ct, team):
     return MAX_GUARD_GUNNERS + threats
 
 
+def _core_threat_tiles(p):
+    """Tiles an enemy must stand in to threaten our Core.
+
+    Same set `_core_seal_targets` seals with barriers: the disc within
+    CORE_THREAT_RADIUS_SQ of the footprint, expanded by one because a Builder
+    builds onto an orthogonally adjacent tile rather than its own.
+    """
+    threat = set()
+    for tile in p.foot:
+        for x in range(tile[0] - 4, tile[0] + 5):
+            for y in range(tile[1] - 4, tile[1] + 5):
+                if _distance_sq((x, y), tile) <= CORE_THREAT_RADIUS_SQ:
+                    threat.add((x, y))
+    forbidden = set(threat)
+    for tile in threat:
+        for dx, dy in D4_DELTAS:
+            forbidden.add((tile[0] + dx, tile[1] + dy))
+    return forbidden
+
+
+def _ray_tiles(p, origin, facing):
+    """Tiles a Gunner at `origin` facing `facing` would cover."""
+    dx, dy = facing.delta()
+    out = []
+    tile = origin[0] + dx, origin[1] + dy
+    while (_inside(p, tile)
+           and _distance_sq(origin, tile) <= GUNNER_RANGE_SQ):
+        if tile in p.walls:
+            break
+        out.append(tile)
+        if tile in p.solids:
+            break
+        tile = tile[0] + dx, tile[1] + dy
+    return out
+
+
+def _denial_gunner_site(p, ct):
+    """A turret whose ray denies the ground an attacker needs, before it comes.
+
+    Enemy bots route around our firing lines rather than walk down them, so a
+    ray is not only a weapon, it is a wall that costs 10 Ti and never has to
+    fire. Covering the tiles an enemy would have to stand in to shoot our Core
+    means the attack has to go somewhere else -- and around a 2x2 Core there is
+    not much somewhere else.
+
+    Scored by how many *uncovered* threat tiles the new ray adds, so a second
+    turret is only bought when it denies ground the first one does not.
+    """
+    threat = _core_threat_tiles(p)
+    already = set()
+    team = ct.get_team()
+    for turret_id in ct.get_nearby_buildings():
+        if ct.get_team(turret_id) != team:
+            continue
+        if ct.get_entity_type(turret_id) not in (EntityType.GUNNER,
+                                                 EntityType.SENTINEL):
+            continue
+        try:
+            already.update(_ray_tiles(p, tuple(ct.get_position(turret_id)),
+                                      ct.get_direction(turret_id)))
+        except GameError:
+            continue
+    me = ct.get_position()
+    best = None
+    for direction in D8:
+        position = me.add(direction)
+        spot = tuple(position)
+        if not _inside(p, spot) or spot in p.foot:
+            continue
+        for facing in D8:
+            if not ct.can_build_gunner(position, facing):
+                continue
+            gained = len([t for t in _ray_tiles(p, spot, facing)
+                          if t in threat and t not in already])
+            if gained < DENIAL_MIN_TILES:
+                continue
+            rank = (-gained, spot, D8.index(facing))
+            if best is None or rank < best[0]:
+                best = (rank, position, facing)
+    return (best[1], best[2]) if best else None
+
+
 def _guard_home(p, ct):
     """Turret an enemy that has come to our Core, before the alarm would fire.
 
@@ -1868,6 +1955,18 @@ def _guard_home(p, ct):
             enemies.append((COMBAT_PRIORITY.get(ct.get_entity_type(entity_id), 4),
                             near, entity_id))
     if not enemies:
+        if (DENIAL_GUNNERS and p.denial_gunners_built < DENIAL_GUNNERS
+                and ct.get_current_round() >= DENIAL_START_ROUND
+                and ct.get_global_resources()
+                >= ct.get_gunner_cost() + DENIAL_RESERVE):
+            site = _denial_gunner_site(p, ct)
+            if site is not None:
+                position, facing = site
+                ct.build_gunner(position, facing)
+                _mark_progress(p, ct, "built denial gunner", tuple(position))
+                p.solids.add(tuple(position))
+                p.denial_gunners_built += 1
+                return True
         return False
     enemies.sort()
     ordered = [entity_id for _, _, entity_id in enemies]
