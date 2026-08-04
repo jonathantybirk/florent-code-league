@@ -662,8 +662,8 @@ ECON_EXPAND_BUILDERS = True
 # Late enough that the opening blitz has demonstrably not ended the game, and
 # early enough that a new Harvester still has most of the match to pay back.
 ECON_BUILDER_ROUND = 200
-ECON_MAX_LIVE_BUILDERS = 11
-ECON_MAX_TOTAL_BUILDERS = 20
+ECON_MAX_LIVE_BUILDERS = 5
+ECON_MAX_TOTAL_BUILDERS = 8
 # Only genuine surplus. A Builder is 30 Ti before scale and this holds back
 # roughly a Harvester and the belt to reach it on top of the Builder itself,
 # so expanding never takes the titanium the existing miners are waiting on.
@@ -672,3 +672,14 @@ ECON_EXPAND_RESERVE = 120
 # spawned past the opening is a miner rather than the attacker the spawn-order
 # role table would otherwise make it. Same shape as ECONOMY_DEAD_FLAG.
 ECON_EXPAND_FLAG = 16
+# A Builder with no deposit left to claim harasses instead of walking the
+# exploration lattice for the rest of the game. The existing harass fallback is
+# keyed on the Builder's *own* network_load, which is zero for one the Core
+# spawned late, so the surplus miners never reached it.
+HARASS_WHEN_UNEMPLOYED = True
+# Rounds a Builder will wait for the construction lock before laying anyway.
+# The holder refreshes its lease every round it is laying, so with seven
+# Builders the queue behind one long belt is the rest of the game: traced on
+# quarry, one Builder idled 582 rounds of 750. Colliding is a cheaper failure
+# than never laying.
+LOCK_WAIT_LIMIT = 40

@@ -26,6 +26,9 @@ from constants import (
     CORE_DYING_FLAG,
     ECONOMY_DEAD_FLAG,
     ECON_EXPAND_FLAG,
+    ECON_BUILDER_ROUND,
+    HARASS_WHEN_UNEMPLOYED,
+    LOCK_WAIT_LIMIT,
     D4_DELTAS,
     D8,
     ECON_EXPAND_ROUND,
@@ -90,7 +93,8 @@ from constants import (
     SLOT_SYMMETRY_REJECT_START,
     WALKABLE_BUILDINGS,
 )
-from utils import (pack_enemy, pack_pos, pack_ticket, unpack_core,
+from utils import (claim_add, claim_remove, unpack_claims,
+                   pack_enemy, pack_pos, pack_ticket, unpack_core,
                    unpack_enemy, unpack_pos, unpack_ticket)
 
 if TYPE_CHECKING:
@@ -443,6 +447,18 @@ def _run(p, ct):
         _retarget_ore(p, ct)
     if p.phase == "scout":
         _pick(p, ct)
+        # A miner with nothing to mine used to walk the exploration lattice for
+        # the rest of the game. The harass fallback above is keyed on *this
+        # Builder's own* `network_load`, which is zero for one the Core spawned
+        # late, so the surplus miners never reached it: traced on quarry, three
+        # of them spent 528, 543 and 549 rounds of 750 moving in the scout
+        # phase and laid not one tile, while each charged +20% on every price
+        # the team paid. Unemployment is a team fact, not a personal one.
+        if (HARASS_WHEN_UNEMPLOYED and p.phase == "scout"
+                and not p.is_attacker and not p.is_launcher_builder
+                and ct.get_current_round() >= ECON_BUILDER_ROUND
+                and not _has_unclaimed_ore(p, ct)):
+            p.phase = "harass"
     if p.phase == "goto":
         _goto(p, ct)
     elif p.phase == "wait_lock":
@@ -530,7 +546,8 @@ def _network_cap(ct) -> int:
 
 
 def _has_unclaimed_ore(p, ct) -> bool:
-    claimed = {x for x in (unpack_pos(ct.read_store(s)) for s in CLAIM_SLOTS) if x}
+    claimed = {ore for slot in CLAIM_SLOTS
+               for ore in unpack_claims(ct.read_store(slot))}
     return bool(p.ores - claimed - p.solids - set(p.conveyors))
 
 
@@ -542,8 +559,8 @@ def _claimed_ores(p, ct):
     round_number = ct.get_current_round()
     p.deferred_ores = {ore: expires for ore, expires in p.deferred_ores.items()
                        if expires >= round_number}
-    claimed = {x for x in (unpack_pos(ct.read_store(s)) for s in CLAIM_SLOTS)
-               if x}
+    claimed = {ore for slot in CLAIM_SLOTS
+               for ore in unpack_claims(ct.read_store(slot))}
     claimed |= p.ores & p.solids
     claimed |= set(p.deferred_ores)
     return claimed
@@ -647,8 +664,9 @@ def _pick(p, ct):
         return
     _, _, ore, route = best
     for slot in CLAIM_SLOTS:
-        if ct.read_store(slot) == 0:
-            ct.write_store(slot, pack_pos(ore))
+        updated = claim_add(ct.read_store(slot), ore)
+        if updated is not None:
+            ct.write_store(slot, updated)
             p.task, p.route = ore, route
             p.current_route_tiles.clear()
             if route:
@@ -774,11 +792,26 @@ def _wait_for_construction_lock(p, ct):
     me = p.builder_index + 1
     if owner == me:
         p.phase = "prelay"
+        p.lock_waited = 0
         _refresh_construction_lock(p, ct)
         return
+    # Serializing long routes is an optimisation; starving on it is not. The
+    # holder refreshes its lease every round it is laying, so with seven
+    # Builders the queue behind one long belt is the whole rest of the game:
+    # traced on quarry, one Builder idled 582 rounds of 750 waiting. Past the
+    # limit it lays anyway and takes the collision risk the lock exists to
+    # avoid, which is a cheaper failure than not laying at all.
+    p.lock_waited = getattr(p, "lock_waited", 0) + 1
+    if p.lock_waited >= LOCK_WAIT_LIMIT:
+        p.lock_required = False
+        p.lock_waited = 0
+        p.phase = "prelay"
+        return
     if owner == 0 or expires < ct.get_current_round():
-        ct.write_store(SLOT_CONSTRUCTION_LOCK,
-                       me | ((ct.get_current_round() + 20) << 2))
+        ct.write_store(
+            SLOT_CONSTRUCTION_LOCK,
+            (me & LOCK_OWNER_MASK)
+            | ((ct.get_current_round() + 20) << LOCK_OWNER_BITS))
     # Position at the Core/network end while the previous line finishes.
     if p.route:
         _step(p, ct, Position(*p.route[-1][0]), True)
@@ -891,14 +924,34 @@ def _write_off(p, ct):
     return True
 
 
+# The lock's owner field. Two bits was right for exactly three Builders and
+# silently wrong for a fourth, which is what late expansion made this bot.
+#
+# Traced with a per-phase round counter on quarry: Builder id=3 spent 555 of
+# 750 rounds idle in `wait_lock` and id=152 spent 509. The mechanism is that
+# `owner` was `builder_index + 1` truncated to two bits, so index 3 wrote
+# owner 4 -> 0b00 -> "nobody owns this", never matched itself, and rewrote the
+# slot with a fresh expiry every single round. Units act in ascending entity
+# id, so that late Builder's write always landed after the early miner's
+# claim and erased it -- and the early miner, which is the one actually laying
+# belt, waited for a lock it could never be granted.
+#
+# Four bits covers ECON_MAX_TOTAL_BUILDERS with room. The expiry keeps the
+# remaining 28.
+LOCK_OWNER_BITS = 4
+LOCK_OWNER_MASK = (1 << LOCK_OWNER_BITS) - 1
+
+
 def _read_construction_lock(ct):
     value = ct.read_store(SLOT_CONSTRUCTION_LOCK)
-    return value & 0x3, value >> 2
+    return value & LOCK_OWNER_MASK, value >> LOCK_OWNER_BITS
 
 
 def _refresh_construction_lock(p, ct):
-    ct.write_store(SLOT_CONSTRUCTION_LOCK,
-                   (p.builder_index + 1) | ((ct.get_current_round() + 20) << 2))
+    ct.write_store(
+        SLOT_CONSTRUCTION_LOCK,
+        ((p.builder_index + 1) & LOCK_OWNER_MASK)
+        | ((ct.get_current_round() + 20) << LOCK_OWNER_BITS))
 
 
 def _prelay(p, ct):
@@ -1025,10 +1078,10 @@ def _done(p, ct):
     if owner == p.builder_index + 1:
         ct.write_store(SLOT_CONSTRUCTION_LOCK, 0)
     if p.task:
-        value = pack_pos(p.task)
         for slot in CLAIM_SLOTS:
-            if ct.read_store(slot) == value:
-                ct.write_store(slot, 0)
+            updated = claim_remove(ct.read_store(slot), p.task)
+            if updated is not None:
+                ct.write_store(slot, updated)
                 break
     p.task, p.route, p.route_i, p.phase = None, [], 0, "scout"
     p.lock_required = False
@@ -1041,10 +1094,10 @@ def _abandon_task(p, ct, reason):
     if owner == p.builder_index + 1:
         ct.write_store(SLOT_CONSTRUCTION_LOCK, 0)
     if p.task:
-        value = pack_pos(p.task)
         for slot in CLAIM_SLOTS:
-            if ct.read_store(slot) == value:
-                ct.write_store(slot, 0)
+            updated = claim_remove(ct.read_store(slot), p.task)
+            if updated is not None:
+                ct.write_store(slot, updated)
                 break
     old_task = p.task
     p.current_route_tiles.clear()

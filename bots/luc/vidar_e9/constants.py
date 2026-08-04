@@ -672,3 +672,14 @@ ECON_EXPAND_RESERVE = 120
 # spawned past the opening is a miner rather than the attacker the spawn-order
 # role table would otherwise make it. Same shape as ECONOMY_DEAD_FLAG.
 ECON_EXPAND_FLAG = 16
+# A Builder with no deposit left to claim harasses instead of walking the
+# exploration lattice for the rest of the game. The existing harass fallback is
+# keyed on the Builder's *own* network_load, which is zero for one the Core
+# spawned late, so the surplus miners never reached it.
+HARASS_WHEN_UNEMPLOYED = True
+# Rounds a Builder will wait for the construction lock before laying anyway.
+# The holder refreshes its lease every round it is laying, so with seven
+# Builders the queue behind one long belt is the rest of the game: traced on
+# quarry, one Builder idled 582 rounds of 750. Colliding is a cheaper failure
+# than never laying.
+LOCK_WAIT_LIMIT = 40

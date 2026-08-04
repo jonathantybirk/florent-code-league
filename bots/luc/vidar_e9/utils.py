@@ -55,6 +55,52 @@ def unpack_ticket(value: int) -> tuple[int, list[tuple[int, int]]]:
     return value & TICKET_MASK, hints
 
 
+# Ore claims, three to a slot.
+#
+# CLAIM_SLOTS held one pack_pos each, so exactly two deposits could be spoken
+# for at once. That was sized for a three-Builder team where one Builder mines.
+# With late economy expansion the team fields up to seven, and the surplus
+# miners could never claim anything: traced on quarry, three Builders spent
+# 528, 543 and 549 rounds out of 750 walking in the scout phase and never
+# built one tile. A claim is a 10-bit pack_pos and a slot is 32 bits, so three
+# fit and the two slots cover six miners.
+#
+# The write race is unchanged, not introduced: two Builders claiming in the
+# same round already lost one claim, because store writes are buffered and the
+# later writer wins. It self-corrects -- the loser finds the deposit built on
+# and re-picks -- and _pick succeeds rarely enough that collisions are rare.
+CLAIMS_PER_SLOT = 3
+
+
+def unpack_claims(value: int) -> list[tuple[int, int]]:
+    out = []
+    for index in range(CLAIMS_PER_SLOT):
+        ore = unpack_pos((value >> (index * POSITION_BITS)) & POSITION_MASK)
+        if ore is not None:
+            out.append(ore)
+    return out
+
+
+def claim_add(value: int, ore: tuple[int, int]) -> int | None:
+    """Value with `ore` in the first free sub-field, or None if the slot is full."""
+    packed = pack_pos(ore)
+    for index in range(CLAIMS_PER_SLOT):
+        shift = index * POSITION_BITS
+        if (value >> shift) & POSITION_MASK == 0:
+            return value | (packed << shift)
+    return None
+
+
+def claim_remove(value: int, ore: tuple[int, int]) -> int | None:
+    """Value with `ore` cleared, or None if this slot did not hold it."""
+    packed = pack_pos(ore)
+    for index in range(CLAIMS_PER_SLOT):
+        shift = index * POSITION_BITS
+        if (value >> shift) & POSITION_MASK == packed:
+            return value & ~(POSITION_MASK << shift)
+    return None
+
+
 def pack_core(pos: Position | tuple[int, int], doctrine: int) -> int:
     """Core position plus the doctrine every unit has to agree on."""
     return pack_pos(pos) | (doctrine << POSITION_BITS)
