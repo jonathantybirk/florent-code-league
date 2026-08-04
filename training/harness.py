@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import time
@@ -45,9 +46,15 @@ STRATEGIST = "bots/strategist"
 
 DEFAULT_OPPONENTS = [
     STRATEGIST,  # self-play
-    "bots/test/starter",
-    "bots/green",
-    "bots/test/tester",
+    # Pulled from origin/x/luc (git checkout origin/x/luc -- bots/luc/heimdall
+    # bots/luc/odin), same approach as maps/generated from x/jon: both are
+    # marked status = "development" in their own BOT_VERSION.toml, so these
+    # are point-in-time snapshots, not synced copies -- re-pull if training
+    # against Luc's current version matters later, and worth telling him
+    # they're being used as training opponents. Filed under bots/test/ along
+    # with the rest of this repo's non-original/non-ready bots.
+    "bots/test/luc/heimdall",
+    "bots/test/luc/odin",
 ]
 
 DEFAULT_MAP_DIRS = [
@@ -184,7 +191,19 @@ def main() -> int:
         maps = maps[: args.limit_maps]
 
     telemetry_dir = args.out / "telemetry"
-    telemetry_dir.mkdir(parents=True, exist_ok=True)
+    # Wiped, not just created, on every invocation -- telemetry filenames are
+    # deterministic (map/order/opponent/seed, no run-id) and policy.py's
+    # _log_decision appends per unit, so a second invocation over a leftover
+    # telemetry dir silently concatenates unrelated matches' round-numbered
+    # records into the same file instead of overwriting. This corrupted a
+    # real run's dataset (multiple exploring/non-exploring attempts merged
+    # into single files, 4x duplicated round sequences) before this guard
+    # existed. manifest.jsonl already gets truncated the same way below --
+    # this just makes telemetry consistent with that "every run starts
+    # clean" contract instead of being the one piece that silently doesn't.
+    if telemetry_dir.exists():
+        shutil.rmtree(telemetry_dir)
+    telemetry_dir.mkdir(parents=True)
 
     jobs = build_jobs(maps, args.opponents, args.seeds)
     # Sliced after building the full deterministic list (not e.g. seeds
