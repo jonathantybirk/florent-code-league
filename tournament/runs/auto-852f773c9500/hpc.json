@@ -15,13 +15,20 @@
       "chunk": 20,
       "range": "1001-1424",
       "submitted_at": "2026-08-04T12:37:40+0200"
+    },
+    {
+      "job_id": "29025077",
+      "name": "trn_auto-852f773c9500",
+      "elements": 243,
+      "chunk": 20,
+      "range": "1-243",
+      "submitted_at": "2026-08-04T14:39:33+0200"
     }
   ],
   "job_ids": [
-    "29024159",
-    "29024160"
+    "29025077"
   ],
-  "job_id": "29024159",
+  "job_id": "29025077",
   "host": "dtu",
   "remote": "florent-tournament/auto-852f773c9500"
 }
