@@ -216,6 +216,24 @@ def _unloadable_in(run_dir: Path) -> set[str]:
     )
 
 
+def _unplayable_scheduled(run_dir: Path) -> set[str]:
+    """Rating match ids in this run that involve a bot which cannot be imported."""
+    schedule_path = run_dir / "schedule.jsonl"
+    broken = _unloadable_in(run_dir)
+    if not broken or not schedule_path.exists():
+        return set()
+    found = set()
+    for line in schedule_path.read_text().splitlines():
+        if not line.strip():
+            continue
+        entry = json.loads(line)
+        if entry.get("kind") == "compliance":
+            continue
+        if entry["bot_a"] in broken or entry["bot_b"] in broken:
+            found.add(entry["match_id"])
+    return found
+
+
 def outstanding_matches(run_dir: Path) -> set[str]:
     """Rating match ids this run scheduled but has not merged locally.
 
@@ -913,6 +931,12 @@ def finalise(
     hpc.fetch(tid, settings)
     _, merged = merge(destination)
     scheduled = planning.rating_match_count(destination)
+    # Matches involving a bot that cannot be imported are not waited on: they will never produce
+    # a result, so requiring them here is what held a finished run open indefinitely.
+    unplayable = len(_unplayable_scheduled(destination))
+    if unplayable:
+        print(f"  {tid}: {unplayable} scheduled match(es) involve a bot that cannot be imported")
+        scheduled -= unplayable
     if merged < scheduled:
         print(f"  {tid}: {merged}/{scheduled} matches collected; still running")
         return False
