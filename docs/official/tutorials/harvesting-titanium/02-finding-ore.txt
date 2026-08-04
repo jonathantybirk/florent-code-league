@@ -10,6 +10,7 @@ from fcode import Controller, Direction, Environment, EntityType
 
 CARDINALS = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST]
 
+
 class Player:
     def run(self, ct: Controller) -> None:
         etype = ct.get_entity_type()

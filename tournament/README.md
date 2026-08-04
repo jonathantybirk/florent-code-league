@@ -1,5 +1,15 @@
 # Tournament harness
 
+> **Run data before 2026-08-04 was measured before the Aug 4 turret patch (fcode
+> ≤ 2.3.3), when turrets were stronger.** The 2.3.4 balance pass changed the
+> Gunner to 25 HP (was 40), 20 Ti (was 10), +20% cost scaling (was +10%), 7
+> damage (was 10) and 4 ammo per shot (was 2), and the Sentinel to 40 HP (was 30)
+> on a 2-round reload (was 3). Every `tournament/runs/` directory recorded before
+> that date — matches, ratings, duplicate groups and the Nash support that falls
+> out of them — describes a game that no longer exists. The harness itself is
+> unaffected; the numbers it produced are not comparable across the patch, so
+> don't rank a 2.3.4 bot against a pre-patch rating.
+
 Round-robin bot tournaments with results in CSV, ranked by **mElo** and **Nash averaging** from
 [Balduzzi et al., *Re-evaluating Evaluation* (NeurIPS 2018)](../articles/1806.02643v2.pdf).
 Runs locally or as an LSF job array on DTU HPC.

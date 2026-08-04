@@ -1,0 +1,67 @@
+Submitting Your Bot
+
+Two ways to submit
+
+CLI: fcode submit <path> — accepts a bot directory, a single .py file, or a .zip archive. See Submitting (CLI) and the CLI reference.
+
+Web: Open the Submissions page and upload a .zip directly from your browser.
+
+Both paths run the same validation and enter the same ladder queue — there is no difference in how your bot is judged based on which one you use.
+
+Bot requirements
+
+Must contain main.py, either at the root of the zip or inside exactly one top-level directory.
+
+main.py must define a top-level class Player.
+
+Pure Python only — no native extensions.
+
+Upload limits
+
+5MB max archive size
+
+50MB max decompressed size
+
+500 max files
+
+No native extensions (.so, .pyd, .dylib, .dll) — these bypass the sandbox's Python-level restrictions and are rejected outright
+
+No path traversal (e.g. ../) in archive entry names
+
+Submission lifecycle
+
+Each upload is validated immediately and moves through these statuses:
+
+Status
+
+Meaning
+
+processing
+
+Upload received, validation/audit in progress.
+
+ready
+
+Passed validation, available to activate and play ladder matches.
+
+flagged
+
+Passed structural validation but held for automated security audit before becoming ready.
+
+rejected
+
+Failed the security audit.
+
+error
+
+Failed structural validation (bad zip, missing main.py, over a limit, etc.) — see the error message for the specific cause.
+
+Versions and the active submission
+
+Every upload gets an incrementing version number. You can submit as often as you like — there's no limit on the number of submissions, and old versions are kept.
+
+Only one version is active at a time, and only your active submission plays ladder matches. Set the active version with fcode submission activate VERSION or the Set as Active option on the web Submissions page.
+
+Submission freezes
+
+Admins can freeze submissions platform-wide (for example, to lock in a snapshot before a tournament's qualifier round). While frozen, uploads and active-submission changes are disabled; the Submissions page shows a banner when this is in effect.

@@ -18,7 +18,7 @@ Builder Bots can construct Harvesters on ORE_TITANIUM tiles to generate passive 
 
 Cost scaling
 
-All build costs scale upward as you build more entities — not as a function of elapsed rounds. Each conveyor/splitter/barrier built adds +1% to your team's scale factor, each harvester +5%, each gunner/launcher +10%, and each builder bot/sentinel +20%; destroying an entity removes its contribution again. A team that builds nothing stays at scale 1.0 indefinitely, no matter how many rounds pass.
+All build costs scale upward as you build more entities — not as a function of elapsed rounds. Each conveyor/splitter/barrier built adds +1% to your team's scale factor, each harvester +5%, each launcher +10%, and each builder bot/gunner/sentinel +20%; destroying an entity removes its contribution again. A team that builds nothing stays at scale 1.0 indefinitely, no matter how many rounds pass.
 
 scale = ct.get_scale_percent()  # 1.0 with nothing built; rises only as you build
 
