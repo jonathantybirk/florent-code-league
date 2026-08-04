@@ -11,7 +11,7 @@ from constants import (HEARTBEAT_MASK, HEARTBEAT_SHIFT,
                        MAX_TOTAL_BUILDERS, PAD_FIRST_ORDER,
                        REINFORCE_RESERVE,
                        SLOT_BUILDER_HEARTBEAT,
-                       ECONOMY_DEAD_FLAG,
+                       CORE_DYING_FLAG, ECONOMY_DEAD_FLAG,
                        SLOT_CORE_DAMAGED, SLOT_OWN_CORE)
 from utils import pack_core
 
@@ -50,6 +50,7 @@ def run(player: "Player", ct: Controller) -> None:
     if not hasattr(player, "repair_alert"):
         player.repair_alert = False
     hp, max_hp = ct.get_hp(ct.get_id()), ct.get_max_hp(ct.get_id())
+    _watch_survival(player, ct, hp)
     if hp <= max_hp - 50:
         player.repair_alert = True
     elif hp == max_hp:
@@ -76,6 +77,8 @@ def run(player: "Player", ct: Controller) -> None:
     # two alarms are read by different code paths anyway.
     if getattr(player, "income_dead", False):
         alarm |= ECONOMY_DEAD_FLAG
+    if getattr(player, "core_dying", False):
+        alarm |= CORE_DYING_FLAG
     ct.write_store(SLOT_CORE_DAMAGED, alarm)
 
     economy_builders = doctrine.economy_builders(player.doctrine)
@@ -92,7 +95,8 @@ def run(player: "Player", ct: Controller) -> None:
     fresh = (stamp >> HEARTBEAT_SHIFT) >= ct.get_current_round()
     live = bin(stamp & HEARTBEAT_MASK).count("1") if fresh else 0
     if role >= MAX_OPENING_BUILDERS:
-        if not getattr(player, "income_dead", False):
+        if not (getattr(player, "income_dead", False)
+                or getattr(player, "core_dying", False)):
             return
         if live >= MAX_LIVE_BUILDERS or role >= MAX_TOTAL_BUILDERS:
             return
@@ -172,6 +176,45 @@ def _watch_income(player, ct) -> None:
         player.income_dead = rate <= DEAD_INCOME_PER_ROUND
         player.income_window_start = round_number
         player.income_seen = 0
+
+
+# Trailing rounds the death projection averages damage over, and how many
+# rounds of survival the Core insists on. The window is short enough to see a
+# wave, long enough not to panic at one volley; the horizon covers walking a
+# fresh Builder into place plus four Gunner rounds to kill the shooter.
+PROJECT_WINDOW = 20
+PROJECT_HORIZON = 60
+# Nothing is judged before this. An early rush is the reactive guard's fight:
+# spawning bodies into it is the measured -30pp refill catastrophe (longship
+# seat a: the projection fired on round 14, bought two Builders at +20% each,
+# and the opening died of the scale bill). The projection exists for the
+# mid-game shape where the guard is dead and the bank is rich.
+PROJECT_GRACE_ROUND = 40
+
+
+def _watch_survival(player, ct, hp: int) -> None:
+    """Raise a flag when the Core's own HP curve says it dies soon.
+
+    The HP curve already integrates everything -- shooters we cannot see,
+    barriers soaking, menders healing -- so no unit's vision is needed.
+    Projection: damage rate over the last PROJECT_WINDOW rounds, dead within
+    PROJECT_HORIZON rounds at that rate. The flag stays live while the
+    projection holds and clears when the bleeding stops.
+    """
+    round_number = ct.get_current_round()
+    history = getattr(player, "hp_history", None)
+    if history is None:
+        history = player.hp_history = []
+    history.append((round_number, hp))
+    while history and history[0][0] < round_number - PROJECT_WINDOW:
+        history.pop(0)
+    if round_number < PROJECT_GRACE_ROUND:
+        player.core_dying = False
+        return
+    damage = history[0][1] - hp
+    span = max(round_number - history[0][0], 1)
+    player.core_dying = (damage > 0
+                         and hp <= (damage / span) * PROJECT_HORIZON)
 
 
 def _scout_target(ct: Controller, index: int) -> Position:
