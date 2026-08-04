@@ -230,6 +230,12 @@ REPAIR_NETWORK = True
 # titanium in 1000 rounds. A hole that keeps reappearing is not damage,
 # it is a tile the enemy controls, and the belt has to go somewhere else.
 REPAIR_ATTEMPT_LIMIT = 3
+# How many of the Builder's own last tiles make a step less attractive in
+# _move_while_stuck. 0 restores the memoryless greedy step, which oscillates
+# forever on an unreachable goal. Ported from heimdall 4c0d92eb2 on the
+# parallel session's measured handoff: on odin it is pool -1 / generated +2,
+# and pacing falls 3.3% -> 0.4% of Builder-rounds (benchmarks/pathology.py).
+TABU_WINDOW = 4
 WRITE_OFF_STUCK_BUILDERS = True
 STUCK_ROUNDS_BEFORE_STANDDOWN = 40
 # A Harvester this close is worth finishing before turning back to repairs, so

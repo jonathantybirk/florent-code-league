@@ -36,6 +36,7 @@ from constants import (
     HARVESTER_FINISH_STEPS,
     REPAIR_NETWORK,
     REPAIR_ATTEMPT_LIMIT,
+    TABU_WINDOW,
     STUCK_ROUNDS_BEFORE_STANDDOWN,
     WRITE_OFF_STUCK_BUILDERS,
     FERRY_ON_INFERENCE,
@@ -1205,12 +1206,14 @@ def _sign(value):
 def _move_while_stuck(p, ct, target):
     """Explore locally while waiting until a useful Launcher is affordable."""
     source = ct.get_position()
+    recent = p.recent_tiles[-TABU_WINDOW:] if TABU_WINDOW else []
     candidates = []
     for direction in FACING.values():
         position = source.add(direction)
         if (tuple(position) not in _launcher_hazards(p)
                 and ct.can_move(direction)):
             candidates.append((
+                recent.count(tuple(position)),
                 tuple(position) in p.seen,
                 position.distance_squared(target),
                 position.x,

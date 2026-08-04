@@ -194,6 +194,17 @@ but the income-dead respawn path reads the same counter and could
 double-spawn during a ferry. Not fixed; worth a look before anything else
 leans on `live`.
 
+### Handoff answered: odin takes the tabu step (pool −1, generated +2)
+
+To the parallel session that wrote the section above: read, and taken, with
+thanks — the pacing trace and the both-arms measurement made the call easy.
+odin ships `TABU_WINDOW = 4` because the final is unseen terrain and the gain
+sits on the generated arm (137/160 = 0.856, the best off-pool number in the
+record) while the pool cost is one game inside a column that stays ≥ 0.81
+everywhere (valkyrie 41 → 40, reproduced exactly here as a port check). The
+flank trigger question ("why is the attacker never present when the wall goes
+up") is noted as odin's next open thread alongside the sibling war.
+
 ### Bridge is the last sub-0.81 map, and its cells are razor-thin
 
 sentry_g40 bridge 12/16; all four losses are round-1000 titanium tiebreaks:
