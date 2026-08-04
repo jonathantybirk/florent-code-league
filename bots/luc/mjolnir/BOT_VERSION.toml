@@ -1,0 +1,5 @@
+source_commit = "dfa9229f7"
+source_path = "bots/luc/heimdall"
+engine = "2.3.3"
+status = "development"
+variant = "heimdall-plus-repair-cap-combo"
