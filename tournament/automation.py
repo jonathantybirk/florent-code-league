@@ -175,15 +175,45 @@ def _preferred(specs: list[BotSpec]) -> BotSpec:
     return max(specs, key=key)
 
 
+# ---------------------------------------------------------------------------------------------
+# ATTENTION, AGENTS RUNNING EXPERIMENTS: everything under tournament/runs/ WITHOUT an EXPERIMENT
+# marker is LADDER EVIDENCE. The public rankings pool every matches.csv found there, and the
+# published matrix must be complete -- so a small sweep (a few bots vs a panel) dropped into
+# tournament/runs/ injects entrants that never played the full field and BLOCKS every publish
+# with "refusing to publish an incomplete matrix" until someone cleans it up. This happened on
+# 2026-08-04 with the vidar-* sweeps.
+#
+# If your run is an experiment rather than a ladder entry, mark it: either plan it with
+#     python -m tournament plan --tid <tid> --experiment ...
+# or drop an empty file named EXPERIMENT in the run directory before results merge. Marked runs
+# keep working with every CLI command (hpc push/submit/watch, rate, report) -- they are only
+# invisible to the ladder pool and the rated-bot ledger. To put a bot on the ladder, do not
+# gap-fill by hand: push it to your bot branch and let the evaluator schedule it against the
+# full canonical field.
+# ---------------------------------------------------------------------------------------------
+EXPERIMENT_MARKER = "EXPERIMENT"
+
+
+def _ladder_match_files() -> list[Path]:
+    """Every matches.csv that counts as ladder evidence (experiment runs excluded)."""
+    return [
+        path
+        for path in sorted(planning.RUNS_ROOT.glob("*/matches.csv"))
+        if not (path.parent / EXPERIMENT_MARKER).exists()
+    ]
+
+
 def played_bot_ids() -> set[str]:
     """Every bot_id that has actually played a rating match, read from the match CSVs.
 
     This is the ground truth for "have we evaluated this?". Compliance probes are excluded --
     they measure turn time and never enter a win matrix, so a bot that has only been probed has
-    not been rated.
+    not been rated. Experiment-marked runs are excluded for the same reason on the other side:
+    a bot that has only been swept in an experiment has not been rated either, and must still
+    be scheduled against the full field if it lands on a bot branch.
     """
     found: set[str] = set()
-    for path in sorted(planning.RUNS_ROOT.glob("*/matches.csv")):
+    for path in _ladder_match_files():
         with open(path, newline="") as handle:
             for row in csv.DictReader(handle):
                 if row.get("kind") == "compliance":
@@ -889,10 +919,12 @@ def pooled_matches() -> list[dict]:
     Ratings are only meaningful inside one win matrix, so the published ladder has to be built
     from all the evidence there is, not from one run plus one challenger set. match_id is
     content-addressed, so the same pairing recorded by two runs collapses to one row.
+    "All the evidence" means ladder evidence: runs carrying an EXPERIMENT marker are private
+    sweeps and never enter the published pool (see the note above _ladder_match_files).
     """
     seen: set[str] = set()
     rows: list[dict] = []
-    for path in sorted(planning.RUNS_ROOT.glob("*/matches.csv")):
+    for path in _ladder_match_files():
         with open(path, newline="") as handle:
             for row in csv.DictReader(handle):
                 if row.get("kind") == "compliance":
