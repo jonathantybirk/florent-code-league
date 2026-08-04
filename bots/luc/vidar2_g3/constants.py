@@ -229,7 +229,7 @@ MAX_GUARD_GUNNERS = 4
 # same *count* of +20% steps is what matters, and two Sentinels levy +40%
 # where four Gunners levy +80%. Half the tax for most of the damage is the
 # whole reason the patch changed which turret this bot buys.
-MAX_GUARD_SENTINELS = 2
+MAX_GUARD_SENTINELS = 3
 # Steps it will take toward an intruder to find a firing seat.
 #
 # Four was chosen when the attacker was ferried across the map and the guard's
@@ -315,8 +315,8 @@ SENTINEL_RANGE_SQ = 32
 #              the first building it crosses, so it denies far more ground.
 GUARD_TURRET_SENTINEL = True
 DEFEND_TURRET_SENTINEL = True
-FIELD_TURRET_SENTINEL = True
-DENIAL_TURRET_SENTINEL = True
+FIELD_TURRET_SENTINEL = False
+DENIAL_TURRET_SENTINEL = False
 # Ammunition held before a Sentinel seat is bought at all. A Sentinel that
 # cannot fire is 30 Ti and +20% of pure tax, so this is deliberately above the
 # Gunner's floor of 20 and above one shot's 10: enough for three shots, which

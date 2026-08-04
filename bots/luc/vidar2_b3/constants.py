@@ -315,8 +315,8 @@ SENTINEL_RANGE_SQ = 32
 #              the first building it crosses, so it denies far more ground.
 GUARD_TURRET_SENTINEL = True
 DEFEND_TURRET_SENTINEL = True
-FIELD_TURRET_SENTINEL = True
-DENIAL_TURRET_SENTINEL = True
+FIELD_TURRET_SENTINEL = False
+DENIAL_TURRET_SENTINEL = False
 # Ammunition held before a Sentinel seat is bought at all. A Sentinel that
 # cannot fire is 30 Ti and +20% of pure tax, so this is deliberately above the
 # Gunner's floor of 20 and above one shot's 10: enough for three shots, which
@@ -345,7 +345,7 @@ MIN_AMMO_FOR_SENTINEL = 40
 # Ti/round, so two Sentinels take two thirds of a working economy and three
 # take all of it. Two is the arithmetic answer; the flag exists to check the
 # arithmetic against the panel.
-SIEGE_SENTINEL_BATTERY = 2
+SIEGE_SENTINEL_BATTERY = 3
 # Barriers laid around a fresh siege Sentinel so return fire cannot reach it;
 # its own shot does not care. Skipped when the bank is thinner than this.
 SENTINEL_WRAP_RESERVE = 20
