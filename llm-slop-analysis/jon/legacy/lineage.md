@@ -1,5 +1,13 @@
 # Publicly stated lineage and terminology
 
+> **Measured before the Aug 4 turret patch (fcode ≤ 2.3.3).** Everything below was
+> measured when turrets were stronger. The 2026-08-04 balance pass (fcode 2.3.4)
+> changed the Gunner to 25 HP (was 40), 20 Ti (was 10), +20% cost scaling (was
+> +10%), 7 damage (was 10) and 4 ammo per shot (was 2), and the Sentinel to 40 HP
+> (was 30) on a 2-round reload (was 3). That balance pass is the only rules change
+> in 2.3.4, so conclusions here that do not turn on turret strength still stand —
+> but every turret-heavy number needs re-measuring before it is trusted again.
+
 ## Florent, Cambridge, and MIT
 
 Florent's public announcement labels Florent Code League a “Collaboration with Cambridge Battlecode.” Cambridge Battlecode's own site says that Cambridge Battlecode is “inspired by MIT Battlecode.” These are the public relationship statements located during this pass.
