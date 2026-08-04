@@ -4,7 +4,7 @@ Scaffold a starter project
 
 fcode starter
 
-This scaffolds a project in the current directory — an fcode.toml, a maps/ folder, and a working starter bot at bots/starter/main.py. Open bots/starter/main.py — the structure looks like this:
+This scaffolds a project in the current directory — an fcode.toml, a working starter bot at bots/starter/main.py, and a maps/ folder holding the current competition map pool (downloaded from the platform, so log in first). Open bots/starter/main.py — the structure looks like this:
 
 from fcode import Controller, Direction, EntityType
 

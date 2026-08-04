@@ -66,23 +66,23 @@ Reload
 
 Gunner
 
-40
+25
 
-10
-
-13
+20
 
 13
 
-10
+13
 
-2
+7
+
+4
 
 1
 
 Sentinel
 
-30
+40
 
 30
 
@@ -94,7 +94,7 @@ Sentinel
 
 10
 
-3
+2
 
 Launcher
 
@@ -130,7 +130,7 @@ Harvester
 
 20 (base)
 
-No
+Yes
 
 No
 
@@ -206,4 +206,4 @@ All build costs are multiplied by the current scale factor:
 
 effective_cost = base_cost × scale_factor
 
-The scale factor starts at 1.0 and increases additively as entities are built (conveyor/splitter/barrier +1%, harvester +5%, gunner/launcher +10%, builder bot/sentinel +20% each — removed again on destruction), not as a function of elapsed rounds. Use ct.get_scale_percent() to read the current value. Use ct.get_<entity>_cost() methods to read the already-scaled current cost of any specific build action.
+The scale factor starts at 1.0 and increases additively as entities are built (conveyor/splitter/barrier +1%, harvester +5%, launcher +10%, builder bot/gunner/sentinel +20% each — removed again on destruction), not as a function of elapsed rounds. Use ct.get_scale_percent() to read the current value. Use ct.get_<entity>_cost() methods to read the already-scaled current cost of any specific build action.

@@ -1,4 +1,4 @@
-How Matches Work
+Matches & Scheduling
 
 Series structure
 
@@ -10,7 +10,7 @@ Map selection
 
 Maps for each series are drawn at random from the current competition map pool. Different games in the same series may use different maps. The map pool is announced at the start of the competition and may be updated between rounds.
 
-The current map pool is listed on the platform.
+The current map pool is listed on the Maps page, with each map's dimensions and symmetry. Download them into your project with fcode maps sync.
 
 Remote infrastructure
 
