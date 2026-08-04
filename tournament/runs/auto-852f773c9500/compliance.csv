@@ -1,7 +1,7 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-green@2a19238,green,2a19238,pending,21,0,0,0,,,,,,0,0,9000,10000
-hardshell@2a19238,hardshell,2a19238,pending,21,0,0,0,,,,,,0,0,9000,10000
-odin@5a92113,odin,5a92113,pending,21,0,0,0,,,,,,0,0,9000,10000
-pantheon_puppet@5a92113,pantheon_puppet,5a92113,pending,21,0,0,0,,,,,,0,0,9000,10000
-strategist@2a19238,strategist,2a19238,pending,21,0,0,0,,,,,,0,0,9000,10000
+green@2a19238,green,2a19238,inconclusive,21,21,15,930,10,16,24,255,628,0,6,9000,10000
+hardshell@2a19238,hardshell,2a19238,pass,21,21,21,3639,12,315,395,468,896,0,0,9000,10000
+odin@5a92113,odin,5a92113,pass,21,21,21,2845,24,51,605,1350,6528,0,0,9000,10000
+pantheon_puppet@5a92113,pantheon_puppet,5a92113,pass,21,21,21,2069,25,47,85,1434,7359,0,0,9000,10000
+strategist@2a19238,strategist,2a19238,pass,21,21,21,2978,13,65,323,392,785,0,0,9000,10000
 strategist_learned@2a19238,strategist_learned,2a19238,pending,21,0,0,0,,,,,,0,0,9000,10000
