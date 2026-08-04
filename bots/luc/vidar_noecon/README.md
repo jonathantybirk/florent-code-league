@@ -86,6 +86,50 @@ opening has not bought yet, where the same +20% at round 250 falls almost
 entirely on conveyors at 3 Ti — 0.6 Ti a tile, against 2.5 Ti a round for the
 rest of the match from every Harvester it connects.
 
+## The third consequence: counting Builder-rounds
+
+The economy sweep's harvester arm reproduced the baseline row *exactly*,
+opponent by opponent — raising `NETWORK_CAP_LATE` from 8 to 12 and pulling the
+second trunk forward changed nothing at all. That says the bot runs out of
+Builder-*rounds*, not out of permission. So the rounds were counted rather than
+theorised, with a probe tallying every Builder's turn by phase and by whether
+it moved, acted or did neither. On quarry at round 750, out of ~750 each:
+
+```
+id=3    wait_lock:idle=555
+id=152  wait_lock:idle=509
+id=790  scout:move=549     built nothing all game
+id=808  scout:move=528     built nothing all game
+id=829  scout:move=543     built nothing all game
+```
+
+Four defects, none of them visible in any win rate:
+
+**The construction lock could not name more than three Builders.** `owner` is
+`builder_index + 1` in a two-bit field, so index 3 wrote owner 4 → `0b00` →
+"nobody owns this", never matched itself, and rewrote the slot with a fresh
+expiry every round. Units act in ascending entity id, so that late Builder's
+write always landed after the early miner's claim and erased it — and the early
+miner, the one actually laying belt, waited for a lock it could never be
+granted. Four bits now.
+
+**Two claim slots cannot employ seven miners.** `CLAIM_SLOTS` held one
+`pack_pos` each, sized for a three-Builder team with one miner. A claim is 10
+bits and a slot is 32, so three fit and the two slots now cover six.
+
+**Unemployment was treated as a personal fact.** The harass fallback keys on the
+Builder's *own* `network_load`, zero for one spawned late, so a miner with
+nothing to mine never reached it.
+
+**A no-op step was treated as a completed turn**, in three places. `_step`
+returns False without acting when the Builder already stands at its goal, so a
+harasser walked to the nearest enemy deposit, arrived, and stood on that tile
+for the rest of the game. All three now fall through.
+
+Plus a bound rather than a fix: a Builder lays without the lock after 40 rounds
+of waiting, because serialising long routes is an optimisation and starving on
+it is not.
+
 ## Where it stands
 
 Same panel, same 336 games a cell:
@@ -93,13 +137,17 @@ Same panel, same 336 games a cell:
 | | odin | tyr | vigil | ragnarok | prospect | pantheon | steward | valkyrie | mean | worst |
 |---|---|---|---|---|---|---|---|---|---|---|
 | odin (baseline) | — | 0.548 | 0.714 | 0.738 | 0.548 | 0.738 | 0.405 | 0.690 | 0.626 | 0.405 |
-| vidar2 (turrets only) | 0.571 | 0.524 | 0.714 | 0.786 | 0.524 | 0.738 | 0.595 | 0.762 | 0.652 | 0.524 |
-| **vidar** | 0.667 | 0.571 | 0.786 | 0.786 | 0.548 | 0.714 | 0.571 | 0.762 | **0.676** | **0.548** |
-| vidar, expansion off | 0.571 | 0.500 | 0.714 | 0.786 | 0.524 | 0.714 | 0.595 | 0.762 | 0.646 | 0.500 |
+| + turret work only | 0.571 | 0.524 | 0.714 | 0.786 | 0.524 | 0.738 | 0.595 | 0.762 | 0.652 | 0.524 |
+| + late expansion | 0.667 | 0.571 | 0.786 | 0.786 | 0.548 | 0.714 | 0.571 | 0.762 | 0.676 | 0.548 |
+| + 7 Builders | 0.714 | 0.619 | 0.786 | 0.786 | 0.548 | 0.714 | 0.595 | 0.762 | 0.690 | 0.548 |
+| **+ the four defects** | **0.738** | **0.714** | 0.786 | 0.786 | 0.571 | 0.690 | 0.571 | 0.762 | **0.702** | **0.571** |
 
-Late expansion is worth +3.0pp mean and +4.8pp on the worst matchup. The
-constant sweep behind it (chase 2, guard cap 3, battery 3) found every
-alternative equal or worse, so the shipped values are the measured ones.
+Against odin as the baseline that is +7.6pp on the mean and +16.6pp on the
+worst matchup. Headcount re-measured on the fixed base: 5 → 0.676, 7 → 0.702,
+9 → 0.693, so seven is shipped. On the *pre-fix* base 7 and 11 produced
+identical rows, which is what a cap that never binds looks like.
+
+The two remaining weak matchups are prospect and steward, both at 0.571.
 
 Compliance: p75 807 µs, max 4,487 µs, zero timeouts and zero exceptions over
 3,066 samples on 21 maps — inside the 10 ms limit with room, and a lower
