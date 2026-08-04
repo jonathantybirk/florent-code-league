@@ -35,7 +35,16 @@ PANTHEON_FERRY_PASSENGERS = 4
 # two passengers off the pad raid the enemy Core, the last two go to ore.
 # 81 of 150 games are exactly RREE and RR is the prefix of every pattern seen.
 # Builder 0 builds the pad on r1 and is then thrown off it on r2 as raider one.
-PANTHEON_RAIDERS = 3
+# Last round a Builder will stand on the pad waiting to be thrown. Pantheon's
+# four throws land on r2-r5 in 116 of 116 v20 games; past that a Builder still
+# waiting is a Builder that is never getting picked up.
+PANTHEON_FERRY_LAST_ROUND = 6
+# Pickup is dist_sq <= 2 from the Launcher.
+PICKUP_RANGE_SQ = 2
+# Throw range, measured from the Launcher rather than the passenger.
+THROW_RANGE_SQ = 26
+
+PANTHEON_RAIDERS = 2
 # Launchers built per game. Pantheon builds exactly one -- 151 across 150
 # replays -- and it is the throw pad, not a ring. Ragnarok rings the Core with
 # three or four, each 20 Ti and a permanent +10% on every later build, for a

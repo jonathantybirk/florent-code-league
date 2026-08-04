@@ -8,7 +8,8 @@ import doctrine
 from fcode import Controller, Direction, Environment, Position
 
 from atlas import identify_visible
-from constants import (LAUNCHER_BUILDER_INDEX, MAX_OPENING_BUILDERS,
+from constants import (LAUNCH_RANGE_SQ, LAUNCHER_BUILDER_INDEX,
+                       MAX_OPENING_BUILDERS,
                        PANTHEON_RAIDERS,
                        RING_RADIUS, SLOT_BUILDER_HEARTBEAT, SLOT_CORE_DAMAGED,
                        SLOT_ENEMY_CORE, SLOT_OWN_CORE)
@@ -127,12 +128,49 @@ def run(player: "Player", ct: Controller) -> None:
         ring = {tuple(t) for t in _core_ring(ct, tuple(ct.get_position()))}
         on_ring = [t for t in candidates if tuple(t) in ring]
         if on_ring:
-            walk = _walk_from(ct, player, tuple(target_core(ct, player)))
+            enemy = tuple(target_core(ct, player))
+            walk = _walk_from(ct, player, enemy)
+            core = tuple(ct.get_position())
+            # Ties are the common case -- the ring usually has two tiles the
+            # same walk from the enemy Core -- and they are broken by which pad
+            # the tile yields, not by the tile itself. The pad sits one step
+            # further out, so each ring tile fixes a different throw disc;
+            # the one whose disc reaches nearest the enemy Core wins.
+            # Ties are the common case: the ring usually holds two tiles the
+            # same walk from the enemy Core. Broken by which pad the tile
+            # yields -- the pad sits one step further out, so each ring tile
+            # fixes a different throw disc, and the disc that reaches nearest
+            # the enemy Core wins.
+            #
+            # A fixed compass order (north, east, south, west) was tried here
+            # instead and is a measured failure: it fixes crossfire, jackpot,
+            # sprint and twins on round 0 and breaks duel and aurora, for
+            # 14% action agreement against 17%. Something does separate those
+            # cases -- they are exact ties on walk, on straight line and on pad
+            # delivery -- but it is not a static direction preference.
             candidates = sorted(on_ring, key=lambda tile: (
                 walk.get(tuple(tile), 1 << 20),
-                tile.distance_squared(Position(*target_core(ct, player))),
+                _pad_delivery(ct, walk, core, tuple(tile)),
+                tile.distance_squared(Position(*enemy)),
                 tile.x, tile.y,
             ))
+        else:
+            candidates.sort(key=lambda tile: (
+                min(_chebyshev(tile, goal) for goal in goals),
+                tile.distance_squared(target), tile.x, tile.y))
+    elif getattr(player, "pad_tile", None) is not None and role < MAX_OPENING_BUILDERS:
+        # Every opening Builder is a passenger, so it has to spawn where the
+        # pad can pick it up: dist_sq <= 2. On duel Pantheon spawns all four on
+        # the column beside its pad -- (3,8), (3,7), (3,9), (3,8), the last
+        # reusing the tile the first vacated when it was thrown -- and orders
+        # them by which is nearest the enemy Core. Spawning outside that disc
+        # is a passenger the ferry never collects.
+        pad = Position(*player.pad_tile)
+        enemy = Position(*target_core(ct, player))
+        near = [t for t in candidates if t.distance_squared(pad) <= 2]
+        if near:
+            candidates = sorted(near, key=lambda tile: (
+                tile.distance_squared(enemy), tile.x, tile.y))
         else:
             candidates.sort(key=lambda tile: (
                 min(_chebyshev(tile, goal) for goal in goals),
@@ -145,7 +183,13 @@ def run(player: "Player", ct: Controller) -> None:
             tile.y,
         ))
     if candidates:
-        ct.spawn_builder(candidates[0])
+        chosen = candidates[0]
+        ct.spawn_builder(chosen)
+        if role == LAUNCHER_BUILDER_INDEX:
+            # The pad goes one cardinal step further out from this tile, so it
+            # is fixed the moment the round-0 Builder is placed.
+            player.pad_tile = _outward(ct, tuple(ct.get_position()),
+                                       tuple(chosen))
         player.builders_spawned += 1
 
 
@@ -154,6 +198,46 @@ def target_core(ct: Controller, player):
     if player.atlas is not None:
         return tuple(player.atlas.enemy_core)
     return tuple(_scout_target(ct, 0))
+
+
+# North, east, south, west -- the order ties are settled in.
+_OUTWARD_ORDER = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+
+def _outward_order(ct: Controller, core, spawn):
+    """Rank of this tile's outward direction in the fixed compass order."""
+    foot = {(core[0] + a, core[1] + b) for a in (0, 1) for b in (0, 1)}
+    for index, (dx, dy) in enumerate(_OUTWARD_ORDER):
+        if (spawn[0] - dx, spawn[1] - dy) in foot:
+            return index
+    return len(_OUTWARD_ORDER)
+
+
+def _pad_delivery(ct: Controller, walk, core, spawn):
+    """Shortest walk to the enemy Core from anywhere this tile's pad can throw."""
+    pad = _outward(ct, core, spawn)
+    if pad is None:
+        return 1 << 20
+    best = 1 << 20
+    for dx in range(-5, 6):
+        for dy in range(-5, 6):
+            if dx * dx + dy * dy > LAUNCH_RANGE_SQ:
+                continue
+            value = walk.get((pad[0] + dx, pad[1] + dy))
+            if value is not None and value < best:
+                best = value
+    return best
+
+
+def _outward(ct: Controller, core, spawn):
+    """One cardinal step further out from `spawn`, away from the footprint."""
+    foot = {(core[0] + a, core[1] + b) for a in (0, 1) for b in (0, 1)}
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        if (spawn[0] - dx, spawn[1] - dy) in foot:
+            out = (spawn[0] + dx, spawn[1] + dy)
+            if _on_map(ct, Position(*out)) and out not in foot:
+                return out
+    return None
 
 
 def _core_ring(ct: Controller, core):
@@ -175,6 +259,11 @@ def _walk_from(ct: Controller, player, enemy):
     set is empty and this degrades to straight-line ordering, not to nonsense.
     """
     walls = set(player.atlas.walls) if player.atlas is not None else set()
+    # Our own Core blocks movement, and it is a 2x2 block sitting right next to
+    # every tile being ranked. Leaving it out lets paths route straight through
+    # it and mis-orders the ring.
+    here = tuple(ct.get_position())
+    walls |= {(here[0] + a, here[1] + b) for a in (0, 1) for b in (0, 1)}
     w, h = ct.get_map_width(), ct.get_map_height()
     srcs = [(enemy[0] + a, enemy[1] + b) for a in (0, 1) for b in (0, 1)
             if 0 <= enemy[0] + a < w and 0 <= enemy[1] + b < h]

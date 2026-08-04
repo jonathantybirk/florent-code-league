@@ -8,7 +8,9 @@ from fcode import Controller, EntityType, Environment, GameError, Position
 
 import doctrine
 from atlas import identify_visible
-from constants import (LAUNCH_RANGE_SQ, PANTHEON_RAIDERS, PANTHEON_RING_SITES,
+from constants import (LAUNCH_RANGE_SQ, PANTHEON_FERRY_LAST_ROUND,
+                       PANTHEON_FERRY_PASSENGERS, PANTHEON_RAIDERS,
+                       PANTHEON_RING_SITES, PICKUP_RANGE_SQ, THROW_RANGE_SQ,
                        PANTHEON_RING_SITES_FORTIFY,
     CLAIM_SLOTS,
     CORE_THREAT_RADIUS_SQ,
@@ -110,6 +112,7 @@ def _run(p, ct):
         p.network_load = 0
         p.economy_lines_completed = 0
         p.ring_slot = p.builder_index - LAUNCHER_BUILDER_INDEX
+        p.spawn_pos = tuple(ct.get_position())
         p.lock_required = False
         p.home_gunners_built = 0
         p.field_gunners_built = 0
@@ -195,6 +198,15 @@ def _run(p, ct):
         # worth more than a Builder holding a pose.
         if p.doctrine == doctrine.FORTIFY and not _run_core_seal(p, ct):
             return
+    # Waiting for a lift outranks every errand. Pantheon's passengers stand
+    # still on the pad from the round they spawn until the round they are
+    # thrown -- on duel the round-0 Builder is thrown from (3,8), the exact
+    # tile it spawned on. Ours walked a step first and was thrown from a tile
+    # further back, which loses a round of the raid and puts the landing in a
+    # different place. A Builder that walks off the pad has to walk back.
+    if _waiting_for_lift(p, ct):
+        return
+
     if p.is_attacker:
         p.phase = "rush"
     if p.phase == "rush":
@@ -772,6 +784,22 @@ def _step(p, ct, target, exact, allow_launcher=True):
     return False
 
 
+def _waiting_for_lift(p, ct):
+    """True when this Builder should stand on the pad and be thrown."""
+    if getattr(p, "was_thrown", False):
+        return False
+    if ct.get_current_round() > PANTHEON_FERRY_LAST_ROUND:
+        return False
+    here = tuple(ct.get_position())
+    if p.core is not None and _distance_sq(here, p.core) > THROW_RANGE_SQ:
+        p.was_thrown = True          # only a throw moves us that far
+        return False
+    for _, position in _visible_friendly_launchers(ct):
+        if position.distance_squared(Position(*here)) <= PICKUP_RANGE_SQ:
+            return True
+    return False
+
+
 def _build_escape_launcher(p, ct, target):
     """Build a temporary ferry after repeated failures to find a walkable path."""
     launchers = _visible_friendly_launchers(ct)
@@ -1291,10 +1319,26 @@ def _run_launcher_ring(p, ct):
         return False
     enemy_core, _ = unpack_enemy(packed)
     if not hasattr(p, "launcher_ring_targets"):
-        # Enemy-facing site first, then stop: one pad, as Pantheon builds.
         sites = (PANTHEON_RING_SITES_FORTIFY
                  if p.doctrine == doctrine.FORTIFY else PANTHEON_RING_SITES)
-        p.launcher_ring_targets = _launcher_ring_targets(p, enemy_core)[:sites]
+        ring = _launcher_ring_targets(p, enemy_core)[:sites]
+        # The pad is not chosen from the ring at all: it is the tile one
+        # cardinal step further out from where the round-0 Builder is standing,
+        # straight along the ray from the Core footprint. That is why Pantheon
+        # can build it on round 1 without anyone walking -- the Builder spawned
+        # onto the doorstep and simply builds outward from there.
+        #
+        # Measured both ways: across 150 v16 games the Launcher offsets are the
+        # round-0 Builder offsets shifted one step outward, count for count
+        # (Builder (2,0) 32 times -> Launcher (3,0) 32 times); and on duel v20
+        # the Builder spawns (3,8) and the pad goes up at (4,8) on round 1.
+        # Ranking ring sites by throw delivery instead picked (4,6) here and
+        # cost two rounds walking to it.
+        pad = _pad_from_spawn(p)
+        if pad is not None:
+            ring = [Position(*pad)] + [r for r in ring if tuple(r) != pad]
+            ring = ring[:max(1, sites)]
+        p.launcher_ring_targets = ring
         p.launcher_ring_done = set()
 
     # With more than one ring Builder there is no store slot left to claim
@@ -1416,6 +1460,24 @@ def _run_core_seal(p, ct):
             p.seal_done.add(key)
         return False
     return True
+
+
+def _pad_from_spawn(p):
+    """One cardinal step further out from the Builder's spawn tile.
+
+    The Builder spawns orthogonally adjacent to the 2x2 Core footprint, so the
+    outward direction is the unit vector from the footprint cell it touches.
+    """
+    spawn = getattr(p, "spawn_pos", None)
+    if spawn is None or p.core is None:
+        return None
+    foot = {(p.core[0] + a, p.core[1] + b) for a in (0, 1) for b in (0, 1)}
+    for dx, dy in D4_DELTAS:
+        if (spawn[0] - dx, spawn[1] - dy) in foot:
+            out = (spawn[0] + dx, spawn[1] + dy)
+            if _inside(p, out) and out not in p.walls and out not in foot:
+                return out
+    return None
 
 
 def _launcher_ring_targets(p, enemy_core):
