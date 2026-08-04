@@ -244,7 +244,7 @@ MAX_GUARD_SENTINELS = 2
 #
 # It is worth +2 games against valkyrie and +1 against vigil, ragnarok, warden
 # and gobbleglitch each -- a broad gain, not one map.
-GUARD_CHASE_STEPS = 6
+GUARD_CHASE_STEPS = 2
 
 # Field Gunners are now set per doctrine in doctrine.py: 0 on open ground
 # (measured: a roaming enemy walks away from the turret), 2 under FORTIFY
@@ -315,8 +315,8 @@ SENTINEL_RANGE_SQ = 32
 #              the first building it crosses, so it denies far more ground.
 GUARD_TURRET_SENTINEL = True
 DEFEND_TURRET_SENTINEL = True
-FIELD_TURRET_SENTINEL = True
-DENIAL_TURRET_SENTINEL = True
+FIELD_TURRET_SENTINEL = False
+DENIAL_TURRET_SENTINEL = False
 # Ammunition held before a Sentinel seat is bought at all. A Sentinel that
 # cannot fire is 30 Ti and +20% of pure tax, so this is deliberately above the
 # Gunner's floor of 20 and above one shot's 10: enough for three shots, which
