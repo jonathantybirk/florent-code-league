@@ -25,3 +25,15 @@ class BotState:
 
     # SaboteurScout
     sabotage_target: Position | None = None
+
+    # Set by main.py after each decision; read by features.py as context for
+    # the *next* decision.
+    last_strategy_idx: int = 0
+
+    # policy.py's epsilon-greedy exploration override (FCL_EXPLORE_EPS): once
+    # triggered, held for a fixed round window instead of re-rolled every
+    # round, so a window is one coherent macro-decision instead of noise.
+    # explore_until_round stays -1 (never >= any real round) until the first
+    # override fires.
+    explore_idx: int = 0
+    explore_until_round: int = -1
