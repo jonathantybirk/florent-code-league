@@ -18,19 +18,19 @@ Reload
 
 Gunner
 
-40
+25
 
-10 Ti
+20 Ti
 
-10
+7
 
-2
+4
 
 1 round
 
 Sentinel
 
-30
+40
 
 30 Ti
 
@@ -38,7 +38,7 @@ Sentinel
 
 10
 
-3 rounds
+2 rounds
 
 Launcher
 
@@ -52,7 +52,7 @@ Launcher
 
 1 round
 
-The Gunner is what you'll build first: cheap, fast-firing, good for holding a corridor. It fires a narrow ray straight ahead in its facing direction — anything in that line, friend or foe, blocks and can be hit. The Sentinel fires the same single-tile-wide line, but reaches much further and can't be blocked by anything standing in the way — trading a much higher cost and a 3-round reload for that reach and extra damage per hit; it's a defensive anchor, not something you spam early. The Launcher doesn't deal damage at all — it picks up a friendly Builder Bot within range and throws it to a target position, which is a repositioning tool, not a weapon.
+The Gunner is what you'll build first: the cheapest turret, firing every round, and the only one you can re-aim after building it. It fires a narrow ray straight ahead in its facing direction — anything in that line, friend or foe, blocks and can be hit. It's also the flimsiest thing you can build at 25 HP, so don't leave one exposed. The Sentinel fires the same single-tile-wide line, but reaches much further and can't be blocked by anything standing in the way — trading 10 more titanium and a 2-round reload for that reach, 18 damage a hit, and enough hit points to survive being shot at; it's a defensive anchor, not something you spam early. The Launcher doesn't deal damage at all — it picks up a Builder Bot within range, from either team, and throws it to a target position, which is a repositioning tool, not a weapon.
 
 One thing isn't obvious from the numbers above: ammunition is a team-wide balance, not something a turret carries — and it starts at 0. A freshly built Gunner simply won't fire, no matter how good its target is, until your Core converts titanium into ammunition for the team. That's the entire subject of the next two steps.
 

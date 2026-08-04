@@ -20,6 +20,11 @@ fcode run starter starter arena
 
 Omitting the map uses the first map in your maps/ folder. Add --map-random to pick a random one instead.
 
+Your maps/ folder is filled by fcode starter and kept current with fcode maps sync. The pool changes during the competition, so re-run sync if a map name isn't found:
+
+fcode maps list   # pool vs what you have locally
+fcode maps sync   # download anything missing or changed
+
 Watching replays
 
 Open a replay in the browser-based visualiser:

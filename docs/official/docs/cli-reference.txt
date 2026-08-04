@@ -30,9 +30,18 @@ fcode logout
 
 fcode starter
 
-Scaffold a new project in the current directory: an fcode.toml, a .gitignore, bots/ and maps/ folders, and a starter bot at bots/starter/main.py.
+Scaffold a new project in the current directory: an fcode.toml, a .gitignore, bots/ and maps/ folders, and a starter bot at bots/starter/main.py. If you are logged in, the current map pool is downloaded into maps/.
 
 fcode starter
+
+fcode maps
+
+List and download the competition map pool. Maps are not bundled with the CLI — the pool is set on the platform and can change during the competition.
+
+fcode maps list   # pool contents, and whether each map is present locally
+fcode maps sync   # download anything missing or out of date into maps/
+
+sync only adds and updates. A map dropped from the pool stays on disk, so you keep practising against it.
 
 fcode run
 

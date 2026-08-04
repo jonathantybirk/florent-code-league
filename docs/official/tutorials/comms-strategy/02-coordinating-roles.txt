@@ -13,6 +13,7 @@ CARDINALS = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST]
 SLOT_ORE_X = 0
 SLOT_ORE_Y = 1
 
+
 class Player:
     def run(self, ct: Controller) -> None:
         etype = ct.get_entity_type()
