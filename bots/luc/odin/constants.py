@@ -229,6 +229,57 @@ REPAIR_NETWORK = True
 # that single tile 22 times for 66 Ti and +22% scale, and mined 10
 # titanium in 1000 rounds. A hole that keeps reappearing is not damage,
 # it is a tile the enemy controls, and the belt has to go somewhere else.
+# --- Flanking a defended Core ------------------------------------------------
+# Remembered enemy turrets within FLANK_RADIUS of their Core, and how many
+# before the attacker prefers a seat on the far side of it. 0 disables.
+#
+# A Gunner fires along one fixed compass ray and rotating costs a flat 10 Ti, so
+# a wall built to meet our approach covers that approach and nothing else.
+# Ranked *below* the cover tier -- which is about surviving the seat at all --
+# and above distance.
+#
+# Live vision cannot see a wall: a Builder at one face of a 2x2 Core sees the
+# turrets on that face only, measured at at most 2 visible from every distance
+# including zero, on maps carrying 8 and 10 enemy turrets. Two earlier versions
+# read live vision, never fired once, and scored as clean rejections. Turrets do
+# not move, so remembering them across turns is sound and it then fires 7-15
+# times a game.
+FLANK_MIN_TURRETS = 4
+FLANK_RADIUS = 8
+# Turrets bought purely to deny ground rather than to shoot anyone.
+# --- Denial turrets ----------------------------------------------------------
+# A turret bought to deny ground rather than to shoot anyone.
+#
+# Enemy bots route around our firing lines instead of walking down them, so a
+# ray is a wall that costs 10 Ti and never has to fire. `_denial_gunner_site`
+# scores a seat by how many *uncovered* Core-threat tiles its ray adds -- the
+# same disc `_core_seal_targets` seals with barriers -- so a turret is bought
+# only when it denies ground no existing one does.
+#
+# Measured on this chassis, with odin's own baseline taken in the same runs:
+#
+#                    pool          generated      pantheon   vigil_reinf
+#     odin      313/336 0.932   135/160 0.844      33/42       29/42
+#     +denial   314/336 0.935   142/160 0.887      33/42       31/42
+#     +both     315/336 0.938   139/160 0.869      34/42       32/42  <- shipped
+#
+# Denial alone is the best generated-map score by a wide margin; with the flank
+# it gives back three of those and takes the pool, Pantheon and the worst
+# matchup instead. Shipped together because the binding constraint is the tail:
+# this is the first build with Pantheon above 0.80, and warden_walk goes
+# 0.81 -> 0.88 on the pool.
+#
+# Traced on quarry against the day3 Pantheon replica: 14 turrets, 69 rounds and
+# a loss becomes 10 turrets, 59 rounds and a win. Fewer guns, sooner, because
+# the ray does the work of a wall.
+#
+# The grace round matters for the usual reason -- before round 12 the guard's
+# titanium belongs to the opening, and a turret there is a scale bill levied on
+# the first Harvester.
+DENIAL_GUNNERS = 1
+DENIAL_MIN_TILES = 3
+DENIAL_RESERVE = 30
+DENIAL_START_ROUND = 12
 REPAIR_ATTEMPT_LIMIT = 3
 # How many of the Builder's own last tiles make a step less attractive in
 # _move_while_stuck. 0 restores the memoryless greedy step, which oscillates
