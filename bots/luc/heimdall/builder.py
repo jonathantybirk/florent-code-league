@@ -34,6 +34,8 @@ from constants import (
     MAX_RELAY_LAUNCHERS,
     HARVESTER_FINISH_STEPS,
     REPAIR_NETWORK,
+    REPAIR_ATTEMPT_LIMIT,
+    TABU_WINDOW,
     STUCK_ROUNDS_BEFORE_STANDDOWN,
     WRITE_OFF_STUCK_BUILDERS,
     FERRY_ON_INFERENCE,
@@ -121,6 +123,9 @@ def _run(p, ct):
         p.network_tiles = set()
         p.network_load = 0
         p.network_plan = {}
+        # How many times we have rebuilt each belt tile. A tile inside an
+        # enemy Gunner's ray is rebuilt for as long as we are willing to pay.
+        p.repair_counts = {}
         p.economy_lines_completed = 0
         p.ring_slot = p.builder_index - LAUNCHER_BUILDER_INDEX
         p.launcher_builders_wanted = 0
@@ -524,6 +529,8 @@ def _broken_network_tiles(p, ct):
     """
     broken = []
     for tile in p.network_plan:
+        if p.repair_counts.get(tile, 0) >= REPAIR_ATTEMPT_LIMIT:
+            continue
         position = Position(*tile)
         if not ct.is_in_vision(position):
             continue
@@ -538,7 +545,8 @@ def _broken_network_tiles(p, ct):
         position = Position(*spot)
         if not ct.is_in_vision(position):
             continue
-        if ct.get_tile_building_id(position) is None:
+        if (ct.get_tile_building_id(position) is None
+                and p.repair_counts.get(spot, 0) < REPAIR_ATTEMPT_LIMIT):
             broken.append(spot)
             p.network_plan.setdefault(spot, facing)
     return broken
@@ -578,6 +586,7 @@ def _repair_network(p, ct):
         ct.build_conveyor(target, facing)
         _mark_progress(p, ct, "repaired conveyor", tile)
         p.conveyors[tile] = facing
+        p.repair_counts[tile] = p.repair_counts.get(tile, 0) + 1
         return True
     if _build_failure(p, ct, tile, "conveyor repair", ct.get_conveyor_cost()):
         # Something else stands there now; the line has to be re-planned
@@ -1167,12 +1176,14 @@ def _sign(value):
 def _move_while_stuck(p, ct, target):
     """Explore locally while waiting until a useful Launcher is affordable."""
     source = ct.get_position()
+    recent = p.recent_tiles[-TABU_WINDOW:] if TABU_WINDOW else []
     candidates = []
     for direction in FACING.values():
         position = source.add(direction)
         if (tuple(position) not in _launcher_hazards(p)
                 and ct.can_move(direction)):
             candidates.append((
+                recent.count(tuple(position)),
                 tuple(position) in p.seen,
                 position.distance_squared(target),
                 position.x,
