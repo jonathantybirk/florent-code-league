@@ -229,6 +229,38 @@ REPAIR_NETWORK = True
 # that single tile 22 times for 66 Ti and +22% scale, and mined 10
 # titanium in 1000 rounds. A hole that keeps reappearing is not damage,
 # it is a tile the enemy controls, and the belt has to go somewhere else.
+# Turrets bought purely to deny ground rather than to shoot anyone.
+# --- Denial turrets ----------------------------------------------------------
+# Turrets bought to deny ground rather than to shoot anyone.
+#
+# Enemy bots route around our firing lines instead of walking down them, so a
+# ray is not only a weapon -- it is a wall that costs 10 Ti and never has to
+# fire. `_denial_gunner_site` scores a seat by how many *uncovered* Core-threat
+# tiles its ray adds, so a turret is only bought when it denies ground no
+# existing one does, and around a 2x2 Core there is not much ground to spare.
+#
+# One, not two, and the arms disagree about that -- which is why the count is
+# here rather than assumed:
+#
+#                     pool         generated     pantheon   vigil_reinf
+#     off        312/336 0.929   135/160 0.844    33/42       26/42
+#     1          311/336 0.926   137/160 0.856    34/42       28/42   <- shipped
+#     2          313/336 0.932   134/160 0.838    32/42       24/42
+#
+# Two wins the pool total by one game and loses everywhere that is hard: two
+# against the strongest bot in the field and four against our worst matchup.
+# One is the trade taken deliberately -- a game of pool total for the tail,
+# because the binding constraint is the worst opponent, not the average one.
+# Loosening DENIAL_MIN_TILES to 2 costs five games: it starts buying turrets
+# that deny almost nothing and charges +10% on everything for them.
+#
+# The grace round matters for the usual reason. Before round 12 the guard's
+# titanium belongs to the opening, and a turret bought there is a scale bill
+# levied on the first Harvester.
+DENIAL_GUNNERS = 1
+DENIAL_MIN_TILES = 3
+DENIAL_RESERVE = 30
+DENIAL_START_ROUND = 12
 REPAIR_ATTEMPT_LIMIT = 3
 
 # --- Flanking a defended Core ------------------------------------------------
