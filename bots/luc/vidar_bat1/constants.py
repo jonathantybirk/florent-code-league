@@ -416,7 +416,23 @@ FLANK_RADIUS = 8
 # The grace round matters for the usual reason -- before round 12 the guard's
 # titanium belongs to the opening, and a turret there is a scale bill levied on
 # the first Harvester.
-DENIAL_GUNNERS = 1
+# MEASURED AND ZERO under 2.3.4, on both metrics at once, which is rare here.
+# 336 games a cell on the relay-0 base:
+#
+#     denial 1   0.711 / 0.571
+#     denial 0   0.738 / 0.619   <- shipped
+#
+# +2.7pp of mean and +4.8pp of the worst matchup, and better against six of the
+# eight opponents including both of the weak ones (prospect 0.571 -> 0.667,
+# steward 0.595 -> 0.619).
+#
+# The mechanic was shipped three commits before the patch and its own note
+# above is the reason it died: "a ray is a wall that costs 10 Ti and never has
+# to fire". 2.3.4 made that wall cost 20 Ti and +20% permanent scale -- the
+# same tax as a Sentinel -- for a turret explicitly bought never to shoot
+# anyone. A wall you pay for every round of the rest of the game is not cheap
+# ground denial, it is a mortgage on the round-1000 tiebreak.
+DENIAL_GUNNERS = 0
 DENIAL_MIN_TILES = 3
 DENIAL_RESERVE = 30
 DENIAL_START_ROUND = 12
