@@ -24,7 +24,9 @@ from training.harness import _collect_maps, run_match
 
 FIXED = "bots/strategist"
 LEARNED = "bots/strategist_learned"
-OPPONENTS = ["bots/test/starter", "bots/green", "bots/test/tester"]
+OPPONENTS = [
+    "bots/test/luc/heimdall", "bots/test/luc/odin",  # pulled from origin/x/luc, see harness.py's DEFAULT_OPPONENTS
+]
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,7 @@ class EvalJob:
     bot_b: str
     seed: int
     matchup: str
+    head_to_head: bool  # fixed vs learned, rather than either vs an OPPONENTS entry
 
 
 def build_jobs(maps: list[Path], seeds: list[int]) -> list[EvalJob]:
@@ -42,11 +45,11 @@ def build_jobs(maps: list[Path], seeds: list[int]) -> list[EvalJob]:
         for seed in seeds:
             for candidate, tag in ((FIXED, "fixed"), (LEARNED, "learned")):
                 for opponent in OPPONENTS:
-                    label = f"{tag}-vs-{Path(opponent).name}"
-                    jobs.append(EvalJob(map_path, candidate, opponent, seed, label))
-                    jobs.append(EvalJob(map_path, opponent, candidate, seed, label))
-            jobs.append(EvalJob(map_path, FIXED, LEARNED, seed, "fixed-vs-learned"))
-            jobs.append(EvalJob(map_path, LEARNED, FIXED, seed, "fixed-vs-learned"))
+                    opp_name = Path(opponent).name
+                    jobs.append(EvalJob(map_path, candidate, opponent, seed, f"{tag}(A)-vs-{opp_name}(B)", False))
+                    jobs.append(EvalJob(map_path, opponent, candidate, seed, f"{opp_name}(A)-vs-{tag}(B)", False))
+            jobs.append(EvalJob(map_path, FIXED, LEARNED, seed, "fixed(A)-vs-learned(B)", True))
+            jobs.append(EvalJob(map_path, LEARNED, FIXED, seed, "learned(A)-vs-fixed(B)", True))
     return jobs
 
 
@@ -65,7 +68,11 @@ def main() -> int:
     jobs = build_jobs(maps, args.seeds)
     print(f"{len(jobs)} evaluation matches queued ({len(maps)} maps x {len(args.seeds)} seeds)", flush=True)
 
-    record: dict[str, dict[str, int]] = defaultdict(lambda: {"w": 0, "l": 0, "d": 0})
+    # Tracked separately, not just one blended total: a head-to-head win only
+    # says "beat the other strategist variant," not "beat heimdall/odin" --
+    # collapsing the two into one win rate answers neither question cleanly.
+    vs_opponent: dict[str, dict[str, int]] = defaultdict(lambda: {"w": 0, "l": 0, "d": 0})
+    head_to_head: dict[str, dict[str, int]] = defaultdict(lambda: {"w": 0, "l": 0, "d": 0})
     errors: list[tuple[EvalJob, str]] = []
     done = 0
     with ThreadPoolExecutor(max_workers=args.jobs) as executor:
@@ -83,6 +90,7 @@ def main() -> int:
                 continue
 
             winner = result.get("winner")
+            record = head_to_head if job.head_to_head else vs_opponent
             for name, side in ((job.bot_a, "A"), (job.bot_b, "B")):
                 if name not in (FIXED, LEARNED):
                     continue
@@ -94,15 +102,20 @@ def main() -> int:
                     record[name]["l"] += 1
             print(f"[{done}/{len(jobs)}] {job.matchup} seed={job.seed} -> winner={winner}", flush=True)
 
+    def _report(title: str, record: dict[str, dict[str, int]]) -> None:
+        print(f"=== {title} ===")
+        for name in (FIXED, LEARNED):
+            r = record[name]
+            total = r["w"] + r["l"] + r["d"]
+            rate = r["w"] / total if total else 0.0
+            print(f"{name}: {r['w']}W-{r['l']}L-{r['d']}D over {total} matches (win rate {rate:.1%})")
+
     print()
-    print("=== results (fixed-rule vs learned-bandit) ===")
-    for name in (FIXED, LEARNED):
-        r = record[name]
-        total = r["w"] + r["l"] + r["d"]
-        rate = r["w"] / total if total else 0.0
-        print(f"{name}: {r['w']}W-{r['l']}L-{r['d']}D over {total} matches (win rate {rate:.1%})")
+    _report(f"vs opponents ({', '.join(Path(o).name for o in OPPONENTS)})", vs_opponent)
+    print()
+    _report("head-to-head (fixed vs learned only)", head_to_head)
     if errors:
-        print(f"{len(errors)} matches errored")
+        print(f"\n{len(errors)} matches errored")
     return 1 if errors else 0
 
 
