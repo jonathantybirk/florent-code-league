@@ -130,6 +130,37 @@ Plus a bound rather than a fix: a Builder lays without the lock after 40 rounds
 of waiting, because serialising long routes is an optimisation and starving on
 it is not.
 
+## Spending is the cost: what the parked attacker generalised to
+
+Once the parked Builder had shown that *not spending* beats spending, the same
+question was put to every discretionary item this bot buys. Cost scale is a
+permanent multiplier on every later price, and under 2.3.4 the median game is
+decided by titanium collected at round 1000, so each of these is a mortgage on
+the win condition. Three of the four had been tuned before the patch.
+
+| item | scale | was | now | effect |
+|---|---|---|---|---|
+| relay Launchers | +10% each | 2 | **0** | +1.2pp mean, floor unchanged |
+| ring Launcher | +10% | 1 | 1 | removing it: -1.5pp mean, +4.75pp floor — a trade, kept |
+| denial turret | +20% | 1 | **0** | **+2.7pp mean and +4.8pp floor** |
+| siege battery | +20% each | 2 | 2 | battery 1 is +1.2pp mean, -2.4pp floor — a trade, kept |
+| guard turrets | +20% each | 2 | 2 | 1 is -4.0pp, 3 is -6.4pp — confirmed from both sides |
+| Harvester cap | +5% each | 6 | **4** | **+1.2pp mean and +2.4pp floor** |
+
+The denial turret is the clearest case. It shipped three commits before the
+patch and its own note is its epitaph: *"a ray is a wall that costs 10 Ti and
+never has to fire."* 2.3.4 made that wall 20 Ti and +20% permanent scale — the
+same tax as a Sentinel — for a turret bought explicitly never to shoot anyone.
+
+`NETWORK_CAP_EARLY` is the second: 6 came from mjolnir and was measured with
+the twelve-tile wall on, which is the one mechanic from that bot that was ruled
+out. Four is also where the arithmetic says a trunk saturates — a conveyor
+carries one stack a round and a Harvester makes one every four.
+
+Note how many of these are *interactions*. Dropping the ring was worth +4.75pp
+of floor on the relay-2 base and nothing on the relay-0 base. Every arm here is
+therefore cut on the shipping base rather than the base it was invented on.
+
 ## Where it stands
 
 Same panel, same 336 games a cell:
@@ -142,8 +173,11 @@ Same panel, same 336 games a cell:
 | + 7 Builders | 0.714 | 0.619 | 0.786 | 0.786 | 0.548 | 0.714 | 0.595 | 0.762 | 0.690 | 0.548 |
 | **+ the four defects** | **0.738** | **0.714** | 0.786 | 0.786 | 0.571 | 0.690 | 0.571 | 0.762 | **0.702** | **0.571** |
 
-Against odin as the baseline that is +7.6pp on the mean and +16.6pp on the
-worst matchup. Headcount re-measured on the fixed base: 5 → 0.676, 7 → 0.702,
+Then the scale-tax sweeps above took it to **0.750 / 0.643**, against odin's
+0.626 / 0.405 — +12.4pp of mean and +23.8pp of worst matchup.
+
+Against odin as the baseline the four-defect row is +7.6pp on the mean and
++16.6pp on the worst matchup. Headcount re-measured on the fixed base: 5 → 0.676, 7 → 0.702,
 9 → 0.693, so seven is shipped. On the *pre-fix* base 7 and 11 produced
 identical rows, which is what a cap that never binds looks like.
 
