@@ -36,13 +36,33 @@ trace both defenders chose turret duels and the Core was healed exactly once
 all game while 4 HP/1 Ti healing was affordable forever. The traced loss is
 now a 1000-round tiebreak win, 5,180 mined vs 2,910.
 
+## Line-of-sight discipline (fourth commit)
+
+Lucas's constraint: never seat an attack turret where an enemy turret can
+already shoot it, prefer seats it cannot reach even by rotating (a rotation
+is a flat 10 Ti), and when a covered seat is literally the only one, take it
+under duel rules — one such turret at a time, built *facing the covering
+turret* so it kills the threat before rotating on to its real target, with
+its Builder standing adjacent healing it through the duel (4 HP for a flat
+1 Ti beats the 10 dmg/round it takes). Two scope cuts, both measured, both
+load-bearing: **not under BLITZ** (the seat detours and healing titanium
+lose the mutual-kill tiebreak — showdown 16/16 → 13/16 with it on) and
+**attack seats only, never the guard** (the corridor tiles the belt needs
+covered are exactly the tiles enemy turrets shoot down).
+
 ## Measured (local gate, deterministic)
 
 - Official 21-map pool, both seats, 8-bot panel (casemate, gobbleglitch,
   vigil, ragnarok, valkyrie, warden, vanguard, warden_walk):
-  **313/336 = 0.932, every opponent ≥ 0.81** (heimdall 304, repair-cap-only
-  odin 308). Per-map minimum: bridge 12/16; every other map ≥ 0.81.
+  **311/336 = 0.926, every opponent ≥ 0.81** (heimdall 304; odin lineage
+  308 → 313 → 312 → 311 as the unknown-map arm climbed 134 → 140). Per-map:
+  showdown, vase, sweden back to 16/16; bridge 10/16 is the one map under
+  0.81 — all its losses are round-1000 tiebreaks, two by 80–130 Ti.
 - 40 generated unknown maps vs vigil + ragnarok, both seats:
-  **135/160 = 0.844** (heimdall and first odin: 134).
+  **140/160 = 0.875** — the best off-pool score in the record (heimdall
+  134; the pool−1/arm+3 trade is the same bet as the tabu port, made
+  because the final is played on terrain nobody tuned against).
+- Duel tend 15 vs 40 rounds: byte-identical on all 496 games — duels
+  resolve fast; the tend bound never binds.
 - Sibling matchups (heimdall, pantheon_replica_day3) byte-identical to the
   first odin: the projection never fires there.

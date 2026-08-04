@@ -271,6 +271,17 @@ MAX_RELAY_LAUNCHERS = 2
 # 26/42 and 8 maps won 2-0, against 24/42 and 7 with it off; against
 # ragnarok@79582fc it is unchanged at 26/42.
 AVOID_ENEMY_RAYS = False
+# --- Line-of-sight discipline -----------------------------------------------
+# Lucas's constraint, 2026-08-04: never seat a turret where an enemy turret
+# can already shoot it (tier 2), and prefer seats it cannot reach even by
+# rotating (tier 0) over ones it could rotate onto (tier 1). Tier 2 is taken
+# only when no tier 0/1 seat exists, and then under duel discipline: one such
+# turret at a time, built *facing the covering turret* so it kills the threat
+# before rotating on, with its Builder standing by healing it (4 HP for a
+# flat 1 Ti out-paces the 10 dmg/round it takes) until the duel is decided.
+COVER_TIER_SEATS = True
+# Rounds the Builder will tend the duel before writing the position off.
+DUEL_TEND_ROUNDS = 40
 
 # --- Siege barriers ---------------------------------------------------------
 # Barriers soaking enemy Gunner lanes aimed at our forward battery, out at the
