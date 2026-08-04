@@ -1,4 +1,4 @@
-"""Turtle bot -- pure defensive/economy strategy.
+"""Hardshell bot -- pure defensive/economy (turtle) strategy.
 
 Never attacks the enemy Core. Builds a Sentinel-anchored perimeter around
 our own Core, harvests every ore tile inside that perimeter, and wins on the
