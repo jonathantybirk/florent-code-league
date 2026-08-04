@@ -76,6 +76,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="stage only the short timing probes; do not schedule rating matches",
     )
+    planner.add_argument(
+        "--experiment",
+        action="store_true",
+        help=(
+            "mark this run as a private experiment: its matches never enter the published "
+            "ladder pool or the rated-bot ledger. USE THIS FOR SWEEPS AND PANELS -- an unmarked "
+            "partial run blocks every ladder publish with an incomplete-matrix error"
+        ),
+    )
 
     runner = sub.add_parser("run", help="play outstanding matches locally")
     _add_tid(runner)
@@ -302,6 +311,15 @@ def cmd_plan(args) -> int:
         versus=versus,
         compliance_specs=compliance_specs,
     )
+    if args.experiment:
+        # The marker is what keeps this run out of the ladder pool and the rated-bot ledger;
+        # see the note above automation._ladder_match_files.
+        (destination / "EXPERIMENT").write_text(
+            "This run is a private experiment. Its matches are excluded from the published\n"
+            "ladder pool and from the rated-implementation ledger. Delete this file only if\n"
+            "the run is a complete ladder-shaped round robin or challenger set.\n"
+        )
+        print(f"{args.tid}: marked as EXPERIMENT (excluded from the ladder pool)")
     rating_matches = [match for match in matches if match.kind == "rating"]
     compliance_matches = [match for match in matches if match.kind == "compliance"]
     pairs = len(planning.pairings(rating_specs, versus))

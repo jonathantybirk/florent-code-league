@@ -1,0 +1,5 @@
+This run is a private experiment (marked retroactively 2026-08-04: its panel-sized
+field was blocking every ladder publish with an incomplete-matrix error). Its matches
+are excluded from the published ladder pool and from the rated-implementation ledger.
+All CLI commands still work on it. Delete this file only if the run is a complete
+ladder-shaped round robin or challenger set.
