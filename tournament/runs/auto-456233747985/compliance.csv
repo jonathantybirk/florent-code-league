@@ -1,0 +1,4 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+heimdall@38e1456,heimdall,38e1456,pending,21,0,0,0,,,,,,0,0,9000,10000
+maporacle@38e1456,maporacle,38e1456,pending,21,0,0,0,,,,,,0,0,9000,10000
+odin@38e1456,odin,38e1456,pending,21,0,0,0,,,,,,0,0,9000,10000
