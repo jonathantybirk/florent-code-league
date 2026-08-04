@@ -453,7 +453,26 @@ HARVESTER_FINISH_STEPS = 2
 #     3      291/336  0.866  min 0.81    (level)
 #
 # Better on both arms without giving anything back on the worst matchup.
-MAX_RELAY_LAUNCHERS = 2
+# MEASURED AND ZERO under 2.3.4. The relay chain has been in this lineage since
+# Aug 1 and its cap was re-tuned to 2 as recently as heimdall, on numbers taken
+# when a Gunner cost 10 Ti and +10% scale. Re-measured on this bot, 336 games a
+# cell, as a full 2x2 with the ring:
+#
+#                    ring 1        ring 0
+#     relay 2     0.696 / 0.548  0.685 / 0.619
+#     relay 0     0.711 / 0.571  0.693 / 0.595
+#
+# Dropping the relay is +1.2pp of mean with no cost to the worst matchup, which
+# makes it free. Dropping the ring is the opposite shape -- -1.5pp of mean for
+# +4.75pp of worst matchup, concentrated on prospect and steward, the two
+# weakest -- so the ring stays and this note records the trade in case the
+# objective ever becomes the tail rather than the mean.
+#
+# The reason is the same one that keeps the attacker parked: a Launcher is a
+# permanent +10% on every price the team pays afterwards, and under 2.3.4 the
+# median game is decided by titanium collected at round 1000. Tempo bought with
+# scale is a loan against the win condition.
+MAX_RELAY_LAUNCHERS = 0
 
 # Prefer Gunner seats outside every visible enemy turret's firing ray. A turret
 # built where an enemy turret already points is shot before it has fired much,
