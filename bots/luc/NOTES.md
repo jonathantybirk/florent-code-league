@@ -1,7 +1,9 @@
 # Dev notes
 
 > **Measured before the Aug 4 turret patch (fcode ≤ 2.3.3).** Everything below was
-> measured when turrets were stronger. The 2026-08-04 balance pass (fcode 2.3.4)
+> measured when turrets were stronger — *except* the mjolnir section immediately
+> following, which is the first in this file measured on 2.3.4 and is marked as
+> such. The 2026-08-04 balance pass (fcode 2.3.4)
 > changed the Gunner to 25 HP (was 40), 20 Ti (was 10), +20% cost scaling (was
 > +10%), 7 damage (was 10) and 4 ammo per shot (was 2), and the Sentinel to 40 HP
 > (was 30) on a 2-round reload (was 3). That balance pass is the only rules change
@@ -9,6 +11,110 @@
 > but every turret-heavy number needs re-measuring before it is trusted again.
 
 Scratchpad for the next session. Not shipped doctrine — ideas to measure, not trust.
+
+## 2026-08-04 (2.3.4) — mjolnir: what actually kills our Core, and the ratio the patch inverted
+
+**Everything in this section is measured on fcode 2.3.4.** It is the first
+section in this file that is.
+
+`odin@38e1456` scores **0.926 on the 336-game panel under 2.3.3 and 0.720 under
+2.3.4** — same bot, same opponents, same maps. Six re-tuning variants over the
+ammunition thresholds, guard cap, attacker cap and siege barrier landed between
+234 and 248 against a 242 baseline: the whole spread is inside the panel's ~2pp
+noise floor. This is not a tuning problem.
+
+### The titanium table that decides 2.3.4
+
+| action | effect | HP per Ti |
+|---|---|---|
+| Barrier, as a wall to be shot | 30 HP for 3 Ti | **10.0** |
+| Builder heal | 4 HP for 1 Ti | **4.0** |
+| Sentinel fire | 18 damage for 10 Ti | 1.8 |
+| Gunner fire | 7 damage for 4 Ti | 1.75 |
+| Builder attack | 2 damage for 2 Ti | 1.0 |
+
+### What kills our Core (32 lost Cores, damage classified by event size)
+
+    gunner        20755 HP  97.6%   in 32/32 games
+    sentinel        504 HP   2.4%   in  5/32 games
+    builder-fire      0 HP   0.0%   in  0/32 games
+
+Enemy Builders never touch our Core. They emplace a Gunner near it — 114 within
+four tiles, median life 34 rounds — and shoot. 79% of lost Cores die before
+round 200.
+
+A Gunner's ray "stops at the first targetable tile", and every compass ray that
+reaches a 2×2 Core must cross its Chebyshev-1 ring. That ring is **twelve
+tiles**. Any building on all twelve and no Gunner on the map has a firing line
+into the Core. 36 Ti and +12% scale. It is not `_run_core_seal`, which walls
+the whole threat disc and never finishes.
+
+### The Sentinel ratio inverted and nobody noticed
+
+`_build_siege_sentinel` has always run *last*, and its docstring gives the
+reason: a Gunner "pays 2.78x more per point of damage". That was 10 damage per
+2 ammunition against 18 per 10. 2.3.4 makes it:
+
+    damage per ammunition   Gunner 7/4 = 1.75    Sentinel 18/10 = 1.80
+    damage per round        Gunner 7             Sentinel 9
+    attack radius squared   Gunner 13            Sentinel 32
+    HP                      Gunner 25            Sentinel 40
+    blocked by terrain      yes                  never
+
+Over 50 games this bot built **0.0 Sentinels and 5.8 Gunners** and dealt 100%
+of its damage to enemy Cores with Gunners. Promoting the Sentinel is +9 games.
+The range gap is the only strictly asymmetric advantage on the board: a seat
+beyond r²=13 hits their Core and nothing they own answers it.
+
+### Shipped (bots/luc/mjolnir)
+
+    odin 38e1456 baseline       242/336  0.720   core losses 70
+    + twelve-tile wall          250/336  0.744               68
+    + harvester cap 4 -> 6      254/336  0.756               64
+    + Sentinel siege promoted   264/336  0.786               51
+
+### Measured and rejected — do not re-try without reading why
+
+| idea | total | why |
+|---|---|---|
+| cut every Gunner budget | 205 | Core losses 68 → 113. Gunners still stop their attackers; the wall supplements them, it does not replace them. |
+| dedicated 4th "waller" Builder + mender doorway | 213 | +20% scale and one deliberately open ray cost far more than the maintenance bought |
+| split `_guard_home`, wall before the denial turret only | 236 | |
+| `AMMO_TARGET` 120→240, floor 80→160 | 229 | converting more titanium starves building |
+| two economy Builders out of three | 141 | **bad experiment** — leaves no attacker at all; tests "no offence" |
+| wall the enemy Core's spawn ring | n/a | mechanism dead: every bot on this panel spawns its Builders on rounds 0–2 and never again. Code shipped OFF, one line to enable against an opponent that reinforces. |
+
+### Two null-vs-negative traps, both of which cost a wrong conclusion
+
+1. "The wall must not outrank the guard, 236 vs 246" was committed as a
+   measured result. The wall it tested **never got built** — it sorted targets
+   by distance to the enemy Core, walked to the far side, and circled the ring
+   standing on the tiles it meant to fill, because every ring tile is a cardinal
+   step from its two ring neighbours and against a map edge there is no shell
+   outside to build from. With the cycle-walk fix the comparison reverses:
+   **wall-first 250, guard-first 242.**
+2. The waller variant was smoke-tested on three hand-picked maps and looked
+   spectacular — Core never damaged on two of them, jackpot surviving to round
+   1000 instead of dying at 74. On the full panel it scored **213**.
+
+A null result and a negative result are indistinguishable in a table. Check the
+mechanism fired before believing the number, every time.
+
+### Still open
+
+- The ring degrades: on jackpot it closes at round 25 with five tiles and is
+  down to three by round 100. Traced cause — our conveyor on a ring tile dies
+  on round 35 and the enemy builds a **Gunner on that exact tile** on round 36,
+  point-blank against the Core and on ground we can no longer build on. A
+  conveyor blocks a ray but is walkable and only 20 HP, so it is the ring's
+  weak link by construction. Demolishing a ring squatter with Builder fire (25
+  HP, thirteen hits, 26 Ti, no scale tax) is measured on the panel as `y_demo`.
+- `_run_bulwark`'s memory expiry compared against `SLOT_CORE_DAMAGED`, which
+  holds an escalation *level* (0/1/2) and not a round — so it fired at most
+  twice a match and a Builder never returned to a wall it had walked away from.
+  Fixed to expire on rounds; measured as `y_rc15`.
+- vanguard is the one opponent the wall makes worse: 30/42 → 25/42, and the
+  losses are Core deaths at rounds 74–129 in games the baseline won at 140–280.
 
 ## 2026-08-04 (late) — denial turrets: a firing ray is a wall you can buy
 
