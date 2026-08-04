@@ -207,7 +207,7 @@ ROTATE_TITANIUM_RESERVE = 40
 # foot and are in sight for longer before they emplace, and eight tiles of
 # warning is now worth what six was when both sides were being thrown across
 # the map. Past r^2 64 it starts paying turrets for scouts again.
-GUARD_RADIUS_SQ = 64
+GUARD_RADIUS_SQ = 36
 # Turrets this Builder will put up for that job.
 #
 # This is the one constant chosen to maximise the *worst* matchup rather than
@@ -229,7 +229,7 @@ MAX_GUARD_GUNNERS = 4
 # same *count* of +20% steps is what matters, and two Sentinels levy +40%
 # where four Gunners levy +80%. Half the tax for most of the damage is the
 # whole reason the patch changed which turret this bot buys.
-MAX_GUARD_SENTINELS = 3
+MAX_GUARD_SENTINELS = 2
 # Steps it will take toward an intruder to find a firing seat.
 #
 # Four was chosen when the attacker was ferried across the map and the guard's

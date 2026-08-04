@@ -63,7 +63,7 @@ PAD_FIRST_ORDER = False
 # Not zero: one site is the pad, and dropping it costs 5 games on the generated
 # set and 20 on the pool. The falloff at both edges is the shape a real effect
 # has.
-RING_MAX_SITES = 0
+RING_MAX_SITES = 1
 
 # Ferry toward the symmetry inference's committed guess as well as toward a
 # Core a unit has actually seen.
@@ -540,7 +540,7 @@ LAUNCHER_QUIET_ROUNDS = 45
 # round-1000 tiebreak is titanium collected and the wall sends far more games
 # there: Core losses fall from 70 to 51 across these changes, and almost all
 # of them become full-length games instead.
-NETWORK_CAP_EARLY = 6
+NETWORK_CAP_EARLY = 4
 NETWORK_CAP_LATE = 8
 ECON_EXPAND_ROUND = 120
 

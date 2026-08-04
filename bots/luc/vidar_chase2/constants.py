@@ -244,7 +244,7 @@ MAX_GUARD_SENTINELS = 2
 #
 # It is worth +2 games against valkyrie and +1 against vigil, ragnarok, warden
 # and gobbleglitch each -- a broad gain, not one map.
-GUARD_CHASE_STEPS = 6
+GUARD_CHASE_STEPS = 2
 
 # Field Gunners are now set per doctrine in doctrine.py: 0 on open ground
 # (measured: a roaming enemy walks away from the turret), 2 under FORTIFY
@@ -345,7 +345,7 @@ MIN_AMMO_FOR_SENTINEL = 40
 # Ti/round, so two Sentinels take two thirds of a working economy and three
 # take all of it. Two is the arithmetic answer; the flag exists to check the
 # arithmetic against the panel.
-SIEGE_SENTINEL_BATTERY = 1
+SIEGE_SENTINEL_BATTERY = 2
 # Barriers laid around a fresh siege Sentinel so return fire cannot reach it;
 # its own shot does not care. Skipped when the bank is thinner than this.
 SENTINEL_WRAP_RESERVE = 20
