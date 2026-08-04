@@ -1,5 +1,0 @@
-source_commit = "e7c519f63"
-source_path = "bots/luc/mjolnir"
-engine = "2.3.4"
-status = "development"
-variant = "mjolnir-plus-belt-los-ore-retarget-ore-hints"
