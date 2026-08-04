@@ -4,7 +4,7 @@ Recap & checkpoint
 
 You now have a bot that:
 
-Knows the three turret types and their tradeoffs — Gunner (cheap, fast), Sentinel (expensive, hard-hitting), Launcher (repositions, doesn't damage)
+Knows the three turret types and their tradeoffs — Gunner (cheapest, fastest-firing, fragile), Sentinel (durable, hard-hitting, long reach), Launcher (repositions, doesn't damage)
 
 Builds a Gunner with ct.build_gunner and confirmed it does nothing without ammunition
 
