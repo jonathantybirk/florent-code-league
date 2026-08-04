@@ -78,8 +78,22 @@ class Source:
 # A contributor who starts a new top-level directory needs a line here --
 # discovery is deliberately opt-in per subtree rather than scanning all of bots/, because the
 # repo also contains vendored rivals, probes and starter templates that must never be entered.
+# The leaderboard-v2 prune (2026-08-04): bots retired from the roster still exist on their
+# branches, and their v1 match data is archived outside tournament/runs/, so without these
+# excludes discovery would see them as brand-new implementations and re-evaluate them.
+PRUNED_V2_EXCLUDES = (
+    "bots/jon/legacy",
+    "bots/jon/legacy/*",
+    "bots/jon/archive/attack_wave_v1",
+    "bots/jon/archive/frontier_v1",
+    "bots/jon/archive/frontier_v2",
+    "bots/jon/archive/siege_v1",
+    "bots/jon/archive/siege_v2",
+    "bots/jon/archive/titanium_v1",
+    "bots/jon/fair/casemate",
+)
 DEFAULT_SOURCES = (
-    Source("x/jon", "bots/jon"),
+    Source("x/jon", "bots/jon", excludes=PRUNED_V2_EXCLUDES),
     Source("x/luc", "bots/luc"),
     Source("elias_dev", "bots/elias"),
     # Viktor keeps his bots at the top level instead of a personal directory, so the prefix is all
@@ -89,7 +103,11 @@ DEFAULT_SOURCES = (
     Source(
         "viktor",
         "bots",
-        excludes=("bots/tester", "bots/test", "bots/test/*", "bots/starter"),
+        excludes=(
+            "bots/tester", "bots/test", "bots/test/*", "bots/starter",
+            # leaderboard-v2 prune, same reason as PRUNED_V2_EXCLUDES above
+            "bots/green", "bots/green/*", "bots/hardshell", "bots/hardshell/*",
+        ),
     ),
 )
 DEFAULT_STATE = REPO_ROOT / "tournament" / "automation-state.json"

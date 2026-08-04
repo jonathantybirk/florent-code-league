@@ -7,6 +7,12 @@
 # `fair` means the implementation uses only runtime observations and general game
 # rules. `unfair` means it reads or embeds data from the published official maps.
 # Every registered implementation carries exactly one of these two tags.
+#
+# 2026-08-04 (leaderboard v2, fcode 2.3.4 turret balance patch): 21 bots below 18% win
+# rate were retired for the full re-evaluation -- all of bots/jon/legacy, six of the
+# eight archive bots (adaptive_v1 and frontier survive), casemate, and Viktor's green
+# and hardshell. Their v1 match data is archived under tournament/runs-v1/. Discovery
+# excludes for their paths live in automation.DEFAULT_SOURCES and the systemd unit.
 
 [[bot]]
 name   = "adaptive_v1"
@@ -15,45 +21,9 @@ path   = "bots/jon/archive/adaptive_v1"
 tags   = ["jon", "archive", "fair"]
 
 [[bot]]
-name   = "attack_wave_v1"
-commit = "9713344"
-path   = "bots/jon/archive/attack_wave_v1"
-tags   = ["jon", "archive", "fair"]
-
-[[bot]]
 name   = "frontier"
 commit = "9713344"
 path   = "bots/jon/archive/frontier"
-tags   = ["jon", "archive", "fair"]
-
-[[bot]]
-name   = "frontier_v1"
-commit = "9713344"
-path   = "bots/jon/archive/frontier_v1"
-tags   = ["jon", "archive", "fair"]
-
-[[bot]]
-name   = "frontier_v2"
-commit = "9713344"
-path   = "bots/jon/archive/frontier_v2"
-tags   = ["jon", "archive", "fair"]
-
-[[bot]]
-name   = "siege_v1"
-commit = "9713344"
-path   = "bots/jon/archive/siege_v1"
-tags   = ["jon", "archive", "fair"]
-
-[[bot]]
-name   = "siege_v2"
-commit = "9713344"
-path   = "bots/jon/archive/siege_v2"
-tags   = ["jon", "archive", "fair"]
-
-[[bot]]
-name   = "titanium_v1"
-commit = "9713344"
-path   = "bots/jon/archive/titanium_v1"
 tags   = ["jon", "archive", "fair"]
 
 [[bot]]
@@ -73,78 +43,6 @@ name   = "vanguard"
 commit = "9713344"
 path   = "bots/jon/fair/vanguard"
 tags   = ["jon", "fair"]
-
-[[bot]]
-name   = "baiter"
-commit = "9713344"
-path   = "bots/jon/legacy/baiter"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "nemesis"
-commit = "9713344"
-path   = "bots/jon/legacy/nemesis"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "reaver"
-commit = "9713344"
-path   = "bots/jon/legacy/reaver"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "riptide"
-commit = "9713344"
-path   = "bots/jon/legacy/riptide"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "turtle"
-commit = "9713344"
-path   = "bots/jon/legacy/turtle"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "vg_v1"
-commit = "9713344"
-path   = "bots/jon/legacy/vg_v1"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "vg_v2"
-commit = "9713344"
-path   = "bots/jon/legacy/vg_v2"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "vg_v3"
-commit = "9713344"
-path   = "bots/jon/legacy/vg_v3"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "vg_v4"
-commit = "9713344"
-path   = "bots/jon/legacy/vg_v4"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "vg_v5"
-commit = "9713344"
-path   = "bots/jon/legacy/vg_v5"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "vg_v6"
-commit = "9713344"
-path   = "bots/jon/legacy/vg_v6"
-tags   = ["jon", "legacy", "fair"]
-
-[[bot]]
-name   = "vg_v7"
-commit = "9713344"
-path   = "bots/jon/legacy/vg_v7"
-tags   = ["jon", "legacy", "fair"]
 
 [[bot]]
 name   = "uw_v1"
@@ -457,12 +355,6 @@ name   = "claude_challenger_3"
 commit = "fdc1e1f"
 path   = "bots/lucas/claude_challenger_3"
 tags   = ["lucas", "unfair"]
-
-[[bot]]
-name   = "casemate"
-commit = "902be71"
-path   = "bots/jon/fair/casemate"
-tags   = ["jon", "fair"]
 
 [[bot]]
 name   = "casemate_oracle"

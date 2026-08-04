@@ -9,12 +9,14 @@ Type=oneshot
 TimeoutStartSec=3600
 WorkingDirectory=/home/Ucals/projects/florent-code-league-ci
 Environment=PYTHONUNBUFFERED=1
+# The x/jon and viktor excludes mirror automation.PRUNED_V2_EXCLUDES: bots retired in the
+# 2026-08-04 leaderboard-v2 prune whose directories still exist on their branches.
 ExecStart=/home/Ucals/projects/florent-code-league-ci/.venv/bin/python -m tournament.automation \
-    --canonical-run jon-vanguard-818f3b4 \
-    --source x/jon:bots/jon \
+    --canonical-run v2-full-20260804 \
+    --source "x/jon:bots/jon:bots/jon/legacy,bots/jon/legacy/*,bots/jon/archive/attack_wave_v1,bots/jon/archive/frontier_v1,bots/jon/archive/frontier_v2,bots/jon/archive/siege_v1,bots/jon/archive/siege_v2,bots/jon/archive/titanium_v1,bots/jon/fair/casemate" \
     --source x/luc:bots/luc \
     --source elias_dev:bots/elias \
-    --source viktor:bots:bots/tester,bots/test,bots/test/*,bots/starter \
+    --source "viktor:bots:bots/tester,bots/test,bots/test/*,bots/starter,bots/green,bots/green/*,bots/hardshell,bots/hardshell/*" \
     --self-update-branch x/tournament
 Nice=10
 IOSchedulingClass=idle

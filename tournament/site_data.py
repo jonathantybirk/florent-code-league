@@ -341,15 +341,22 @@ def build(run_dir: Path, output_dir: Path) -> dict:
             metadata.get(bot_id, {}).get("path", ""),
         )
     }
-    # Both switches on the page narrow the field, and a rating is only meaningful against the
-    # field it was computed over. Filtering a larger field's numbers client-side would show, say,
-    # a fair bot's mElo earned partly against unfair opponents that are no longer on screen. So
-    # every combination is evaluated separately here.
+    # Leaderboard v2: strategies that exceeded the 10 ms turn limit are excluded from every
+    # published field and from the detail documents. Their raw match rows stay in the run CSVs
+    # on x/tournament for anyone who wants them.
+    benchmark_matches = [
+        row
+        for row in benchmark_matches
+        if row["bot_a"] in within_time_ids and row["bot_b"] in within_time_ids
+    ]
+    detail_matches = [row for row in benchmark_matches if row.get("kind") == "rating"]
+    # The fairness switch on the page narrows the field, and a rating is only meaningful against
+    # the field it was computed over. Filtering a larger field's numbers client-side would show,
+    # say, a fair bot's mElo earned partly against unfair opponents that are no longer on screen.
+    # So each combination is evaluated separately here.
     fields = {
         "": within_time_ids,
-        "_including_over_time": rated_ids,
         "_fair": within_time_ids & fair_ids,
-        "_fair_including_over_time": rated_ids & fair_ids,
     }
     # A map pool is the second thing a rating is relative to, and for the same reason as the
     # field: Nash averaging asks "unexploitable against which opponents, on which maps". Pooling
@@ -426,16 +433,9 @@ def build(run_dir: Path, output_dir: Path) -> dict:
             benchmarks[f"{pool_suffix}{field_suffix}"] = (matches, rows)
 
     within_time_matches, ranking_rows = benchmarks[""]
-    all_matches, ranking_rows_including_over_time = benchmarks["_including_over_time"]
 
-    rating_by_id = {
-        row["bot_id"]: row for row in ranking_rows_including_over_time
-    }
-    slug_by_id = {bot_id: _slug(bot_id) for bot_id in rated_ids}
-    rank_by_id = {
-        row["bot_id"]: int(row["rank"])
-        for row in ranking_rows_including_over_time
-    }
+    rating_by_id = {row["bot_id"]: row for row in ranking_rows}
+    rank_by_id = {row["bot_id"]: int(row["rank"]) for row in ranking_rows}
 
     by_bot: dict[str, list[dict]] = defaultdict(list)
     for row in detail_matches:
@@ -445,7 +445,7 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     details_dir = output_dir / "bots"
     details_dir.mkdir(parents=True, exist_ok=True)
     expected_files = set()
-    for ranking in ranking_rows_including_over_time:
+    for ranking in ranking_rows:
         bot_id = ranking["bot_id"]
         bot_rows = by_bot[bot_id]
         opponent_groups: dict[str, list[dict]] = defaultdict(list)
@@ -553,6 +553,10 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     index = {
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "run_id": run_dir.name,
+        # Bumped when the roster or engine changes enough that ratings across the boundary are
+        # not comparable. v2 = 2026-08-04: fcode 2.3.4 turret balance patch, 21 bots retired,
+        # over-time strategies dropped from every published field.
+        "leaderboard_version": 2,
         **{
             f"field{pool_suffix}{field_suffix}": {
                 "bots": len(benchmarks[f"{pool_suffix}{field_suffix}"][1]),
