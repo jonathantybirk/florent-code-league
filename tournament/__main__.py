@@ -257,8 +257,15 @@ def _warn_if_narrower_than_the_ladder(specs: list, versus: list | None) -> None:
 def cmd_plan(args) -> int:
     from tournament import duplicates
 
+    from tournament import loadcheck
+
     roster = _plannable()
     specs = registry.select(roster, args.bots)
+    # A bot that cannot be imported produces nothing but identical failures, and a run containing
+    # one can never complete. Drop it here rather than discovering it 4,830 matches later.
+    specs, unloadable = loadcheck.partition(specs)
+    for spec, reason in unloadable:
+        print(f"excluding {spec.bot_id}: cannot be imported -- {reason}")
     compliance_specs = list(specs)
     if args.compliance_only and args.vs:
         raise ValueError("--compliance-only cannot be combined with --vs")

@@ -679,3 +679,113 @@ def test_an_unreachable_cluster_leaves_the_run_in_flight(tmp_path, monkeypatch):
     # Deferring is the safe outcome, so a cluster hiccup must not raise out of the tick.
     assert automation.recover_stranded_results(["auto-offline"]) == []
     assert automation.unfinished_runs()
+
+
+def _bjobs_missing(*job_ids: str) -> str:
+    return "\n".join(f"Job array <{job_id}> is not found" for job_id in job_ids)
+
+
+def test_a_run_whose_arrays_vanished_is_requeued(tmp_path, monkeypatch):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-abandoned", merged=40, scheduled=100)
+    (root / "auto-abandoned" / "hpc.json").write_text(json.dumps({"job_ids": ["111", "222"]}))
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    # The cluster stopped short and every array it submitted is gone: no amount of fetching
+    # finishes this, so it would defer every later bot forever.
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100, "done": 40, "job_ids": ["111", "222"], "bjobs": _bjobs_missing("111", "222"),
+    })
+    monkeypatch.setattr(automation.hpc, "fetch", lambda tid, settings=None: 40)
+    submitted = []
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda tid, settings=None: submitted.append(tid))
+
+    assert automation.resubmit_abandoned_runs(["auto-abandoned"]) == ["auto-abandoned"]
+    assert submitted == ["auto-abandoned"]
+
+
+def test_a_run_with_one_array_still_alive_is_not_requeued(tmp_path, monkeypatch):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-partly-live", merged=40, scheduled=100)
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    # Four arrays finished, one is still going. A run split across arrays reports "not found" for
+    # the finished ones, and re-submitting on that alone would duplicate live work.
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100, "done": 40, "job_ids": ["111", "222"], "bjobs": _bjobs_missing("111"),
+    })
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda tid, settings=None: pytest.fail("re-queued a live run"))
+
+    assert automation.resubmit_abandoned_runs(["auto-partly-live"]) == []
+
+
+def test_requeueing_gives_up_after_the_cap(tmp_path, monkeypatch):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-hopeless", merged=40, scheduled=100)
+    run_dir = root / "auto-hopeless"
+    (run_dir / "resubmits.json").write_text(json.dumps({"count": automation.MAX_RESUBMITS}))
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100, "done": 40, "job_ids": ["111"], "bjobs": _bjobs_missing("111"),
+    })
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda tid, settings=None: pytest.fail("kept re-queueing a failing run"))
+
+    # A run that keeps coming back short is failing for a reason re-queueing will not fix.
+    assert automation.resubmit_abandoned_runs(["auto-hopeless"]) == []
+
+
+def test_matches_with_an_unimportable_bot_do_not_keep_a_run_in_flight(tmp_path, monkeypatch):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    run_dir = root / "auto-broken"
+    run_dir.mkdir(parents=True)
+    entries = [
+        {"match_id": "m1", "bot_a": "good@1", "bot_b": "good2@1", "kind": "rating"},
+        {"match_id": "m2", "bot_a": "good@1", "bot_b": "broken@1", "kind": "rating"},
+    ]
+    (run_dir / "schedule.jsonl").write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+    with open(run_dir / "matches.csv", "w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["match_id", "bot_a", "bot_b", "kind"])
+        writer.writeheader()
+        writer.writerow(entries[0])  # only the playable match ever produced a result
+    (run_dir / "manifest.json").write_text(json.dumps({"bots": [
+        {"bot_id": "good@1", "commit": "a" * 40, "path": "bots/good"},
+        {"bot_id": "good2@1", "commit": "b" * 40, "path": "bots/good2"},
+        {"bot_id": "broken@1", "commit": "c" * 40, "path": "bots/broken"},
+    ]}))
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.loadcheck, "unloadable_ids", lambda bots: {"broken@1"})
+
+    # m2 can never produce a result, so counting it would defer every later bot forever.
+    assert automation.outstanding_matches(run_dir) == set()
+    assert automation.unfinished_runs() == {}
+
+
+def test_a_run_is_still_in_flight_when_its_playable_matches_are_missing(tmp_path, monkeypatch):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    run_dir = root / "auto-live"
+    run_dir.mkdir(parents=True)
+    entries = [
+        {"match_id": "m1", "bot_a": "good@1", "bot_b": "good2@1", "kind": "rating"},
+        {"match_id": "m2", "bot_a": "good@1", "bot_b": "broken@1", "kind": "rating"},
+    ]
+    (run_dir / "schedule.jsonl").write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+    (run_dir / "manifest.json").write_text(json.dumps({"bots": []}))
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.loadcheck, "unloadable_ids", lambda bots: {"broken@1"})
+
+    # The good pair has not played yet, so the run genuinely is still going.
+    assert automation.outstanding_matches(run_dir) == {"m1"}
