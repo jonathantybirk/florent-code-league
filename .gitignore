@@ -40,3 +40,12 @@ tournament/custom_maps/*
 # where tournament discovery would register a duplicate bot name.
 benchmarks/runs/
 benchmarks/ablations/
+
+# Discord archive. The exports and the database hold other people's messages,
+# verbatim and attributed -- they are working data, not repository content, and
+# they must not travel with the repo. The READMEs are tracked so the directory's
+# purpose is documented; nothing else here is.
+discord/exports/*
+!discord/exports/README.md
+discord/archive.sqlite3
+discord/archive.sqlite3-*
