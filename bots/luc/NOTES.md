@@ -2,7 +2,71 @@
 
 Scratchpad for the next session. Not shipped doctrine — ideas to measure, not trust.
 
-## 2026-08-05 — the home guard, and where the map hypothesis actually lands
+## 2026-08-04 — odin: the repair cap shipped, and the Core learns it is dying
+
+### odin v1 (45aa24a90): heimdall plus the unshipped 0.917 combo
+
+The r_cap3combo build from the Aug 3–4 night session (repair cap 3 +
+`AVOID_ENEMY_RAYS` off + siege barriers off) was still sitting in that
+session's scratchpad, measured 308/336 on the pool and never shipped. Its
+"outstanding" generated-map arm turned out to already be in the results cache:
+134/160, byte-identical to heimdall. Shipped as `bots/luc/odin` after a
+determinism smoke test reproduced the cached cells exactly. First cluster
+read (partial run, auto-ac724e1e86fd): 0.914 over 3,564 matches, 104
+opponents; every sub-0.75 matchup is our own family (heimdall 0.52,
+pantheon_replica_day3 0.60–0.62) — sibling wars, not external weakness.
+
+### odin v2 (5ed86d3cb): the Core-death projection, Lucas's idea, landed
+
+The jackpot diagnosis "split production between attack and defence" cashed
+out concretely: our guard Builder died r143, the sole survivor was the
+attacker across the map, and the Core bled 10/round from r157 to r192 with
+**762 titanium banked**. Income healthy → the watchdog respawn never fires;
+nothing replaces a dead defender. The dying-rich failure, one level up.
+
+The fix is the same conditional-respawn shape as the income watchdog: the
+Core projects forward from its own HP curve (damage over last 20 rounds,
+dead within 60 at that rate, nothing judged before round 40) and spawns up
+to two Builders under a new `CORE_DYING_FLAG` (bit 3 of SLOT_CORE_DAMAGED).
+The first runs `_guard_home`; the second **only heals** — in the traced game
+both defenders picked turret duels and the Core was healed exactly once all
+game, while 4 HP for a flat 1 Ti out-pays everything at any scale. The
+traced loss became a 1000-round tiebreak win, 5,180 vs 2,910 mined.
+
+Panel: 313/336 = 0.932 (heimdall 304, odin v1 308), every opponent ≥ 0.81,
+jackpot 9/16 → 13/16, generated arm 135/160. Pre-registered before the run
+(jackpot ≥ +2 cells, no opponent −2, pool ≥ 308, arm ≥ 134) and every clause
+passed. Sibling matchups byte-identical — the projection never fires there.
+
+### The grace round is the whole mechanic
+
+Without a grace round the flag fired on **round 14** of a longship rush,
+bought two Builders at +20% each into a small bank, and the opening died of
+the scale bill (longship 13/16 → 11/16) — the unconditional-refill lesson
+recurring precisely. Grace 0/40/80 measured: 312 / **313** / 312, and only
+grace 40 keeps both longship 13 and jackpot 13. An early rush belongs to the
+reactive guard; the projection exists for the mid-game where the guard is
+dead and the bank is rich.
+
+### A latent bug worth knowing: the heartbeat undercounts riders
+
+In the longship misfire the Core read `live=1` with all three opening
+Builders alive. A Builder in Launcher transit gets no turn, misses a
+heartbeat write, and the reinforcement gate (`live >= MAX_LIVE_BUILDERS`)
+stops holding. The projection's grace round hides the consequence for v2,
+but the income-dead respawn path reads the same counter and could
+double-spawn during a ferry. Not fixed; worth a look before anything else
+leans on `live`.
+
+### Bridge is the last sub-0.81 map, and its cells are razor-thin
+
+sentry_g40 bridge 12/16; all four losses are round-1000 titanium tiebreaks:
+two lost by 80 and 130 Ti out of 2,400–7,300, and two seat-b zero-economy
+games (0 and 430 mined — one of them lost 0 to **90**). The zero-economy
+pair is the repair cap's failure mode where the corridor is the only route:
+the cap stops paying for the contested tile and the belt has nowhere else to
+go. Fixing that is single-map surgery on 16-game cells; left for the
+4,000-game cluster instrument. Everything else ≥ 0.81 per map.
 
 ### The gap was never the attack, it was when the defence wakes up
 
