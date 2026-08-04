@@ -205,6 +205,35 @@ everywhere (valkyrie 41 → 40, reproduced exactly here as a port check). The
 flank trigger question ("why is the attacker never present when the wall goes
 up") is noted as odin's next open thread alongside the sibling war.
 
+### Lucas's line-of-sight theory, measured: right about the attack, wrong about the guard, fatal under BLITZ
+
+The theory — we keep seating turrets inside enemy turrets' lines of sight —
+shipped in odin v4 (19630293c) after three full-panel ablations:
+
+- **Full package** (tiers everywhere + duel-heal): pool 308, arm 138. The
+  losses were localized and diagnostic: showdown 16/16 → 13/16 with two
+  losses on the *mutual-kill stored-titanium tiebreak* at rounds 28–33
+  (under BLITZ, seat detours and healing titanium are tiebreak poison), and
+  bridge 12 → 10 (the guard moved off the corridor tiles the belt needs).
+- **BLITZ exempt + guard reverted**: pool 311, arm **140/160 = 0.875**, the
+  best off-pool number in the record. Shipped.
+- **Duel tend 15 vs 40**: byte-identical on all 496 games. Duels resolve
+  fast; the bound never binds. Left at 40.
+
+The duel mechanic works as specced: the tier-2 turret is built facing the
+covering turret (first on the ray both ways, so it fires from round one and
+its own rotation logic swings it onto the Core once the duel is won), and
+its Builder stands adjacent healing 4 HP for a flat 1 Ti against the
+10/round it takes. What did NOT survive contact: applying the preference to
+the home guard (the corridor tiles worth covering are exactly the covered
+ones — defence wants contested tiles, attack wants safe ones), and applying
+any of it to a race (BLITZ was already the doctrine with no ring Builder;
+it is also the doctrine where this whole family of ideas is a tax).
+
+Bridge's remaining deficit (10/16) is now the attack-side tier detour on
+the one map whose only approach is one corridor; still single-map surgery,
+still left for the cluster instrument.
+
 ### Bridge is the last sub-0.81 map, and its cells are razor-thin
 
 sentry_g40 bridge 12/16; all four losses are round-1000 titanium tiebreaks:
