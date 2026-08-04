@@ -36,13 +36,29 @@ Action cooldown
 
 Passable terrain
 
-Builder Bots can traverse:
+Passable:
 
-Any tile with no building on it, as long as it isn't a WALL — this includes EMPTY tiles and ORE_TITANIUM tiles, even before a Harvester is built there
+EMPTY tiles
 
-Tiles with a Conveyor or Splitter building, belonging to either team
+ORE_TITANIUM tiles, even before a Harvester is built there
 
-Walls (WALL), tiles occupied by another Builder Bot, and tiles with any other building (Harvester, Barrier, a Core — including your own — or a turret) are impassable. The Core's 2×2 footprint is never bot-passable, even for its own team.
+Conveyor tiles, either team
+
+Splitter tiles, either team
+
+Impassable:
+
+WALL tiles
+
+Tiles occupied by another Builder Bot
+
+Harvester tiles, either team
+
+Barrier tiles, either team
+
+Core tiles, either team — including your own; the Core's 2×2 footprint is never bot-passable, even for its own team
+
+Turret tiles (Gunner, Sentinel, or Launcher), either team
 
 Abilities
 
