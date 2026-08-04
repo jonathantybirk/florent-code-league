@@ -1,6 +1,7 @@
 """Atlas-aware Core opening, doctrine choice, and reinforcement spawning."""
 
 import sys
+from collections import deque
 from typing import TYPE_CHECKING
 
 import doctrine
@@ -110,19 +111,84 @@ def run(player: "Player", ct: Controller) -> None:
                   else _scout_target(ct, role - economy_builders))
         goals = [target]
 
-    # The Core's action radius is sqrt(8), not 2. Pantheon uses the reach --
-    # its round-0 Builder sits at offsets like (2,0) and (2,1) -- which is what
-    # lets the pad go up a round earlier without anyone walking.
     candidates = [tile for tile in ct.get_nearby_tiles(8) if ct.can_spawn(tile)]
-    candidates.sort(key=lambda tile: (
-        min(_chebyshev(tile, goal) for goal in goals),
-        tile.distance_squared(target),
-        tile.x,
-        tile.y,
-    ))
+    if role == LAUNCHER_BUILDER_INDEX:
+        # The round-0 Builder goes on the ring of tiles orthogonally adjacent
+        # to the Core footprint -- 25 of 25 in fresh v20 games against
+        # tempest_fast -- and specifically on the one with the shortest *walk*
+        # to the enemy Core: 24 of 25, against 11 of 25 for ranking that ring
+        # by straight-line distance. It is the same objective the throws and
+        # the pad already use, applied one step earlier.
+        #
+        # The Core is 2x2, so this ring is the footprint's neighbours. The rule
+        # that stood here treated the Core as a point and stepped out along an
+        # eight-way ray, which put the Builder on the wrong tile on nearly
+        # every map and diverged from the real game on round 0.
+        ring = {tuple(t) for t in _core_ring(ct, tuple(ct.get_position()))}
+        on_ring = [t for t in candidates if tuple(t) in ring]
+        if on_ring:
+            walk = _walk_from(ct, player, tuple(target_core(ct, player)))
+            candidates = sorted(on_ring, key=lambda tile: (
+                walk.get(tuple(tile), 1 << 20),
+                tile.distance_squared(Position(*target_core(ct, player))),
+                tile.x, tile.y,
+            ))
+        else:
+            candidates.sort(key=lambda tile: (
+                min(_chebyshev(tile, goal) for goal in goals),
+                tile.distance_squared(target), tile.x, tile.y))
+    else:
+        candidates.sort(key=lambda tile: (
+            min(_chebyshev(tile, goal) for goal in goals),
+            tile.distance_squared(target),
+            tile.x,
+            tile.y,
+        ))
     if candidates:
         ct.spawn_builder(candidates[0])
         player.builders_spawned += 1
+
+
+def target_core(ct: Controller, player):
+    """Best available guess at the enemy Core's north-west cell."""
+    if player.atlas is not None:
+        return tuple(player.atlas.enemy_core)
+    return tuple(_scout_target(ct, 0))
+
+
+def _core_ring(ct: Controller, core):
+    """Tiles orthogonally adjacent to the 2x2 Core footprint."""
+    foot = {(core[0] + a, core[1] + b) for a in (0, 1) for b in (0, 1)}
+    out = []
+    for x, y in sorted(foot):
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            q = (x + dx, y + dy)
+            if q not in foot and _on_map(ct, Position(*q)) and q not in out:
+                out.append(q)
+    return out
+
+
+def _walk_from(ct: Controller, player, enemy):
+    """Walking distance to the enemy Core over the terrain we know.
+
+    With an atlas hit the walls are exact from round 0; without one the wall
+    set is empty and this degrades to straight-line ordering, not to nonsense.
+    """
+    walls = set(player.atlas.walls) if player.atlas is not None else set()
+    w, h = ct.get_map_width(), ct.get_map_height()
+    srcs = [(enemy[0] + a, enemy[1] + b) for a in (0, 1) for b in (0, 1)
+            if 0 <= enemy[0] + a < w and 0 <= enemy[1] + b < h]
+    dist = {s: 0 for s in srcs}
+    queue = deque(srcs)
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            n = (x + dx, y + dy)
+            if (0 <= n[0] < w and 0 <= n[1] < h and n not in dist
+                    and n not in walls):
+                dist[n] = dist[(x, y)] + 1
+                queue.append(n)
+    return dist
 
 
 def _pad_site(ct: Controller, player) -> Position:

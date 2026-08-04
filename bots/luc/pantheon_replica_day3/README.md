@@ -190,6 +190,45 @@ machinery for exactly that (`_build_launcher_breaker_gunner`,
 `_block_firing_lane`, `_preserves_friendly_turret_lanes`); it is not yet driven
 by Pantheon's siege pattern.
 
+## Pantheon v20, and scrimmaging it directly
+
+Pantheon shipped v20 (was v16) and moved to 2014. Rather than fit to replays of
+a bot that no longer exists, this now scrimmages the live one: five unrated
+challenges covering all 21 maps give 25 fresh **Pantheon v20 vs our v5
+tempest_fast** games. Pantheon won every one of them.
+
+`tools/pantheon_analysis/repro_v20.py` reruns each of those games locally with
+the replica in Pantheon's seat and diffs the seat's actions round by round.
+That is the 1:1 target, and it is a much harder test than any win rate.
+
+**Current: 18/250 rounds identical (7%), median kill-round delta +2.**
+
+Nothing about the opening changed in v20 -- the same constants validate on it
+(one Launcher per game 112/115, lifetime exactly five 111/115, throws on r2-r5,
+64% at maximum range, farthest-tile tie-break 66/66).
+
+### What the 1:1 diff found: the round-0 Builder
+
+Nearly every game diverged on **round 0**, always by one tile. The rule:
+
+- The Core is **2x2**, so the tiles it can reach are the *footprint's*
+  orthogonal neighbours, not a disc around its north-west cell. 25 of 25
+  round-0 Builders sit on that ring.
+- It picks the ring tile with the shortest **walk** to the enemy Core: 24 of
+  25, against 11 of 25 for ranking the same ring by straight-line distance.
+
+That is the objective Pantheon already uses for its throws and its pad, applied
+one step earlier. The rule that stood here treated the Core as a point and
+stepped out along an eight-way ray, which was wrong on nearly every map.
+
+Fixing it moved round-0 agreement to 16/25, overall action agreement 3% -> 7%,
+median kill delta +3 -> +2, and tempest_fast 88.1% -> 90.5%.
+
+The residual round-0 misses are BFS *ties* broken differently. Choosing among
+tied tiles by which pad they yield (best throw delivery) scores 68% against the
+64% we get now -- too marginal to justify the joint search yet, and recorded
+here so the next attempt starts from it.
+
 ## Held-out validation (125 fresh replays, pulled later the same day)
 
 Every constant this bot rests on was re-checked against 125 replays that were
