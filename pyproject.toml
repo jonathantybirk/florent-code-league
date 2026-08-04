@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "anthropic>=0.120.2",
-    "fcode==2.3.3",
+    "fcode==2.3.4",
 ]
 
 [tool.uv]
