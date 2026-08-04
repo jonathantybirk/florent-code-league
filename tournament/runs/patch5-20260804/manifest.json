@@ -1,0 +1,120 @@
+{
+  "tournament_id": "patch5-20260804",
+  "map_set": "official",
+  "maps": [
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "duel",
+    "fjord",
+    "hive",
+    "jackpot",
+    "longship",
+    "pinch",
+    "quarry",
+    "runestone",
+    "showdown",
+    "skerry",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 525,
+  "rating_matches": 420,
+  "mode": "round-robin",
+  "challengers": [],
+  "bots": [
+    {
+      "bot_id": "odin@5a92113",
+      "name": "odin",
+      "commit": "5a92113018d6793f546791b1494f318469fbbfff",
+      "path": "bots/luc/odin",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "heimdall@4c0d92e",
+      "name": "heimdall",
+      "commit": "4c0d92eb2cdea89d78c20c733659ddbe5301a4ca",
+      "path": "bots/luc/heimdall",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "maporacle@38e1456",
+      "name": "maporacle",
+      "commit": "38e145629dbe917ca86ccf8d3e4fd38e5e96bfc2",
+      "path": "bots/luc/maporacle",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "bastion@840a180",
+      "name": "bastion",
+      "commit": "840a180d63cf90b17701af41ce07980afee64a3c",
+      "path": "bots/luc/bastion",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward@e55aab5",
+      "name": "steward",
+      "commit": "e55aab5a09db5a66427006b3a598d10211632218",
+      "path": "bots/luc/steward",
+      "tags": [
+        "luc"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 5,
+    "targets": [
+      "odin@5a92113",
+      "heimdall@4c0d92e",
+      "maporacle@38e1456",
+      "bastion@840a180",
+      "steward@e55aab5"
+    ],
+    "maps": [
+      "atoll",
+      "aurora",
+      "bridge",
+      "crossfire",
+      "duel",
+      "fjord",
+      "hive",
+      "jackpot",
+      "longship",
+      "pinch",
+      "quarry",
+      "runestone",
+      "showdown",
+      "skerry",
+      "sprint",
+      "strait",
+      "string",
+      "sweden",
+      "twins",
+      "vase",
+      "vault"
+    ],
+    "matches_per_bot": 21,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}
