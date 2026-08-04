@@ -661,9 +661,9 @@ SIEGE_STALL_ROUNDS = 12
 ECON_EXPAND_BUILDERS = True
 # Late enough that the opening blitz has demonstrably not ended the game, and
 # early enough that a new Harvester still has most of the match to pay back.
-ECON_BUILDER_ROUND = 100
-ECON_MAX_LIVE_BUILDERS = 5
-ECON_MAX_TOTAL_BUILDERS = 8
+ECON_BUILDER_ROUND = 200
+ECON_MAX_LIVE_BUILDERS = 11
+ECON_MAX_TOTAL_BUILDERS = 20
 # Only genuine surplus. A Builder is 30 Ti before scale and this holds back
 # roughly a Harvester and the belt to reach it on top of the Builder itself,
 # so expanding never takes the titanium the existing miners are waiting on.

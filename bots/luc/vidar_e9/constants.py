@@ -506,8 +506,8 @@ LAUNCHER_QUIET_ROUNDS = 45
 # there: Core losses fall from 70 to 51 across these changes, and almost all
 # of them become full-length games instead.
 NETWORK_CAP_EARLY = 6
-NETWORK_CAP_LATE = 12
-ECON_EXPAND_ROUND = 80
+NETWORK_CAP_LATE = 8
+ECON_EXPAND_ROUND = 120
 
 # --- Ore re-targeting -------------------------------------------------------
 # `_pick` chooses an ore under fog and the Builder then walks, often for twenty
@@ -662,8 +662,8 @@ ECON_EXPAND_BUILDERS = True
 # Late enough that the opening blitz has demonstrably not ended the game, and
 # early enough that a new Harvester still has most of the match to pay back.
 ECON_BUILDER_ROUND = 200
-ECON_MAX_LIVE_BUILDERS = 5
-ECON_MAX_TOTAL_BUILDERS = 8
+ECON_MAX_LIVE_BUILDERS = 9
+ECON_MAX_TOTAL_BUILDERS = 16
 # Only genuine surplus. A Builder is 30 Ti before scale and this holds back
 # roughly a Harvester and the belt to reach it on top of the Builder itself,
 # so expanding never takes the titanium the existing miners are waiting on.

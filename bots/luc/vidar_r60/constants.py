@@ -667,7 +667,7 @@ ECON_MAX_TOTAL_BUILDERS = 12
 # Only genuine surplus. A Builder is 30 Ti before scale and this holds back
 # roughly a Harvester and the belt to reach it on top of the Builder itself,
 # so expanding never takes the titanium the existing miners are waiting on.
-ECON_EXPAND_RESERVE = 120
+ECON_EXPAND_RESERVE = 60
 # Bit 4 of SLOT_CORE_DAMAGED: the expansion regime is open, so a Builder
 # spawned past the opening is a miner rather than the attacker the spawn-order
 # role table would otherwise make it. Same shape as ECONOMY_DEAD_FLAG.
