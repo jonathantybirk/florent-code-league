@@ -181,6 +181,67 @@ Compliance: p75 807 µs, max 4,487 µs, zero timeouts and zero exceptions over
 3,066 samples on 21 maps — inside the 10 ms limit with room, and a lower
 maximum than odin's.
 
+## The parked attacker: a visible defect whose repair loses 10 points
+
+The one finding here that reverses the project's usual direction, and the
+reason this bot ships with a Builder that visibly stands still.
+
+Traced on `random-20260731-008-mirror-x` against vigil: the attacking Builder
+walks to (10,8) by turn 11 and never moves again until the Core dies on turn
+44 -- 33 of the game's 44 rounds -- with `path_failures` stuck at 0, which is
+why `WRITE_OFF_STUCK_BUILDERS` never noticed. The cause is
+`_build_siege_sentinel` returning True without acting from two exits, and
+because it is the top branch of `_rush`, returning True means the Gunner search
+and the harasser below it never run.
+
+Fixing it costs 9.9pp of mean and 14.2pp of the worst matchup. Five repairs
+were measured against it, 336 games each, and none reaches the version with the
+bug:
+
+| configuration | mean | worst |
+|---|---|---|
+| **parked (shipped)** | **0.696-0.702** | **0.548-0.571** |
+| save 150 + Gunner guard + no attack Gunners | 0.677 | 0.429 |
+| save 60 / save 150 | 0.670 | 0.548 |
+| save 150 + no attack Gunners | 0.662 | 0.524 |
+| save 25 + Gunner guard | 0.656 | 0.512 |
+| save 25 | 0.646 | 0.524 |
+| save 150 + Gunner guard | 0.641 | 0.476 |
+| all three repairs | 0.603 | 0.429 |
+
+The comparison is clean -- every opponent directory is byte-identical across
+the compared commits, and the control reproduces 0.696 against the 0.702 it was
+carried from.
+
+Why standing still wins: **a Builder that never builds never raises the cost
+scale.** Scale is a permanent multiplier on every price the team pays for the
+rest of the match, the median game is decided on titanium collected at round
+1000, and the parked Builder also sits inside vision of the enemy base holding
+their Core sighted in the store for free. The save-length sweep is the
+supporting evidence -- longer waits improve monotonically and saturate at
+0.670, and only never-spending reaches 0.702.
+
+It is not the same as having no attacker: `vidar_econwar`, which reassigns that
+body to mining, scores 0.528 / 0.250. The body has to exist and has to not
+spend.
+
+## The guard turret: a result that changes sign with the chassis
+
+Lucas's argument for Gunners on defence is mechanically correct -- `rotate` is
+Gunner-only, a Sentinel's facing is frozen at build time, and a home guard
+answers waves from different bearings across a thousand rounds. Measured on
+three bases, one flag flipped:
+
+| base | Gunner guard |
+|---|---|
+| all three attacker repairs | **+3.4pp** |
+| save 150 | -2.9pp |
+| **parked (shipped)** | **-4.7pp** |
+
+So the Sentinel guard stays. The lesson is the ledger's: a mechanic is only
+measured for the chassis that will carry it, and a main effect computed across
+cells is not a substitute for the one-flag flip on the shipping build.
+
 ## Two measured rejections, kept because the reasoning was good
 
 **`AMMO_TARGET` 120 → 200.** Ammunition is denominated in shots and the patch
