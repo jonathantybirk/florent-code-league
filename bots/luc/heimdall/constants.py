@@ -230,6 +230,41 @@ REPAIR_NETWORK = True
 # titanium in 1000 rounds. A hole that keeps reappearing is not damage,
 # it is a tile the enemy controls, and the belt has to go somewhere else.
 REPAIR_ATTEMPT_LIMIT = 3
+
+# --- Flanking a defended Core ------------------------------------------------
+# Remembered enemy turrets within this of their Core, and how many of them
+# before the attacker prefers a Gunner seat on the *far* side of it. 0 disables.
+#
+# A Gunner fires along one fixed compass ray and rotating costs a flat 10 Ti, so
+# a wall of turrets built to meet our approach covers that approach and nothing
+# else. Seating on the opposite face leaves every one of them pointing the wrong
+# way while still charging its owner +10% on every price for the rest of the
+# game -- they have paid for the wall twice and it answers nothing.
+#
+# The first two attempts at this measured as rejections and were neither: they
+# read live vision, and live vision cannot see a wall. A Builder standing at one
+# face of a 2x2 Core sees the turrets on that face only -- probed at **at most 2
+# visible**, from every distance including zero, on maps carrying 8 and 10 enemy
+# turrets. So the rule never fired at all: 0 turns across seven long maps, and a
+# win/loss diff over 21 maps x 2 seats x 3 opponents found 0 cells changed in
+# either direction. A bearing taken from live vision is also biased toward
+# wherever we already are, which is backwards for choosing a side to attack.
+#
+# Remembering turret positions fixes it, and is sound because turrets do not
+# move; forgetting a destroyed one costs a slightly stale bearing, and a
+# destroyed turret is one we already beat. It then fires 7-15 times a game.
+#
+#                     pool          generated      12 ladder builds   pantheon
+#     off        311/336 0.926    135/160 0.844    429/504 0.851      32/42
+#     min 4      312/336 0.929    135/160 0.844    430/504 0.853      33/42
+#     min 3      309/336                           (worse on pool)
+#     min 2      308/336                           (worse on pool)
+#
+# Non-negative on all four arms and positive on three, including against the
+# strongest bot in the field. Four is deliberately conservative: below it the
+# rule fires on a couple of stray turrets that are not a wall, and costs games.
+FLANK_MIN_TURRETS = 4
+FLANK_RADIUS = 8
 # How many of the Builder's own last tiles make a step less attractive.
 # 0 restores the memoryless greedy step. benchmarks/pathology.py measures
 # the symptom: heimdall paces 5.4% of Builder-rounds on bridge where the

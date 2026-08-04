@@ -34,6 +34,8 @@ from constants import (
     MAX_RELAY_LAUNCHERS,
     HARVESTER_FINISH_STEPS,
     REPAIR_NETWORK,
+    FLANK_MIN_TURRETS,
+    FLANK_RADIUS,
     REPAIR_ATTEMPT_LIMIT,
     TABU_WINDOW,
     STUCK_ROUNDS_BEFORE_STANDDOWN,
@@ -123,6 +125,7 @@ def _run(p, ct):
         p.network_tiles = set()
         p.network_load = 0
         p.network_plan = {}
+        p.known_enemy_turrets = set()
         # How many times we have rebuilt each belt tile. A tile inside an
         # enemy Gunner's ray is rebuilt for as long as we are willing to pay.
         p.repair_counts = {}
@@ -202,6 +205,7 @@ def _run(p, ct):
     ct.write_store(SLOT_BUILDER_HEARTBEAT, (stamp << HEARTBEAT_SHIFT) | mask)
     _sense(p, ct)
     _report_stall(p, ct)
+    _remember_enemy_turrets(p, ct)
     _update_enemy_core_inference(p, ct)
     if p.core is None:
         return
@@ -2275,6 +2279,30 @@ def _chebyshev(a, b):
     return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
 
 
+def _remember_enemy_turrets(p, ct):
+    """Accumulate enemy turret positions across turns.
+
+    Live vision is the wrong instrument for "which side is defended". A Builder
+    standing at one face of their 2x2 Core sees the turrets on that face and not
+    the ones behind it -- measured at **at most 2 visible** on maps carrying 8
+    and 10 enemy turrets, from every distance including zero. A bearing taken
+    from that is biased toward wherever we already are, which is precisely
+    backwards for choosing a side to attack from.
+
+    Turrets do not move, so remembering them is sound. Forgetting one that has
+    been destroyed only costs us a slightly stale bearing, and a destroyed
+    turret is one we already beat.
+    """
+    team = ct.get_team()
+    for building in ct.get_nearby_buildings():
+        if ct.get_team(building) == team:
+            continue
+        if ct.get_entity_type(building) not in (EntityType.GUNNER,
+                                                EntityType.SENTINEL):
+            continue
+        p.known_enemy_turrets.add(tuple(ct.get_position(building)))
+
+
 def _build_basic_gunner(p, ct, enemy_core):
     """Build on the nearest visible legal ray, without a special formation."""
     if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
@@ -2289,6 +2317,12 @@ def _build_basic_gunner(p, ct, enemy_core):
     # covered one only when nothing else reaches -- it is a sort key, not a
     # filter, so a covered seat still beats no seat.
     enemy_cover = _enemy_turret_cover(p, ct) if AVOID_ENEMY_RAYS else frozenset()
+    known = [t for t in p.known_enemy_turrets
+             if _chebyshev(t, tuple(enemy_core)) <= FLANK_RADIUS]
+    bearing = None
+    if FLANK_MIN_TURRETS and len(known) >= FLANK_MIN_TURRETS:
+        bearing = (sum(t[0] - enemy_core[0] for t in known) / len(known),
+                   sum(t[1] - enemy_core[1] for t in known) / len(known))
     choices = []
     for core_tile in sorted(core_tiles):
         for dx in range(-3, 4):
@@ -2316,8 +2350,12 @@ def _build_basic_gunner(p, ct, enemy_core):
                     default=None,
                 )
                 if distance is not None:
-                    choices.append((spot in enemy_cover, distance, spot,
-                                    D8.index(facing), facing))
+                    crowded = bool(
+                        bearing is not None
+                        and ((spot[0] - enemy_core[0]) * bearing[0]
+                             + (spot[1] - enemy_core[1]) * bearing[1]) > 0)
+                    choices.append((spot in enemy_cover, crowded, distance,
+                                    spot, D8.index(facing), facing))
     # Self-blocking is checked in preference order and stops at the first site
     # that survives, rather than for every candidate: the cheap tests above
     # have already ruled most sites out, and the best site almost always keeps
@@ -2327,7 +2365,7 @@ def _build_basic_gunner(p, ct, enemy_core):
         baseline = _route_baseline(p, me, Position(*enemy_core), False)
         choices = [
             next((choice for choice in choices
-                  if _keeps_route_open(p, choice[1], me,
+                  if _keeps_route_open(p, choice[2], me,
                                        Position(*enemy_core), False, baseline)),
                  None)
         ]
@@ -2341,7 +2379,7 @@ def _build_basic_gunner(p, ct, enemy_core):
             return True
         _explore(p, ct)
         return True
-    _, _, spot, _, facing = min(choices)
+    _, _, _, spot, _, facing = min(choices)
     position = Position(*spot)
     if not ct.is_in_vision(position):
         _step(p, ct, position, False)
