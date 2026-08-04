@@ -729,3 +729,9 @@ HARASS_WHEN_UNEMPLOYED = True
 # quarry, one Builder idled 582 rounds of 750. Colliding is a cheaper failure
 # than never laying.
 LOCK_WAIT_LIMIT = 40
+
+# Extra guard turrets allowed when the Core projects its own death. The
+# projection is the Core watching its own HP fall over PROJECT_WINDOW rounds,
+# so it needs no vision -- which is the whole point, since the guard Builder
+# sees r^2=20 of a disc that is r^2=64.
+GUARD_DYING_ALLOWANCE = 2
