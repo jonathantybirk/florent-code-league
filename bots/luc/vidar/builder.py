@@ -1714,16 +1714,21 @@ def _explore(p, ct):
     # way to find the ore whose position we were handed on round 0: it steps in
     # strides of four along a fixed comb, so the opening Builder regularly
     # walked past the Core's own nearest deposit before the fog opened over it.
+    # Both branches fall through on a no-op step rather than returning on it.
+    # `_step` returns False without acting when the Builder already stands at
+    # its goal, so a Builder parked beside a hinted deposit it cannot claim --
+    # somebody else got the claim slot -- pointed at that tile and idled for
+    # the rest of the game. Traced on quarry: 526 idle rounds out of 550 in
+    # the scout phase, on a Builder that had already reached its hint.
     hint = _ore_hint_target(p, ct)
-    if hint is not None:
-        _step(p, ct, Position(*hint), False)
+    if hint is not None and _step(p, ct, Position(*hint), False):
         return
 
     # First resolve the enemy-Core hypotheses. This is map-agnostic: targets
     # come only from dimensions, our observed Core, and rejected symmetries.
     info_target = _enemy_scout_target(p, ct)
-    if info_target is not None:
-        _step(p, ct, Position(*info_target), False)
+    if info_target is not None and _step(
+            p, ct, Position(*info_target), False):
         return
 
     choices = [(x, y) for y in range(1, p.h, stride) for x in range(1, p.w, stride)
@@ -1780,13 +1785,22 @@ def _harass(p, ct):
     if _deny_enemy_ore(p, ct):
         return
 
-    if targets:
-        _step(p, ct, Position(*targets[0]), False)
+    # Fall through when the step was a no-op rather than returning on it.
+    #
+    # `_step` returns False without acting when the Builder is already at its
+    # goal, and these two branches returned regardless -- so a harasser walked
+    # to the nearest enemy deposit, arrived, found `_deny_enemy_ore` had
+    # already barriered it and `can_fire` false because a deposit is terrain
+    # and not a building, and then stood on that tile for the rest of the
+    # game. Traced on quarry with the round counter: five Builders idle 495,
+    # 502, 503, 505 and 508 rounds out of 550 in the harass phase, each still
+    # charging its +20% on every price the team paid.
+    if targets and _step(p, ct, Position(*targets[0]), False):
         return
 
     denial_target = _nearest_enemy_ore(p, ct)
-    if denial_target is not None:
-        _step(p, ct, Position(*denial_target), False)
+    if denial_target is not None and _step(
+            p, ct, Position(*denial_target), False):
         return
 
     # No remembered economy is reachable yet. Resolve the enemy-Core location
