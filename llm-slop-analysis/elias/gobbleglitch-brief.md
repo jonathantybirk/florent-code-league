@@ -1,5 +1,13 @@
 # GobbleGlitch — design brief
 
+> **Measured before the Aug 4 turret patch (fcode ≤ 2.3.3).** Everything below was
+> measured when turrets were stronger. The 2026-08-04 balance pass (fcode 2.3.4)
+> changed the Gunner to 25 HP (was 40), 20 Ti (was 10), +20% cost scaling (was
+> +10%), 7 damage (was 10) and 4 ammo per shot (was 2), and the Sentinel to 40 HP
+> (was 30) on a 2-round reload (was 3). That balance pass is the only rules change
+> in 2.3.4, so conclusions here that do not turn on turret strength still stand —
+> but every turret-heavy number needs re-measuring before it is trusted again.
+
 Successor to AutistimusPrime. Written against `fcode 2.3.3`, the 21-map pool, and the four exploit hunts
 of this session. Every number below is either quoted from a hunter's engine run or recomputed here from
 the `.map26` files; where I recomputed something the hunters asserted, I say so and give both figures.

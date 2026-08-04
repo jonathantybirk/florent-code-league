@@ -1,0 +1,25 @@
+Ladder & Rating
+
+Elo rating
+
+Every team has a ladder rating, starting at 1500. After each rated series, both teams' ratings are updated using the Elo rating system with a fixed K-factor of 32.
+
+Unlike a simple win/loss Elo, the outcome fed into the formula is the fractional series score rather than just who won: a 3-2 series counts as an outcome of 0.6, not a full win, while a 5-0 sweep counts as a full 1.0. This means dominant series move your rating more than narrow ones.
+
+expectedA = 1 / (1 + 10^((ratingB - ratingA) / 400))
+outcome   = scoreA / (scoreA + scoreB)   // e.g. 3-2 → 0.6
+delta     = 32 * (outcome - expectedA)
+
+What affects rating
+
+Ladder matches — the automatic best-of-five series the scheduler pairs you into (see Matches & Scheduling) — are rated and update both teams' Elo.
+
+Unrated challenges (fcode match unrated) and remote test matches (fcode match test) never affect rating — they exist purely for testing against real hardware.
+
+Rating history and rank
+
+Every rated match records a snapshot of each team's rating and leaderboard rank at that point in time, which powers the rating-over-time graphs on the platform. Rank is simply your position when all teams are sorted by current rating, recomputed after every rated match.
+
+Climbing badge
+
+Teams that have played at least 100 matches and gained 100+ rating points within the last 6 hours are shown with a "climbing" badge on the leaderboard for the following hour — a way to highlight teams on a hot streak.

@@ -1,5 +1,13 @@
 # Beyond imitation — what the loss function is once cloning is done
 
+> **Measured before the Aug 4 turret patch (fcode ≤ 2.3.3).** Everything below was
+> measured when turrets were stronger. The 2026-08-04 balance pass (fcode 2.3.4)
+> changed the Gunner to 25 HP (was 40), 20 Ti (was 10), +20% cost scaling (was
+> +10%), 7 damage (was 10) and 4 ammo per shot (was 2), and the Sentinel to 40 HP
+> (was 30) on a 2-round reload (was 3). That balance pass is the only rules change
+> in 2.3.4, so conclusions here that do not turn on turret strength still stand —
+> but every turret-heavy number needs re-measuring before it is trusted again.
+
 Seat: stage 2 of the two-stage learning system. The question is not "how do we copy the good bots",
 it is "what objective makes the thing exceed the bots it copied".
 
