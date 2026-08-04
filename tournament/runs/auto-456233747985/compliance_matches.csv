@@ -1,1 +1,4 @@
 match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
+c85969685b1ff052,auto-456233747985,heimdall@38e1456,heimdall,38e1456,duel,1,12,pass,ok,,23,166,24,33,60,737,2503,2,0,0,0,9000,10000,n-62-29-22,29026289,2026-08-04T15:18:30+0200
+95a8ed612d14cf67,auto-456233747985,heimdall@38e1456,heimdall,38e1456,fjord,1,12,pass,ok,,27,141,30,51,491,1148,4950,26,0,0,0,9000,10000,n-62-29-22,29026289,2026-08-04T15:18:31+0200
+2b7591e1acbc703c,auto-456233747985,heimdall@38e1456,heimdall,38e1456,hive,1,12,pass,ok,,27,137,36,56,725,1515,4423,2,0,0,0,9000,10000,n-62-29-22,29026289,2026-08-04T15:18:33+0200
