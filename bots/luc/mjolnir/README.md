@@ -95,7 +95,7 @@ Three things about the implementation are load-bearing:
   and mine; only a tile it can currently see to be open pulls it home. A Core
   damage alarm clears that memory once, so a real breach is still noticed.
 
-### Two measured corrections
+### Measured corrections
 
 **Eight tiles was the wrong wall.** The first version walled only the eight
 *orthogonal* neighbours, reasoning that those are the only tiles an enemy
@@ -103,14 +103,40 @@ Builder can stand on to attack a 2×2 Core. That is true and irrelevant — enem
 Builders deal 0% of the damage. It scored 246/336 against a 242 baseline: what
 a correct answer to a problem you do not have looks like.
 
-**The wall does not outrank the guard.** `_guard_home` — meeting an intruder at
-our own Core on sighting rather than on damage — is the largest single measured
-win in this lineage, and the obvious 2.3.4 correction was to demote it, since
-the Gunner it buys costs twice as much and does 30% less damage. Measured, that
-is worth 236/336 against 246: the ring Builder spends its first twenty-five
-rounds walling while their attacker emplaces unopposed. The guard answers the
-intruder who is already here; the wall answers the shooter who gets past it.
-Order: guard, then wall, then the Launcher pad.
+**The ordering answer reversed once the wall actually worked, and that is the
+more useful lesson.** Tried against the *unfixed* wall — the one that circled
+the ring standing on the tiles it meant to fill — putting the wall ahead of
+`_guard_home` scored 236/336 against a guard-first 246, and the honest-looking
+reading was "the guard keeps its priority". It was really "a wall that never
+gets built loses to a guard". With the cycle-walk fix in place the same
+comparison is **wall-first 250, guard-first 242**. A null result and a negative
+result are indistinguishable in a table; only the mechanism separates them.
+
+Order is now wall, then guard, then the Launcher pad.
+
+## Panel results, 336 games, fcode 2.3.4
+
+| variant | change from the row above it | total |
+|---|---|---|
+| `n_base` | odin `38e1456`, unmodified | 242 |
+| `m_bulwark` | 8-tile wall, after the pad | 246 |
+| `m_cycle` / `x_wall` | 12-tile ring, walked as a cycle, before the guard | **250** |
+| `m_cap6` | + `NETWORK_CAP_EARLY` 4 → 6 | **254** |
+
+Measured and rejected, on this chassis and this engine:
+
+| variant | idea | total |
+|---|---|---|
+| `m_g12` | guard before wall | 242 |
+| `m_g12r` | wall after the Launcher pad | 239 |
+| `m_ammo2` | `AMMO_TARGET` 120→240, floor 80→160 | 229 |
+| `m_lean` | cut every Gunner budget (guard, attack, field, denial) | 205 |
+| `m_econ2` | two economy Builders out of three | 141 |
+
+`m_econ2` is a badly designed experiment kept for the record: with three
+opening Builders, making two of them miners leaves *no attacker at all*, which
+is why its Core losses go to 122. It tests "no offence", not "more economy".
+The real test adds a fourth opening Builder.
 
 ## Spawn denial: sound, and off
 

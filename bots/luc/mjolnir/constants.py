@@ -149,7 +149,8 @@ SPAWN_DENIAL_RESERVE = 20
 # The first cut of this walled only the eight orthogonal neighbours, on the
 # theory that those are the tiles an enemy Builder must stand on to attack. It
 # scored 246/336 against a 242 baseline, which is what a correct answer to a
-# problem you do not have looks like.
+# problem you do not have looks like. The twelve-tile ring, walked as a cycle
+# so it actually gets built, scores 250.
 BULWARK_ENABLED = True
 # Barriers are 3 Ti; there is no scenario in which holding a reserve above
 # that is worth leaving the Core's doorstep open.

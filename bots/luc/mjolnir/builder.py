@@ -275,20 +275,27 @@ def _run(p, ct):
     if p.builder_index != 0 and _engage_with_turret(p, ct):
         return
     if p.is_launcher_builder:
-        # An enemy that has walked up to our own Core, answered on sighting
-        # rather than on damage. This is the largest single measured win in
-        # the lineage and it keeps its priority. The 2.3.4 patch made the
-        # Gunner it buys much worse, and trying the wall ahead of it was the
-        # obvious correction -- but measured, that scores 236/336 against 246:
-        # the ring Builder spends its first twenty-five rounds walling while
-        # their attacker emplaces unopposed. The guard answers the intruder
-        # who is here; the wall answers the shooter who gets past it.
-        if _guard_home(p, ct):
-            return
         # Twelve tiles and 36 Ti takes away every Gunner's firing line into
         # the Core, and 97.6% of the damage that kills our Core is Gunner
-        # fire.
+        # fire. It goes ahead of `_guard_home`, which under 2.3.3 was the
+        # largest single measured win in this lineage.
+        #
+        # That ordering was measured twice and the first answer was wrong.
+        # Tried against the *unfixed* wall -- the one that circled the ring
+        # standing on the tiles it meant to fill -- wall-first scored 236/336
+        # against a guard-first 246, and the honest reading looked like "the
+        # guard keeps its priority". It was really "a wall that never gets
+        # built loses to a guard". With the cycle-walk fix in place the same
+        # comparison is wall-first 250, guard-first 242. A null result and a
+        # negative result look identical in a table; only the mechanism tells
+        # them apart.
         if not _run_bulwark(p, ct):
+            return
+        # An enemy that has walked up to our own Core, answered on sighting
+        # rather than on damage. Second now, and still worth its turn: the
+        # wall denies the shooter a line, the guard answers the Builder who
+        # has already walked inside it.
+        if _guard_home(p, ct):
             return
         if not _run_launcher_ring(p, ct):
             return
