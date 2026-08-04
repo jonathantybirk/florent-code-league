@@ -151,7 +151,37 @@ SPAWN_DENIAL_RESERVE = 20
 # scored 246/336 against a 242 baseline, which is what a correct answer to a
 # problem you do not have looks like. The twelve-tile ring, walked as a cycle
 # so it actually gets built, scores 250.
-BULWARK_ENABLED = True
+# SHIPPED OFF. The wall is a counter to *oracle-grade* turret placement, not a
+# general defence, and the difference only shows up off the official pool.
+#
+# It is worth +20 games on the 21-map pool (245 -> 265) and it is what beats
+# steward there: steward carries a published-map atlas, so it knows terrain and
+# our Core from round 0 and emplaces on perfect firing lines without scouting.
+# Walling every ray takes that away -- its Core kills against us drop from 24
+# to 8, and the matchup goes from odin's 15/42 to 34/42.
+#
+# Against anything that has to scout first, it is dead weight: 36 Ti, +12%
+# scale, and roughly twenty-five Builder-rounds. Measured on 40 generated maps,
+# where nobody has an atlas:
+#
+#                              vs steward      vs the 8-bot panel
+#     odin 38e1456             47/80  0.588    445/640  0.695
+#     mjolnir, wall ON         46/80  0.575    416/640  0.650
+#     mjolnir, wall OFF        58/80  0.725
+#
+# And head to head against odin, removing it takes 10/42 to 19/42.
+#
+# The forward-looking argument is the same one that promoted the Sentinel: a
+# Sentinel's line is never blocked, so a wall cannot stop one. Every incentive
+# in 2.3.4 pushes the field toward Sentinels, and the wall's value goes to zero
+# as they arrive. It was measured against a field that still fights with
+# Gunners -- 97.6% of the damage killing our Core -- and that share is the only
+# thing holding it up.
+#
+# Kept behind the flag rather than deleted: against an atlas-carrying opponent
+# on known maps it is worth nineteen games, and switching it back on is one
+# line.
+BULWARK_ENABLED = False
 # Barriers are 3 Ti; there is no scenario in which holding a reserve above
 # that is worth leaving the Core's doorstep open.
 BULWARK_RESERVE = 0
