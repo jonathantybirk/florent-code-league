@@ -2,6 +2,72 @@
 
 Scratchpad for the next session. Not shipped doctrine — ideas to measure, not trust.
 
+## 2026-08-04 (late) — denial turrets: a firing ray is a wall you can buy
+
+Shipped to odin at `b3fa36695` (0.932 -> 0.938) and to heimdall at `14570253a`.
+Lucas's observation: enemy bots route *around* our firing lines rather than walk
+down them, so a Gunner's ray is not only a weapon, it is a wall that costs 10 Ti
+and never has to fire. `_denial_gunner_site` spends the guard's spare allowance
+on one turret whose ray covers the Core-threat disc, scored by *uncovered* tiles
+added so a turret is bought only when it denies ground no existing one does.
+
+                   pool          generated      pantheon   vigil_reinf
+    odin      313/336 0.932   135/160 0.844      33/42       29/42
+    +denial   314/336 0.935   142/160 0.887      33/42       31/42
+    +both     315/336 0.938   139/160 0.869      34/42       32/42  <- shipped
+
+**+7 on unknown maps as a single change** — the largest effect measured in this
+session, and on the arm that most resembles the final. On the pool it takes
+warden_walk 0.81 -> 0.90. Traced on quarry against the day3 replica: 14 turrets,
+69 rounds and a loss becomes 10 turrets, 59 rounds and a win.
+
+### The flank does not transfer, in either direction
+
+`FLANK_MIN_TURRETS = 4` is **+1 alone on heimdall and -1 alone on odin**, and on
+odin only pays in combination with denial. odin's `_build_basic_gunner` was
+rewritten around cover tiers and the duel rule, so the term slots below the tier
+and above distance rather than where it sits in heimdall. Third instance this
+session of the same rule: a constant is measured for the bot it was measured on.
+
+### Rotation: the frozen turret is the cheaper failure
+
+From a replay where one of our Gunners sat at full health with three enemy
+Gunners on true compass rays and never turned. The cause is affordability, not
+aiming: rotation costs 10 Ti and `ROTATE_TITANIUM_RESERVE = 40` refuses to spend
+below a bank of 40 — probed at `rotate_allowed=False` on 294 rounds with the
+bank at 2 and 16. Lowering it loses, monotonically:
+
+    10 -> 303   15 -> 304   20 -> 309   25 -> 309   40 -> 313   60 -> 314
+    80 -> 312   never rotate -> 282
+
+Chasing with 10 Ti rotations costs more than the missed shots, but forbidding
+rotation entirely costs 31 games, so the mechanic matters and only the gate is
+generous. Plateau 40-60; leave it alone.
+
+### Measured and rejected here, with numbers
+
+- **Lead a rotating turret onto where the target will be** (one round of linear
+  extrapolation, present tile as fallback). Diagnosis was right -- we aimed at
+  where the target had been, permanently one round late against anything that
+  moves -- and it does not pay: pool 307/336 against 311, generated level,
+  ladder 396/462 against 397, and **0 difference against both the day3 replica
+  and the real Pantheon** (identical 2-3, same turn counts). Rotations cost
+  10 Ti each and leading buys more of them.
+- **Anticipate motion when *siting* a new turret** (prefer a seat whose ray the
+  enemy walks along rather than across). 310/336 against 311. The reason is
+  structural: `_aligned_gunner_site` only considers the 8 tiles adjacent to the
+  Builder, and probing shows usually **exactly one legal site**, with
+  `along_values=[1]` -- no candidate ever had the enemy walking down its ray.
+  A better preference order cannot help when there is nothing to choose between.
+  The lever is the guard's *position*, not its aim.
+
+### Gunner geometry, worth knowing before designing anything here
+
+Within r^2 <= 13 there are 44 tiles; only **20 are on one of the 8 compass rays**
+and **24 are unreachable from that tile by any facing**. At Chebyshev distance 1
+all 8 neighbours are hittable, at distance 2 it is 8 of 16, at distance 3 only
+4 of 20. A unit standing off-axis is immune to that turret however it rotates.
+
 ## 2026-08-04 — FOR WHOEVER OWNS odin: a pacing bug, and a flank idea that never fired
 
 Written by a parallel session working on `heimdall`. I am deliberately **not**
