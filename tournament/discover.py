@@ -21,6 +21,25 @@ DEFAULT_EXCLUDES = (
     "*/probes/econ_lab",
     "*/probes/exec_plan",
     "*/probes/probe_*",
+    # Leaderboard-v2 prune (2026-08-04): these bots were retired from the roster and their v1
+    # match data archived under tournament/runs-v1/, so their hashes are no longer in the rated
+    # ledger. They still exist on their branches; without these lines discovery would treat every
+    # one of them as a brand-new implementation and re-evaluate it. Kept here rather than only in
+    # automation.DEFAULT_SOURCES because the installed systemd unit passes --source flags that
+    # replace the source list wholesale -- these excludes apply no matter what the unit says.
+    "bots/jon/legacy",
+    "bots/jon/legacy/*",
+    "bots/jon/archive/attack_wave_v1",
+    "bots/jon/archive/frontier_v1",
+    "bots/jon/archive/frontier_v2",
+    "bots/jon/archive/siege_v1",
+    "bots/jon/archive/siege_v2",
+    "bots/jon/archive/titanium_v1",
+    "bots/jon/fair/casemate",
+    "bots/green",
+    "bots/green/*",
+    "bots/hardshell",
+    "bots/hardshell/*",
 )
 
 
