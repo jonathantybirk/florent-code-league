@@ -39,6 +39,9 @@ class Player:
         except Exception:
             idx = self.fallback_idx
 
+        # Recorded for features.py's next-round last_strategy_idx feature.
+        self.state.last_strategy_idx = idx
+
         strategy = strategies.get(etype, idx)
         if strategy is None:
             return

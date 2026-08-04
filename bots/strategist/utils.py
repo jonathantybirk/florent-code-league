@@ -15,6 +15,9 @@ SLOT_CORE_X = 0
 SLOT_CORE_Y = 1
 SLOT_HARVESTER_COUNT = 2
 SLOT_ORE_LOCATION = 3
+# Reserved for a Core-side team-posture broadcast (Phase 2). Nothing writes
+# it yet, so features.py's team_posture feature reads a constant 0 for now.
+SLOT_TEAM_POSTURE = 4
 
 
 def pack_pos(pos: Position) -> int:
