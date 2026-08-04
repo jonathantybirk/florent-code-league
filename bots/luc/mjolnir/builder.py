@@ -2562,6 +2562,32 @@ def _rush(p, ct):
     # sixth Gunner shoots at a Core they can still repair.
     if sighted and _run_spawn_denial(p, ct, enemy_core):
         return
+    # Sentinel first, Gunner second, and the reason is arithmetic the patch
+    # changed under us. Under 2.3.3 a Gunner paid 10 damage for 2 ammunition
+    # against the Sentinel's 18 for 10 -- 2.78x better -- which is why
+    # `_build_siege_sentinel` was written as the fallback for a Core no Gunner
+    # lane could reach, and says so in its own docstring. 2.3.4 cut the Gunner
+    # to 7 damage and doubled its shot to 4 ammunition, which inverts it:
+    #
+    #     damage per ammunition   Gunner 7/4 = 1.75    Sentinel 18/10 = 1.80
+    #     damage per round        Gunner 7             Sentinel 9
+    #     attack radius squared   Gunner 13            Sentinel 32
+    #     HP                      Gunner 25            Sentinel 40
+    #     blocked by terrain      yes                  never
+    #
+    # Against a stationary 500 HP Core the Sentinel now dominates on every axis
+    # but build price, and the terrain that defeats a Gunner lane search is
+    # irrelevant to a line that pierces. The range gap is the only strictly
+    # asymmetric advantage on the board: a seat beyond r^2=13 hits their Core
+    # while nothing they own can answer without walking a Builder into the
+    # barrier wrap.
+    #
+    # Measured before the change, over 50 games on the five worst maps, this
+    # bot built 0.0 Sentinels and 5.8 Gunners and dealt 100% of its Core damage
+    # with Gunners. Promoting the Sentinel is worth +9 games on the 336-game
+    # panel (250 -> 259), and +14 with the harvester cap (242 -> 264).
+    if _build_siege_sentinel(p, ct, enemy_core):
+        return
     if p.attack_gunners_built < 5 and _build_basic_gunner(p, ct, enemy_core):
         return
     _harass(p, ct)
@@ -2577,7 +2603,16 @@ def _build_siege_sentinel(p, ct, enemy_core):
     Gunner and Launcher-breaker searches have both come up empty.
     """
     if p.siege_sentinel is not None:
-        return False
+        spot = Position(*p.siege_sentinel)
+        if ct.is_in_vision(spot) and ct.get_tile_building_id(spot) is None:
+            # Shot out. Rebuilding is the point: 30 Ti buys 9 damage a round
+            # at r^2=32 against a Core that cannot dodge or block it. The one
+            # traced on longship died on round 81 after eight shots and was
+            # never replaced.
+            p.siege_sentinel = None
+            p.sentinel_wrap = []
+        else:
+            return False
     # This search is the widest in the bot (13x13 around four Core tiles) and
     # it runs last, after two others have already spent the turn. Skipping it
     # costs a fallback that fires in a handful of games; overrunning costs the
