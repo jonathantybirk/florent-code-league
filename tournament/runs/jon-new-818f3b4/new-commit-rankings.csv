@@ -1,5 +1,0 @@
-bot_id,distinct_rank,nash_rank,games,wins,draws,losses,win_rate,melo_r,nash_prob,nash_average,series_won,series_tied,series_lost,compliance,max_turn_us,timeouts,duplicate_of
-vanguard@bb03f14,9,19,1974,1438,0,536,0.7285,1.996785,0.0,-1.129865,33,0,14,pass,3349,0,vanguard@da3fd8a
-v233_j@818f3b4,9,19,1974,1438,0,536,0.7285,1.996785,0.0,-1.129865,33,0,14,pass,3349,0,vanguard@bb03f14
-undertow_oracle@75591b7,6,12,1974,1559,0,415,0.7898,2.158249,0.0,-0.781701,39,0,8,pass,5306,0,
-vanguard_oracle@75591b7,2,2,1974,1630,0,344,0.8257,2.348591,0.0,-0.376478,41,0,6,pass,6951,0,

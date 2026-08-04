@@ -1,3 +1,0 @@
-bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-vigil@60d5afa,vigil,60d5afa,pass,21,21,21,4260,13,37,49,736,5142,0,0,9000,10000
-vigil_reinforcements@60d5afa,vigil_reinforcements,60d5afa,exceeded,21,21,21,4048,12,25,42,705,>12000,29,0,9000,10000

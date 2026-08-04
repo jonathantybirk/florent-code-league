@@ -1,0 +1,1 @@
+match_id,tournament_id,bot_a,bot_a_name,bot_a_commit,bot_b,bot_b_name,bot_b_commit,map,map_set,seed,tle,kind,engine_winner,winner,score_a,win_condition,turns,resign_message,a_titanium,a_titanium_collected,a_units,a_buildings,b_titanium,b_titanium_collected,b_units,b_buildings,status,error,duration_s,host,lsf_job,finished_at

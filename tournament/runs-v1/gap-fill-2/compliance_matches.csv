@@ -1,0 +1,10 @@
+match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
+0c22302543ca38f8,gap-fill-2,tempest@da3fd8a,tempest,da3fd8a,atoll,1,12,exceeded,ok,,27,162,6,30,172,2576,11589,9,0,0,0,9000,10000,bob-a,,2026-08-02T01:18:39+0200
+fa8168cdc9502436,gap-fill-2,tempest@da3fd8a,tempest,da3fd8a,duel,1,12,pass,ok,,19,138,15,25,77,1826,5635,18,0,0,0,9000,10000,bob-a,,2026-08-02T01:18:39+0200
+69c014b220374f8c,gap-fill-2,tempest@da3fd8a,tempest,da3fd8a,quarry,1,12,exceeded,ok,,27,89,15,263,390,>12000,>12000,2,33,0,3,9000,10000,bob-a,,2026-08-02T01:18:39+0200
+405c2a4c15e6f770,gap-fill-2,tempest_reinforcements@e1dc316,tempest_reinforcements,e1dc316,atoll,1,12,pass,ok,,27,228,6,30,200,1630,8156,8,0,0,0,9000,10000,bob-a,,2026-08-02T01:18:38+0200
+000f662fd33efced,gap-fill-2,tempest_reinforcements@e1dc316,tempest_reinforcements,e1dc316,duel,1,12,pass,ok,,27,233,11,32,274,1601,4865,2,0,0,0,9000,10000,bob-a,,2026-08-02T01:18:39+0200
+3ca5b5137f1cb2a7,gap-fill-2,tempest_reinforcements@e1dc316,tempest_reinforcements,e1dc316,quarry,1,12,pass,ok,,27,241,12,35,238,454,5800,25,0,0,0,9000,10000,bob-a,,2026-08-02T01:18:39+0200
+faebe5581b00341f,gap-fill-2,vanguard@da3fd8a,vanguard,da3fd8a,atoll,1,12,pass,ok,,27,186,10,26,287,810,2290,18,0,0,4,9000,10000,bob-a,,2026-08-02T01:18:40+0200
+d1dc0e469ca7e9b7,gap-fill-2,vanguard@da3fd8a,vanguard,da3fd8a,duel,1,12,pass,ok,,27,184,7,19,207,438,1281,18,0,0,3,9000,10000,bob-a,,2026-08-02T01:18:40+0200
+ad4c12113dde8dd5,gap-fill-2,vanguard@da3fd8a,vanguard,da3fd8a,quarry,1,12,pass,ok,,27,135,14,60,378,1035,1316,24,0,0,2,9000,10000,bob-a,,2026-08-02T01:18:39+0200

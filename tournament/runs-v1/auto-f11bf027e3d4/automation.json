@@ -1,0 +1,14 @@
+{
+  "challengers": [
+    "vigil@3318ffd",
+    "warden@3318ffd",
+    "warden_walk@3318ffd"
+  ],
+  "heads": {
+    "elias_dev": "6cdc4409dc3944ad658b07880933800e4a80f902",
+    "viktor": "ab8ceaf582773997fda99d18bb0f514be75c09de",
+    "x/jon": "902be71c12fe64badadf6b77103b3059399b7f8a",
+    "x/luc": "3318ffdf35b19081d0982c0bf28f66163b0279f3"
+  },
+  "submitted_at": "2026-08-03T17:48:08+00:00"
+}

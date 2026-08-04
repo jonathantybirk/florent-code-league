@@ -1,4 +1,0 @@
-rank,bot_id,name,commit,games,wins,draws,losses,win_rate,melo_r,melo_r_elo,melo_fit_r,melo_c_1,melo_c_2,nash_prob,nash_average,nash_rank,rank_delta
-1,vanguard@9713344,vanguard,9713344,24,19,0,5,0.7917,1.176344,204.4,1.176344,0.082923,0.335414,1.0,0.0,1,0
-2,undertow@9713344,undertow,9713344,24,17,0,7,0.7083,0.969574,168.4,0.969574,-0.331939,-0.095893,0.0,-0.310155,2,0
-3,turtle@9713344,turtle,9713344,24,0,0,24,0.0,-2.145917,-372.8,-2.145917,0.249015,-0.239521,0.0,-3.218876,3,0

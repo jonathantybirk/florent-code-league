@@ -1,4 +1,0 @@
-match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
-854bf44ebf8b2169,jon-oracle-deployable,tempest_oracle_ferry@7196487,tempest_oracle_ferry,7196487,atoll,1,12,pass,ok,,26,182,3060,4,0,0,1,9000,10000,n-62-21-95,29000409,2026-08-01T17:59:15+0200
-a5b9499c6c04e51d,jon-oracle-deployable,tempest_oracle_ferry@7196487,tempest_oracle_ferry,7196487,duel,1,12,pass,ok,,19,140,2336,2,0,0,0,9000,10000,n-62-21-95,29000409,2026-08-01T17:59:18+0200
-47f506f44ebefd9d,jon-oracle-deployable,tempest_oracle_ferry@7196487,tempest_oracle_ferry,7196487,quarry,1,12,pass,ok,,27,150,3920,3,0,0,0,9000,10000,n-62-21-95,29000409,2026-08-01T17:59:20+0200

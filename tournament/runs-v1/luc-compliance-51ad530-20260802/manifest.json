@@ -1,0 +1,44 @@
+{
+  "tournament_id": "luc-compliance-51ad530-20260802",
+  "map_set": "official",
+  "maps": [
+    "atoll",
+    "duel",
+    "quarry"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 3,
+  "rating_matches": 0,
+  "mode": "round-robin",
+  "challengers": [],
+  "bots": [
+    {
+      "bot_id": "tempest_reinforcements@51ad530",
+      "name": "tempest_reinforcements",
+      "commit": "51ad530620609147df9ec865d77ab113718a982f",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 4,
+    "targets": [
+      "tempest_reinforcements@51ad530"
+    ],
+    "maps": [
+      "atoll",
+      "duel",
+      "quarry"
+    ],
+    "matches_per_bot": 3,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}

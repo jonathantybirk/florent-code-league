@@ -1,2 +1,0 @@
-bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-vanguard@818f3b4,vanguard,818f3b4,pass,3,3,3,511,4997,0,0,9000,10000

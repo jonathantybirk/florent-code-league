@@ -1,3 +1,0 @@
-bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-heimdall@4c0d92e,heimdall,4c0d92e,pass,21,21,21,2845,22,48,539,1197,5862,0,0,9000,10000
-pantheon_replica_day3@4c0d92e,pantheon_replica_day3,4c0d92e,pass,21,21,21,3335,23,43,467,1248,6248,0,0,9000,10000

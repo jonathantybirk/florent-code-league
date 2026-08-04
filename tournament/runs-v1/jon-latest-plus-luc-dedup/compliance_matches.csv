@@ -1,0 +1,10 @@
+match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
+a251adaaf3c49cc8,jon-latest-plus-luc-dedup,luc_1@604349b,luc_1,604349b,atoll,1,12,exceeded,ok,,27,191,10834,2,3,0,0,9000,10000,bob-a,,2026-08-01T17:19:11+0200
+0cebe098875a3257,jon-latest-plus-luc-dedup,luc_1@604349b,luc_1,604349b,duel,1,12,exceeded,ok,,27,179,12416,0,0,0,0,9000,10000,bob-a,,2026-08-01T17:19:11+0200
+7412ca33501072ab,jon-latest-plus-luc-dedup,luc_1@604349b,luc_1,604349b,quarry,1,12,exceeded,ok,,27,217,8978,3,2,0,0,9000,10000,bob-a,,2026-08-01T17:19:12+0200
+f159c5e85c3626ea,jon-latest-plus-luc-dedup,mistral@ba943b9,mistral,ba943b9,atoll,1,12,close,ok,,27,174,9751,9,0,0,0,9000,10000,bob-a,,2026-08-01T17:19:11+0200
+4c47de98314c126a,jon-latest-plus-luc-dedup,mistral@ba943b9,mistral,ba943b9,duel,1,12,pass,ok,,18,138,4669,2,0,0,0,9000,10000,bob-a,,2026-08-01T17:19:11+0200
+52ff9c4ee6405d9a,jon-latest-plus-luc-dedup,mistral@ba943b9,mistral,ba943b9,quarry,1,12,exceeded,ok,,27,86,10119,14,36,0,3,9000,10000,bob-a,,2026-08-01T17:19:11+0200
+6c0a5a27f6de1756,jon-latest-plus-luc-dedup,vanguard@ba943b9,vanguard,ba943b9,atoll,1,12,pass,ok,,27,186,1670,22,0,0,4,9000,10000,bob-a,,2026-08-01T17:19:11+0200
+a2733ff9284da186,jon-latest-plus-luc-dedup,vanguard@ba943b9,vanguard,ba943b9,duel,1,12,pass,ok,,27,184,1219,6,0,0,3,9000,10000,bob-a,,2026-08-01T17:19:11+0200
+0c4b283aaf8e97f9,jon-latest-plus-luc-dedup,vanguard@ba943b9,vanguard,ba943b9,quarry,1,12,pass,ok,,27,135,1308,6,0,0,2,9000,10000,bob-a,,2026-08-01T17:19:11+0200

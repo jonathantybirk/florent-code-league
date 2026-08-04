@@ -1,3 +1,0 @@
-bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-ragnarok@34f775b,ragnarok,34f775b,exceeded,21,21,21,3599,28,56,77,993,>12000,309,0,9000,10000
-ragnarok_fair@34f775b,ragnarok_fair,34f775b,exceeded,21,21,21,2817,21,57,268,1411,>12000,317,0,9000,10000

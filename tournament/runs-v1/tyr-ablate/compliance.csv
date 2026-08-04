@@ -1,0 +1,6 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+tyr_belt@5c7633c,tyr_belt,5c7633c,pass,21,21,21,2422,11,53,482,996,4926,0,0,9000,10000
+tyr_hint@5c7633c,tyr_hint,5c7633c,pass,21,21,21,2422,0,55,492,997,4668,0,0,9000,10000
+tyr_retgt@5c7633c,tyr_retgt,5c7633c,pass,21,21,21,2422,13,56,504,1027,4595,0,0,9000,10000
+tyr_pad@5c7633c,tyr_pad,5c7633c,pass,21,21,21,2422,15,54,489,983,4872,0,0,9000,10000
+tyr@5c7633c,tyr,5c7633c,pass,21,21,21,2422,6,47,401,819,4680,0,0,9000,10000

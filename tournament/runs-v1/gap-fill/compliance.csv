@@ -1,0 +1,6 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+undertow_oracle@75591b7,undertow_oracle,75591b7,pass,3,3,3,503,9,29,397,1015,3619,0,0,9000,10000
+vanguard@c407e79,vanguard,c407e79,pass,3,3,3,517,9,26,342,950,3934,0,0,9000,10000
+vanguard@818f3b4,vanguard,818f3b4,pass,3,3,3,511,9,26,322,779,2675,0,0,9000,10000
+vanguard@da3fd8a,vanguard,da3fd8a,pass,3,3,3,505,7,23,254,666,2037,0,0,9000,10000
+vanguard_oracle@75591b7,vanguard_oracle,75591b7,pass,3,3,3,661,3,17,32,690,5166,0,0,9000,10000

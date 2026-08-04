@@ -1,2 +1,0 @@
-bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-janus@8a1e7a1,janus,8a1e7a1,pass,21,21,21,3322,14,41,498,1165,7114,0,0,9000,10000

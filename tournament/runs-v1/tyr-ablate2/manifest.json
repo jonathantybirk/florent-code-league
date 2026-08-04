@@ -1,0 +1,144 @@
+{
+  "tournament_id": "tyr-ablate2",
+  "map_set": "official",
+  "maps": [
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "duel",
+    "fjord",
+    "hive",
+    "jackpot",
+    "longship",
+    "pinch",
+    "quarry",
+    "runestone",
+    "showdown",
+    "skerry",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 945,
+  "rating_matches": 840,
+  "mode": "challenger",
+  "challengers": [
+    "tyr_belt@2e6c876",
+    "tyr_hint@2e6c876",
+    "tyr_retgt@2e6c876",
+    "tyr_pad@2e6c876",
+    "tyr@2e6c876"
+  ],
+  "bots": [
+    {
+      "bot_id": "tyr_belt@2e6c876",
+      "name": "tyr_belt",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/tyr_belt",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tyr_hint@2e6c876",
+      "name": "tyr_hint",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/tyr_hint",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tyr_retgt@2e6c876",
+      "name": "tyr_retgt",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/tyr_retgt",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tyr_pad@2e6c876",
+      "name": "tyr_pad",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/tyr_pad",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tyr@2e6c876",
+      "name": "tyr",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/tyr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "mjolnir@2e6c876",
+      "name": "mjolnir",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/mjolnir",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "odin@2e6c876",
+      "name": "odin",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/odin",
+      "tags": [
+        "luc"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 5,
+    "targets": [
+      "tyr_belt@2e6c876",
+      "tyr_hint@2e6c876",
+      "tyr_retgt@2e6c876",
+      "tyr_pad@2e6c876",
+      "tyr@2e6c876"
+    ],
+    "maps": [
+      "atoll",
+      "aurora",
+      "bridge",
+      "crossfire",
+      "duel",
+      "fjord",
+      "hive",
+      "jackpot",
+      "longship",
+      "pinch",
+      "quarry",
+      "runestone",
+      "showdown",
+      "skerry",
+      "sprint",
+      "strait",
+      "string",
+      "sweden",
+      "twins",
+      "vase",
+      "vault"
+    ],
+    "matches_per_bot": 21,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}

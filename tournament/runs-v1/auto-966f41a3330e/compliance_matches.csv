@@ -1,0 +1,4 @@
+match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
+231bfe4f6e99d1ab,auto-966f41a3330e,tempest_reinforcements@edf93ad,tempest_reinforcements,edf93ad,atoll,1,12,exceeded,ok,,27,226,7,25,282,3042,>12000,11,2,0,0,9000,10000,n-62-11-62,29003486,2026-08-02T01:21:05+0200
+bfb472f2c451b945,auto-966f41a3330e,tempest_reinforcements@edf93ad,tempest_reinforcements,edf93ad,duel,1,12,pass,ok,,27,235,5,23,315,2381,7010,24,0,0,0,9000,10000,n-62-11-62,29003486,2026-08-02T01:21:07+0200
+c7d5633ab6193b9c,auto-966f41a3330e,tempest_reinforcements@edf93ad,tempest_reinforcements,edf93ad,quarry,1,12,pass,ok,,27,241,7,23,259,548,8664,11,0,0,0,9000,10000,n-62-11-62,29003486,2026-08-02T01:21:10+0200

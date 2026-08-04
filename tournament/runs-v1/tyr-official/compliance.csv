@@ -1,0 +1,5 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+tyr@f741a18,tyr,f741a18,pass,21,21,21,2422,13,58,532,1044,4696,0,0,9000,10000
+mjolnir@f741a18,mjolnir,f741a18,pass,21,21,21,3054,0,51,358,873,4746,0,0,9000,10000
+steward@f741a18,steward,f741a18,pass,21,21,21,4402,10,41,58,459,6019,0,0,9000,10000
+odin@f741a18,odin,f741a18,pass,21,21,21,3231,10,47,135,940,5856,0,0,9000,10000
