@@ -1,0 +1,17 @@
+{
+  "challengers": [
+    "green@2a19238",
+    "hardshell@2a19238",
+    "odin@5a92113",
+    "pantheon_puppet@5a92113",
+    "strategist@2a19238",
+    "strategist_learned@2a19238"
+  ],
+  "heads": {
+    "elias_dev": "818eaf5dbb0cee822bb5e684731c892d4921110c",
+    "viktor": "2a19238868400e6f955206c69fc4a7317de954ee",
+    "x/jon": "902be71c12fe64badadf6b77103b3059399b7f8a",
+    "x/luc": "5a92113018d6793f546791b1494f318469fbbfff"
+  },
+  "submitted_at": "2026-08-04T10:37:40+00:00"
+}
