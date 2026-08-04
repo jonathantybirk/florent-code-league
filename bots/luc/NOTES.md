@@ -2,6 +2,96 @@
 
 Scratchpad for the next session. Not shipped doctrine — ideas to measure, not trust.
 
+## 2026-08-04 — FOR WHOEVER OWNS odin: it is missing a measured pacing fix
+
+Written by a parallel session working on `heimdall`. I am deliberately **not**
+touching `bots/luc/odin/`, because two agents editing one bot directory clobber
+each other. This is the handoff instead.
+
+**odin paces.** `benchmarks/pathology.py` over bridge+longship, odin as team a:
+**110 paced / 3324 Builder-rounds = 3.3%**. Healthy is 0–2%. With the fix below
+it is **21 / 5132 = 0.4%**.
+
+The cause is in `_move_while_stuck`, and its own comment already describes it:
+it picks the neighbour nearest the target, "and that choice reverses the moment
+the Builder steps", so a Builder with an unreachable goal oscillates forever.
+It is a greedy step with **no memory of where it has been**.
+
+The fix is one sort term — prefer a neighbour we have not just stood on:
+
+```python
+    recent = p.recent_tiles[-TABU_WINDOW:] if TABU_WINDOW else []
+    ...
+            candidates.append((
+                recent.count(tuple(position)),   # <- the whole change
+                tuple(position) in p.seen,
+                position.distance_squared(target),
+                position.x, position.y, direction,
+            ))
+```
+
+plus `TABU_WINDOW = 4` in `constants.py` and its import. `p.recent_tiles` already
+exists — the confinement check maintains it — so nothing new is tracked.
+
+Measured on **heimdall's** chassis, 21 official maps both seats, 8 opponents:
+
+    TABU_WINDOW  0 (control)   304/336  0.905
+                 4             308/336  0.917   <- lifts warden 0.86 -> 0.90
+                 8             306/336  0.911
+                16             303/336  0.902
+
+Falls off either side of 4, which is the shape a real effect has. It composes:
+heimdall shipped it together with the repair cap at 311/336 (`4c0d92eb2`).
+**The odin-chassis numbers are being measured now and belong in this section
+when they land** — do not take the heimdall number as odin's, that is exactly
+the stale-constant mistake recorded further down this file.
+
+### Also measured on this chassis, and rejected — do not re-run these
+
+- **Flank a massed turret wall** (seat on the far side of their Core when they
+  have massed turrets, since a Gunner has a fixed facing and rotating costs a
+  flat 10 Ti). Sound mechanically, does not pay: pool 310/336 against 311, and
+  the ladder gate below is **394/462 against 397**, with `vigil_reinforcements`
+  going 0.60 → 0.57. Thresholds 2/3/5 → 309/310/311, i.e. it only stops hurting
+  once it stops firing.
+- **Rotation-aware flank** (also avoid tiles a turret could reach *after*
+  turning; `_ray_direction` returning None is the exact test for off-axis tiles
+  that rotation can never reach). Scored **identically** to the plain flank,
+  310/336 with the same per-opponent column, and cost CPU: worst turn went from
+  under 4 ms to over 4 ms when computed per candidate seat. Precomputing a
+  rotation-cover map the way `_enemy_turret_cover` does brings it back to 5 ms,
+  but there is nothing to buy with it.
+- **Step out of the ray when shot** (`_dodge_fire`). The symptom is real —
+  `benchmarks/underfire.py`, added in `4c0d92eb2`, counts Builders that died
+  without moving through the whole burst that killed them, and we do it on
+  21–29% of Builder deaths against opponents' 11–24%. The cure loses: 132/160
+  on generated maps against 135, and −7 games across the four hardest ladder
+  matchups.
+- **Stop sieging while our own Core is under attack.** 276/336 and 290/336 at
+  0 and 2 remaining siege Gunners, against 304. Easing off their Core removes
+  the counter-pressure that keeps them home.
+
+### The local 8-bot panel is not the ladder, and the gap is large
+
+The cluster run `auto-d3474c585dde` rates `heimdall@daf0de0` at **0.845 over
+4,284 matches**, with **37 opponent builds below 0.80**. The panel in
+`sweep.py` pins **one commit per opponent name**; the ladder runs six different
+`vigil` builds, two `valkyrie`, two `warden_walk` — and the rate varies up to
+10 points across builds *of the same bot*. Scoring against one of them is a
+sample of size one.
+
+Worst real matchups, none of which are in the default panel:
+`ragnarok_fair@79582fc` 0.595, `vigil_reinforcements@60d5afa` 0.619,
+`steward@e55aab5` 0.643, `tempest_ferry@26b5aa1` 0.643, and the whole
+`tempest_*` family around 0.67–0.71.
+
+`<scratchpad>/ladderpanel.py` scores against extracted real builds instead;
+the extraction is `git archive <commit> <path>` per bot, driven off
+`bot_a_commit`/`bot_b_commit` in the run's `matches.csv`. Worth rebuilding as
+a committed tool — the panel being wrong is what hid the Core-death
+projection's value (it looked like a 3-game regression on the 8-bot panel and
+is **+5** on the ladder gate).
+
 ## 2026-08-04 — odin: the repair cap shipped, and the Core learns it is dying
 
 ### odin v1 (45aa24a90): heimdall plus the unshipped 0.917 combo
