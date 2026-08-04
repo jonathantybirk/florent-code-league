@@ -176,31 +176,38 @@ def _preferred(specs: list[BotSpec]) -> BotSpec:
 
 
 # ---------------------------------------------------------------------------------------------
-# ATTENTION, AGENTS RUNNING EXPERIMENTS: everything under tournament/runs/ WITHOUT an EXPERIMENT
-# marker is LADDER EVIDENCE. The public rankings pool every matches.csv found there, and the
-# published matrix must be complete -- so a small sweep (a few bots vs a panel) dropped into
-# tournament/runs/ injects entrants that never played the full field and BLOCKS every publish
-# with "refusing to publish an incomplete matrix" until someone cleans it up. This happened on
-# 2026-08-04 with the vidar-* sweeps.
+# ATTENTION, AGENTS RUNNING SWEEPS AND EXPERIMENTS IN tournament/runs/: ladder evidence is
+# OPT-IN. A run's matches enter the public rankings pool only if the run directory carries an
+# automation.json (written by the evaluator itself) or a LADDER marker file (a deliberate manual
+# ladder run, e.g. the v2-full bootstrap or a gap-fill). Everything else -- your ablations,
+# panels, head-to-heads -- is treated as a private experiment: every CLI command still works on
+# it, but its matches never enter the published matrix and its bots do not count as rated.
 #
-# If your run is an experiment rather than a ladder entry, mark it: either plan it with
-#     python -m tournament plan --tid <tid> --experiment ...
-# or drop an empty file named EXPERIMENT in the run directory before results merge. Marked runs
-# keep working with every CLI command (hpc push/submit/watch, rate, report) -- they are only
-# invisible to the ladder pool and the rated-bot ledger. To put a bot on the ladder, do not
-# gap-fill by hand: push it to your bot branch and let the evaluator schedule it against the
-# full canonical field.
+# Why: the published matrix must be COMPLETE (an unplayed pair is indistinguishable from a
+# measured draw), so on 2026-08-04 a handful of 9-12 bot vidar sweeps injected entrants that
+# had never played the full field and blocked every ladder publish with "refusing to publish an
+# incomplete matrix". Auto-gap-filling was rejected: it would multiply a cheap sweep into ~14x
+# the matches and permanently grow the field every future challenger must play.
+#
+# So: to put a bot on the ladder, push it to your bot branch and let the evaluator schedule it
+# against the full canonical field. To make a manual run count as ladder evidence, plan it with
+# --ladder (or touch LADDER in its directory) -- and only do that for a complete round robin or
+# a full-field challenger set. An EXPERIMENT marker documents intent and always wins over both.
 # ---------------------------------------------------------------------------------------------
 EXPERIMENT_MARKER = "EXPERIMENT"
+LADDER_MARKER = "LADDER"
 
 
 def _ladder_match_files() -> list[Path]:
-    """Every matches.csv that counts as ladder evidence (experiment runs excluded)."""
-    return [
-        path
-        for path in sorted(planning.RUNS_ROOT.glob("*/matches.csv"))
-        if not (path.parent / EXPERIMENT_MARKER).exists()
-    ]
+    """Every matches.csv that counts as ladder evidence. See the opt-in note above."""
+    files = []
+    for path in sorted(planning.RUNS_ROOT.glob("*/matches.csv")):
+        run = path.parent
+        if (run / EXPERIMENT_MARKER).exists():
+            continue
+        if (run / "automation.json").exists() or (run / LADDER_MARKER).exists():
+            files.append(path)
+    return files
 
 
 def played_bot_ids() -> set[str]:
