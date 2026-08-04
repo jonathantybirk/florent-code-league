@@ -80,9 +80,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--experiment",
         action="store_true",
         help=(
-            "mark this run as a private experiment: its matches never enter the published "
-            "ladder pool or the rated-bot ledger. USE THIS FOR SWEEPS AND PANELS -- an unmarked "
-            "partial run blocks every ladder publish with an incomplete-matrix error"
+            "explicitly mark this run as a private experiment (writes an EXPERIMENT marker). "
+            "Manual runs are already experiments by default; the marker just documents intent "
+            "and wins over a stray LADDER marker"
+        ),
+    )
+    planner.add_argument(
+        "--ladder",
+        action="store_true",
+        help=(
+            "opt this run INTO the published ladder pool (writes a LADDER marker). Only for a "
+            "complete round robin or a full-field challenger set: a partial run with this "
+            "marker blocks every ladder publish with an incomplete-matrix error"
         ),
     )
 
@@ -311,15 +320,27 @@ def cmd_plan(args) -> int:
         versus=versus,
         compliance_specs=compliance_specs,
     )
+    if args.experiment and args.ladder:
+        raise SystemExit("--experiment and --ladder are mutually exclusive")
     if args.experiment:
-        # The marker is what keeps this run out of the ladder pool and the rated-bot ledger;
-        # see the note above automation._ladder_match_files.
         (destination / "EXPERIMENT").write_text(
             "This run is a private experiment. Its matches are excluded from the published\n"
-            "ladder pool and from the rated-implementation ledger. Delete this file only if\n"
-            "the run is a complete ladder-shaped round robin or challenger set.\n"
+            "ladder pool and from the rated-implementation ledger.\n"
         )
         print(f"{args.tid}: marked as EXPERIMENT (excluded from the ladder pool)")
+    elif args.ladder:
+        # See the opt-in note above automation._ladder_match_files.
+        (destination / "LADDER").write_text(
+            "This manual run is ladder evidence: its matches enter the published rankings\n"
+            "pool. It must be a complete round robin or a full-field challenger set --\n"
+            "a partial run with this marker blocks every ladder publish.\n"
+        )
+        print(f"{args.tid}: marked as LADDER (counts as published-ladder evidence)")
+    else:
+        print(
+            f"{args.tid}: manual run, private by default -- its matches will NOT enter the "
+            f"published ladder pool (plan with --ladder to opt in)"
+        )
     rating_matches = [match for match in matches if match.kind == "rating"]
     compliance_matches = [match for match in matches if match.kind == "compliance"]
     pairs = len(planning.pairings(rating_specs, versus))
