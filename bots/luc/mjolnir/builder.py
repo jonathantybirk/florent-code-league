@@ -9,6 +9,8 @@ from fcode import Controller, EntityType, Environment, GameError, Position
 import doctrine
 from constants import (
     BULWARK_ENABLED,
+    BULWARK_RECHECK_ALARM,
+    BULWARK_RECHECK_QUIET,
     BULWARK_RESERVE,
     SPAWN_DENIAL_ENABLED,
     SPAWN_DENIAL_RANGE,
@@ -1734,15 +1736,25 @@ def _run_bulwark(p, ct):
     if not hasattr(p, "bulwark_targets"):
         p.bulwark_targets = _bulwark_targets(p, enemy_core)
         p.bulwark_done = set()
-        p.bulwark_checked = -1
-    # The Core is taking damage, so something is getting a line at it and the
-    # memory of a closed ring is the thing most likely to be wrong. Distrust
-    # it and go and look -- but only once per alarm, or a Sentinel (whose line
-    # no barrier stops) would walk every Builder home for the rest of the game.
-    alarm_round = ct.read_store(SLOT_CORE_DAMAGED) & ~(
+        p.bulwark_checked = -10 ** 6
+    # `bulwark_done` is what lets a Builder that has closed the ring walk off
+    # and mine, and it is also the thing most likely to be wrong: a barrier
+    # costs a Gunner five shots and 20 Ti of ammunition to remove, and it is
+    # removed out of our sight. So the memory has to expire.
+    #
+    # The first cut expired it "once per alarm", comparing against
+    # SLOT_CORE_DAMAGED -- which holds an escalation *level*, 0, 1 or 2, not a
+    # round number. That fires at most twice a match. Traced on jackpot: the
+    # ring closes at round 25 with five tiles, and is down to four by round 50
+    # and three by round 100 while the Builder mines on, because nothing ever
+    # told it to look again. The Core then took 72 Gunner hits.
+    #
+    # Expire on rounds instead, and faster while the Core is being hit.
+    alarm = ct.read_store(SLOT_CORE_DAMAGED) & ~(
         ECONOMY_DEAD_FLAG | CORE_DYING_FLAG)
-    if alarm_round and p.bulwark_checked != alarm_round:
-        p.bulwark_checked = alarm_round
+    period = BULWARK_RECHECK_ALARM if alarm else BULWARK_RECHECK_QUIET
+    if ct.get_current_round() - p.bulwark_checked >= period:
+        p.bulwark_checked = ct.get_current_round()
         p.bulwark_done.clear()
 
     pending = []

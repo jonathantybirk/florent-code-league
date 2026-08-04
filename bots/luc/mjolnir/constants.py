@@ -155,6 +155,11 @@ BULWARK_ENABLED = True
 # Barriers are 3 Ti; there is no scenario in which holding a reserve above
 # that is worth leaving the Core's doorstep open.
 BULWARK_RESERVE = 0
+# How often a Builder re-verifies a ring it remembers as closed. Barriers are
+# shot out of our sight, so the memory that lets a Builder leave and mine has
+# to expire -- fast while the Core is being hit, slowly when it is quiet.
+BULWARK_RECHECK_ALARM = 15
+BULWARK_RECHECK_QUIET = 60
 
 # --- Core seal -------------------------------------------------------------
 # A Gunner's attack radius squared. Any tile this close to the Core footprint
