@@ -1,5 +1,13 @@
 # Ragnarok
 
+> **Measured before the Aug 4 turret patch (fcode ≤ 2.3.3).** Everything below was
+> measured when turrets were stronger. The 2026-08-04 balance pass (fcode 2.3.4)
+> changed the Gunner to 25 HP (was 40), 20 Ti (was 10), +20% cost scaling (was
+> +10%), 7 damage (was 10) and 4 ammo per shot (was 2), and the Sentinel to 40 HP
+> (was 30) on a 2-round reload (was 3). That balance pass is the only rules change
+> in 2.3.4, so conclusions here that do not turn on turret strength still stand —
+> but every turret-heavy number needs re-measuring before it is trusted again.
+
 The best measured mechanic from every lineage in the repo, in one bot. Built
 from the benchmark evidence in [`benchmarks/ANALYSIS.md`](../../../benchmarks/ANALYSIS.md),
 which found that the lineages were each losing mechanics the others had
