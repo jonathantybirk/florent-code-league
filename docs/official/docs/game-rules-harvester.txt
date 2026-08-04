@@ -24,7 +24,7 @@ Output
 
 Blocks movement
 
-No
+Yes
 
 Blocks LOS
 

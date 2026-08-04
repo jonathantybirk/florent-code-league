@@ -2,7 +2,7 @@ Turrets
 
 Turrets are stationary combat buildings constructed by Builder Bots. Like every other unit, each turret runs its own instance of your bot code once per round.
 
-Gunners and Sentinels fire from your team's global ammunition balance — each shot deducts its ammo cost (2 for a Gunner, 10 for a Sentinel) directly from the shared pool. Turrets hold no ammo themselves, don't accept resources from conveyors, and never need feeding. Ammunition is produced at the Core by converting titanium 1:1 with convert_ammo(); any unit can check the balance with ct.get_global_ammo(). Launchers use no ammo.
+Gunners and Sentinels fire from your team's global ammunition balance — each shot deducts its ammo cost (4 for a Gunner, 10 for a Sentinel) directly from the shared pool. Turrets hold no ammo themselves, don't accept resources from conveyors, and never need feeding. Ammunition is produced at the Core by converting titanium 1:1 with convert_ammo(); any unit can check the balance with ct.get_global_ammo(). Launchers use no ammo.
 
 Gunners have a facing direction set at build time and adjustable with ct.rotate() — Sentinels also face a fixed direction set at build time, but cannot rotate afterward. The Launcher has no facing direction at all.
 
@@ -16,19 +16,19 @@ Value
 
 HP
 
-40
+25
 
 Cost
 
-10 Ti
+20 Ti
 
 Damage
 
-10
+7
 
 Ammo per shot
 
-2
+4
 
 Fire pattern
 
@@ -42,11 +42,11 @@ Vision / attack radius²
 
 13
 
-The line stops at the first targetable tile (a builder bot or a building) in its facing direction; empty tiles don't block it, but walls do (and aren't themselves targetable). It is cheap and effective at controlling corridors, and is the only turret that can rotate after being built.
+The line stops at the first targetable tile (a builder bot or a building) in its facing direction; empty tiles don't block it, but walls do (and aren't themselves targetable). It is the cheapest turret to build and the only one that can rotate after being built, which makes it good at holding a corridor whose threat direction changes. It is also the most fragile turret and the least ammo-efficient one, and each Gunner adds +20% to your cost scale — the same tax as a Sentinel — so massing them gets expensive quickly.
 
 Sentinel
 
-A defensive turret that fires a long, obstacle-piercing line.
+A durable long-range turret that fires an obstacle-piercing line.
 
 Property
 
@@ -54,7 +54,7 @@ Value
 
 HP
 
-30
+40
 
 Cost
 
@@ -74,13 +74,13 @@ Single-tile-wide straight facing line (same width as Gunner, but longer and unbl
 
 Reload
 
-3 rounds
+2 rounds
 
 Vision / attack radius²
 
 32
 
-Sentinels hit a single tile-wide line along their facing direction, just like a Gunner's shot — but the line reaches much further (vision/attack r²=32 vs. Gunner's 13) and, unlike a Gunner's, is never blocked by walls or units in the way. They're expensive per shot and slow to reload, but excel at reaching deep into a lane the enemy thinks is safe. Facing is fixed at build time; Sentinels cannot rotate.
+Sentinels hit a single tile-wide line along their facing direction, just like a Gunner's shot — but the line reaches much further (vision/attack r²=32 vs. Gunner's 13) and, unlike a Gunner's, is never blocked by walls or units in the way. Each shot costs a large lump of ammunition, but per point of damage a Sentinel is slightly cheaper to run than a Gunner, and it out-damages one over time: 18 every 2 rounds against 7 every round. It is also the toughest turret at 40 HP, so digging one out with Builder Bots takes 20 hits. Facing is fixed at build time; Sentinels cannot rotate.
 
 Launcher
 
@@ -100,7 +100,7 @@ Cost
 
 Action
 
-Picks up an adjacent (including diagonal) friendly Builder Bot and throws it to any bot-passable tile in range
+Picks up an adjacent (including diagonal) Builder Bot from either team and throws it to any bot-passable tile in range
 
 Pickup radius²
 
@@ -114,7 +114,7 @@ Reload
 
 1 round
 
-The Launcher does not deal direct damage and needs no ammo. Its value is rapid redeployment — it can throw a Builder Bot up to sqrt(26) tiles away in one action, enabling surprise attacks or fast base expansion. It has no facing direction and cannot rotate.
+The Launcher does not deal direct damage and needs no ammo. Its value is rapid redeployment — it can throw a Builder Bot up to sqrt(26) tiles away in one action, enabling surprise attacks or fast base expansion. It works on Builder Bots from either team: as well as moving your own bots, you can grab an enemy bot that wanders adjacent and fling it somewhere harmless. It has no facing direction and cannot rotate.
 
 Rotating turrets
 
