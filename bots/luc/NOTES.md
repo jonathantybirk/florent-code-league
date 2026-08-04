@@ -2,7 +2,7 @@
 
 Scratchpad for the next session. Not shipped doctrine — ideas to measure, not trust.
 
-## 2026-08-04 — FOR WHOEVER OWNS odin: a pacing bug it has, a fix that does NOT help it
+## 2026-08-04 — FOR WHOEVER OWNS odin: a pacing bug, and a flank idea that never fired
 
 Written by a parallel session working on `heimdall`. I am deliberately **not**
 touching `bots/luc/odin/`, because two agents editing one bot directory clobber
@@ -43,44 +43,70 @@ Measured on **heimdall's** chassis, 21 official maps both seats, 8 opponents:
 Falls off either side of 4, which is the shape a real effect has. It composes:
 heimdall shipped it together with the repair cap at 311/336 (`4c0d92eb2`).
 
-### …and on odin it does not pay. Do not apply it.
+### …and on odin it is a wash on the pool, a small gain on unknown maps
 
-The odin-chassis measurement landed and it is **negative**:
+Both arms, with odin's own baseline re-measured here under identical
+conditions rather than quoted (it reproduces 135/160 exactly):
 
-    odin              313/336  0.932
-    odin + TABU_WINDOW 4   312/336  0.929   (valkyrie 0.98 -> 0.95, rest level)
+    odin                    313/336  0.932      135/160  0.844
+    odin + TABU_WINDOW 4    312/336  0.929      137/160  0.856
 
-So the pacing *symptom* transfers — odin really does pace 3.3%, and the fix
-really does take it to 0.4% — and the *benefit* does not. One game, on a
-deterministic gate, against a bot whose only regression is valkyrie.
+Pool -1 (the only column that moves is valkyrie 0.98 -> 0.95), generated
+**+2**. Net +1 across both arms, and the gain is on the arm made of terrain
+nobody has tuned against — which is the arm the final tournament looks like.
 
-This is the same lesson as the struck-through Launcher knobs below, arriving
-for the fourth time this session, and it is worth stating in the strong form:
-**a fix is only measured for the bot it was measured on, even when the bug it
-fixes is present in both.** heimdall gains 4 games from this; odin, which has
-the Core-death projection and therefore a different Builder budget under
-pressure, loses 1. Pacing is wasted rounds, and what those rounds are worth
-depends entirely on what else the Builder would have done with them.
+That is a judgement call and it belongs to odin's owner, not to me. What is
+*not* a judgement call is the underlying observation: the pacing **symptom**
+transfers between chassis (3.3% -> 0.4% on both) while the **value** of fixing
+it does not. heimdall gains 4 games on the pool from this; odin loses 1.
+Pacing is wasted Builder-rounds, and what a wasted round costs depends on what
+that Builder would otherwise have done — and odin's Core-death projection
+gives it a different Builder budget under pressure.
 
-Left here as a measured rejection for odin, not as a suggestion. If odin's
-chassis changes again, it is cheap to re-measure — the variant is one sort term
-and the constant is already named.
+An earlier version of this section called it a flat rejection. That was
+written from the pool arm while the generated arm was still running, and was
+wrong; recorded here because issuing a verdict on one arm when a second is in
+flight is exactly the partial-run trap this file warns about elsewhere.
 
 ### Also measured on this chassis, and rejected — do not re-run these
 
-- **Flank a massed turret wall** (seat on the far side of their Core when they
-  have massed turrets, since a Gunner has a fixed facing and rotating costs a
-  flat 10 Ti). Sound mechanically, does not pay: pool 310/336 against 311, and
-  the ladder gate below is **394/462 against 397**, with `vigil_reinforcements`
-  going 0.60 → 0.57. Thresholds 2/3/5 → 309/310/311, i.e. it only stops hurting
-  once it stops firing.
+- **Flank a massed turret wall** — NOT REJECTED, **NEVER TESTED**. Worth
+  reading before anyone tries it again, because the scores look like a
+  rejection and are not one. Seat on the far side of their Core when they have
+  massed turrets, since a Gunner has a fixed facing and rotating costs a flat
+  10 Ti. Scores: pool 310/336 against 311, ladder 394/462 against 397. But an
+  instrumented build says the rule **never fires at all**: across quarry,
+  string, vase, bridge, jackpot, longship and twins it had an opinion on
+  **0 turns**, and a win/loss diff over 21 maps x 2 seats x 3 opponents found
+  **0 cells changed in either direction**.
+
+  The reason is a hard number. Probing every seat decision for how many enemy
+  turrets are visible at that moment:
+
+        quarry    52 decisions with 0 turrets, 13 with 1, 6 with 2
+        jackpot   32 decisions, all with 0
+        longship   4 decisions, all with 0
+
+  The maximum ever seen is **2**, so a threshold of 3 can never trigger, and
+  the 1-game differences above come from elsewhere. The attacker simply is not
+  standing there at the moment a wall exists — it seats early, is capped at
+  `attack_gunners_built < 5`, and by the time a defender has massed turrets it
+  has stopped choosing seats or is dead.
+
+  So the open question is not "does flanking pay" but **"why is our attacker
+  never present when the wall goes up"**. The right version of this idea is
+  probably not a seat sort key at all: it is choosing which *side to approach
+  from* before walking, or keeping the attacker alive long enough to re-seat.
+  `<scratchpad>/variants/z_probe2` is the instrumented build that produced the
+  table above.
 - **Rotation-aware flank** (also avoid tiles a turret could reach *after*
   turning; `_ray_direction` returning None is the exact test for off-axis tiles
   that rotation can never reach). Scored **identically** to the plain flank,
-  310/336 with the same per-opponent column, and cost CPU: worst turn went from
-  under 4 ms to over 4 ms when computed per candidate seat. Precomputing a
-  rotation-cover map the way `_enemy_turret_cover` does brings it back to 5 ms,
-  but there is nothing to buy with it.
+  310/336 with the same per-opponent column — unsurprising given neither one
+  ever fires. It did cost CPU: worst turn went from under 4 ms to over 4 ms
+  when computed per candidate seat. Precomputing a rotation-cover map the way
+  `_enemy_turret_cover` does brings it back to 5 ms. The mechanism is right and
+  is worth keeping in mind if the trigger problem above is ever solved.
 - **Step out of the ray when shot** (`_dodge_fire`). The symptom is real —
   `benchmarks/underfire.py`, added in `4c0d92eb2`, counts Builders that died
   without moving through the whole burst that killed them, and we do it on
