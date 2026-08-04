@@ -406,7 +406,16 @@ LAUNCHER_QUIET_ROUNDS = 45
 # has clearly not ended the game, a second trunk is allowed. The round-1000
 # tiebreak order is titanium_collected -> live harvesters -> titanium_stored,
 # so in a long game delivered income is literally the win condition.
-NETWORK_CAP_EARLY = 4
+# Harvesters one trunk will carry before the Builder stops laying line.
+#
+# Four was measured on the pre-patch chassis. Re-measured on this one under
+# 2.3.4: 4 -> 250/336, 6 -> 254, 8 -> 254. Six and eight are the same number,
+# so six is shipped -- the extra Harvesters are +5% scale each and the cap
+# stops binding before it reaches eight anyway. Worth taking because the
+# round-1000 tiebreak is titanium collected and the wall sends far more games
+# there: Core losses fall from 70 to 51 across these changes, and almost all
+# of them become full-length games instead.
+NETWORK_CAP_EARLY = 6
 NETWORK_CAP_LATE = 8
 ECON_EXPAND_ROUND = 120
 
