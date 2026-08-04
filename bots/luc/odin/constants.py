@@ -309,6 +309,14 @@ SLOT_CORE_DAMAGED = 12
 # Bit 2 of SLOT_CORE_DAMAGED: titanium has stopped arriving. Bits 0-1 are
 # the Core's own damage alarm and are read separately.
 ECONOMY_DEAD_FLAG = 4
+# Bit 3 of SLOT_CORE_DAMAGED: at the damage rate of the last PROJECT_WINDOW
+# rounds the Core is dead within PROJECT_HORIZON rounds. Traced on jackpot vs
+# ragnarok: the guard Builder died on round 143, the only survivor was the
+# attacker across the map, and the Core took 10-20 a round from 157 to 192
+# with 762 titanium banked -- rich, undefended, and dead. A Builder spawned
+# under this flag becomes a home defender, the same conditional-respawn shape
+# that made the income watchdog work where unconditional refill lost 30pp.
+CORE_DYING_FLAG = 8
 SLOT_ENEMY_CORE = 13
 SLOT_OWN_CORE = 14
 SLOT_BUILDER_HEARTBEAT = 15

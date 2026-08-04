@@ -14,6 +14,7 @@ from constants import (
     MAX_GUARD_GUNNERS,
     CORE_THREAT_RADIUS_SQ,
     CPU_SOFT_BUDGET_US,
+    CORE_DYING_FLAG,
     ECONOMY_DEAD_FLAG,
     D4_DELTAS,
     D8,
@@ -182,6 +183,17 @@ def _run(p, ct):
             p.is_attacker = False
             p.is_launcher_builder = False
             p.economy_builders = p.builder_index + 1
+        # A Builder spawned *because* the Core projects its own death is a
+        # defender, and that outranks the miner override: titanium arriving
+        # is worth nothing to a Core that dies first. Traced on jackpot: the
+        # guard died on round 143, the sole survivor was the attacker across
+        # the map, and the Core bled out from 157 to 192 over a 762 Ti bank.
+        p.is_defender = False
+        if (p.builder_index >= MAX_OPENING_BUILDERS
+                and (ct.read_store(SLOT_CORE_DAMAGED) & CORE_DYING_FLAG)):
+            p.is_defender = True
+            p.is_attacker = False
+            p.is_launcher_builder = False
         p.siege_sentinel = None
         p.sentinel_wrap = []
         # No map oracle. Terrain, ore and the enemy Core come only from what
@@ -209,7 +221,7 @@ def _run(p, ct):
     if _write_off(p, ct):
         return
     raw_alarm = ct.read_store(SLOT_CORE_DAMAGED)
-    alarm = raw_alarm & ~ECONOMY_DEAD_FLAG
+    alarm = raw_alarm & ~(ECONOMY_DEAD_FLAG | CORE_DYING_FLAG)
     # Titanium has stopped arriving. Somewhere upstream a conveyor is gone and
     # no Builder can see it, so walk the line until it is in sight -- that is
     # all `_repair_network` needs to mend it.
@@ -253,6 +265,24 @@ def _run(p, ct):
         # round-1000 tiebreak is delivered titanium, and a second miner is
         # worth more than a Builder holding a pose.
         if p.doctrine == doctrine.FORTIFY and not _run_core_seal(p, ct):
+            return
+    if getattr(p, "is_defender", False):
+        # Two defender jobs, split by spawn parity. The first answers the
+        # shooters (the ring Builder's guard kit); the second is a dedicated
+        # mender, because in the traced jackpot loss both defenders chose
+        # turret duels, the Core was healed exactly once all game, and it
+        # died at 10 a round over a 500 Ti bank. Healing is 4 HP for a flat
+        # 1 Ti at any scale: a mender that just stands there out-pays every
+        # other use of a rich bank while the guard kills the shooters. When
+        # the Core is whole and quiet again, fall through and mine.
+        mender = (p.builder_index - MAX_OPENING_BUILDERS) % 2 == 1
+        if mender and (alarm or (raw_alarm & CORE_DYING_FLAG)):
+            _heal_core(p, ct)
+            return
+        if _guard_home(p, ct):
+            return
+        if alarm or (raw_alarm & CORE_DYING_FLAG):
+            _defend_core(p, ct)
             return
     if p.is_attacker:
         p.phase = "rush"
