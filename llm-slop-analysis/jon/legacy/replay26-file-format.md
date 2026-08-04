@@ -1,5 +1,13 @@
 # `.replay26` File Format
 
+> **Measured before the Aug 4 turret patch (fcode ≤ 2.3.3).** Everything below was
+> measured when turrets were stronger. The 2026-08-04 balance pass (fcode 2.3.4)
+> changed the Gunner to 25 HP (was 40), 20 Ti (was 10), +20% cost scaling (was
+> +10%), 7 damage (was 10) and 4 ammo per shot (was 2), and the Sentinel to 40 HP
+> (was 30) on a 2-round reload (was 3). That balance pass is the only rules change
+> in 2.3.4, so conclusions here that do not turn on turret strength still stand —
+> but every turret-heavy number needs re-measuring before it is trusted again.
+
 *LLM-generated, not from the official site.* Reverse-engineered by diffing byte structure across controlled matches (custom probe bots, run via `fcode.fcode_engine.run_game(player_a, player_b, engine_root, map_path, replay_path, seed, tle)` — `engine_root = str(Path(fcode.__file__).resolve().parent)`).
 
 `.replay26` files (default `replay.replay26`, written by `run_game()` / `fcode run`) are **protobuf**, same undocumented-wire-format situation as [.map26](map26-file-format.md) — no `.proto` is published. Reuses the same varint/protobuf-field reader.
