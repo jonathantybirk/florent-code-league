@@ -33,3 +33,6 @@ tournament/custom_maps/*
 
 # Derived first-publication dates. Content-addressed, so it is a pure cache.
 tournament/first-published.json
+
+# Derived import verdicts. Content-addressed, so it is a pure cache.
+tournament/unloadable.json

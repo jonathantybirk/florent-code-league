@@ -12,6 +12,7 @@ import csv
 import fcntl
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from collections import defaultdict
@@ -23,6 +24,7 @@ from tournament import duplicates, hpc, report
 from tournament import plan as planning
 from tournament.discover import DEFAULT_EXCLUDES, discover
 from tournament.gitutil import REPO_ROOT, resolve_commit
+from tournament import loadcheck
 from tournament.maps import is_secret
 from tournament.merge import merge, read
 from tournament.rating import evaluate
@@ -187,7 +189,8 @@ def unfinished_runs() -> dict[str, set[str]]:
     pending: dict[str, set[str]] = {}
     for schedule_path in sorted(planning.RUNS_ROOT.glob("*/schedule.jsonl")):
         run_dir = schedule_path.parent
-        scheduled: set[str] = set()
+        if not outstanding_matches(run_dir):
+            continue
         bots: set[str] = set()
         for line in schedule_path.read_text().splitlines():
             if not line.strip():
@@ -195,33 +198,44 @@ def unfinished_runs() -> dict[str, set[str]]:
             entry = json.loads(line)
             if entry.get("kind") == "compliance":
                 continue
-            scheduled.add(entry["match_id"])
             bots.add(entry["bot_a"])
             bots.add(entry["bot_b"])
-        if not scheduled:
-            continue
-        merged: set[str] = set()
-        matches = run_dir / "matches.csv"
-        if matches.exists():
-            with open(matches, newline="") as handle:
-                for row in csv.DictReader(handle):
-                    merged.add(row["match_id"])
-        if scheduled - merged:
-            pending[run_dir.name] = bots
+        pending[run_dir.name] = bots
     return pending
 
 
+def _unloadable_in(run_dir: Path) -> set[str]:
+    """bot_ids in this run whose code cannot be imported, from its own manifest."""
+    try:
+        bots = json.loads((run_dir / "manifest.json").read_text()).get("bots", [])
+    except (OSError, json.JSONDecodeError):
+        return set()
+    return loadcheck.unloadable_ids(
+        {bot["bot_id"]: {"commit": bot.get("commit", ""), "path": bot.get("path", "")}
+         for bot in bots}
+    )
+
+
 def outstanding_matches(run_dir: Path) -> set[str]:
-    """Rating match ids this run scheduled but has not merged locally."""
+    """Rating match ids this run scheduled but has not merged locally.
+
+    Matches involving a bot that cannot be imported are not counted. They will never produce a
+    result no matter how often they are re-run, so counting them leaves the run in flight forever
+    and defers every later bot behind it -- which is exactly what one bot missing a sibling module
+    did to the ladder.
+    """
     schedule_path = run_dir / "schedule.jsonl"
     if not schedule_path.exists():
         return set()
+    broken = _unloadable_in(run_dir)
     scheduled = set()
     for line in schedule_path.read_text().splitlines():
         if not line.strip():
             continue
         entry = json.loads(line)
         if entry.get("kind") == "compliance":
+            continue
+        if broken and (entry["bot_a"] in broken or entry["bot_b"] in broken):
             continue
         scheduled.add(entry["match_id"])
     merged: set[str] = set()
@@ -231,6 +245,94 @@ def outstanding_matches(run_dir: Path) -> set[str]:
             for row in csv.DictReader(handle):
                 merged.add(row["match_id"])
     return scheduled - merged
+
+
+MAX_RESUBMITS = 3
+
+
+def _abandoned(state: dict) -> bool:
+    """True when every array this run submitted is gone from LSF.
+
+    `bjobs -A` answers "Job array <id> is not found" for an array the scheduler no longer knows
+    about. One such line is not enough -- a run split across five arrays can have four finished
+    and one still going -- so every submitted id has to be accounted for as missing.
+    """
+    job_ids = state.get("job_ids") or []
+    if not job_ids:
+        return False
+    missing = set(re.findall(r"Job array <(\d+)> is not found", state.get("bjobs") or ""))
+    return missing >= {str(job_id) for job_id in job_ids}
+
+
+def _resubmit_count(run_dir: Path) -> int:
+    try:
+        return int(json.loads((run_dir / "resubmits.json").read_text()).get("count", 0))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return 0
+
+
+def _record_resubmit(run_dir: Path) -> None:
+    count = _resubmit_count(run_dir) + 1
+    try:
+        (run_dir / "resubmits.json").write_text(
+            json.dumps({"count": count, "at": datetime.now(UTC).isoformat(timespec="seconds")})
+        )
+    except OSError:
+        pass
+
+
+def resubmit_abandoned_runs(run_names: list[str], *, dry_run: bool = False) -> list[str]:
+    """Re-queue runs whose arrays vanished with work still outstanding.
+
+    The sibling failure to a stranded fetch, and the one that cannot fix itself. There, the
+    cluster had finished and only the transfer was missing. Here the cluster stopped early --
+    elements killed at walltime, an array cancelled, a scheduler restart -- so no amount of
+    fetching completes the run, and because the automation evaluates one run at a time it defers
+    every later bot behind work nobody is doing. auto-852f773c9500 sat that way with 4,830 of
+    28,476 matches unrun and all its arrays gone.
+
+    `hpc submit` is idempotent and content-addressed: it skips every match that already has a
+    result and queues only the gaps, so this cannot duplicate work.
+
+    Capped at MAX_RESUBMITS per run. A run that keeps coming back short is failing for a reason
+    re-queueing will not fix, and an uncapped retry would quietly burn the cluster on it forever.
+    """
+    requeued: list[str] = []
+    for tid in run_names:
+        run_dir = planning.RUNS_ROOT / tid
+        if not outstanding_matches(run_dir):
+            continue
+        try:
+            settings = hpc.config()
+            state = hpc.status(tid, settings)
+        except (hpc.HpcError, OSError, KeyError) as error:
+            print(f"  {tid}: cannot ask the cluster whether its jobs are gone ({error})")
+            continue
+        if state["done"] >= state["total"] or not _abandoned(state):
+            continue
+        attempts = _resubmit_count(run_dir)
+        if attempts >= MAX_RESUBMITS:
+            print(
+                f"  {tid}: arrays gone with {state['total'] - state['done']} match(es) unrun, but "
+                f"it has already been re-submitted {attempts} time(s); leaving it for a human"
+            )
+            continue
+        print(
+            f"  {tid}: every array is gone with {state['total'] - state['done']} match(es) never "
+            f"run; re-submitting the gaps (attempt {attempts + 1} of {MAX_RESUBMITS})"
+        )
+        if dry_run:
+            requeued.append(tid)
+            continue
+        try:
+            hpc.fetch(tid, settings)
+            hpc.submit(tid, settings)
+        except (hpc.HpcError, OSError) as error:
+            print(f"  {tid}: re-submission failed ({error}); still treating it as in flight")
+            continue
+        _record_resubmit(run_dir)
+        requeued.append(tid)
+    return requeued
 
 
 def recover_stranded_results(run_names: list[str], *, dry_run: bool = False) -> list[str]:
@@ -592,6 +694,9 @@ def run_once(
     half_merged = unfinished_runs()
     if half_merged:
         recover_stranded_results(sorted(half_merged), dry_run=dry_run)
+        # Runs the cluster abandoned rather than finished. Nothing else notices these: fetching
+        # cannot complete them, so without this they defer every later bot indefinitely.
+        resubmit_abandoned_runs(sorted(half_merged), dry_run=dry_run)
         half_merged = unfinished_runs()
     # Bots in a half-merged run of any kind are under test, automation-owned or not.
     for run_name, bots in sorted(half_merged.items()):
@@ -659,9 +764,21 @@ def run_once(
 
     representatives = [_preferred(specs) for specs in unseen.values()]
     representatives.sort(key=lambda spec: spec.bot_id)
+    # A bot that cannot be imported cannot play, and scheduling it wastes a whole run: every one
+    # of its matches fails identically, so the run never completes and every later bot defers
+    # behind it. Judged once per implementation and never retried -- a fix is new code with a new
+    # hash, which is checked on its own merits.
+    representatives, unloadable = loadcheck.partition(representatives)
+    for spec, reason in unloadable:
+        print(f"  excluding {spec.bot_id}: cannot be imported -- {reason}")
     print(f"{len(representatives)} unseen implementation(s) across {len(sources)} branch(es)")
     for spec in representatives:
         print(f"  {spec.bot_id:<30} {spec.path}")
+    if not representatives:
+        print("nothing left to schedule once unloadable bots are excluded")
+        if publish:
+            _deploy(site_repo)
+        return 0
     if dry_run:
         return 0
 

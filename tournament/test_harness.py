@@ -577,3 +577,36 @@ def test_secret_map_labels_are_prefixed_and_bare_names_do_not_resolve():
     # A bare name must not silently mix a held-out map into an official run.
     with pytest.raises(FileNotFoundError):
         maps.resolve(path.stem)
+
+
+def test_a_bot_reaching_for_a_sibling_module_is_judged_unloadable(tmp_path):
+    from tournament import loadcheck
+
+    # The staging model copies one bot directory, so an import of a neighbour cannot resolve.
+    # This is strategist_learned@2a19238's failure, reproduced without depending on that commit.
+    bot = tmp_path / "bot"
+    bot.mkdir()
+    (bot / "main.py").write_text("import features\n")
+    loads, reason = loadcheck._probe.__wrapped__("HEAD", "does-not-exist")
+    assert not loads  # unreadable tree is also not loadable
+
+    import subprocess, sys
+    result = subprocess.run(
+        [sys.executable, "-c", loadcheck._PROBE, str(bot)], capture_output=True, text=True
+    )
+    assert result.returncode != 0
+    assert "No module named 'features'" in result.stderr
+
+
+def test_a_self_contained_bot_imports_cleanly(tmp_path):
+    from tournament import loadcheck
+    import subprocess, sys
+
+    bot = tmp_path / "bot"
+    bot.mkdir()
+    (bot / "helper.py").write_text("VALUE = 1\n")
+    (bot / "main.py").write_text("import helper\nassert helper.VALUE == 1\n")
+    result = subprocess.run(
+        [sys.executable, "-c", loadcheck._PROBE, str(bot)], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
