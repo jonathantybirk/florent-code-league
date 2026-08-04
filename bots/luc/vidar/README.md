@@ -149,6 +149,34 @@ identical rows, which is what a cap that never binds looks like.
 
 The two remaining weak matchups are prospect and steward, both at 0.571.
 
+## And off the pool, which is the arm that decides whether any of it is real
+
+82 generated maps, both seats, 164 games a pair — 1,312 games a row:
+
+| | odin | tyr | vigil | ragnarok | prospect | pantheon | steward | valkyrie | mean | worst |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **vidar** | 0.659 | 0.698 | 0.402 | 0.555 | 0.573 | 0.677 | 0.530 | 0.540 | **0.579** | 0.402 |
+| vidar, expansion off | 0.558 | 0.619 | 0.384 | 0.537 | 0.555 | 0.677 | 0.518 | 0.518 | 0.546 | 0.384 |
+| odin | — | 0.509 | 0.439 | 0.424 | 0.476 | 0.591 | 0.445 | 0.460 | 0.478 | 0.424 |
+
+Three things, and the first is the reverse of what this project usually finds.
+
+**The gain is larger off the pool than on it**: +10.1pp over odin on generated
+against +7.6pp on the 21 published maps. mjolnir's gains were pool-only and the
+atlas was worth 12pp on the pool and exactly zero off it; this is not that
+shape. And the mechanism generalises, not merely the package — late expansion
+is +3.3pp on generated against +3.0pp on the pool, which is as close to a
+pre-registered replication as this bot has.
+
+**The pool flatters everything.** 0.702 there, 0.579 here, for the same bot.
+Any number quoted from the published pool alone is an overstatement of what
+happens on terrain nobody has seen, which is presumably what the final runs on.
+
+**The worst matchup changes identity.** vigil is 0.786 on the pool and 0.402
+off it, and odin swings the same way against it (0.714 → 0.439). That is a
+property of vigil rather than of this bot, and it is now the binding constraint
+on the worst-case goal.
+
 Compliance: p75 807 µs, max 4,487 µs, zero timeouts and zero exceptions over
 3,066 samples on 21 maps — inside the 10 ms limit with room, and a lower
 maximum than odin's.
