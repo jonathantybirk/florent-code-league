@@ -222,6 +222,19 @@ SENTINEL_WRAP_RESERVE = 20
 # this many rounds, refunding its +20% scale and letting the Core respawn it
 # somewhere not walled in. ragnarok never calls self_destruct.
 REPAIR_NETWORK = True
+# Times one belt tile will be rebuilt before we stop paying for it.
+# Traced on bridge: the Harvester at (5,4) is walled in on three sides,
+# so its only route home runs through (5,3) -- which lies on row 3, the
+# map's one shared corridor, inside an enemy Gunner's ray. We rebuilt
+# that single tile 22 times for 66 Ti and +22% scale, and mined 10
+# titanium in 1000 rounds. A hole that keeps reappearing is not damage,
+# it is a tile the enemy controls, and the belt has to go somewhere else.
+REPAIR_ATTEMPT_LIMIT = 3
+# How many of the Builder's own last tiles make a step less attractive.
+# 0 restores the memoryless greedy step. benchmarks/pathology.py measures
+# the symptom: heimdall paces 5.4% of Builder-rounds on bridge where the
+# opponents pace 0.0%.
+TABU_WINDOW = 4
 WRITE_OFF_STUCK_BUILDERS = True
 STUCK_ROUNDS_BEFORE_STANDDOWN = 40
 # A Harvester this close is worth finishing before turning back to repairs, so
@@ -253,17 +266,29 @@ MAX_RELAY_LAUNCHERS = 2
 # Prefer Gunner seats outside every visible enemy turret's firing ray. A turret
 # built where an enemy turret already points is shot before it has fired much,
 # and the seat one tile off the ray usually reaches the same Core tile.
-# Measured on the 21 official maps in both seats: against vigil@e267eeb it is
-# 26/42 and 8 maps won 2-0, against 24/42 and 7 with it off; against
-# ragnarok@79582fc it is unchanged at 26/42.
-AVOID_ENEMY_RAYS = True
+#
+# MEASURED AND OFF. The original number was one opponent wide -- vigil@e267eeb,
+# 26/42 with it against 24/42 without -- on a chassis three changes ago. On the
+# full 8-bot pool it is 305/336 off against 304/336 on, and it is off in the
+# shipped stack for a reason the narrow test could not see: the seat it refuses
+# is often the only seat that reaches the Core at all, and refusing it sends the
+# attacker looking for another one. A turret that shoots and dies has still
+# shot; a turret never built has not.
+AVOID_ENEMY_RAYS = False
 
 # --- Siege barriers ---------------------------------------------------------
 # Barriers soaking enemy Gunner lanes aimed at our forward battery, out at the
 # enemy Core. 3 Ti and +1% scale for 30 HP absorbs three Gunner rounds and six
 # of their ammunition, which is titanium 1:1 -- the cheapest trade on the board
 # and the one thing Pantheon does with barriers (31 of 33 across twenty games).
-SIEGE_BARRIER_ENABLED = True
+#
+# MEASURED AND OFF. That arithmetic is right about the barrier and wrong about
+# the turn: on the full 8-bot pool it is 306/336 off against 304/336 on, and
+# _block_siege_lane runs *before* the Gunner build in `_rush`, so the round it
+# spends soaking is a round the battery is not being built. Pantheon can afford
+# the tempo because it opens with four Builders; this bot opens with three.
+# The trade is real, the opportunity cost is bigger.
+SIEGE_BARRIER_ENABLED = False
 # Held back so soaking never eats the Gunner that the soaking is protecting.
 SIEGE_BARRIER_RESERVE = 12
 
