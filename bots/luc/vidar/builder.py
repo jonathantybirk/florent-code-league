@@ -3029,21 +3029,43 @@ def _build_siege_sentinel(p, ct, enemy_core):
                     default=None,
                 )
                 if distance is not None:
-                    # Cover first, then arriving soon, then the farthest seat:
+                    # A seat we can take *this turn* outranks a better-covered
+                    # one we have to walk to. The Sentinel's whole advantage is
+                    # that r^2=32 reaches further than a Builder can see, so
+                    # wherever the attacker is standing when the Core comes
+                    # into range there is usually already a legal seat beside
+                    # it -- and walking to a prettier one is thirty rounds the
+                    # enemy spends shooting our Core.
+                    #
+                    # Then cover, then arriving soon, then the farthest seat:
                     # distance from the Core is safety the wrap does not have
                     # to buy.
                     choices.append((
+                        0 if _cardinal_distance(me, spot) == 1 else 1,
                         _cover_tier(spot, threats),
                         distance, -_distance_sq(spot, core_tile),
                         spot, D8.index(facing), facing,
                     ))
     if not choices:
         return False
-    _, _, _, spot, _, facing = min(choices)
+    _, _, _, _, spot, _, facing = min(choices)
     position = Position(*spot)
     if _cardinal_distance(me, spot) != 1:
-        _move_cardinal_adjacent(p, ct, spot)
-        return True
+        if _move_cardinal_adjacent(p, ct, spot):
+            return True
+        # Could not reach the seat, so this turn was not spent. Returning True
+        # here is what parked the attacker: traced on
+        # random-20260731-008-mirror-x, Builder id=6 reached (10,8) on turn 11,
+        # picked a seat it could not path to -- the enemy Launcher screen makes
+        # those tiles hazards -- and then reported "handled" every round from
+        # turn 12 to the Core's death on turn 44. Thirty-three of the game's
+        # forty-four rounds, with the Gunner search and the harasser sitting
+        # unreached below this line the whole time.
+        #
+        # Rejecting the seat matters as much as returning False: without it the
+        # next round re-ranks to the same unreachable tile and parks again.
+        p.rejected_build_sites.add(spot)
+        return False
     if ct.can_build_sentinel(position, facing):
         ct.build_sentinel(position, facing)
         _mark_progress(p, ct, "built siege sentinel", spot)
@@ -3058,9 +3080,18 @@ def _build_siege_sentinel(p, ct, enemy_core):
              and tile not in p.ores),
             key=lambda tile: (_distance_sq(tile, enemy_core), tile),
         )
-    elif _build_failure(p, ct, spot, "siege sentinel", ct.get_sentinel_cost()):
+        return True
+    if _build_failure(p, ct, spot, "siege sentinel", ct.get_sentinel_cost()):
         p.rejected_build_sites.add(spot)
-    return True
+    # Not built, so the turn is not spent. This exit is the second half of the
+    # same defect as the unreachable-seat one above, and it is the half that
+    # actually parked Builder id=6: standing beside a legal seat it could not
+    # yet afford -- 86 Ti in the bank against a scaled Sentinel -- it reported
+    # the turn handled and stood there from turn 12 until the Core died on
+    # turn 44. `_build_failure` returns False for an honest "cannot afford
+    # this yet", which is exactly the case where the Gunner search and the
+    # harasser below still have something worth doing.
+    return False
 
 
 def _wrap_siege_sentinel(p, ct):
