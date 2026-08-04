@@ -2,7 +2,7 @@
 
 Scratchpad for the next session. Not shipped doctrine — ideas to measure, not trust.
 
-## 2026-08-04 — FOR WHOEVER OWNS odin: it is missing a measured pacing fix
+## 2026-08-04 — FOR WHOEVER OWNS odin: a pacing bug it has, a fix that does NOT help it
 
 Written by a parallel session working on `heimdall`. I am deliberately **not**
 touching `bots/luc/odin/`, because two agents editing one bot directory clobber
@@ -42,9 +42,29 @@ Measured on **heimdall's** chassis, 21 official maps both seats, 8 opponents:
 
 Falls off either side of 4, which is the shape a real effect has. It composes:
 heimdall shipped it together with the repair cap at 311/336 (`4c0d92eb2`).
-**The odin-chassis numbers are being measured now and belong in this section
-when they land** — do not take the heimdall number as odin's, that is exactly
-the stale-constant mistake recorded further down this file.
+
+### …and on odin it does not pay. Do not apply it.
+
+The odin-chassis measurement landed and it is **negative**:
+
+    odin              313/336  0.932
+    odin + TABU_WINDOW 4   312/336  0.929   (valkyrie 0.98 -> 0.95, rest level)
+
+So the pacing *symptom* transfers — odin really does pace 3.3%, and the fix
+really does take it to 0.4% — and the *benefit* does not. One game, on a
+deterministic gate, against a bot whose only regression is valkyrie.
+
+This is the same lesson as the struck-through Launcher knobs below, arriving
+for the fourth time this session, and it is worth stating in the strong form:
+**a fix is only measured for the bot it was measured on, even when the bug it
+fixes is present in both.** heimdall gains 4 games from this; odin, which has
+the Core-death projection and therefore a different Builder budget under
+pressure, loses 1. Pacing is wasted rounds, and what those rounds are worth
+depends entirely on what else the Builder would have done with them.
+
+Left here as a measured rejection for odin, not as a suggestion. If odin's
+chassis changes again, it is cheap to re-measure — the variant is one sort term
+and the constant is already named.
 
 ### Also measured on this chassis, and rejected — do not re-run these
 
