@@ -727,6 +727,25 @@ def _site_is_dirty(site_repo: Path) -> list[str]:
     return [line for line in _run(["git", "status", "--porcelain"], site_repo).splitlines() if line]
 
 
+def _dist_is_behind(site_repo: Path) -> bool:
+    """True when the compiled output is missing ranking data that `public/` already has.
+
+    The fast path uploads `dist/` untouched, and only `astro build` copies `public/` into it. So a
+    ranking refresh whose own deploy was skipped -- lock lost, tree dirty, process killed -- leaves
+    new data in `public/` that no later feed deploy will ever pick up, and the ladder sits frozen
+    while every log line says "deployed". That is exactly how the site got stuck two runs behind
+    while the feed kept publishing happily on top of it. Comparing the two manifests makes the
+    fast path self-correcting: it notices it is about to ship something stale and compiles instead.
+    """
+    published = site_repo / "public" / "botrankings" / "data" / "index.json"
+    compiled = site_repo / "dist" / "botrankings" / "data" / "index.json"
+    if not published.exists():
+        return False
+    if not compiled.exists():
+        return True
+    return published.read_bytes() != compiled.read_bytes()
+
+
 def deploy_assets(site_repo: Path, *, reason: str, build: bool = True) -> bool:
     """Publish the site to Cloudflare. Returns True when a deploy actually happened.
 
@@ -768,7 +787,7 @@ def deploy_assets(site_repo: Path, *, reason: str, build: bool = True) -> bool:
             print(f"another deploy holds the lock; skipping {reason}")
             return False
 
-        compiled = build or not (site_repo / "dist").exists()
+        compiled = build or not (site_repo / "dist").exists() or _dist_is_behind(site_repo)
         if compiled:
             _run(["npm", "run", "build"], site_repo)
         _run(["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"], site_repo)
