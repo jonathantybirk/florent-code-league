@@ -6,8 +6,8 @@ publishes the *online* ladder: the real platform, real opponents, real Elo.
 
 Three things make the online ladder worth its own feed:
 
-- The platform pairs teams every ten minutes and nobody sees the schedule. Reconstructing what we
-  actually played, and against which build of the opponent, is only possible from the match log.
+- The platform pairs teams every ten minutes and nobody sees the schedule, or the rule behind it.
+  Reconstructing what we played, and against which build of the opponent, needs the match log.
 - Opponents ship new bots constantly -- Pivot used nine versions in twelve hours -- so a raw win
   rate silently compares our versions against different opposition. Everything here is broken out
   by the opponent's exact submission version.
@@ -48,12 +48,24 @@ DEFAULT_CACHE = REPO_ROOT / "tournament" / "live-cache.jsonl"
 K_FACTOR = 32
 SERIES_GAMES = 5
 
-# Matchmaking, reverse-engineered from 12237 pairings across 662 scheduler ticks. Teams are sorted
-# by rating, cut into consecutive groups, and paired uniformly at random inside each group. Group
-# size 8 fits the observed rank-distance distribution to a total-variation distance of 0.033; the
-# rare pairings out to rank distance 11 come from how the final short group is absorbed.
 SCHEDULER_PERIOD_MINUTES = 10
-PAIRING_GROUP_SIZE = 8
+
+# How far apart, in ladder rank, the scheduler actually pairs teams. Measured over 12211 pairings
+# across 649 ticks between 1 and 5 August; P(|rank offset| = d), symmetric in sign.
+#
+# This replaces a "blocks of eight" model that was wrong. Blocks predict that pairs never cross a
+# block boundary, and 34% of real pairs do -- no block size gets that below 15%. The giveaway was
+# there in the first measurement and I explained it away: blocks of eight cannot produce a rank
+# distance above 7, and the data goes to 11. We were paired against a team eight places below us.
+#
+# So this makes no claim about the algorithm, which is not observable. It is just the distribution
+# the ladder is seen to produce, and it is stable as the field grows: splitting the sample by tick
+# size (under 30 teams, 30-45, 46+) moves no bin by more than about 2 points.
+PAIRING_KERNEL: dict[int, float] = {
+    1: 0.2420, 2: 0.2009, 3: 0.1829, 4: 0.1418, 5: 0.1091, 6: 0.0654,
+    7: 0.0364, 8: 0.0138, 9: 0.0057, 10: 0.0020, 11: 0.0001,
+}
+PAIRING_KERNEL_PAIRS = 12211
 
 # A bot needs enough games before a strength estimate means anything. Below this we publish the
 # raw record and an explicit null rather than an interval nobody should read. The threshold bites
@@ -249,44 +261,42 @@ def _field_score(strength: float, ratings: list[float]) -> float:
     return sum(_expected(strength, r) for r in ratings) / len(ratings)
 
 
-def _pairing_blocks(rating: float, field: list[float]) -> list[list[float]]:
-    """Every block a team at `rating` could land in, one per position it can occupy in one.
+def _pairing_weights(rating: float, field: list[float]) -> list[tuple[float, float]]:
+    """(opponent rating, probability) for the teams a team at `rating` is likely to be drawn against.
 
-    Pairing is uniform inside a block of `PAIRING_GROUP_SIZE` consecutive teams in rating order,
-    so the reachable opponents are decided by where the block *boundaries* fall, not by who is
-    nearest. Those are different, and not slightly: at 1837 in the current field the cut lands so
-    that all seven block-mates are above us, which "nearest seven" gets wrong by about 2.5 points
-    of expected score, and by 5 in places.
+    Applies `PAIRING_KERNEL` to the ladder's rank ordering: each rank offset d carries its measured
+    weight, split evenly between the team d places above and d places below.
 
-    The boundaries are not observable and shift constantly as ratings drift, so the honest
-    quantity marginalises over them. Enumerating the `PAIRING_GROUP_SIZE` phases the grid can take
-    does that exactly, and without an RNG.
+    The split stops being even near the ends of the table, which matters here because we sit around
+    fourth. A team at rank 2 has only one opponent at offset 3 above it and plenty below, so the
+    missing side's weight goes to the side that exists rather than silently shrinking the total --
+    otherwise the top of the ladder looks like it plays a weaker field than it does.
     """
     if not field:
         return []
-    # Tag ourselves rather than finding our rating by value: ties with a real team are possible,
-    # and `index()` would then return that team's slot and quietly drop us from our own block.
+    # Tag ourselves rather than locating our rating by value: a tie with a real team would
+    # otherwise return that team's slot.
     pool = sorted([(r, False) for r in field] + [(rating, True)], key=lambda e: -e[0])
     index = next(i for i, (_, is_us) in enumerate(pool) if is_us)
-    blocks = []
-    for phase in range(PAIRING_GROUP_SIZE):
-        start = max(0, index - ((index + phase) % PAIRING_GROUP_SIZE))
-        group = [r for r, is_us in pool[start : start + PAIRING_GROUP_SIZE] if not is_us]
-        if group:
-            blocks.append(group)
-    return blocks
+
+    weights: list[tuple[float, float]] = []
+    for offset, probability in PAIRING_KERNEL.items():
+        above, below = index - offset, index + offset
+        reachable = [i for i in (above, below) if 0 <= i < len(pool) and i != index]
+        if not reachable:
+            continue
+        for i in reachable:
+            weights.append((pool[i][0], probability / len(reachable)))
+    return weights
 
 
 def _pairing_score(strength: float, rating: float, field: list[float]) -> float | None:
-    """Expected share of games won against the teams the scheduler can actually draw.
-
-    Averaged over block phase, weighting each equally because nothing observable says which one is
-    in force at any moment.
-    """
-    blocks = _pairing_blocks(rating, field)
-    if not blocks:
+    """Expected share of games won against the opponents the scheduler is likely to draw."""
+    weights = _pairing_weights(rating, field)
+    total = sum(w for _, w in weights)
+    if not total:
         return None
-    return sum(sum(_expected(strength, r) for r in b) / len(b) for b in blocks) / len(blocks)
+    return sum(w * _expected(strength, r) for r, w in weights) / total
 
 
 # --------------------------------------------------------------------------------------------
@@ -564,7 +574,9 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
             "k_factor": K_FACTOR,
             "series_games": SERIES_GAMES,
             "scheduler_period_minutes": SCHEDULER_PERIOD_MINUTES,
-            "pairing_group_size": PAIRING_GROUP_SIZE,
+            "pairing_kernel": PAIRING_KERNEL,
+            "pairing_kernel_pairs": PAIRING_KERNEL_PAIRS,
+            "pairing_reach": max(PAIRING_KERNEL),
             "active_window_minutes": ACTIVE_WINDOW_MINUTES,
             "mechanics_epoch": MECHANICS_EPOCH,
             "mechanics_epoch_label": MECHANICS_EPOCH_LABEL,

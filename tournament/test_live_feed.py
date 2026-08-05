@@ -14,7 +14,8 @@ from tournament.live_feed import (
     MECHANICS_EPOCH,
     _expected,
     _fit_strength,
-    _pairing_blocks,
+    PAIRING_KERNEL,
+    _pairing_weights,
     _pairing_score,
     _pre_epoch_counts,
     _field_score,
@@ -51,50 +52,39 @@ def test_a_record_with_no_split_has_no_finite_estimate():
     assert _fit_strength([]) is None
 
 
-def test_pairing_blocks_cover_every_grid_phase_and_exclude_us():
-    # Deliberately offset from the grid so no field member ties our rating.
+def test_pairing_weights_follow_the_measured_kernel():
     field = [1400.0 + 20.0 * step for step in range(50)]
-    blocks = _pairing_blocks(1810.0, field)
-    assert len(blocks) == 8, "one block per phase the cut grid can take"
-    for block in blocks:
-        assert len(block) == 7, "a full block is us plus seven others"
-        assert 1810.0 not in block, "we are not our own opponent"
-    # Every phase must be a run of consecutive teams around us, never the global nearest seven.
-    assert any(all(r > 1800.0 for r in block) for block in blocks), (
-        "some phase puts the cut right below us, so the whole block is stronger -- this is the "
-        "case 'nearest seven' cannot represent"
+    weights = _pairing_weights(1810.0, field)
+    total = sum(w for _, w in weights)
+    assert math.isclose(total, sum(PAIRING_KERNEL.values()), rel_tol=1e-9)
+    assert 1810.0 not in [r for r, _ in weights], "we are not our own opponent"
+    # Nearest neighbours must carry the most weight, matching the measured decay.
+    byrating = dict(weights)
+    assert byrating[1820.0] > byrating[1900.0] > byrating[1960.0]
+
+
+def test_pairing_weight_is_not_lost_at_the_top_of_the_ladder():
+    """We sit around fourth, so half of every offset falls off the table."""
+    field = [2000.0 - 20.0 * step for step in range(40)]
+    top = _pairing_weights(2100.0, field)          # above everyone
+    assert math.isclose(sum(w for _, w in top), sum(PAIRING_KERNEL.values()), rel_tol=1e-9), (
+        "missing side's weight must move to the side that exists, not vanish"
     )
+    # And it really is drawn downward only.
+    assert all(r < 2100.0 for r, _ in top)
 
 
-def test_a_rating_tie_does_not_drop_us_from_our_own_block():
-    """`index()` by value would find the tied team's slot and silently exclude the wrong entry."""
+def test_a_rating_tie_does_not_make_us_our_own_opponent():
     field = [1800.0, 1800.0, 1790.0, 1780.0, 1770.0, 1760.0, 1750.0, 1740.0, 1730.0]
-    for block in _pairing_blocks(1800.0, field):
-        assert len(block) == len(set(range(len(block)))), "block is well formed"
-        assert block.count(1800.0) <= 2, "both genuine 1800s may appear, but never a third"
+    weights = _pairing_weights(1800.0, field)
+    # Two genuine 1800s exist besides us; we must see at most those two, never a third.
+    assert sum(1 for r, _ in weights if r == 1800.0) <= 2
 
 
-def test_pairing_score_differs_from_averaging_the_nearest_seven():
-    """The correction this replaced a convenient approximation for."""
-    field = [1400.0 + 20.0 * step for step in range(50)]
-    nearest = sorted(field, key=lambda r: abs(r - 1800.0))[:7]
-    naive = sum(_expected(1800.0, r) for r in nearest) / len(nearest)
-    proper = _pairing_score(1800.0, 1800.0, field)
-    # Symmetric field, so both land near even -- but they are computed differently and the block
-    # version is the one that tracks the scheduler.
-    assert 0.0 < proper < 1.0
-    assert abs(proper - naive) < 0.1
-
-
-def test_pairing_score_is_evaluated_at_our_rating_not_the_bot_strength():
-    """A strong bot inherits our ladder slot; it does not start where it deserves to be."""
-    field = [1400.0 + 20.0 * step for step in range(50)]
-    strong_bot_in_our_slot = _pairing_score(2000.0, 1800.0, field)
-    strong_bot_already_promoted = _pairing_score(2000.0, 2000.0, field)
-    assert strong_bot_in_our_slot > strong_bot_already_promoted, (
-        "facing our neighbours is easier for it than facing the ones it would rise to"
-    )
-    assert _pairing_score(1800.0, 1800.0, []) is None
+def test_the_kernel_reaches_further_than_a_block_of_eight_could():
+    """The observation that falsified the block model: a pairing eight ranks away."""
+    assert max(PAIRING_KERNEL) == 11
+    assert PAIRING_KERNEL[8] > 0, "we were drawn against a team eight places below us"
 
 
 def test_equilibrium_rating_equals_strength_whatever_the_pairing():
@@ -108,11 +98,11 @@ def test_equilibrium_rating_equals_strength_whatever_the_pairing():
     strength = 1837.0
 
     def drift(rating: float) -> float:
-        blocks = _pairing_blocks(rating, field)
-        per_block = [
-            sum(_expected(strength, r) - _expected(rating, r) for r in b) / len(b) for b in blocks
-        ]
-        return sum(per_block) / len(per_block)
+        weights = _pairing_weights(rating, field)
+        total = sum(w for _, w in weights)
+        return sum(
+            w * (_expected(strength, r) - _expected(rating, r)) for r, w in weights
+        ) / total
 
     assert math.isclose(drift(strength), 0.0, abs_tol=1e-12)
     assert drift(strength - 100) > 0, "under-rated bots gain"
