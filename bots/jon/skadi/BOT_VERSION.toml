@@ -1,5 +1,5 @@
-source_commit = "efa0df7cfebdc870a0068834760e3368f5cfce08"
+source_commit = "d11efa0c4d0977cdc68ba8d0982fd100bca7c523"
 source_path = "bots/jon/skadi"
 engine = "2.3.6"
 status = "fair"
-variant = "vidar with the lifetime Builder budget raised 12 -> 16"
+variant = "vidar + lifetime Builder budget 16 + BLITZ mines (1 econ, 1 attacker)"
