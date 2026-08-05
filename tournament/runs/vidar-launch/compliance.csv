@@ -1,0 +1,4 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+vidar_noring@dcc06b6,vidar_noring,dcc06b6,pass,21,21,21,2685,13,49,414,830,4437,0,0,9000,10000
+vidar_norelay@dcc06b6,vidar_norelay,dcc06b6,pass,21,21,21,3066,19,45,296,728,4367,0,0,9000,10000
+vidar_nolaunch@dcc06b6,vidar_nolaunch,dcc06b6,pass,21,21,21,2685,9,43,358,789,4467,0,0,9000,10000

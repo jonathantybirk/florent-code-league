@@ -1,0 +1,176 @@
+{
+  "tournament_id": "vidar-park",
+  "map_set": "official",
+  "maps": [
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "duel",
+    "fjord",
+    "hive",
+    "jackpot",
+    "longship",
+    "pinch",
+    "quarry",
+    "runestone",
+    "showdown",
+    "skerry",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 1197,
+  "rating_matches": 1134,
+  "mode": "challenger",
+  "challengers": [
+    "vidar_gg@5873795",
+    "vidar_save60@5873795",
+    "vidar_save150@5873795"
+  ],
+  "bots": [
+    {
+      "bot_id": "vidar_gg@5873795",
+      "name": "vidar_gg",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/vidar_gg",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_save60@5873795",
+      "name": "vidar_save60",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/vidar_save60",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_save150@5873795",
+      "name": "vidar_save150",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/vidar_save150",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "odin@5873795",
+      "name": "odin",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/odin",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tyr@5873795",
+      "name": "tyr",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/tyr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@5873795",
+      "name": "vigil",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "ragnarok@5873795",
+      "name": "ragnarok",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/ragnarok",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "prospect@5873795",
+      "name": "prospect",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/prospect",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "pantheon_replica_day3@5873795",
+      "name": "pantheon_replica_day3",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/pantheon_replica_day3",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward@5873795",
+      "name": "steward",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/steward",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "valkyrie@5873795",
+      "name": "valkyrie",
+      "commit": "5873795afa226027cf8c40759feb18728a283b51",
+      "path": "bots/luc/valkyrie",
+      "tags": [
+        "luc"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 5,
+    "targets": [
+      "vidar_gg@5873795",
+      "vidar_save60@5873795",
+      "vidar_save150@5873795"
+    ],
+    "maps": [
+      "atoll",
+      "aurora",
+      "bridge",
+      "crossfire",
+      "duel",
+      "fjord",
+      "hive",
+      "jackpot",
+      "longship",
+      "pinch",
+      "quarry",
+      "runestone",
+      "showdown",
+      "skerry",
+      "sprint",
+      "strait",
+      "string",
+      "sweden",
+      "twins",
+      "vase",
+      "vault"
+    ],
+    "matches_per_bot": 21,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}

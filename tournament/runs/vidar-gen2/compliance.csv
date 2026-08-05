@@ -1,0 +1,2 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+vidar_noecon@1fadcef,vidar_noecon,1fadcef,pass,21,21,21,3066,17,47,313,765,4345,0,0,9000,10000

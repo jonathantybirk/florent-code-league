@@ -1,0 +1,12 @@
+{
+  "challengers": [
+    "sharedglobals@045b5cc"
+  ],
+  "heads": {
+    "elias_dev": "3f7d676365bbbd14624f592c4e5e94e05f63f798",
+    "viktor": "2e6eca5e8418a65608ed2fb531fb07c7e7535cb7",
+    "x/jon": "045b5cc7dcedd5406c47179980baa607ba866f25",
+    "x/luc": "561800a7e51acdbd8b975fc710873bade96b490d"
+  },
+  "submitted_at": "2026-08-05T14:44:11+00:00"
+}

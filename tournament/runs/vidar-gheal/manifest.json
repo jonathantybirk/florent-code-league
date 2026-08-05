@@ -1,0 +1,236 @@
+{
+  "tournament_id": "vidar-gheal",
+  "map_set": "all",
+  "maps": [
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "duel",
+    "fjord",
+    "generated/random-20260731-000-mirror-y-8x16",
+    "generated/random-20260731-001-rot-17x13",
+    "generated/random-20260731-002-rot-11x15",
+    "generated/random-20260731-003-rot-10x9",
+    "generated/random-20260731-004-mirror-y-8x15",
+    "generated/random-20260731-005-mirror-y-14x20",
+    "generated/random-20260731-006-mirror-y-23x8",
+    "generated/random-20260731-007-rot-25x25",
+    "generated/random-20260731-008-mirror-x-21x16",
+    "generated/random-20260731-009-mirror-x-20x30",
+    "generated/random-20260731-010-rot-12x12",
+    "generated/random-20260731-011-mirror-x-10x24",
+    "generated/random-20260731-012-mirror-y-23x25",
+    "generated/random-20260731-013-rot-29x9",
+    "generated/random-20260731-014-mirror-x-27x14",
+    "generated/random-20260731-015-mirror-x-27x14",
+    "generated/random-20260731-016-mirror-y-23x21",
+    "generated/random-20260731-017-mirror-y-10x11",
+    "generated/random-20260731-018-mirror-x-29x12",
+    "generated/random-20260731-019-mirror-y-27x16",
+    "generated/random-20260731-020-mirror-x-24x28",
+    "generated/random-20260731-021-mirror-y-25x29",
+    "generated/random-20260731-022-mirror-y-11x18",
+    "generated/random-20260731-023-mirror-x-24x16",
+    "generated/representative/representative-20260801-atoll-0",
+    "generated/representative/representative-20260801-atoll-1",
+    "generated/representative/representative-20260801-aurora-0",
+    "generated/representative/representative-20260801-aurora-1",
+    "generated/representative/representative-20260801-crossfire-0",
+    "generated/representative/representative-20260801-crossfire-1",
+    "generated/representative/representative-20260801-duel-0",
+    "generated/representative/representative-20260801-duel-1",
+    "generated/representative/representative-20260801-fjord-0",
+    "generated/representative/representative-20260801-fjord-1",
+    "generated/representative/representative-20260801-hive-0",
+    "generated/representative/representative-20260801-hive-1",
+    "generated/representative/representative-20260801-longship-0",
+    "generated/representative/representative-20260801-longship-1",
+    "generated/representative/representative-20260801-pinch-0",
+    "generated/representative/representative-20260801-pinch-1",
+    "generated/representative/representative-20260801-quarry-0",
+    "generated/representative/representative-20260801-quarry-1",
+    "generated/representative/representative-20260801-runestone-0",
+    "generated/representative/representative-20260801-runestone-1",
+    "generated/representative/representative-20260801-skerry-0",
+    "generated/representative/representative-20260801-skerry-1",
+    "generated/representative/representative-20260801-sprint-0",
+    "generated/representative/representative-20260801-sprint-1",
+    "generated/representative/representative-20260801-strait-0",
+    "generated/representative/representative-20260801-strait-1",
+    "generated/representative/representative-20260801-twins-0",
+    "generated/representative/representative-20260801-twins-1",
+    "generated/representative/representative-20260801-vault-0",
+    "generated/representative/representative-20260801-vault-1",
+    "generated/stress/stress-20260801-000-mirror-y-25x30",
+    "generated/stress/stress-20260801-001-rot-10x8",
+    "generated/stress/stress-20260801-002-mirror-y-15x16",
+    "generated/stress/stress-20260801-003-mirror-x-19x10",
+    "generated/stress/stress-20260801-004-mirror-x-17x9",
+    "generated/stress/stress-20260801-005-mirror-x-21x24",
+    "generated/stress/stress-20260801-006-mirror-y-13x12",
+    "generated/stress/stress-20260801-007-mirror-y-12x24",
+    "generated/stress/stress-20260801-008-mirror-y-19x12",
+    "generated/stress/stress-20260801-009-rot-15x14",
+    "generated/stress/stress-20260801-010-mirror-y-21x28",
+    "generated/stress/stress-20260801-011-rot-30x8",
+    "generated/stress/stress-20260801-012-mirror-x-24x29",
+    "generated/stress/stress-20260801-013-mirror-x-29x19",
+    "generated/stress/stress-20260801-014-mirror-y-11x27",
+    "generated/stress/stress-20260801-015-rot-15x14",
+    "generated/stress/stress-20260801-016-rot-25x14",
+    "generated/stress/stress-20260801-017-rot-10x24",
+    "generated/stress/stress-20260801-018-rot-12x26",
+    "generated/stress/stress-20260801-019-mirror-y-13x18",
+    "generated/stress/stress-20260801-020-mirror-x-22x14",
+    "generated/stress/stress-20260801-021-mirror-x-9x16",
+    "generated/stress/stress-20260801-022-mirror-x-11x28",
+    "generated/stress/stress-20260801-023-mirror-y-8x22",
+    "generated/stress/stress-20260801-ambiguous-anchor-0",
+    "generated/stress/stress-20260801-ambiguous-anchor-1",
+    "generated/stress/stress-20260801-ambiguous-anchor-2",
+    "generated/stress/stress-20260801-ambiguous-anchor-3",
+    "hive",
+    "jackpot",
+    "longship",
+    "pinch",
+    "quarry",
+    "runestone",
+    "showdown",
+    "skerry",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 1669,
+  "rating_matches": 1648,
+  "mode": "challenger",
+  "challengers": [
+    "vidar_gheal@61f8be2"
+  ],
+  "bots": [
+    {
+      "bot_id": "vidar_gheal@61f8be2",
+      "name": "vidar_gheal",
+      "commit": "61f8be22ae74948ee6ae613866c04120a3e73c29",
+      "path": "bots/luc/vidar_gheal",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "odin@61f8be2",
+      "name": "odin",
+      "commit": "61f8be22ae74948ee6ae613866c04120a3e73c29",
+      "path": "bots/luc/odin",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tyr@61f8be2",
+      "name": "tyr",
+      "commit": "61f8be22ae74948ee6ae613866c04120a3e73c29",
+      "path": "bots/luc/tyr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@61f8be2",
+      "name": "vigil",
+      "commit": "61f8be22ae74948ee6ae613866c04120a3e73c29",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "ragnarok@61f8be2",
+      "name": "ragnarok",
+      "commit": "61f8be22ae74948ee6ae613866c04120a3e73c29",
+      "path": "bots/luc/ragnarok",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "prospect@61f8be2",
+      "name": "prospect",
+      "commit": "61f8be22ae74948ee6ae613866c04120a3e73c29",
+      "path": "bots/luc/prospect",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "pantheon_replica_day3@61f8be2",
+      "name": "pantheon_replica_day3",
+      "commit": "61f8be22ae74948ee6ae613866c04120a3e73c29",
+      "path": "bots/luc/pantheon_replica_day3",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward@61f8be2",
+      "name": "steward",
+      "commit": "61f8be22ae74948ee6ae613866c04120a3e73c29",
+      "path": "bots/luc/steward",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "valkyrie@61f8be2",
+      "name": "valkyrie",
+      "commit": "61f8be22ae74948ee6ae613866c04120a3e73c29",
+      "path": "bots/luc/valkyrie",
+      "tags": [
+        "luc"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 5,
+    "targets": [
+      "vidar_gheal@61f8be2"
+    ],
+    "maps": [
+      "atoll",
+      "aurora",
+      "bridge",
+      "crossfire",
+      "duel",
+      "fjord",
+      "hive",
+      "jackpot",
+      "longship",
+      "pinch",
+      "quarry",
+      "runestone",
+      "showdown",
+      "skerry",
+      "sprint",
+      "strait",
+      "string",
+      "sweden",
+      "twins",
+      "vase",
+      "vault"
+    ],
+    "matches_per_bot": 21,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}

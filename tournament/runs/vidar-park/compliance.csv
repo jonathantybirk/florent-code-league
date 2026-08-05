@@ -1,0 +1,4 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+vidar_gg@5873795,vidar_gg,5873795,pass,21,21,21,3083,0,50,324,845,4726,0,0,9000,10000
+vidar_save60@5873795,vidar_save60,5873795,pass,21,21,21,3066,16,46,295,745,4263,0,0,9000,10000
+vidar_save150@5873795,vidar_save150,5873795,pass,21,21,21,3066,12,43,236,723,4766,0,0,9000,10000

@@ -1,0 +1,14 @@
+{
+  "challengers": [
+    "vidar_r1@c8b850e",
+    "vidar_r2@c8b850e",
+    "vidar_r3@c8b850e"
+  ],
+  "heads": {
+    "elias_dev": "3f7d676365bbbd14624f592c4e5e94e05f63f798",
+    "viktor": "2e6eca5e8418a65608ed2fb531fb07c7e7535cb7",
+    "x/jon": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+    "x/luc": "c8b850eee49c1a17083057462bab1c8ddd66ea5e"
+  },
+  "submitted_at": "2026-08-05T10:58:28+00:00"
+}

@@ -1,0 +1,5 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+vidar@12c92b3,vidar,12c92b3,pass,21,21,21,3066,26,51,354,826,4617,0,0,9000,10000
+vidar_e9@12c92b3,vidar_e9,12c92b3,pass,21,21,21,3066,21,50,332,855,4599,0,0,9000,10000
+vidar_e11@12c92b3,vidar_e11,12c92b3,pass,21,21,21,3066,0,52,339,828,4909,0,0,9000,10000
+vidar_r60@12c92b3,vidar_r60,12c92b3,pass,21,21,21,3066,19,54,341,904,4783,0,0,9000,10000

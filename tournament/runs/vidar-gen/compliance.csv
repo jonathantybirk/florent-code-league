@@ -1,0 +1,3 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+vidar@e86f3e7,vidar,e86f3e7,pass,21,21,21,3066,13,47,285,750,4487,0,0,9000,10000
+odin@e86f3e7,odin,e86f3e7,pass,21,21,21,3231,7,36,128,697,4599,0,0,9000,10000
