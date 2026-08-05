@@ -417,8 +417,13 @@ def _run(p, ct):
         # cost scale.
         core_id = (ct.get_tile_building_id(Position(*p.core))
                    if ct.is_in_vision(Position(*p.core)) else None)
+        # Healing on *any* damage wins on mean and gives back the worst
+        # matchup: prospect goes 0.714 -> 0.655 on the pool while steward goes
+        # 0.738 -> 0.810 and ragnarok 0.857 -> 0.905. That reads as the guard
+        # healing scratches instead of building, so the trigger is bracketed
+        # between any damage and the Core's own 50 HP alarm.
         hurt = (core_id is not None
-                and ct.get_hp(core_id) < ct.get_max_hp(core_id))
+                and ct.get_hp(core_id) <= ct.get_max_hp(core_id) - 25)
         if raw_alarm & CORE_DYING_FLAG or alarm or hurt:
             _heal_core(p, ct)
             return
