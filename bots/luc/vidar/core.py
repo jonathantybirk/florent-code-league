@@ -72,6 +72,23 @@ AMMO_TARGET = 120
 # belt simply never got built. The floor's job is escaping the pinned-at-zero
 # pathology, not stockpiling; stockpiling is AMMO_TARGET's job, and that one
 # is taken only from titanium the construction reserve does not want.
+# MEASURED AND KEPT AT 10, against strong evidence that it was a defect.
+#
+# This branch drains the bank to EMERGENCY_RESERVE every round, and under a
+# Sentinel army -- which spends 3.33 Ti a round and so sits permanently under
+# any floor near its own burn rate -- it fires forever. Traced on twins against
+# prospect, global titanium ran 10, 10, 7, 9, 7 from round 30 to 70 with one
+# Harvester on the board while the Core fell 500 -> 81: the guard frozen in
+# `prelay` and the miner in `goto`, neither able to afford a 30 Ti Sentinel or
+# the 20 Ti Harvester that would have ended the famine. Holding back a
+# Harvester's price fixed that game outright, 78-turn loss to 230-turn win with
+# 560 titanium mined against 170.
+#
+# Over all 103 maps it costs 7.6pp of mean and 13.1pp of the worst matchup on
+# the pool (0.826/0.655 -> 0.750/0.524, steward 0.810 -> 0.524) and 6.0/6.7pp
+# on generated. Running the bank at 10 Ti and converting the rest is correct:
+# a team that cannot shoot loses faster than a team that cannot build. Third
+# single-game smoke of the session to point the wrong way.
 COMBAT_AMMO_FLOOR = 80
 # The only titanium held back while restoring that floor.
 EMERGENCY_RESERVE = 10
