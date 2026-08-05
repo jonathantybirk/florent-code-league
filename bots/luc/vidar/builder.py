@@ -450,6 +450,15 @@ def _run(p, ct):
     # A hole in the line outranks laying more of it: every Harvester upstream
     # of a gap is mining into a dead end, so one 3 Ti tile restores the whole
     # line's income where the next Harvester only adds to a broken one.
+    # Two menders out-heal a Gunner outright -- 8 HP a round for 2 Ti against
+    # its 7 damage for 4 -- and one only cancels two thirds of it. The guard
+    # heals alone today, so a Core under sustained fire loses slowly instead of
+    # holding. When the Core projects its own death the economy Builder joins
+    # it: the belt is worth nothing to a team whose Core dies first, and
+    # healing is scale-free where every turret answer is not.
+    if (ct.read_store(SLOT_CORE_DAMAGED) & CORE_DYING_FLAG) and not p.is_attacker:
+        _heal_core(p, ct)
+        return
     if _repair_network(p, ct):
         return
     if p.network_load >= _network_cap(ct):
