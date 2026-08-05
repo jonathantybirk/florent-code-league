@@ -237,6 +237,11 @@ DEFEND_TURRET_SENTINEL = True
 # Answer a live Gunner lane with a 3 Ti barrier before a 20-30 Ti turret. See
 # the ordering in _defend_core: the barrier was third behind two turret paths
 # that both consume the turn, so on the rounds it mattered it was never reached.
+# Rounds a Harvester of ours may go unseen before its deposit is treated as
+# free again. `_pick` skips any ore tile sitting in `p.solids`, and `_sense`
+# only clears that for tiles currently in vision, so a Harvester destroyed out
+# of sight silently retired its whole deposit for the rest of the game.
+HARVESTER_RECHECK_ROUNDS = 90
 LANE_BARRIER_FIRST = True
 # A conveyor we break gets a barrier in the hole on the very next turn, ahead of
 # whatever else that Builder was doing. Cutting without plugging is rented
@@ -262,6 +267,11 @@ LATE_BUILDERS_MINE = False
 # before it knows one is needed; these two numbers set how fast and how far.
 HOME_TURRET_MAX = 4
 HOME_TURRET_STEP = 180
+# Team A acts first every round for the whole match, so it wins every tie: the
+# race to a tile, the first shot in a duel, the heal that lands before the shot.
+# Seat B therefore escalates its home defence on less damage.
+SEAT_AWARE_DEFENCE = False
+SEAT_B_TURRET_STEP = 90
 # Run the outer barrier seal on every doctrine rather than FORTIFY only. The
 # seal is dozens of tiles and often will not finish before the game does, which
 # is why it was restricted -- but every loss left is a Core kill.
