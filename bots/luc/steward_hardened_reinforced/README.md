@@ -6,25 +6,26 @@ pathfinder and launcher mechanics are unchanged apart from bug fixes.
 
 ## The internal ladder
 
-`@672ee02`, rated over 6,214 matches against the full 149-bot field:
+Ranks **1, 2 and 3** of 152. `@04300bf` over 6,338 matches against the full
+field:
 
 | | |
 |---|---|
-| **opponents beaten** | **147 of 148 — 99.3%** |
+| **opponents beaten** | **151 of 151 — 100%** |
 | losses | **none** |
-| draws | 1 (`skadi@6a2af02`, the ladder leader, 21–21) |
-| win rate | 0.7428 |
-| mElo rank | 12 |
-| **nash_prob** | **0.4999** |
+| draws | **none** |
+| win rate | 0.7839 (`@c04e46e` 0.7921, rank 1) |
+| **nash_prob** | **1.0 — the sole equilibrium strategy** |
+| **floor (worst per-opponent rate)** | **0.524 — the best floor in the field** |
 
-It loses to nothing on the ladder. mElo ranks it 12 while it beats 147 of 148,
-which is the divergence this repo has documented before: mElo discounts a bot
-that beats the whole field but cannot break the leader. The Nash column is the
-one that reads it correctly — **this bot and `skadi` are the two-bot
-equilibrium**, 0.4999 / 0.5000.
+No bot in this 152-bot field has ever held a floor above 0.524, and the best
+"fraction of opponents beaten on >80% of maps" any bot achieves is 0.470. Both
+records are currently held by this bot. Beating *every* opponent on >80% of maps
+is not reachable here: the field contains near-copies of this bot (its own
+earlier versions sit at ranks 15, 26 and 27) and mechanical mirrors of it
+(`vidar_r3` runs the same any-damage mending), and a mirror matchup converges to
+0.5 by symmetry.
 
-The build after it, `@c04e46e3`, beats `skadi` **24–18** in the lab, which is the
-single draw above.
 
 ## Local panels, 42 games a cell, 21 official maps, both seats
 
