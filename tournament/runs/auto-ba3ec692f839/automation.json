@@ -1,0 +1,21 @@
+{
+  "challengers": [
+    "vidar2@544eeb3",
+    "vidar2_b3@544eeb3",
+    "vidar2_c2@544eeb3",
+    "vidar2_g3@544eeb3",
+    "vidar@544eeb3",
+    "vidar_e7@544eeb3",
+    "vidar_field@544eeb3",
+    "vidar_guard@544eeb3",
+    "vidar_noecon@544eeb3",
+    "vidar_siege@544eeb3"
+  ],
+  "heads": {
+    "elias_dev": "3f7d676365bbbd14624f592c4e5e94e05f63f798",
+    "viktor": "2e6eca5e8418a65608ed2fb531fb07c7e7535cb7",
+    "x/jon": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+    "x/luc": "544eeb3db1d9577347f943ee81f24885aaeb4c4e"
+  },
+  "submitted_at": "2026-08-04T21:09:06+00:00"
+}

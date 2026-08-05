@@ -1,0 +1,11 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+vidar2@544eeb3,vidar2,544eeb3,pass,21,21,21,3066,41,69,663,1378,6174,0,0,9000,10000
+vidar2_b3@544eeb3,vidar2_b3,544eeb3,pass,21,21,21,3066,42,65,659,1360,8163,0,0,9000,10000
+vidar2_c2@544eeb3,vidar2_c2,544eeb3,pass,21,21,21,3041,26,52,442,1141,6499,0,0,9000,10000
+vidar2_g3@544eeb3,vidar2_g3,544eeb3,pass,21,21,21,3066,29,60,489,1250,6137,0,0,9000,10000
+vidar@544eeb3,vidar,544eeb3,pass,21,21,21,3066,35,59,503,1167,6313,0,0,9000,10000
+vidar_e7@544eeb3,vidar_e7,544eeb3,pass,21,21,21,3066,37,61,500,1092,4742,0,0,9000,10000
+vidar_field@544eeb3,vidar_field,544eeb3,pass,21,21,21,3095,27,60,495,1204,5243,0,0,9000,10000
+vidar_guard@544eeb3,vidar_guard,544eeb3,pass,21,21,21,3057,33,58,512,1092,5685,0,0,9000,10000
+vidar_noecon@544eeb3,vidar_noecon,544eeb3,pass,21,21,21,3066,22,40,369,940,8531,0,0,9000,10000
+vidar_siege@544eeb3,vidar_siege,544eeb3,pass,21,21,21,3083,23,51,458,1023,4657,0,0,9000,10000

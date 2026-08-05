@@ -1,0 +1,5 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+vidar@f1cacb3,vidar,f1cacb3,pass,21,21,21,3066,26,50,334,807,4487,0,0,9000,10000
+vidar3_nostarve@f1cacb3,vidar3_nostarve,f1cacb3,pass,21,21,21,3066,20,50,316,822,4797,0,0,9000,10000
+vidar3_noecon@f1cacb3,vidar3_noecon,f1cacb3,pass,21,21,21,3066,18,53,337,840,4828,0,0,9000,10000
+odin@f1cacb3,odin,f1cacb3,pass,21,21,21,3231,5,40,132,742,4961,0,0,9000,10000
