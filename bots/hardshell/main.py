@@ -96,6 +96,21 @@ BASE_EARLY_GUARDS = 4
 ELEVATED_EARLY_GUARDS = 6
 THREAT_DECAY_ROUNDS = 30
 
+# Chasing even the BASE guard count before a first harvester exists is a
+# trap under cost-scaling: costs aren't per-building-type, they're a single
+# shared scale, so every Gunner built also raises harvester_cost -- and with
+# no harvester yet, there's no titanium income to keep up with it. Measured
+# against bots/test/luc/odin (post fcode-2.3.4 balance patch, which raised
+# Gunner's own scale contribution from +10% to +20%): racing to
+# ELEVATED_EARLY_GUARDS with zero harvesters drove both gunner_cost and
+# harvester_cost from 20 to 44+ Ti within 15 rounds, and harvester_count
+# stayed at 0 for the rest of a 160-round match -- permanently priced out,
+# since the only titanium ever available was the starting stock. Capping
+# the guard count low until the first harvester actually exists breaks the
+# trap: get one income source running before spending pushes costs out of
+# reach, then let the guard count grow normally.
+PRE_ECONOMY_GUARD_CAP = 2
+
 # Minimum spacing between turrets so bots don't clump them onto one tile.
 TURRET_SPACING_SQ = 5
 
@@ -103,13 +118,10 @@ TURRET_SPACING_SQ = 5
 # within which rotating to face a sighted enemy can actually pay off.
 GUNNER_ATTACK_RADIUS_SQ = 13
 
-# Roughly one reload's worth of ammo per turret, sentinel-weighted for its
-# higher per-shot cost (10 vs Gunner's 2).
+# Ammo cost per shot (game-rules-turrets.txt) -- used to size how much
+# ammo to keep banked per turret so a reload never finds the pool dry.
 AMMO_PER_SENTINEL = 10
 AMMO_PER_GUNNER = 4
-# Titanium the Core won't spend on ammo, so harvester/turret construction
-# stays funded even while topping up the ammo pool.
-TITANIUM_RESERVE = 40
 
 
 def pack_pos(pos: Position) -> int:
@@ -151,6 +163,11 @@ class Player:
         # Set right after this bot builds a Sentinel -- the tile directly
         # outward of it, to be shielded with a Barrier. See _try_build_shield.
         self.pending_shield: Position | None = None
+
+        # Set right after this bot builds a Harvester -- its own position,
+        # marking that its output still needs a conveyor route home. See
+        # _try_lay_route.
+        self.pending_route: Position | None = None
 
     def run(self, ct: Controller) -> None:
         # An uncaught exception here permanently kills this unit for the
@@ -234,14 +251,21 @@ class Player:
         sentinel_count = ct.read_store(SLOT_SENTINEL_COUNT)
         gunner_count = ct.read_store(SLOT_GUNNER_COUNT)
         ammo_target = AMMO_PER_SENTINEL * sentinel_count + AMMO_PER_GUNNER * gunner_count
-        if ammo_target <= 0 or ct.get_global_ammo() >= ammo_target:
+        deficit = ammo_target - ct.get_global_ammo()
+        if deficit <= 0:
             return
 
-        spendable = ct.get_global_resources() - TITANIUM_RESERVE
-        if spendable <= 0:
-            return
-
-        amount = min(spendable, ammo_target - ct.get_global_ammo())
+        # No titanium reserve held back here on purpose: a built turret with
+        # no ammo deals zero damage, so once turrets exist, keeping them fed
+        # is worth more than banking Ti toward the next building. Measured
+        # against bots/test/luc/odin: a flat 40 Ti reserve left Gunners
+        # sitting at 0 ammo for long stretches of the critical early-rush
+        # window (titanium routinely sat below 40 while under threat, so
+        # convert_ammo() never fired at all), even though there was nothing
+        # else actually reserved against -- builders' own Ti checks
+        # (_try_build_harvester etc.) don't coordinate with this reserve, so
+        # it wasn't protecting a specific purchase, just delaying ammo.
+        amount = min(ct.get_global_resources(), deficit)
         if amount > 0 and ct.can_convert_ammo(amount):
             ct.convert_ammo(amount)
 
@@ -264,18 +288,19 @@ class Player:
 
         if ct.get_action_cooldown() == 0:
             if not self._try_build_shield(ct):
-                if not self._try_build_home_guard(ct):
-                    if not self._try_heal(ct):
-                        if not self._try_build_harvester(ct):
-                            harvester_count = ct.read_store(SLOT_HARVESTER_COUNT)
-                            threatened = ct.read_store(SLOT_THREAT_LEVEL) > 0
-                            ring_unlocked = (
-                                harvester_count >= TARGET_HARVESTERS
-                                or (threatened and ct.get_current_round() >= RING_START_ROUND)
-                                or self._pick_ore_target(ct) is None
-                            )
-                            if ring_unlocked:
-                                self._try_build_turret(ct)
+                if not self._try_lay_route(ct):
+                    if not self._try_build_home_guard(ct):
+                        if not self._try_heal(ct):
+                            if not self._try_build_harvester(ct):
+                                harvester_count = ct.read_store(SLOT_HARVESTER_COUNT)
+                                threatened = ct.read_store(SLOT_THREAT_LEVEL) > 0
+                                ring_unlocked = (
+                                    harvester_count >= TARGET_HARVESTERS
+                                    or (threatened and ct.get_current_round() >= RING_START_ROUND)
+                                    or self._pick_ore_target(ct) is None
+                                )
+                                if ring_unlocked:
+                                    self._try_build_turret(ct)
 
         self._move_toward_target(ct)
         self._share_ore(ct)
@@ -365,6 +390,10 @@ class Player:
             return False
         guard_count = self._count_home_guards(ct, self.core_pos)
         guard_target = ELEVATED_EARLY_GUARDS if ct.read_store(SLOT_THREAT_LEVEL) > 0 else BASE_EARLY_GUARDS
+        if ct.read_store(SLOT_HARVESTER_COUNT) == 0:
+            # See PRE_ECONOMY_GUARD_CAP -- don't let cost-scaling from
+            # guard-building price out the first harvester before it exists.
+            guard_target = min(guard_target, PRE_ECONOMY_GUARD_CAP)
         if guard_count >= guard_target:
             return False
         if ct.get_global_resources() < ct.get_gunner_cost():
@@ -423,25 +452,112 @@ class Player:
                 ct.build_harvester(build_pos)
                 count = ct.read_store(SLOT_HARVESTER_COUNT)
                 ct.write_store(SLOT_HARVESTER_COUNT, count + 1)
-                self._try_build_conveyor_toward_core(ct, build_pos)
+                self.pending_route = build_pos
                 self.target = None
                 return True
         return False
 
-    def _try_build_conveyor_toward_core(self, ct: Controller, harvester_pos: Position) -> None:
-        if self.core_pos is None:
-            return
-        ti = ct.get_global_resources()
-        cost = ct.get_conveyor_cost()
-        if ti < cost:
-            return
-        toward_core = harvester_pos.direction_to(self.core_pos)
+    def _core_direction_from(self, ct: Controller, pos: Position) -> Direction | None:
+        """Which cardinal direction, if any, has the Core immediately adjacent to pos."""
+        for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
+            building_id = ct.get_tile_building_id(pos.add(d))
+            if building_id is not None and ct.get_entity_type(building_id) == EntityType.CORE:
+                return d
+        return None
+
+    def _try_lay_route(self, ct: Controller) -> bool:
+        # Deliberately routes a freshly built Harvester's output back to the
+        # Core, one cardinal-snapped segment per round -- the shortest
+        # reasonable path -- while self.pending_route is set. It doubles as
+        # the chain's current tail: starts as the Harvester's own position
+        # (set in _try_build_harvester) and advances to each newly built
+        # segment's position, so every extension is computed relative to
+        # where the chain actually ends, never the builder's own position
+        # (which can drift to either side of the Harvester and has no fixed
+        # relationship to which of its 4 sides needs the connecting
+        # conveyor). An earlier version anchored on the builder's current
+        # position throughout, which could build a segment nowhere near the
+        # Harvester's actual output side, leaving it permanently
+        # disconnected -- confirmed by titanium growth matching the passive
+        # income rate exactly (10 Ti/4 rounds) regardless of harvester
+        # count, meaning output never reached the Core at all. It also
+        # replaced per-move opportunistic conveyor-laying (built on every
+        # tile any builder stepped onto for any reason), which produced a
+        # sprawling mesh instead of one clean line per Harvester.
+        if self.pending_route is None or self.core_pos is None:
+            return False
+        anchor = self.pending_route
+        if self._core_direction_from(ct, anchor) is not None:
+            # anchor already has the Core as a direct neighbor. By
+            # construction below, whatever segment is here was built
+            # facing the Core directly (not just "continue the same way"),
+            # so it already delivers into it -- nothing more to lay.
+            self.pending_route = None
+            return False
+        toward_core = anchor.direction_to(self.core_pos)
         if toward_core == Direction.CENTRE:
-            return
-        facing = _nearest_cardinal(toward_core)
-        conv_pos = harvester_pos.add(facing)
-        if ct.can_build_conveyor(conv_pos, facing):
-            ct.build_conveyor(conv_pos, facing)
+            self.pending_route = None
+            return False
+
+        # Try the direct cardinal first, then sidestep perpendicular to it
+        # if that's blocked -- a home guard, the Core's own footprint, or
+        # any other obstruction can sit directly on the straight line, and
+        # treating that as "already routed" (an earlier version did, via
+        # is_tile_empty alone) silently abandoned the route with a
+        # permanent gap instead of routing around the obstacle.
+        pos = ct.get_position()
+        primary = _nearest_cardinal(toward_core)
+        sidesteps = (
+            [Direction.NORTH, Direction.SOUTH]
+            if primary in (Direction.EAST, Direction.WEST)
+            else [Direction.EAST, Direction.WEST]
+        )
+        for step in [primary, *sidesteps]:
+            next_pos = anchor.add(step)
+            if not in_bounds(ct, next_pos):
+                continue
+            if pos.distance_squared(next_pos) > 1:
+                # Not orthogonally adjacent to this candidate tile yet --
+                # can't build it from here. _pick_target walks this bot to
+                # the tail's core-ward neighbor first; skip until it does.
+                continue
+            if ct.is_tile_empty(next_pos):
+                # If next_pos itself ends up adjacent to the Core, face it
+                # directly at the Core -- not just "continue the same
+                # direction," which can point straight past the Core into
+                # whatever's beyond it. A Conveyor's facing is fixed for
+                # its lifetime (docs: "Set at build time"), so getting this
+                # wrong on the final segment permanently discards the
+                # Harvester's output instead of delivering it. Confirmed as
+                # the actual root cause of the whole regression: a
+                # verified, fully tile-connected chain (harvester ->
+                # conveyor -> conveyor, each accepting from the last)
+                # still measured zero collected titanium for the entire
+                # match, because its last segment faced away from the
+                # Core tile sitting directly next to it.
+                core_direction = self._core_direction_from(ct, next_pos)
+                facing = core_direction if core_direction is not None else step
+                if ct.can_build_conveyor(next_pos, facing):
+                    ct.build_conveyor(next_pos, facing)
+                    self.pending_route = next_pos
+                    self.target = next_pos
+                    return True
+                continue
+            building_id = ct.get_tile_building_id(next_pos)
+            if (
+                building_id is not None
+                and ct.get_team(building_id) == ct.get_team()
+                and ct.get_entity_type(building_id) in (EntityType.CONVEYOR, EntityType.SPLITTER)
+            ):
+                # Reached our own logistics chain -- already routed from
+                # here on, nothing left for this bot to lay.
+                self.pending_route = None
+                return False
+        # Either not yet in position to build the next segment, or every
+        # direction is blocked/unaffordable this round -- leave
+        # pending_route set and retry next round rather than declaring
+        # defeat; harmless if the obstruction is transient.
+        return False
 
     def _try_build_turret(self, ct: Controller) -> bool:
         if self.core_pos is None:
@@ -530,25 +646,28 @@ class Player:
                 return
 
     def _try_move(self, ct: Controller, d: Direction) -> bool:
-        # A Harvester only relays its output one tile per round to an
-        # adjacent building -- getting titanium all the way back to the
-        # Core needs an actual conveyor chain, not just the single relay tile
-        # _try_build_conveyor_toward_core drops next to the harvester. Rather
-        # than a dedicated router, lay one more link toward the core on
-        # whatever empty tile a bot is about to step onto anyway (same
-        # opportunistic pattern bots/green and bots/strategist use) -- over
-        # many rounds of ordinary harvesting/ring-building/patrol traffic
-        # this incidentally stitches a connected network back to the Core.
-        # Building consumes this round's action (blocking the move), so a
-        # bot alternates lay-a-segment / walk-onto-it-next-round as it goes.
-        pos = ct.get_position()
-        next_pos = pos.add(d)
-        # in_bounds first -- is_tile_empty raises GameError off-map, unlike
-        # can_move/can_build_conveyor which just return False.
-        if self.core_pos is not None and in_bounds(ct, next_pos) and ct.is_tile_empty(next_pos):
-            cardinal = _nearest_cardinal(next_pos.direction_to(self.core_pos))
-            if ct.can_build_conveyor(next_pos, cardinal):
-                ct.build_conveyor(next_pos, cardinal)
+        # Conveyor routing is handled deliberately by _try_lay_route, not
+        # here -- see its docstring for why laying conveyors on every tile
+        # a bot happened to step onto (the previous approach) was replaced.
+        #
+        # One exception: never step onto the tile _try_lay_route still
+        # needs to build on next (self.pending_route's core-ward neighbor)
+        # while it's still empty. A bot can only Build on an orthogonally
+        # adjacent tile, never its own -- so walking onto that tile first
+        # (which ordinary "walk toward the Core" movement will eventually
+        # do, since it lies on the direct path) permanently strands the
+        # route: the tile becomes unbuildable-from-here, and the tail can
+        # never advance again. Confirmed as an actual deadlock this way --
+        # a bot that couldn't afford to build on the one round it was
+        # adjacent (Ti dipped below cost, common early while guards are
+        # also spending) just kept walking, landed on the tile, and could
+        # never build there again for the rest of the match.
+        if self.pending_route is not None and self.core_pos is not None:
+            toward_core = self.pending_route.direction_to(self.core_pos)
+            if toward_core != Direction.CENTRE:
+                reserved = self.pending_route.add(_nearest_cardinal(toward_core))
+                if ct.get_position().add(d) == reserved and ct.is_tile_empty(reserved):
+                    return False
         if ct.can_move(d):
             ct.move(d)
             return True
@@ -564,6 +683,20 @@ class Player:
         # target just because it isn't reachable in one step yet.
         if self.pending_shield is not None:
             return self.pending_shield
+
+        # Walking a fresh Harvester's route home also takes priority --
+        # see _try_lay_route. self.pending_route is the chain's current
+        # tail (starts at the Harvester itself); walk to its core-ward
+        # neighbor so this bot ends up orthogonally adjacent to exactly the
+        # tile _try_lay_route needs to build next, not just generally
+        # closer to the Core.
+        # Just walk generally toward the Core -- _try_move refuses to ever
+        # step onto the tile _try_lay_route still needs to build on (a bot
+        # can't build on its own tile), so this bot naturally orbits into
+        # an adjacent-but-not-on-it position on its own rather than needing
+        # a precisely computed waypoint here.
+        if self.pending_route is not None:
+            return self.core_pos
 
         ore = self._pick_ore_target(ct)
         if ore is not None:
@@ -586,6 +719,16 @@ class Player:
         best = None
         best_dist = float("inf")
         for tile in ct.get_nearby_tiles():
+            if tile == pos:
+                # Never target our own tile -- Build only ever targets an
+                # orthogonally adjacent tile, never the bot's own, so an
+                # ore tile the bot is standing on can never actually be
+                # built on. Without this, a bot that ever ends up standing
+                # on an unclaimed ore tile (e.g. too poor to build on the
+                # round it was merely adjacent) gets stuck forever: its own
+                # tile is always the "nearest" unclaimed ore, so it keeps
+                # re-picking itself as the target every round.
+                continue
             if ct.get_tile_env(tile) != Environment.ORE_TITANIUM:
                 continue
             if ct.get_tile_building_id(tile) is not None:
