@@ -102,7 +102,7 @@ _ROLES = {
     # attacker arrives soonest. Measured on the 21 official maps in both seats
     # against valkyrie, vigil, ragnarok and vanguard: 128/168 with three
     # attackers and no guard, 134/168 with two and a guard.
-    BLITZ: (0, 2),
+    BLITZ: (1, 1),
 }
 # Builders held back for the Launcher ring -- and, since `_guard_home`, for the
 # home guard, which is the same Builder and much the more valuable job. The
