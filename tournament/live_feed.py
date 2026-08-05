@@ -66,6 +66,21 @@ BOOTSTRAP_RESAMPLES = 400
 # ago. An hour is about six scheduler ticks.
 ACTIVE_WINDOW_MINUTES = 60
 
+# Results are not comparable across a balance patch, and the match API exposes no engine version,
+# so the boundary has to be a timestamp. fcode 2.3.4 rewrote the Gunner (25 HP was 40, 20 Ti was
+# 10, 7 damage was 10, 4 ammo per shot was 2) and the Sentinel (40 HP was 30, 2-round reload was
+# 3); see the note at the top of tournament/README.md. Games either side of it describe different
+# games, so everything here is restricted to the current era rather than pooled across it.
+#
+# Two caveats worth knowing. This instant is when *we* bumped the dependency, which is a proxy for
+# when the platform switched, not a record of it -- matches within an hour or so of the boundary
+# may be attributed to the wrong era. And it is deliberately not moved to the 2.3.6 bump (Aug 5
+# 14:42Z): 2.3.4 is documented as a balance pass, 2.3.6 is not known to change mechanics, and
+# moving it there would discard another two thirds of the evidence for no stated reason. If 2.3.6
+# or a later release does change balance, add it here.
+MECHANICS_EPOCH = "2026-08-04T15:06:00+00:00"
+MECHANICS_EPOCH_LABEL = "fcode 2.3.4 turret patch"
+
 
 def _api():
     """Import lazily so the module can be imported (and tested) without credentials present."""
@@ -126,6 +141,19 @@ def _save_cache(path: Path, rows: list[dict]) -> None:
 
 def _parse(stamp: str) -> datetime:
     return datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+
+
+def _pre_epoch_counts(rows: list[dict], epoch: str) -> dict[int, int]:
+    """How many matches each submission played *before* the balance patch.
+
+    Not used in any statistic -- it exists so a bot whose whole career predates the patch can say
+    "24 matches, all pre-patch" instead of appearing to have never played at all.
+    """
+    counts: dict[int, int] = defaultdict(int)
+    for row in rows:
+        if row["t"] < epoch:
+            counts[row["ver"]] += 1
+    return dict(counts)
 
 
 def _orient(match: dict, team_id: str) -> dict:
@@ -258,8 +286,12 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
     if fresh:
         _save_cache(cache_path, allrows)
 
-    ours = [_orient(m, team_id) for m in allrows if m.get("status") == "complete"]
-    ours.sort(key=lambda r: r["t"], reverse=True)
+    every = [_orient(m, team_id) for m in allrows if m.get("status") == "complete"]
+    every.sort(key=lambda r: r["t"], reverse=True)
+    # Everything downstream sees only the current balance era. Keeping the pre-patch rows around
+    # to "add context" is how they end up averaged into something, which is the whole problem.
+    ours = [r for r in every if r["t"] >= MECHANICS_EPOCH]
+    pre_epoch = _pre_epoch_counts(every, MECHANICS_EPOCH)
 
     # The global feed, for what opponents are running right now. Only the last hour is needed, and
     # the ladder produces roughly 200 matches an hour, so three pages is ample headroom.
@@ -442,6 +474,7 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
                 ),
                 "first_seen": min((r["t"] for r in rows), default=None),
                 "last_seen": max((r["t"] for r in rows), default=None),
+                "pre_epoch_matches": sum(pre_epoch.get(v, 0) for v in vers),
                 "live_games": live_games,
                 "live_builds": len({(r["opp"], r["opp_ver"]) for r in live_rows}),
                 "estimate": estimate,
@@ -452,6 +485,8 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
                 "estimate_blocked": (
                     None
                     if estimate
+                    else "pre-patch-only"
+                    if not rows and any(pre_epoch.get(v) for v in vers)
                     else "no-matches"
                     if not rows
                     else "no-current-games"
@@ -503,9 +538,13 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
             "scheduler_period_minutes": SCHEDULER_PERIOD_MINUTES,
             "pairing_group_size": PAIRING_GROUP_SIZE,
             "active_window_minutes": ACTIVE_WINDOW_MINUTES,
+            "mechanics_epoch": MECHANICS_EPOCH,
+            "mechanics_epoch_label": MECHANICS_EPOCH_LABEL,
+            "matches_before_epoch": sum(pre_epoch.values()),
             "min_games_for_estimate": MIN_GAMES_FOR_ESTIMATE,
             "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
             "matches_in_history": len(ours),
+            "matches_all_time": len(every),
         },
         "bots": bots,
         "opponents": opponents,

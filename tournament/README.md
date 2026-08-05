@@ -538,6 +538,24 @@ exact, not approximate, and `live_feed.py` depends on them:
   out at distance 9–11 come from how the final short group is absorbed. This is the one inference
   here that is a best fit rather than a proof, so treat the group size as ~8, not as 8.
 
+### Results are not pooled across a balance patch
+
+fcode 2.3.4 rewrote the Gunner and the Sentinel (details in the note at the top of this file), so
+games either side of it describe different games. `live_feed.MECHANICS_EPOCH` drops everything
+before it — currently 845 of our 1218 matches — from every statistic on the live page.
+
+The match API records no engine version, so the boundary is necessarily a timestamp, taken from
+when we bumped the dependency (`2026-08-04T15:06Z`). That is a proxy for when the platform
+switched, not a record of it, so matches within about an hour of the boundary may sit on the wrong
+side. It is deliberately not moved forward to the 2.3.6 bump: 2.3.4 is documented as a balance
+pass, 2.3.6 is not, and moving it would discard two thirds of the remaining evidence for no stated
+reason. If a later release changes balance, add it there.
+
+This interacts with the pooling of byte-identical submissions, and the order matters: the era
+filter runs *before* the pool. v9 and v16 are the same code, but v9 played once before the patch
+and v16's 261 matches are all after it, so pooling first would have averaged across exactly the
+boundary this is meant to enforce.
+
 The practical consequence for evaluating a submission: it will only ever meet the handful of teams
 nearest it in rating, so `vs pairing group` on the page is the number that predicts its results,
 and `vs the whole active field` is context.
