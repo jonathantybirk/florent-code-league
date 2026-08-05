@@ -5,7 +5,7 @@ description = "Bot for the Florent Code League 2026"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "fcode==2.3.4",
+    "fcode==2.3.6",
     # Tournament rating only (tournament/rating.py). Never imported by anything that
     # calls the engine -- see the module-boundary note in tournament/README.md.
     "numpy>=2.0",
