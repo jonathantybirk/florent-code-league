@@ -4,7 +4,7 @@ from collections import deque
 import sys
 from typing import TYPE_CHECKING
 
-from fcode import Controller, EntityType, Environment, GameError, Position
+from fcode import Controller, EntityType, Environment, GameError, Position, Team
 
 import doctrine
 from atlas import identify_visible
@@ -75,7 +75,10 @@ from constants import (
     RING_RADIUS,
     ATTACK_TURRET_CAP,
     DEFEND_TURRET_SENTINEL,
+    HARVESTER_RECHECK_ROUNDS,
     LANE_BARRIER_FIRST,
+    SEAT_AWARE_DEFENCE,
+    SEAT_B_TURRET_STEP,
     PLUG_CUT_IMMEDIATELY,
     PLUG_CUT_LEASH,
     LATE_BUILDERS_MINE,
@@ -224,6 +227,7 @@ def _run(p, ct):
         p.pending_build = None
         p.rejected_build_sites = set()
         p.deferred_ores = {}
+        p.harvester_seen = {}
         p.last_progress_round = ct.get_current_round()
         p.last_progress = "spawned"
         p.stall_reported = False
@@ -262,6 +266,14 @@ def _run(p, ct):
         if LATE_BUILDERS_MINE and p.builder_index >= MAX_OPENING_BUILDERS:
             p.is_launcher_builder = False
             p.is_attacker = False
+        # Which seat we are seeing the game from. Units act in ascending global
+        # entity id across BOTH teams and ids are handed out in spawn order, so
+        # team A's Core is id 1 and team B's is id 2 -- team A therefore wins
+        # every tie for the whole match: the race to a tile, the first shot in a
+        # turret duel, the heal that lands before the shot. Measured against
+        # vidar_r3 over 42 games this is worth 13-8 from seat A and 8-13 from
+        # seat B, a 23.8pp swing that has nothing to do with the opponent.
+        p.seat_b = ct.get_team() is Team.B
         p.siege_sentinel = None
         p.last_siege_search_round = -999
         p.sentinel_wrap = []
@@ -520,6 +532,13 @@ def _sense(p, ct):
             p.enemy_harvesters.add(key)
         else:
             p.enemy_harvesters.discard(key)
+        # When we last had eyes on a Harvester of ours. `_pick` refuses an ore
+        # tile that is in `p.solids`, and `_sense` can only clear that flag for
+        # tiles the Builder can currently see -- so a Harvester shot out while
+        # nobody was looking left its deposit marked "taken" for the rest of the
+        # game and was never rebuilt. See HARVESTER_RECHECK_ROUNDS.
+        if not enemy and kind == EntityType.HARVESTER:
+            p.harvester_seen[key] = ct.get_current_round()
         if kind == EntityType.CORE:
             if ct.get_team(bid) == ct.get_team():
                 p.core = tuple(ct.get_position(bid))
@@ -697,7 +716,20 @@ def _pick(p, ct):
     if p.network_load >= _network_cap(ct):
         return
     claimed = {x for x in (unpack_pos(ct.read_store(s)) for s in CLAIM_SLOTS) if x}
-    claimed |= p.ores & p.solids
+    # An ore tile we believe carries one of our Harvesters is claimed only while
+    # that belief is fresh. Measured over 414 games, live Harvesters ran 1.80 at
+    # round 50 down to 1.42 at round 500 in games this bot won, and 1.69 down to
+    # 0.24 in games it lost -- an economy that never grows and, when losing,
+    # collapses to nothing, while the vidar line holds about 2.0 throughout.
+    # The cause is the staleness above, not the caps: NETWORK_CAP_EARLY 6 was
+    # measured inert because permission was never the binding constraint.
+    #
+    # Re-targeting a stale site is cheap even when the Harvester turns out to be
+    # alive: `_goto` recognises it ("found existing harvester") and closes the
+    # task without spending anything.
+    stale = {ore for ore, seen in p.harvester_seen.items()
+             if ct.get_current_round() - seen > HARVESTER_RECHECK_ROUNDS}
+    claimed |= (p.ores & p.solids) - stale
     claimed |= {ore for ore, expires in p.deferred_ores.items()
                 if expires >= ct.get_current_round()}
     p.deferred_ores = {ore: expires for ore, expires in p.deferred_ores.items()
@@ -3341,7 +3373,11 @@ def _defend_core(p, ct):
     core_id = (ct.get_tile_building_id(core_position)
                if ct.is_in_vision(core_position) else None)
     damage = (ct.get_max_hp(core_id) - ct.get_hp(core_id)) if core_id else 0
-    desired = min(HOME_TURRET_MAX, 1 + damage // HOME_TURRET_STEP)
+    # Moving second means their shot lands before our heal, so the seat that
+    # loses ties escalates its home defence sooner.
+    step = (SEAT_B_TURRET_STEP if (SEAT_AWARE_DEFENCE and getattr(p, "seat_b", False))
+            else HOME_TURRET_STEP)
+    desired = min(HOME_TURRET_MAX, 1 + damage // step)
     # One turret per enemy Sentinel, before the generic escalation. A Sentinel
     # is the thing that actually kills our Core -- it out-ranges us, its line is
     # never blocked, and it cannot rotate, so a turret seated on it stays
