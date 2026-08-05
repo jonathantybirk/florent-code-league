@@ -38,6 +38,8 @@ from collections import Counter, defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from tournament import identity
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SITE = REPO_ROOT.parent / "portfolio"
 DEFAULT_CACHE = REPO_ROOT / "tournament" / "live-cache.jsonl"
@@ -53,8 +55,9 @@ SERIES_GAMES = 5
 SCHEDULER_PERIOD_MINUTES = 10
 PAIRING_GROUP_SIZE = 8
 
-# A version needs enough games before a strength estimate means anything. Below this we publish the
-# raw record and an explicit null rather than an interval nobody should read.
+# A bot needs enough games before a strength estimate means anything. Below this we publish the
+# raw record and an explicit null rather than an interval nobody should read. The threshold bites
+# much harder than it looks, because only games against builds still in use count towards it.
 MIN_GAMES_FOR_ESTIMATE = 25
 BOOTSTRAP_RESAMPLES = 400
 
@@ -282,18 +285,19 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
     name_of = {t["teamId"]: t["teamName"] for t in ladder}
     us_rating = rating_of.get(team_id)
 
-    try:
-        submissions = (api_get("/api/submissions") or {}).get("submissions", []) or []
-    except Exception:
-        submissions = []
+    # Load-bearing, not decorative: a submission that has not played yet exists only here, and
+    # there is a five-minute gap between uploading and the first series completing during which
+    # this is the sole evidence the bot is on the ladder at all.
+    submissions = api_get("/api/submissions") or {}
+    if isinstance(submissions, dict):
+        submissions = submissions.get("submissions", []) or []
     sub_meta = {
         int(s["version"]): {
             "name": s.get("name") or None,
-            "by": (s.get("uploadedBy") or {}).get("name")
-            if isinstance(s.get("uploadedBy"), dict)
-            else s.get("uploadedBy"),
-            "uploaded": s.get("createdAt") or s.get("uploadedAt"),
-            "active": bool(s.get("isActive") or s.get("active")),
+            "by": s.get("submittedByName"),
+            "uploaded": s.get("uploadedAt"),
+            "active": bool(s.get("isActive")),
+            "status": s.get("status"),
         }
         for s in submissions
         if str(s.get("version", "")).isdigit()
@@ -330,44 +334,74 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         )
     opponents.sort(key=lambda o: (-(o["rating"] or 0)))
 
-    # ---- our versions -------------------------------------------------------------------------
-    by_version: dict[int, list[dict]] = defaultdict(list)
-    for row in ours:
-        by_version[row["ver"]].append(row)
+    # ---- which bot each submission version actually is -----------------------------------------
+    try:
+        identities = identity.resolve(api_get, submissions)
+    except Exception as error:  # never let identity resolution take the live feed down
+        print(f"identity: resolution unavailable ({error})")
+        identities = {}
+
+    def bot_key(version: int) -> str:
+        """Group submissions by what they *are*. Unresolved ones stay separate, not merged."""
+        found = identities.get(version)
+        return found["code_hash"] if found else f"v{version}"
 
     active_ratings = [o["rating"] for o in opponents if o["rating"] is not None]
     neighbourhood = _pairing_neighbourhood(us_rating, active_ratings) if us_rating else []
+    current_builds = {(o["team"], o["current_version"]) for o in opponents}
 
-    versions = []
-    for ver in sorted(by_version, reverse=True):
-        rows = by_version[ver]
+    # ---- pool by code, not by upload slot ------------------------------------------------------
+    # A submission version is a slot; the same bot can occupy several. v26 and v27 are byte
+    # identical, as are v9 and v16, and splitting their records would halve the evidence for no
+    # reason. Anything that never matched a git tree keeps its own row rather than being pooled
+    # with other unknowns, since "we could not identify it" is not a claim that two are the same.
+    by_bot: dict[str, list[dict]] = defaultdict(list)
+    for row in ours:
+        by_bot[bot_key(row["ver"])].append(row)
+    versions_of: dict[str, set[int]] = defaultdict(set)
+    for ver in sub_meta:
+        versions_of[bot_key(ver)].add(ver)
+    for row in ours:
+        versions_of[bot_key(row["ver"])].add(row["ver"])
+
+    bots = []
+    for key in versions_of:
+        rows = by_bot.get(key, [])
+        vers = sorted(versions_of[key])
+        metas = [sub_meta[v] for v in vers if v in sub_meta]
+        found = next((identities[v] for v in vers if v in identities), None)
+
         wins = sum(1 for r in rows if r["win"])
         gf = sum(r["gf"] for r in rows)
         ga = sum(r["ga"] for r in rows)
         rated = [r for r in rows if r["kind"] == "ladder"]
-        meta = sub_meta.get(ver, {})
 
+        # The projection deliberately sees only games against builds still on the ladder. An
+        # opponent who has shipped twice since is a different bot, and counting those games would
+        # answer "how did this do against August's field", not "how would it do now".
+        live_rows = [r for r in rows if (r["opp"], r["opp_ver"]) in current_builds]
         cells = defaultdict(lambda: [0, 0])
-        for r in rows:
+        for r in live_rows:
             cell = cells[round(r["opp_rating"], 3)]
             cell[0] += r["gf"]
             cell[1] += r["ga"]
+        live_games = sum(r["gf"] + r["ga"] for r in live_rows)
         strength = _fit_strength([(r, w, loss) for r, (w, loss) in cells.items()])
 
         estimate = None
-        if strength is not None and gf + ga >= MIN_GAMES_FOR_ESTIMATE:
-            draws = _bootstrap_strength(rows, BOOTSTRAP_RESAMPLES, seed=1000 + ver)
+        if strength is not None and live_games >= MIN_GAMES_FOR_ESTIMATE:
+            draws = _bootstrap_strength(
+                live_rows, BOOTSTRAP_RESAMPLES, seed=abs(hash(key)) % 100000
+            )
             span = _interval(draws)
-            vs_field = _field_score(strength, active_ratings)
-            vs_near = _field_score(strength, neighbourhood) if neighbourhood else None
             estimate = {
                 "elo": strength,
                 "elo_lo": span[0] if span else None,
                 "elo_hi": span[1] if span else None,
-                "vs_active_field": vs_field,
+                "vs_active_field": _field_score(strength, active_ratings),
                 "vs_active_field_lo": _field_score(span[0], active_ratings) if span else None,
                 "vs_active_field_hi": _field_score(span[1], active_ratings) if span else None,
-                "vs_pairing_group": vs_near,
+                "vs_pairing_group": _field_score(strength, neighbourhood) if neighbourhood else None,
                 "vs_pairing_group_lo": (
                     _field_score(span[0], neighbourhood) if span and neighbourhood else None
                 ),
@@ -376,13 +410,25 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
                 ),
             }
 
-        versions.append(
+        uploads = [m["uploaded"] for m in metas if m.get("uploaded")]
+        names = [m["name"] for m in metas if m.get("name")]
+        bots.append(
             {
-                "version": ver,
-                "name": meta.get("name"),
-                "by": meta.get("by"),
-                "uploaded": meta.get("uploaded"),
-                "is_active": meta.get("active", False),
+                "key": key,
+                "versions": vers,
+                "canonical": (found or {}).get("canonical"),
+                "code_hash": (found or {}).get("code_hash"),
+                "path": (found or {}).get("path"),
+                "commit": (found or {}).get("commit"),
+                "in_git": bool((found or {}).get("in_git")),
+                "claimed": (found or {}).get("claimed"),
+                "aliases": (found or {}).get("aliases") or [],
+                "variant": (found or {}).get("variant"),
+                "labels": names,
+                "by": next((m["by"] for m in metas if m.get("by")), None),
+                "uploaded": min(uploads) if uploads else None,
+                "last_uploaded": max(uploads) if uploads else None,
+                "is_active": any(m.get("active") for m in metas),
                 "matches": len(rows),
                 "wins": wins,
                 "losses": len(rows) - wins,
@@ -394,41 +440,53 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
                 "avg_opp_rating": (
                     sum(r["opp_rating"] for r in rows) / len(rows) if rows else None
                 ),
-                "first_seen": min(r["t"] for r in rows),
-                "last_seen": max(r["t"] for r in rows),
+                "first_seen": min((r["t"] for r in rows), default=None),
+                "last_seen": max((r["t"] for r in rows), default=None),
+                "live_games": live_games,
+                "live_builds": len({(r["opp"], r["opp_ver"]) for r in live_rows}),
                 "estimate": estimate,
+                # Distinguishing these matters: "never played" and "played, but only against bots
+                # nobody runs any more" and "played current bots and won or lost every single
+                # game" are three different reasons for a blank, and only the last is about the
+                # bot being unmeasurably good or bad.
                 "estimate_blocked": (
                     None
                     if estimate
-                    else ("swept" if strength is None else "insufficient-games")
+                    else "no-matches"
+                    if not rows
+                    else "no-current-games"
+                    if live_games == 0
+                    else "swept"
+                    if strength is None
+                    else "few-current-games"
                 ),
             }
         )
+    # Chronological: by first upload, falling back to first match for anything the submissions
+    # endpoint no longer lists.
+    bots.sort(key=lambda b: (b["uploaded"] or b["first_seen"] or "", min(b["versions"])))
 
-    # ---- our versions against each opponent build ---------------------------------------------
-    matchups: dict[tuple[int, str, int], list[int]] = defaultdict(lambda: [0, 0, 0, 0])
+    # ---- each bot against each opponent build --------------------------------------------------
+    matchups: dict[tuple[str, str, int], list[int]] = defaultdict(lambda: [0, 0, 0, 0])
     for row in ours:
-        cell = matchups[(row["ver"], row["opp"], row["opp_ver"])]
+        cell = matchups[(bot_key(row["ver"]), row["opp"], row["opp_ver"])]
         cell[0] += 1 if row["win"] else 0
         cell[1] += 0 if row["win"] else 1
         cell[2] += row["gf"]
         cell[3] += row["ga"]
     matchup_rows = [
         {
-            "version": ver,
+            "key": key,
             "opponent": opp,
             "opponent_version": oppver,
             "wins": w,
             "losses": loss,
             "games_for": gf,
             "games_against": ga,
+            "opponent_build_current": (opp, oppver) in current_builds,
         }
-        for (ver, opp, oppver), (w, loss, gf, ga) in sorted(matchups.items())
+        for (key, opp, oppver), (w, loss, gf, ga) in sorted(matchups.items())
     ]
-
-    current_builds = {(o["team"], o["current_version"]) for o in opponents}
-    for row in matchup_rows:
-        row["opponent_build_current"] = (row["opponent"], row["opponent_version"]) in current_builds
 
     return {
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -449,10 +507,10 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
             "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
             "matches_in_history": len(ours),
         },
-        "versions": versions,
+        "bots": bots,
         "opponents": opponents,
         "matchups": matchup_rows,
-        "recent": ours[:200],
+        "recent": [dict(r, key=bot_key(r["ver"])) for r in ours[:200]],
     }
 
 
@@ -491,20 +549,22 @@ def main(argv: list[str] | None = None) -> int:
     target = write(feed, args.site_repo)
     elapsed = time.monotonic() - started
     print(
-        f"live feed: {len(feed['versions'])} versions, {len(feed['opponents'])} active opponents, "
+        f"live feed: {len(feed['bots'])} bots, {len(feed['opponents'])} active opponents, "
         f"{feed['model']['matches_in_history']} matches, {elapsed:.1f}s -> {target}"
     )
 
     if args.show:
-        for v in feed["versions"]:
+        for v in feed["bots"]:
             est = v["estimate"]
             shown = (
                 f"Elo {est['elo']:.0f} [{est['elo_lo']:.0f}, {est['elo_hi']:.0f}]"
                 if est and est["elo_lo"] is not None
                 else f"-- ({v['estimate_blocked']})"
             )
+            vers = ",".join(f"v{n}" for n in v["versions"])
             print(
-                f"  v{v['version']:<3} {v['games_for']:>4}-{v['games_against']:<4} games   {shown}"
+                f"  {vers:<10} {v['canonical'] or '(not in git)':<28} "
+                f"{v['games_for']:>4}-{v['games_against']:<4} all, {v['live_games']:>4} current   {shown}"
             )
 
     if args.deploy:
