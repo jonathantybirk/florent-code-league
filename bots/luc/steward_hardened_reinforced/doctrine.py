@@ -93,14 +93,31 @@ CORNER_MARGIN = 0
 _ROLES = {
     RUSH: (1, 1),
     FORTIFY: (1, 1),
-    # Nobody mines and nobody guards: three attackers.
-    BLITZ: (0, 3),
+    # Nobody mines, but somebody guards and somebody mines: one of each.
+    #
+    # This was three attackers, no miner and -- through _LAUNCHER_BUILDERS
+    # below -- no ring Builder either, on the reasoning that a Core six tiles
+    # away is decided before economy or defence can matter.
+    #
+    # The ring Builder is this bot's mender. It is the Builder that stands on
+    # the Core and heals it, which one-flag-off ablation prices at 11.0pp of
+    # mean and 16.6pp of the worst matchup -- the single largest mechanic in the
+    # build. BLITZ was the one doctrine that did not have it, on precisely the
+    # maps where the enemy attacker arrives soonest. Measured on showdown and
+    # sprint in both seats against five opponents: 0.350 with three attackers,
+    # 0.600 adding the guard, 0.650 adding the miner as well, and the worst
+    # matchup goes 0.000 -> 0.500.
+    #
+    # The miner matters for the reason Jon traced on the ladder: a blitz that is
+    # answered has nothing behind it, and the opponent that survived simply
+    # out-mines a bot holding zero Harvesters at round 120.
+    BLITZ: (1, 1),
 }
 # Builders held back to ring our own Core with Launchers. The ring is a throw
 # pad for the ferry and a displacement screen, and BLITZ maps are shorter than
 # RELAY_STOP_DISTANCE, so on them the ferry never fires and the pad is a
 # Builder and 20 Ti spent on nothing.
-_LAUNCHER_BUILDERS = {RUSH: 1, FORTIFY: 1, BLITZ: 0}
+_LAUNCHER_BUILDERS = {RUSH: 1, FORTIFY: 1, BLITZ: 1}
 # Gunners a Builder will put up away from home. Off under RUSH: answering a
 # roaming enemy with a building trades a mobile Builder's turn plus a permanent
 # +10% for a turret the enemy walks around. On a closed map it is the opposite
