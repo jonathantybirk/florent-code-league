@@ -760,12 +760,18 @@ def deploy_assets(site_repo: Path, *, reason: str, build: bool = True) -> bool:
             print(f"another deploy holds the lock; skipping {reason}")
             return False
 
-        if build or not (site_repo / "dist").exists():
+        compiled = build or not (site_repo / "dist").exists()
+        if compiled:
             _run(["npm", "run", "build"], site_repo)
         _run(["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"], site_repo)
-        (site_repo / ".last-deployed-commit").write_text(
-            _run(["git", "rev-parse", "HEAD"], site_repo).strip() + "\n"
-        )
+        if compiled:
+            # The stamp means "the source at this commit has been compiled and shipped", which is
+            # only true when we just compiled. A feed refresh uploads whatever dist/ already held,
+            # and that can predate HEAD; stamping HEAD there would convince `_deploy` the newest
+            # commit was already live and it would never run the build that makes that true.
+            (site_repo / ".last-deployed-commit").write_text(
+                _run(["git", "rev-parse", "HEAD"], site_repo).strip() + "\n"
+            )
         print(f"deployed to Cloudflare ({reason})")
         return True
 

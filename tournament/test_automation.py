@@ -521,6 +521,28 @@ def test_deploy_assets_can_skip_the_build_for_an_already_written_dist(tmp_path, 
     assert automation.deploy_assets(tmp_path, reason="live feed", build=False) is True
     assert ["npm", "run", "build"] not in calls
     assert ["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"] in calls
+    # It shipped whatever dist/ already held, which may predate HEAD, so it must not claim HEAD
+    # is live -- that would make `_deploy` skip the rebuild that would actually put it there.
+    assert not (tmp_path / ".last-deployed-commit").exists()
+
+
+def test_a_feed_deploy_does_not_suppress_a_later_source_deploy(tmp_path, monkeypatch):
+    """Regression: the feed timer runs far more often than source changes land."""
+    from tournament import automation
+
+    (tmp_path / "dist").mkdir()
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        return "f" * 40 + "\n" if command[:3] == ["git", "rev-parse", "HEAD"] else ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    automation.deploy_assets(tmp_path, reason="live feed", build=False)
+    calls.clear()
+    automation._deploy(tmp_path)
+    assert ["npm", "run", "build"] in calls, "the new commit still needs compiling"
+    assert (tmp_path / ".last-deployed-commit").read_text().strip() == "f" * 40
 
 
 def test_deploy_assets_builds_anyway_when_dist_is_missing(tmp_path, monkeypatch):
