@@ -148,7 +148,7 @@ HARVESTER_FINISH_STEPS = 2
 # large means the workforce is too small to spend it, which is the only signal
 # available -- the comms store cannot carry a live headcount because writes are
 # invisible to other units until the next round.
-REPLACEMENT_BANK_THRESHOLD = 110
+REPLACEMENT_BANK_THRESHOLD = 260
 REPLACEMENT_COOLDOWN_ROUNDS = 12
 
 # --- Siege barriers ---------------------------------------------------------
