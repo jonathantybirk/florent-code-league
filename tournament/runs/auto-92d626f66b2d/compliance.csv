@@ -1,2 +1,2 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-steward_reinforced@a8dc58a,steward_reinforced,a8dc58a,pending,21,0,0,0,,,,,,0,0,9000,10000
+steward_reinforced@a8dc58a,steward_reinforced,a8dc58a,pending,21,1,1,171,22,64,344,1427,4463,0,0,9000,10000
