@@ -241,6 +241,20 @@ DEFEND_TURRET_SENTINEL = True
 # free again. `_pick` skips any ore tile sitting in `p.solids`, and `_sense`
 # only clears that for tiles currently in vision, so a Harvester destroyed out
 # of sight silently retired its whole deposit for the rest of the game.
+# A Builder with nothing left to do explores instead of pacing. 19% of Builders
+# that live 60+ rounds spend their last sixty bouncing between three tiles while
+# moving in a third of them, and the median one spends all sixty on its three
+# most-visited tiles -- all while charging +20% on every price the team pays.
+# Contest the enemy's logistics as soon as theirs is the nearer job, rather than
+# only once ours is saturated. On a tight map -- vault, duel, showdown -- their
+# belt is often the closest economy on the board, and tapping a Harvester of
+# theirs moves 2.5 Ti a round onto our line for a fraction of what laying our
+# own costs in Builder-turns.
+STEAL_BEFORE_EXPAND = True
+STEAL_MAX_DISTANCE = 8
+FLANK_WHEN_IDLE = True
+IDLE_BEFORE_FLANK = 25
+FLANK_REPLAN_ROUNDS = 12
 HARVESTER_RECHECK_ROUNDS = 90
 LANE_BARRIER_FIRST = True
 # A conveyor we break gets a barrier in the hole on the very next turn, ahead of
