@@ -109,7 +109,7 @@ ROTATE_TITANIUM_RESERVE = 40
 # SIEGE_SEARCH_EVERY for the deterministic bound that
 # replaced it.
 # Rounds between attempts at the siege-seat search, the widest in the bot.
-SIEGE_SEARCH_EVERY = 6
+SIEGE_SEARCH_EVERY = 10
 
 # --- Sentinel siege ---------------------------------------------------------
 # When the attacker can find no Gunner lane onto the enemy Core -- walls,
@@ -238,6 +238,14 @@ DEFEND_TURRET_SENTINEL = True
 # the ordering in _defend_core: the barrier was third behind two turret paths
 # that both consume the turn, so on the rounds it mattered it was never reached.
 LANE_BARRIER_FIRST = True
+# A conveyor we break gets a barrier in the hole on the very next turn, ahead of
+# whatever else that Builder was doing. Cutting without plugging is rented
+# damage -- they relay the tile for 3 Ti -- and the plug is what converts a
+# round of fire into a permanent severance. Required behaviour: this is on
+# regardless of what the panels say about it.
+PLUG_CUT_IMMEDIATELY = True
+# How far a Builder will walk back to plug a hole it made, in Chebyshev tiles.
+PLUG_CUT_LEASH = 4
 # Every Builder past the opening headcount mines, whatever the opening's role
 # arithmetic would have made it.
 #
@@ -278,6 +286,10 @@ SECOND_MENDER_ON_CRITICAL = True
 # Alarm level at which the economy Builder joins the mending detail. 2 is the
 # Core below CRITICAL_HP; 1 is the Core's ordinary 50-HP repair alert.
 SECOND_MENDER_ALARM = 2
+# Trigger the second mender on any Core damage instead of on the alarm level.
+# See the call site: this is vidar_r3's one change over vidar, and vidar_r3 is
+# the matchup that holds this bot's floor.
+SECOND_MENDER_ON_ANY_DAMAGE = True
 # How far from the Core a Builder may be and still be pulled onto mending, in
 # Chebyshev tiles. This is a leash, not a recall radius: a miner summoned from
 # across the map arrives after the decision has been made, and the tempo it

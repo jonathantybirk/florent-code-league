@@ -76,12 +76,15 @@ from constants import (
     ATTACK_TURRET_CAP,
     DEFEND_TURRET_SENTINEL,
     LANE_BARRIER_FIRST,
+    PLUG_CUT_IMMEDIATELY,
+    PLUG_CUT_LEASH,
     LATE_BUILDERS_MINE,
     HOME_TURRET_MAX,
     HOME_TURRET_STEP,
     MENDER_LEASH,
     SEAL_EVERY_DOCTRINE,
     SECOND_MENDER_ALARM,
+    SECOND_MENDER_ON_ANY_DAMAGE,
     SIEGE_SEARCH_EVERY,
     ECON_EXPAND_BUILDERS,
     SECOND_MENDER_ON_CRITICAL,
@@ -317,7 +320,25 @@ def _run(p, ct):
         # Builder's: a miner recalled from across the map arrives after the
         # decision. Below that level the guard still answers with turrets, which
         # is what stops a scratch turning into a permanent mending detail.
-        if (SECOND_MENDER_ON_CRITICAL and alarm >= SECOND_MENDER_ALARM
+        # Trigger on *damage*, not on the Core's alarm level.
+        #
+        # `alarm` is the Core's own `repair_alert`, and level 2 is the Core below
+        # CRITICAL_HP -- 300 of 500. Waiting for it means the second mender only
+        # ever arrives for a Core that has already lost two fifths of its life,
+        # which on the maps this bot loses is after the game is decided.
+        #
+        # This is the mechanic that holds this bot's floor, and it was read off
+        # the opponent that holds it: vidar_r3 is vidar plus exactly this change
+        # -- every non-attacker Builder mends on any Core damage rather than on
+        # the death projection -- and it is the hardest matchup on the ladder at
+        # 0.512. Its own note makes the case: the losses that decide these games
+        # are early rushes, the projection cannot fire before round 40 by
+        # construction, and plain damage can. The cost of being wrong is one
+        # Builder-turn and 1 Ti, against the permanent +20% that every turret
+        # answer costs.
+        mend = (_core_is_hurt(p, ct) if SECOND_MENDER_ON_ANY_DAMAGE
+                else alarm >= SECOND_MENDER_ALARM)
+        if (SECOND_MENDER_ON_CRITICAL and mend
                 and _chebyshev(tuple(ct.get_position()), p.core) <= MENDER_LEASH):
             _heal_core(p, ct)
             return
@@ -363,6 +384,22 @@ def _run(p, ct):
         if worth_mending:
             _heal_core(p, ct)
             return
+    # A belt we cut gets its barrier before this Builder does anything else.
+    #
+    # A cut on its own is rented damage: the tile costs them 3 Ti to relay and a
+    # Builder walking the line puts it straight back, so we spent a round of
+    # fire for a gap that lasts one. The barrier is what makes the cut stick --
+    # 3 Ti and +1% to us, it cannot be built over, and clearing it costs them a
+    # round of fire or a turret they would rather aim at us.
+    #
+    # It cannot be laid the same round: the tile is not empty until the conveyor
+    # is gone. So the cut is remembered and this fills it on the very next turn,
+    # ahead of every errand. That priority is the point -- the plug used to sit
+    # inside `_contest_enemy_logistics`, behind a `network_load >= cap` gate, so
+    # a Builder that cut a belt and then found something else to do never came
+    # back and left the gap open for them to relay for 3 Ti.
+    if PLUG_CUT_IMMEDIATELY and _plug_cut_belt(p, ct):
+        return
     # Before any role work: an enemy in front of us outranks whatever errand
     # this Builder was on, wherever on the map that happens to be. Never the
     # economy Builder -- its opening titanium is the harvester budget, and a
@@ -1043,6 +1080,40 @@ def _cut_enemy_belt(p, ct, me):
         _mark_progress(p, ct, "cut enemy belt", tile)
         p.cut_tiles.add(tile)
         return True
+    return False
+
+
+def _plug_cut_belt(p, ct):
+    """Barrier a conveyor tile this team has just cut, before any other errand.
+
+    Returns True when the turn has been spent. Walks back to the hole if it is
+    close, because a Builder that cuts and wanders has paid for nothing; the
+    leash keeps that from turning into a march across the map.
+    """
+    if not p.cut_tiles:
+        return False
+    me = tuple(ct.get_position())
+    for tile in sorted(p.cut_tiles, key=lambda t: _cardinal_distance(me, t)):
+        position = Position(*tile)
+        # Already refilled by them, or never emptied: stop tracking it.
+        if ct.is_in_vision(position) and ct.get_tile_building_id(position):
+            p.cut_tiles.discard(tile)
+            continue
+        if ct.get_global_resources() < ct.get_barrier_cost():
+            return False
+        if _cardinal_distance(me, tile) == 1:
+            if ct.can_build_barrier(position):
+                ct.build_barrier(position)
+                _mark_progress(p, ct, "walled a cut belt", tile)
+                p.solids.add(tile)
+                p.cut_tiles.discard(tile)
+                return True
+            # Something else took the tile; it is not ours to plug.
+            p.cut_tiles.discard(tile)
+            continue
+        if _cardinal_distance(me, tile) <= PLUG_CUT_LEASH:
+            return _step(p, ct, position, False)
+        p.cut_tiles.discard(tile)
     return False
 
 
