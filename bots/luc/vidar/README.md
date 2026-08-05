@@ -276,6 +276,49 @@ So the Sentinel guard stays. The lesson is the ledger's: a mechanic is only
 measured for the chassis that will carry it, and a main effect computed across
 cells is not a substitute for the one-flag flip on the shipping build.
 
+## The largest single gain: the guard heals the Core it stands on
+
+All 103 maps in one run, both seats, with odin measured in the same run:
+
+| | pool mean | pool worst | gen mean | gen worst |
+|---|---|---|---|---|
+| **vidar** | **0.804** | **0.714** | **0.723** | **0.610** |
+| vidar before this fix | 0.762 | 0.595 | 0.589 | 0.433 |
+| odin | 0.626 | 0.405 | 0.478 | 0.424 |
+
++4.2pp / +11.9pp on the pool and **+13.4pp / +17.7pp on generated**, and the
+worst matchup off-pool — vigil, the binding constraint since the beginning —
+goes 0.427 → 0.610.
+
+Three separate defects sat on top of each other, all found by tracing the vigil
+losses (84 of 94 were Core kills at turns 44–53):
+
+1. `guard_gunners_built` only ever incremented, so a guard turret shot out
+   consumed its allowance slot permanently.
+2. `_guard_allowance` counted enemy turrets *this Builder can see*, and a
+   Builder sees r²=20 of a disc that is r²=64. The Core needs no vision to know
+   it is being shot and already publishes its damage alarm and death
+   projection; those now buy allowance.
+3. The big one: `_guard_home` seats a turret only against a **visible enemy
+   unit**, so a Gunner emplaced six tiles out and shooting our Core was
+   answered by nothing — and having answered nothing, the ring Builder fell
+   through to `_run_launcher_ring`. **The one Builder posted at the Core left
+   it to go and build something else.** The late-spawned Builders have had
+   `_heal_core` and `_defend_core` in their branch all along; the dedicated
+   guard was the only Builder in the bot without either.
+
+Healing needs no sight of the shooter, which is the whole point, and it is the
+most titanium-efficient act in the game: 4 HP for a flat 1 Ti, unaffected by
+cost scale, against the 4 Ti a Gunner pays for 7 damage and the 3.33 Ti a
+Sentinel pays for 6. It is the same arithmetic that makes besieged Cores
+survive and sends the median 2.3.4 game to the round-1000 tiebreak — this bot
+had been on the receiving end of it without ever using it at home.
+
+What it is *not*: the symmetry inference was the obvious suspect, since the
+pool is 2:1 rotation and generated maps are equal thirds rotation/x-mirror/
+y-mirror. Traced, it locks onto the correct hypothesis on round 5 even on a
+mirror map and sights the real Core by round 15. Cleanly disproved.
+
 ## Two measured rejections, kept because the reasoning was good
 
 **`AMMO_TARGET` 120 → 200.** Ammunition is denominated in shots and the patch
