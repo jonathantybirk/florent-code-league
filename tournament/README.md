@@ -556,6 +556,27 @@ compile that loses the lock leaves `.deploy-pending` behind, and the next evalua
 up before its own HEAD check. A feed deploy never clears that marker, because uploading `dist/`
 untouched cannot satisfy a build somebody else still needs.
 
+**The failure this combination produced, worth recognising:** only `astro build` copies `public/`
+into `dist/`, so a ranking refresh whose deploy was skipped leaves new data in `public/` that no
+later feed deploy picks up — and the feed then republishes the stale `dist/` every two minutes,
+logging "deployed to Cloudflare" each time. The site sat two runs behind for two hours with three
+different datasets in three layers (served `auto-f83b13bbf84a`, `dist/` `auto-1d4e18e0fe7b`,
+`public/` `auto-77cf6428cad6`) and nothing in the logs or the repo looked wrong. `deploy_assets`
+now compares the two `index.json` manifests and compiles instead of shipping something older than
+what is on disk. To check by hand:
+
+```sh
+curl -s https://lucasrgpedersen.com/botrankings/data/index.json | jq -r .run_id
+jq -r .run_id ~/projects/portfolio/{public,dist}/botrankings/data/index.json
+```
+
+All three should agree. Note `field.bots` is the *distinct* count after duplicate and compliance
+pruning, so it reads lower than the run manifest's bot count — 149 in the manifest is 139 published.
+
+**And a deploy is blocked entirely while the site checkout is dirty**, including by your own
+in-progress edits. That is deliberate — `astro build` compiles the working tree — but it silently
+stops the ladder too, so commit or stash before walking away from the site repo.
+
 ```sh
 cp tournament/systemd/botrankings-live.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload
