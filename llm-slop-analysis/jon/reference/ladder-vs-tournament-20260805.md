@@ -135,7 +135,45 @@ replay-analysis task available, and it is narrow enough to actually finish.
 (My earlier read of "2W-7L vs Pantheon" came from the last-100-match window only. Across full
 history v16 is 7W-8L against them overall; the recent window is dominated by their v24.)
 
-## 7. The "global instant communication" rumour — tested, and it is false on our engine
+## 7. What v24 actually does — decoded from a real ladder loss
+
+Downloaded match `b405fc69-d28c-4acc-a310-b9567490294f` (we lost 1–4 on Aug 5 07:13) with
+`fcode match replay`, and decoded all five games with Lucas's `tools/pantheon_analysis/decode.py`.
+It reads live ladder replays without modification. TEAM_A is Pantheon v24, TEAM_B is our v16.
+
+| game | winner | length | Pantheon v24 | us (v16) |
+|---|---|---|---|---|
+| 1 | A | 63 | 2 harv@r4, 4 conv@r6, 9 barrier@r14, **2 sentinel@r21** | 10 conv@r1, **4 launcher@r2**, **2 gunner@r10** |
+| 2 | A | 66 | 2 harv@r3, 6 conv@r5, **2 sentinel@r30** | 14 conv@r1, **6 launcher@r2**, 2 gunner@r36 |
+| 3 | A | 55 | 2 harv@r3, 6 conv@r5, **2 sentinel@r19** | 11 conv@r1, **4 launcher@r2**, 2 gunner@r9 |
+| 4 | A | **37** | 1 launcher@r1, **2 sentinel@r3**, 5 barrier@r6 | **5 gunner@r3** |
+| 5 | B | 126 | 2 harv@r6, 6 conv@r7, 2 sentinel@r22 | 13 conv@r1, 5 launcher@r2, 1 gunner@r12 |
+
+The pattern is the same in every game and it is exactly the doctrine split the patch created:
+
+- **Pantheon v24 builds Sentinels.** Two of them, every game, between r19 and r30 — and in the
+  37-turn game, at **r3**. Lean economy behind it: two harvesters, ~6 conveyors.
+- **We build Gunners**, plus a wide conveyor net (10–14 conveyors from r1) and **4–6 Launchers at
+  r2** before anything else.
+- **Games end between turn 37 and 66.** Our economy investment never amortises. `titanium_collected`
+  is only a tiebreak at round 1000 and these games do not get near it.
+
+Game 4 is the whole thesis in 37 turns: we put **five Gunners** down at r3 and lost to **two
+Sentinels** placed at r3 behind barriers.
+
+This independently confirms, on live ladder data, two things our own branches already established
+by other means:
+
+1. Lucas's `GameConstants` re-derivation — under 2.3.4 the Sentinel beats the Gunner on damage,
+   HP, range and ammo efficiency at identical +20% cost scale.
+2. Elias's cost-scale audit — a Launcher is +10 pp on every later purchase for a measured 1.6–1.9
+   throws per game, and should be retired. We are paying that tax on 4–6 Launchers from round 2.
+
+So the "Pantheon v24 counter" is not a mystery tactic. **It is the 2.3.4 turret inversion, and we
+are on the wrong side of it because our active ladder bot is a 2.3.3 design.** The fix is already
+written — it is `vidar` — and it has never been submitted.
+
+## 8. The "global instant communication" rumour — tested, and it is false on our engine
 
 Ground-truth claim **G20** ("module-level globals are not shared between units — each runs in its
 own CPython sub-interpreter") was marked `CARRIED-2.2.0`, never re-run on 2.3.x, and sat on
