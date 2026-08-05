@@ -550,6 +550,12 @@ of the day — that tick already runs for about two minutes against a two-minute
 two only interact at `deploy_assets`, which holds an exclusive `flock` on `.deploy.lock` in the
 site repo so two overlapping `wrangler deploy` runs cannot race.
 
+Losing that lock is not rare -- the feed holds it for roughly a third of every two-minute window --
+and with the bundle untracked there is no longer a moved HEAD to make the next tick retry. So a
+compile that loses the lock leaves `.deploy-pending` behind, and the next evaluator tick picks it
+up before its own HEAD check. A feed deploy never clears that marker, because uploading `dist/`
+untouched cannot satisfy a build somebody else still needs.
+
 ```sh
 cp tournament/systemd/botrankings-live.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload

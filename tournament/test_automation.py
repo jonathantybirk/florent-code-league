@@ -577,6 +577,49 @@ def test_deploy_assets_yields_rather_than_racing_a_concurrent_deploy(tmp_path, m
     assert not any(c[:2] == ["npm", "exec"] for c in calls)
 
 
+def test_a_compile_lost_to_the_lock_is_retried_on_the_next_tick(tmp_path, monkeypatch):
+    """Untracked data removed the retry that a moved HEAD used to provide."""
+    import fcntl
+
+    from tournament import automation
+
+    (tmp_path / "dist").mkdir()
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        return "a" * 40 + "\n" if command[:3] == ["git", "rev-parse", "HEAD"] else ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    monkeypatch.setattr(automation, "build_site_data", lambda run_dir, out: None)
+
+    with open(tmp_path / ".deploy.lock", "w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        automation._publish(tmp_path, tmp_path, "abc1234")
+    assert ["npm", "run", "build"] not in calls, "the lock was held"
+    assert (tmp_path / ".deploy-pending").exists()
+
+    # Next evaluator tick: HEAD has not moved, so only the pending marker can rescue the compile.
+    calls.clear()
+    automation._deploy(tmp_path)
+    assert ["npm", "run", "build"] in calls
+    assert not (tmp_path / ".deploy-pending").exists()
+
+
+def test_a_feed_deploy_does_not_clear_a_pending_compile(tmp_path, monkeypatch):
+    """The feed uploads dist/ untouched, so it cannot satisfy a build somebody else still needs."""
+    from tournament import automation
+
+    (tmp_path / "dist").mkdir()
+    (tmp_path / ".deploy-pending").write_text("ranking data for abc1234\n")
+    monkeypatch.setattr(
+        automation, "_run",
+        lambda command, cwd=None: "b" * 40 + "\n" if command[:3] == ["git", "rev-parse", "HEAD"] else "",
+    )
+    automation.deploy_assets(tmp_path, reason="live feed", build=False)
+    assert (tmp_path / ".deploy-pending").exists()
+
+
 def test_self_update_rolls_back_when_tests_fail(tmp_path, monkeypatch):
     """A broken evaluator does not merely fail; it submits cluster jobs and publishes."""
     from tournament import automation

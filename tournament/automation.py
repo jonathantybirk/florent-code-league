@@ -752,11 +752,19 @@ def deploy_assets(site_repo: Path, *, reason: str, build: bool = True) -> bool:
             print(f"    {line}")
         return False
 
+    pending = site_repo / ".deploy-pending"
     lock_path = site_repo / ".deploy.lock"
     with open(lock_path, "w") as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
+            # Losing the lock used to be free, because the data commit had moved HEAD and the next
+            # tick's HEAD check would retry. Untracked data removed that safety net: a skipped
+            # compile leaves fresh output in public/ that nothing will ever copy into dist/. The
+            # feed holds the lock for roughly a third of every two-minute window, so this is a
+            # coin flip, not a rare race. Leave a note for `_deploy` to pick up next tick.
+            if build:
+                pending.write_text(f"{reason}\n")
             print(f"another deploy holds the lock; skipping {reason}")
             return False
 
@@ -772,6 +780,7 @@ def deploy_assets(site_repo: Path, *, reason: str, build: bool = True) -> bool:
             (site_repo / ".last-deployed-commit").write_text(
                 _run(["git", "rev-parse", "HEAD"], site_repo).strip() + "\n"
             )
+            pending.unlink(missing_ok=True)
         print(f"deployed to Cloudflare ({reason})")
         return True
 
@@ -783,6 +792,13 @@ def _deploy(site_repo: Path) -> None:
     move HEAD, so they call `deploy_assets` directly instead of relying on this.
     """
     if not site_repo.exists():
+        return
+    pending = site_repo / ".deploy-pending"
+    if pending.exists():
+        deploy_assets(
+            site_repo, reason=f"retry of {pending.read_text().strip() or 'a skipped deploy'}",
+            build=True,
+        )
         return
     head = _run(["git", "rev-parse", "HEAD"], site_repo).strip()
     stamp = site_repo / ".last-deployed-commit"
