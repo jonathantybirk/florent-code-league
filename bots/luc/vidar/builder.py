@@ -415,6 +415,22 @@ def _run(p, ct):
         # games are actually decided. And the alternative use of the turn is
         # laying a Launcher ring, against 4 HP for a flat 1 Ti unaffected by
         # cost scale.
+        # Threshold measured and left at zero. Bracketed against the Core's own
+        # 50 HP alarm over all 103 maps:
+        #
+        #                pool mean/worst   generated mean/worst
+        #     >= 50 HP     0.807 / 0.714      0.726 / 0.610
+        #     >= 25 HP     0.836 / 0.667      0.722 / 0.631
+        #     >= 10 HP     0.805 / 0.667      0.715 / 0.598
+        #     any damage   0.826 / 0.655      0.731 / 0.646   <- shipped
+        #
+        # 25 wins the pool and any-damage wins the generated arm, and averaged
+        # across the two they are identical to three decimals. The tie is
+        # resolved for the generated arm because that is the one standing in
+        # for terrain nobody has seen. The threshold is also not the lever it
+        # looked like: prospect sits at 0.655-0.667 in every variant, so its
+        # regression belongs to the healing family rather than to where the
+        # trigger sits.
         core_id = (ct.get_tile_building_id(Position(*p.core))
                    if ct.is_in_vision(Position(*p.core)) else None)
         hurt = (core_id is not None
