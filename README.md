@@ -38,7 +38,7 @@ bots/
   jon/ lucas/ vaek/ elias/
 docs/                 original sources ONLY — no summaries, no LLM output
 llm-slop-analysis/    LLM-authored notes, one folder per person
-maps/                 the 15 competition maps
+maps/                 the 21 competition maps
 ```
 
 Everyone owns their folder under `bots/` and organises it however they like;
