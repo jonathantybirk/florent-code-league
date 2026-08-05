@@ -531,12 +531,18 @@ exact, not approximate, and `live_feed.py` depends on them:
   was created at minute ≡ 2 (mod 10), second 43, without exception. Each team with a ready
   submission plays exactly one series per tick — 662 ticks, no team ever twice in one tick — so a
   submission collects about 144 rated series a day and cannot choose its opponent.
-- **Within a tick, teams are sorted by rating, cut into consecutive groups of about 8, and paired
-  uniformly at random inside each group.** Rank distance between paired teams is hard-capped at 11
-  and decays smoothly; a block size of 8 fits the observed distribution to a total-variation
-  distance of 0.033, beating windowed matching and every other block size tried. The rare pairings
-  out at distance 9–11 come from how the final short group is absorbed. This is the one inference
-  here that is a best fit rather than a proof, so treat the group size as ~8, not as 8.
+- **Within a tick, pairing is close in rating but not grouped.** Rank distance between paired
+  teams decays smoothly and is capped at 11: P(|offset| = d) is 24%, 20%, 18%, 14%, 11%, 6.5%,
+  3.6%, 1.4%, 0.6%, 0.2%, 0.01% for d = 1…11, symmetric in sign, over 12211 pairings. That
+  distribution is `live_feed.PAIRING_KERNEL`, and it is stable as the field grows — splitting by
+  tick size (under 30 teams, 30–45, 46+) moves no bin by more than about 2 points.
+
+  **It is not blocks.** An earlier version of this file claimed groups of 8 paired internally, and
+  that is falsifiable and false: blocks predict pairs never cross a block boundary, and 34% of real
+  pairs do, with no block size bringing that under 15%. The evidence was in the first measurement
+  and got explained away — blocks of 8 cannot produce a rank distance above 7, and the data reaches
+  11. We were once drawn against a team eight places below us. The kernel above therefore makes no
+  claim about the algorithm, which is not observable; it is only what the ladder is seen to do.
 
 ### Results are not pooled across a balance patch
 
@@ -556,9 +562,15 @@ filter runs *before* the pool. v9 and v16 are the same code, but v9 played once 
 and v16's 261 matches are all after it, so pooling first would have averaged across exactly the
 boundary this is meant to enforce.
 
-The practical consequence for evaluating a submission: it will only ever meet the handful of teams
-nearest it in rating, so `vs pairing group` on the page is the number that predicts its results,
-and `vs the whole active field` is context.
+The practical consequence for evaluating a submission: it mostly meets teams within a few ranks of
+itself, so `vs pairing group` on the page weights the field by that kernel, while `vs the whole
+active field` is an unweighted per-team average kept only as context.
+
+Neither is a pass mark. A bot rated exactly at its own strength scores under 50% whenever the teams
+around it are stronger than it — Elo already expects those losses, so its rating does not move.
+Whether a bot rises is projected Elo versus current rating, nothing else. Simulating the real rules
+confirms the fixed point: a bot of known strength settles within ±2 Elo of it from any starting
+rating, with an equilibrium wander of about ±24 Elo, so rating noise of that size means nothing.
 
 ### Why it is a separate systemd unit
 
