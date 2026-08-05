@@ -10,6 +10,21 @@
 
 Accessed during the research pass ending 29 July 2026.
 
+## Added 5 August 2026
+
+Three sources found outside the 29 July pass. Digests live in `../reference/` and `../tools/`,
+not here.
+
+- [Pantheon "Khaos" postmortem (PDF)](https://game.battlecode.cam/postmortems/Pantheon_postmortem.pdf)
+  — Cambridge Battlecode **Grand Finals winner**, team-authored. This supersedes the "no public
+  Pantheon technical paper or full postmortem was located" note recorded below and in
+  `published-team-accounts.md`. Digest: [../reference/pantheon-khaos-postmortem.md](../reference/pantheon-khaos-postmortem.md).
+- [A Guide to Battlecode, Ivan Geffner / XSquare (PDF)](https://battlecode.org/assets/files/battlecode-guide-xsquare.pdf)
+  — MIT Battlecode competitor guide; process and code structure, Java-engine bytecode advice.
+  Digest: [../reference/xsquare-battlecode-guide.md](../reference/xsquare-battlecode-guide.md).
+- [oarena](https://github.com/frkns/oarena) — third-party web UI, replay visualiser, and local
+  league runner **for Florent Code League itself**. Digest: [../tools/oarena.md](../tools/oarena.md).
+
 ## Organizer sources
 
 - [Florent Code League](https://league.florent.vc/) — Florent event description.

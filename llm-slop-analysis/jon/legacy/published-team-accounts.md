@@ -14,6 +14,17 @@ Every technical statement below is attributed to the team that published it.
 
 Organizer James Leung said Pantheon developed a terrain-analysis approach adapted from StarCraft AI research and was preparing a paper. No public Pantheon technical paper or full postmortem was located during this pass.
 
+> **Superseded 2026-08-05.** The postmortem exists and has been read:
+> [Pantheon_postmortem.pdf](https://game.battlecode.cam/postmortems/Pantheon_postmortem.pdf),
+> digested in [../reference/pantheon-khaos-postmortem.md](../reference/pantheon-khaos-postmortem.md).
+> The organizer's "terrain analysis adapted from StarCraft AI research" statement is confirmed and
+> specific: Pantheon's bot *Khaos* runs a BWTA-style (Broodwar Terrain Analyzer) medial-axis
+> chokepoint detector built on a sweep-line Voronoi over rasterised free-space boundary samples,
+> vendored from the Foronoi Python library. Make Fire's claim that their own terrain work "did not
+> use Voronoi analysis like Pantheon" is likewise confirmed.
+> The postmortem refers to a public GitHub repository for the bot and tooling but gives no URL,
+> and no such repo was located; treat the code as unavailable.
+
 Source: [organizer summary](https://www.linkedin.com/posts/james-leung-dev_5864605-games-played-587-teams-1518-activity-7462172589520662528-SfO5)
 
 ## Kessoku Band — third in the Grand Finals
