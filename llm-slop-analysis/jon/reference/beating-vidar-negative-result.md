@@ -214,3 +214,89 @@ is Builder-rounds, exactly as Lucas found -- and the bridge trace shows where a
 large block of them goes.
 
 **Still 0.754. vidar remains unbeaten.**
+
+
+---
+
+# Round three: off-pool measurement, and a real seat asymmetry nobody exploits
+
+Generated 24 fresh maps with `tools/generate_maps.py --out maps/gen --count 24
+--seed 7` so that everything below is measured on terrain nobody has tuned
+against. Panel: vigil, steward, prospect, both seats, **144 games**.
+
+**vidar off-pool baseline: 0.743** (107-37).
+
+## Off-pool the loss mode is the opposite of on-pool
+
+On the published pool, three of vidar's four losses to vigil are round-1000
+tiebreaks lost on economy. Off-pool, **all four losses are Core kills** at rounds
+98, 131, 191 and 217 -- and the shot ledger is lopsided:
+
+| map | our shots | their shots | our damage | their damage |
+|---|---|---|---|---|
+| r05 | 21 sentinel | 129 gunner | 378 | 903 |
+| r17 | 24 sentinel | 198 gunner | 432 | 1,386 |
+| r18 | 47 sentinel | 240 gunner | 846 | 1,680 |
+| r22 | 35 sentinel + 9 gunner | 118 gunner | 693 | 826 |
+
+vigil fields five to ten times the shots and roughly double the damage, from six
+Gunners against our three Sentinels. Two of the four also trip the heal-race
+alert (91% and 96% of our damage healed straight back).
+
+So the on-pool answer ("we lose tiebreaks on economy") and the off-pool answer
+("we get out-gunned and killed") are different problems, and a fix aimed at one
+should be checked against the other before it ships.
+
+## The seat asymmetry
+
+Units act in **ascending global entity id across both teams**, and ids are handed
+out in spawn order: the first team's Core is id **1**, the second team's is id
+**2**, first Builders are 3 and 4. Verified by decoding replays. So every unit of
+the first-spawning team acts before the corresponding unit of the second, all
+match -- it wins the race to a contested tile, the first shot in a turret duel,
+and the heal that lands before the shot rather than after.
+
+Measured over the same 144 off-pool games:
+
+| | record | rate |
+|---|---|---|
+| vidar as **Team A** (spawns first) | 57-15 | **0.792** |
+| vidar as **Team B** (spawns second) | 50-22 | **0.694** |
+
+**A 9.8pp gap that has nothing to do with the opponent.** And the seat is
+trivially knowable at runtime -- `ct.get_team()` returns `Team.A` or `Team.B`
+directly. Nothing in our lineage reads it.
+
+That is a genuine, unexploited edge sitting in the open. I could not find the
+right response to it:
+
+| seat-conditional change | off-pool | vs 0.743 |
+|---|---|---|
+| Team B gets +1 guard Sentinel | 0.736 | -0.007 |
+| Team B gets -1 siege Sentinel (refuse the duel) | 0.722 | **-0.021** |
+| Team A gets +1 siege Sentinel, B unchanged | 0.743 | inert |
+
+Adding defence, refusing fights and pressing the advantage were all tried and
+none of them is the answer. But the asymmetry is measured, the detection is one
+call, and this is where I would look first with more time.
+
+## Round-three sweeps
+
+| change | off-pool | vs 0.743 |
+|---|---|---|
+| `MAX_GUARD_SENTINELS` 2 -> 3 | 0.708 | **-0.035** |
+| `GUARD_TURRET_SENTINEL = False` (Gunner guards) | 0.688 | **-0.055** |
+| `CLAIM_SLOTS` 2 -> 5 (see below) | 0.743 | inert |
+
+`CLAIM_SLOTS = (1, 8)` limits the team to **two live ore reservations**, and
+`MAX_RELAY_LAUNCHERS` is 0 so the six launch-request slots it was competing with
+are dead. Expanding it to five looked like the structural cause of the economy
+ceiling. It is not: the resulting replays are **byte-identical** on both bridge
+and string, so the claim table was never full and the economy is limited by
+something else -- Builder-rounds, as Lucas found.
+
+## Standing tally
+
+Roughly thirty measured changes across three rounds, two map sets and two
+panels. Every one is worse or inert. **vidar remains unbeaten**, and the honest
+reading is that it sits at a robust optimum that single-lever edits cannot leave.
