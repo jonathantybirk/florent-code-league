@@ -2200,9 +2200,24 @@ def _no_go(p, source=None):
     `source` is exempt: standing somewhere forbidden has to leave a legal move
     out of it, or the Builder is stuck by its own rules.
     """
-    blocked = (p.walls | p.foot | p.solids | p.bot_occupied
-               | _launcher_hazards(p) | set(getattr(p, "threat", ())))
-    return blocked - {source} if source is not None else blocked
+    # The union is cached for the turn. It is six set unions over every wall
+    # tile on the map, and it is rebuilt by every planner that asks a routing
+    # question -- which is most of them, several times a turn. Nothing in it
+    # moves while the Builder is still deciding: terrain, our own buildings,
+    # occupied tiles and the remembered threat map are all written by `_sense`
+    # at the top of the turn and not again until the Builder acts.
+    #
+    # This matters more than a local profile suggests. The cluster the ladder
+    # rates on is roughly 1.6x slower than this machine, and two earlier builds
+    # of this bot passed `benchmarks.timing` here with zero overruns while the
+    # tournament's own compliance stage recorded 29 and 19 timeouts against the
+    # same 10 ms limit. A turn that overruns there does not act at all.
+    if getattr(p, "nogo_round", None) != getattr(p, "round", -1):
+        p.nogo_round = getattr(p, "round", -1)
+        p.nogo_base = (p.walls | p.foot | p.solids | p.bot_occupied
+                       | _launcher_hazards(p) | set(getattr(p, "threat", ())))
+    blocked = p.nogo_base
+    return blocked - {source} if source is not None else set(blocked)
 
 
 def _travel(p, source, goals=None, hops=True, allow_fire=False,
