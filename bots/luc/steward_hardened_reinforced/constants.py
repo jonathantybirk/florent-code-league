@@ -238,6 +238,17 @@ DEFEND_TURRET_SENTINEL = True
 # the ordering in _defend_core: the barrier was third behind two turret paths
 # that both consume the turn, so on the rounds it mattered it was never reached.
 LANE_BARRIER_FIRST = True
+# Every Builder past the opening headcount mines, whatever the opening's role
+# arithmetic would have made it.
+#
+# Both role branches key on `builder_index >= economy_builders`, which is the
+# *opening's* way of saying "this one is not a miner". Read by a replacement
+# spawned on round 250 it says the opposite of what it means, so every Builder
+# the Core bought to recover from a loss walked to the enemy Core as a fourth
+# attacker instead of laying belt -- paying +20% on every later price to add
+# nothing to the economy. It shows up directly in the ledger: losing games spawn
+# 7.5 Builders and hold 1.25 Harvesters, winning games spawn 5.6 and hold 1.63.
+LATE_BUILDERS_MINE = False
 # Home-guard turret escalation: `1 + damage // HOME_TURRET_STEP`, capped. The
 # guard escalates with sustained damage rather than committing a formation
 # before it knows one is needed; these two numbers set how fast and how far.
