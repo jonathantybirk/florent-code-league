@@ -528,7 +528,8 @@ def test_self_update_adopts_a_passing_commit(tmp_path, monkeypatch):
     assert automation.self_update("x/tournament") is True
 
 
-def _push_data_calls(monkeypatch, *, branch_head, status, push_fails=False):
+def _push_data_calls(monkeypatch, *, branch_head, status, push_fails=False,
+                     staged=True, ahead="3"):
     """Drive _push_data with a scripted git, returning the commands it issued."""
     from tournament import automation
 
@@ -540,6 +541,8 @@ def _push_data_calls(monkeypatch, *, branch_head, status, push_fails=False):
             return branch_head + "\n"
         if command[:2] == ["git", "status"]:
             return status
+        if command[:3] == ["git", "rev-list", "--count"]:
+            return ahead + "\n"
         if command[:3] == ["git", "diff", "--cached"]:
             return "tournament/runs/auto-x/matches.csv\ntournament/runs/auto-x/ratings.csv\n"
         if command[:2] == ["git", "push"] and push_fails and calls.count(command) == 1:
@@ -549,7 +552,7 @@ def _push_data_calls(monkeypatch, *, branch_head, status, push_fails=False):
     monkeypatch.setattr(automation, "_run", fake_run)
     # A non-zero `git diff --cached --quiet` means there is something staged to commit.
     monkeypatch.setattr(automation.subprocess, "run",
-                        lambda *a, **k: type("R", (), {"returncode": 1})())
+                        lambda *a, **k: type("R", (), {"returncode": 1 if staged else 0})())
     automation._push_data("x/tournament")
     return calls
 
@@ -592,6 +595,26 @@ def test_push_data_names_the_runs_it_is_committing(monkeypatch):
                              status="?? tournament/runs/auto-x/\n")
     commit = next(c for c in calls if c[:2] == ["git", "commit"])
     assert commit[-1] == "Add tournament results for auto-x"
+
+
+def test_push_data_retries_commits_an_earlier_tick_could_not_deliver(monkeypatch):
+    """Committing and pushing fail independently, so a failed push must not need new data to retry.
+
+    Returning early on "nothing new to commit" stranded 22 commits of match and rating CSVs on the
+    workstation: the only thing that would have carried them out was the next run's data.
+    """
+    calls = _push_data_calls(monkeypatch, branch_head="x/tournament", status="",
+                             staged=False, ahead="22")
+    assert not any(c[:2] == ["git", "commit"] for c in calls)
+    assert ["git", "push", "origin", "x/tournament:x/tournament"] in calls
+
+
+def test_push_data_does_nothing_when_the_branch_is_level(monkeypatch):
+    """The common case -- a tick that gained no results and has nothing owed -- stays silent."""
+    calls = _push_data_calls(monkeypatch, branch_head="x/tournament", status="",
+                             staged=False, ahead="0")
+    assert not any(c[:2] == ["git", "commit"] for c in calls)
+    assert not any(c[:2] == ["git", "push"] for c in calls)
 
 
 def _stranded_run(root, tid, *, merged: int, scheduled: int) -> None:
@@ -723,6 +746,63 @@ def test_a_run_with_one_array_still_alive_is_not_requeued(tmp_path, monkeypatch)
                         lambda tid, settings=None: pytest.fail("re-queued a live run"))
 
     assert automation.resubmit_abandoned_runs(["auto-partly-live"]) == []
+
+
+def _bjobs_table(job_id: str, *, njobs, pend=0, done=0, run=0, exited=0, ssusp=0) -> str:
+    return (
+        "JOBID       ARRAY_SPEC  OWNER   NJOBS PEND DONE  RUN EXIT SSUSP USUSP PSUSP\n"
+        f"{job_id}    trn_auto  s234842  {njobs} {pend} {done} {run} {exited} {ssusp} 0 0"
+    )
+
+
+def test_a_run_whose_last_element_only_exited_is_requeued(tmp_path, monkeypatch):
+    """LSF still lists the array, so "not found" never fires -- but nothing is left to run.
+
+    auto-ac98e09efc0e sat on 8 of 5,901 matches this way. recover_stranded_results() skips it too
+    (the cluster never reaches done == total), so without this it defers every later bot until
+    LSF happens to age the array out of bjobs -- which took it 64 minutes.
+    """
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-exited", merged=92, scheduled=100)
+    (root / "auto-exited" / "hpc.json").write_text(json.dumps({"job_ids": ["111"]}))
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100, "done": 92, "job_ids": ["111"],
+        "bjobs": _bjobs_table("111", njobs=5, done=4, exited=1),
+    })
+    monkeypatch.setattr(automation.hpc, "fetch", lambda tid, settings=None: 92)
+    submitted = []
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda tid, settings=None: submitted.append(tid))
+
+    assert automation.resubmit_abandoned_runs(["auto-exited"]) == ["auto-exited"]
+    assert submitted == ["auto-exited"]
+
+
+@pytest.mark.parametrize("state", [
+    {"njobs": 5, "done": 2, "run": 3},
+    {"njobs": 5, "done": 2, "pend": 3},
+    {"njobs": 5, "done": 4, "ssusp": 1},
+])
+def test_an_array_with_work_left_is_never_requeued(tmp_path, monkeypatch, state):
+    """Pending, running and suspended elements are all still going to produce results."""
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-live", merged=40, scheduled=100)
+    (root / "auto-live" / "hpc.json").write_text(json.dumps({"job_ids": ["111"]}))
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100, "done": 40, "job_ids": ["111"], "bjobs": _bjobs_table("111", **state),
+    })
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda tid, settings=None: pytest.fail("re-queued a live run"))
+
+    assert automation.resubmit_abandoned_runs(["auto-live"]) == []
 
 
 def test_requeueing_gives_up_after_the_cap(tmp_path, monkeypatch):
