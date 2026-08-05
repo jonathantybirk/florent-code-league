@@ -438,7 +438,7 @@ FIRE_BLOCK_LAUNCH_ROUNDS = 3
 # income of 10 titanium in 1000 rounds. Barriers are the exception and go there
 # deliberately -- a barrier in their line is 3 Ti that costs them ammunition and
 # blocks the lane, which starves the economy the line was protecting.
-AVOID_THREAT_FOR_LOGISTICS = True
+AVOID_THREAT_FOR_LOGISTICS = False
 BARRIER_INTO_THREAT = True
 # Rounds between belt patrols. Enemies cut lines and then seat a turret on the
 # gap; a miner that keeps rebuilding into that seat is paying rent. On the
@@ -504,7 +504,7 @@ PATROL_RADIUS = 3
 # Box a loose enemy Builder in with barriers, then put a Gunner on the box. A
 # barrier is 3 Ti against a Builder's 30 Ti and +20% scale, and a boxed Builder
 # cannot dodge the ray the way a free one does.
-TRAP_ENEMY_BUILDERS = True
+TRAP_ENEMY_BUILDERS = False
 TRAP_MAX_DISTANCE_SQ = 64
 # The same trick, seen from the other side. A Builder down to this many cardinal
 # exits with an enemy Builder within r^2=9 is one 3 Ti barrier from being worth
