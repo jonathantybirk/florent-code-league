@@ -554,7 +554,10 @@ Losing that lock is not rare -- the feed holds it for roughly a third of every t
 and with the bundle untracked there is no longer a moved HEAD to make the next tick retry. So a
 compile that loses the lock leaves `.deploy-pending` behind, and the next evaluator tick picks it
 up before its own HEAD check. A feed deploy never clears that marker, because uploading `dist/`
-untouched cannot satisfy a build somebody else still needs.
+untouched cannot satisfy a build somebody else still needs. Both `.deploy-pending` and
+`.deploy.lock` must stay gitignored in the site repo: they are untracked files, and an
+un-ignored one reads as a dirty tree, so the marker would freeze the very deploy it exists
+to rescue.
 
 **The failure this combination produced, worth recognising:** only `astro build` copies `public/`
 into `dist/`, so a ranking refresh whose deploy was skipped leaves new data in `public/` that no

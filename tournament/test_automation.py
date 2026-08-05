@@ -634,6 +634,28 @@ def test_a_feed_deploy_compiles_when_dist_is_missing_newer_ranking_data(tmp_path
     assert ["npm", "run", "build"] not in calls
 
 
+def test_the_pending_marker_does_not_block_the_deploy_it_exists_to_rescue(tmp_path, monkeypatch):
+    """It is untracked, so an un-ignored marker reads as a dirty tree and freezes everything."""
+    from tournament import automation
+
+    (tmp_path / "dist").mkdir()
+    (tmp_path / ".deploy-pending").write_text("ranking data for abc1234\n")
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        # What a correctly configured checkout reports: the marker is gitignored, so it is absent
+        # from porcelain output even though it is sitting right there on disk.
+        if command[:2] == ["git", "status"]:
+            return ""
+        return "a" * 40 + "\n" if command[:3] == ["git", "rev-parse", "HEAD"] else ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    automation._deploy(tmp_path)
+    assert ["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"] in calls
+    assert not (tmp_path / ".deploy-pending").exists()
+
+
 def test_a_feed_deploy_does_not_clear_a_pending_compile(tmp_path, monkeypatch):
     """The feed uploads dist/ untouched, so it cannot satisfy a build somebody else still needs."""
     from tournament import automation
