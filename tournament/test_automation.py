@@ -606,6 +606,34 @@ def test_a_compile_lost_to_the_lock_is_retried_on_the_next_tick(tmp_path, monkey
     assert not (tmp_path / ".deploy-pending").exists()
 
 
+def test_a_feed_deploy_compiles_when_dist_is_missing_newer_ranking_data(tmp_path, monkeypatch):
+    """How the ladder got stuck two runs behind while every log line said "deployed"."""
+    from tournament import automation
+
+    published = tmp_path / "public" / "botrankings" / "data"
+    compiled = tmp_path / "dist" / "botrankings" / "data"
+    published.mkdir(parents=True)
+    compiled.mkdir(parents=True)
+    (published / "index.json").write_text('{"run_id": "auto-new"}')
+    (compiled / "index.json").write_text('{"run_id": "auto-old"}')
+
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        return "a" * 40 + "\n" if command[:3] == ["git", "rev-parse", "HEAD"] else ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    automation.deploy_assets(tmp_path, reason="live feed", build=False)
+    assert ["npm", "run", "build"] in calls, "must not ship a dist/ that predates public/"
+
+    # Once they agree the fast path is safe again, which is what keeps it cheap.
+    (compiled / "index.json").write_text('{"run_id": "auto-new"}')
+    calls.clear()
+    automation.deploy_assets(tmp_path, reason="live feed", build=False)
+    assert ["npm", "run", "build"] not in calls
+
+
 def test_a_feed_deploy_does_not_clear_a_pending_compile(tmp_path, monkeypatch):
     """The feed uploads dist/ untouched, so it cannot satisfy a build somebody else still needs."""
     from tournament import automation
