@@ -1,0 +1,13 @@
+{
+  "challengers": [
+    "skadi@821d792",
+    "steward_hardened_reinforced@deba9ec"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "8adfdd1d8d00a8c6790b38291f4e12463ecec81d",
+    "x/jon": "821d79249bc73325b8893e385146ae68957aab14",
+    "x/luc": "deba9ec2f8e64e69682710daac88687c225d6d98"
+  },
+  "submitted_at": "2026-08-05T19:51:15+00:00"
+}
