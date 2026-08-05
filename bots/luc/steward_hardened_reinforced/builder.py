@@ -76,6 +76,7 @@ from constants import (
     ATTACK_TURRET_CAP,
     DEFEND_TURRET_SENTINEL,
     LANE_BARRIER_FIRST,
+    LATE_BUILDERS_MINE,
     HOME_TURRET_MAX,
     HOME_TURRET_STEP,
     MENDER_LEASH,
@@ -163,6 +164,9 @@ def _run(p, ct):
     # snapshot and ORs its bit onto it, and only the last writer's word lands.
     ct.write_store(SLOT_BUILDER_HEARTBEAT, ct.get_current_round() + 1)
     p.round = ct.get_current_round()
+    # Re-entrancy guards are per-turn state: clear them before anything can
+    # consult them. See `_build_launcher_breaker_gunner`.
+    p.breaking_launcher = False
     if not hasattr(p, "builder_index"):
         p.builder_index = ct.read_store(SLOT_BUILDER_TICKET)
         ct.write_store(SLOT_BUILDER_TICKET, p.builder_index + 1)
@@ -252,7 +256,7 @@ def _run(p, ct):
         # would walk to the enemy Core as an attacker instead of laying belt.
         # The expansion exists to answer a tiebreak on titanium collected; a
         # sixth attacker does not collect titanium.
-        if ECON_EXPAND_BUILDERS and p.builder_index >= MAX_OPENING_BUILDERS:
+        if LATE_BUILDERS_MINE and p.builder_index >= MAX_OPENING_BUILDERS:
             p.is_launcher_builder = False
             p.is_attacker = False
         p.siege_sentinel = None
@@ -2457,7 +2461,19 @@ def _escape_encirclement(p, ct):
              and (here[0] + dx, here[1] + dy) not in p.walls
              and (here[0] + dx, here[1] + dy) not in p.solids
              and (here[0] + dx, here[1] + dy) not in p.bot_occupied]
-    if len(exits) > ESCAPE_MIN_EXITS:
+    # No exits at all is not an escape, it is a fact. The guard below reads
+    # `> ESCAPE_MIN_EXITS`, which at the shipped value of 1 lets len(exits) == 0
+    # through to a `max()` over an empty list -- so the one situation this
+    # function exists to handle, a Builder already fully boxed in, raised
+    # ValueError instead. The crash handler swallows it and returns, so the
+    # Builder then did nothing at all for the rest of the game: no belt, no
+    # heal, no self-destruct, still paying its +20% of cost scale. Traced on
+    # quarry against vidar, builder id=31 from round 68 to the end.
+    #
+    # Falling through instead lets the ordinary machinery have it -- in
+    # particular `_write_off`, which retires a Builder that cannot path and
+    # refunds the scale so the Core can re-roll it somewhere not walled in.
+    if not exits or len(exits) > ESCAPE_MIN_EXITS:
         return False
     closers = [entity_id for entity_id in ct.get_nearby_entities(9)
                if ct.get_team(entity_id) != ct.get_team()
@@ -3884,7 +3900,29 @@ def _build_launcher_breaker_gunner(p, ct, blocking=None, route=None):
     `blocking` restricts the target set to Launchers actually standing in the
     route; without it every visible Launcher is fair game, which is how the bot
     used to spend Gunners on ones that were never in the way.
+
+    Not re-entrant, and it has to say so. `_step` calls this when a Launcher
+    blocks the route, this walks toward its build tile with
+    `_move_cardinal_adjacent`, and that calls `_step` again -- which meets the
+    same blocking Launcher and calls this again. Traced on the crash hunt: the
+    cycle runs to `RecursionError('maximum recursion depth exceeded')`, the
+    handler swallows it, and the Builder loses the entire turn having neither
+    moved nor built. The guard turns the second entry into an ordinary "no, go
+    and walk instead", which is what the outer `_step` does next anyway.
     """
+    if getattr(p, "breaking_launcher", False):
+        return False
+    # No `try/finally` -- the engine's validator rejects `finally` blocks
+    # outright. The flag is instead cleared at the top of every turn in `_run`,
+    # so even a raise inside the body cannot leave the breaker wedged off for
+    # the rest of the match; it loses the mechanic for one turn at most.
+    p.breaking_launcher = True
+    built = _breaker_gunner_body(p, ct, blocking, route)
+    p.breaking_launcher = False
+    return built
+
+
+def _breaker_gunner_body(p, ct, blocking, route):
     if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
         return False
     me = tuple(ct.get_position())
