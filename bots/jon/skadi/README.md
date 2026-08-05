@@ -1,10 +1,14 @@
 # Skadi
 
-`vidar` with one constant changed: **`ECON_MAX_TOTAL_BUILDERS` 12 -> 16.**
+`vidar` with two changes, both found by tracing a specific failure rather than
+by sweeping:
 
-That is the entire diff. It is a small change and it produces a small gain, but
-the gain is real, reproducible and never negative, and it was found by tracing a
-specific failure rather than by sweeping.
+1. **`ECON_MAX_TOTAL_BUILDERS` 12 -> 16** -- the lifetime Builder budget.
+2. **`_ROLES[BLITZ]` (0 economy, 2 attackers) -> (1, 1)** -- the blitz opening
+   now mines.
+
+Nothing else differs from vidar: `core.py`, `builder.py`, `main.py`, `gunner.py`,
+`sentinel.py`, `launcher.py` and `utils.py` are byte-identical.
 
 ## Measured
 
@@ -15,10 +19,12 @@ the same configuration replays to the same result every time.
 | panel | games | vidar | skadi |
 |---|---|---|---|
 | weak matchups (vigil, steward, prospect), 21 official maps | 126 | 0.754 | **0.762** |
-| same three, 24 generated maps | 144 | 0.743 | 0.743 |
+| same three, 24 generated maps | 144 | 0.743 | **0.757** |
 | full panel (odin, steward, prospect, vigil, heimdall, gobbleglitch), 21 maps | 252 | 0.802 | **0.806** |
+| four opponents, the 5 BLITZ maps (core distance <= 6) | 40 | 0.700 | **0.725** |
+| wide 12-bot panel, 21 maps | 504 | 0.796 | **0.798** |
 
-Better on the pool, level off-pool, better overall. **522 games, never worse.**
+**Better on every panel, worse on none.**
 
 Reproduce:
 
@@ -64,6 +70,34 @@ Sixteen is where the gain saturates: 12 -> 16 is +1 game on the pool and level
 off-pool; 20, 40 and 80 are all no better than 16 on the pool, and 40 measured
 **worse** off-pool (0.729) because at that point the extra bodies really are
 paying +20% each for nothing.
+
+## The second change: the blitz had no economy at all
+
+`doctrine.py` picks BLITZ when the Cores are within `BLITZ_MAX_DISTANCE = 6`, and
+`_ROLES[BLITZ]` was `(0 economy, 2 attackers)` -- **nobody mines**. The reasoning
+was that a Core six tiles away is decided before economy can matter.
+
+The enemy gets a vote. Traced on four unrated ladder matches against Pantheon,
+Pivot, sporks and team lazy, decoding all fifteen games: **every game in which we
+finished with zero Harvesters had a core distance of exactly 6**, and we lost two
+of the three. Against sporks on 10x10 and 16x12 we ended with **0 Harvesters
+against their 7 and 8**, losing on rounds 124 and 115 -- they answered the rush,
+survived, and then simply out-mined a bot that had nothing behind its attack.
+
+The existing fallback cannot reach this. A later Builder does convert to mining
+when `ECON_EXPAND_FLAG` or `ECONOMY_DEAD_FLAG` is set, but `INCOME_GRACE_ROUND`
+(60) plus `INCOME_WINDOW` (60) means the first income verdict lands at round
+**120** -- after both of those games had already ended. Speeding the watchdog up
+was measured (grace/window 40/40 and 30/30) and changes nothing on these maps,
+because the Builder side still has `economy_builders = 0`.
+
+So the fix is at the role table: the blitz keeps an attacker and a guard and now
+also keeps one miner. Measured on the five local maps with core distance <= 6
+(showdown, sprint, gen/r05, gen/r11, gen/r19) against vigil, steward, prospect
+and odin: **0.700 -> 0.725**, and off-pool overall **0.743 -> 0.757**. A blanket
+"open the economy at round N" deadline was tried first and is worse at every
+value (80 -> 0.625, 120 -> 0.675, 160/200 -> no change); abandoning the blitz
+early throws away the games it wins.
 
 ## What was tried and rejected getting here
 
