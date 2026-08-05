@@ -249,17 +249,44 @@ def _field_score(strength: float, ratings: list[float]) -> float:
     return sum(_expected(strength, r) for r in ratings) / len(ratings)
 
 
-def _pairing_neighbourhood(rating: float, field: list[float]) -> list[float]:
-    """The opponents a team at `rating` would actually be scheduled against.
+def _pairing_blocks(rating: float, field: list[float]) -> list[list[float]]:
+    """Every block a team at `rating` could land in, one per position it can occupy in one.
 
-    Pairing is inside a group of `PAIRING_GROUP_SIZE` consecutive teams in rating order, so the
-    reachable set is the neighbours within one group width -- not the whole ladder. Modelling it
-    as the nearest `PAIRING_GROUP_SIZE - 1` is the right average over where in its group a team
-    happens to sit.
+    Pairing is uniform inside a block of `PAIRING_GROUP_SIZE` consecutive teams in rating order,
+    so the reachable opponents are decided by where the block *boundaries* fall, not by who is
+    nearest. Those are different, and not slightly: at 1837 in the current field the cut lands so
+    that all seven block-mates are above us, which "nearest seven" gets wrong by about 2.5 points
+    of expected score, and by 5 in places.
+
+    The boundaries are not observable and shift constantly as ratings drift, so the honest
+    quantity marginalises over them. Enumerating the `PAIRING_GROUP_SIZE` phases the grid can take
+    does that exactly, and without an RNG.
     """
     if not field:
         return []
-    return sorted(field, key=lambda r: abs(r - rating))[: PAIRING_GROUP_SIZE - 1]
+    # Tag ourselves rather than finding our rating by value: ties with a real team are possible,
+    # and `index()` would then return that team's slot and quietly drop us from our own block.
+    pool = sorted([(r, False) for r in field] + [(rating, True)], key=lambda e: -e[0])
+    index = next(i for i, (_, is_us) in enumerate(pool) if is_us)
+    blocks = []
+    for phase in range(PAIRING_GROUP_SIZE):
+        start = max(0, index - ((index + phase) % PAIRING_GROUP_SIZE))
+        group = [r for r, is_us in pool[start : start + PAIRING_GROUP_SIZE] if not is_us]
+        if group:
+            blocks.append(group)
+    return blocks
+
+
+def _pairing_score(strength: float, rating: float, field: list[float]) -> float | None:
+    """Expected share of games won against the teams the scheduler can actually draw.
+
+    Averaged over block phase, weighting each equally because nothing observable says which one is
+    in force at any moment.
+    """
+    blocks = _pairing_blocks(rating, field)
+    if not blocks:
+        return None
+    return sum(sum(_expected(strength, r) for r in b) / len(b) for b in blocks) / len(blocks)
 
 
 # --------------------------------------------------------------------------------------------
@@ -379,7 +406,8 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         return found["code_hash"] if found else f"v{version}"
 
     active_ratings = [o["rating"] for o in opponents if o["rating"] is not None]
-    neighbourhood = _pairing_neighbourhood(us_rating, active_ratings) if us_rating else []
+    # The pairing group is evaluated at *our team's* current rating, because that is the slot a
+    # newly activated bot inherits -- it does not start at its own strength.
     current_builds = {(o["team"], o["current_version"]) for o in opponents}
 
     # ---- pool by code, not by upload slot ------------------------------------------------------
@@ -433,12 +461,12 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
                 "vs_active_field": _field_score(strength, active_ratings),
                 "vs_active_field_lo": _field_score(span[0], active_ratings) if span else None,
                 "vs_active_field_hi": _field_score(span[1], active_ratings) if span else None,
-                "vs_pairing_group": _field_score(strength, neighbourhood) if neighbourhood else None,
+                "vs_pairing_group": _pairing_score(strength, us_rating, active_ratings),
                 "vs_pairing_group_lo": (
-                    _field_score(span[0], neighbourhood) if span and neighbourhood else None
+                    _pairing_score(span[0], us_rating, active_ratings) if span else None
                 ),
                 "vs_pairing_group_hi": (
-                    _field_score(span[1], neighbourhood) if span and neighbourhood else None
+                    _pairing_score(span[1], us_rating, active_ratings) if span else None
                 ),
             }
 
