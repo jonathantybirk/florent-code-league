@@ -6,9 +6,11 @@ by sweeping:
 1. **`ECON_MAX_TOTAL_BUILDERS` 12 -> 16** -- the lifetime Builder budget.
 2. **`_ROLES[BLITZ]` (0 economy, 2 attackers) -> (1, 1)** -- the blitz opening
    now mines.
+3. **`BUILDER_PRIORITY_RADIUS_SQ` 20 -> 16** -- Sentinels stop breaking off to
+   chase Builders at the edge of their reach.
 
 Nothing else differs from vidar: `core.py`, `builder.py`, `main.py`, `gunner.py`,
-`sentinel.py`, `launcher.py` and `utils.py` are byte-identical.
+`launcher.py` and `utils.py` are byte-identical.
 
 ## Measured
 
@@ -18,10 +20,11 @@ the same configuration replays to the same result every time.
 
 | panel | games | vidar | skadi |
 |---|---|---|---|
-| weak matchups (vigil, steward, prospect), 21 official maps | 126 | 0.754 | **0.762** |
+| weak matchups (vigil, steward, prospect), 21 official maps | 126 | 0.754 | **0.778** |
 | same three, 24 generated maps | 144 | 0.743 | **0.757** |
 | full panel (odin, steward, prospect, vigil, heimdall, gobbleglitch), 21 maps | 252 | 0.802 | **0.806** |
-| four opponents, the 5 BLITZ maps (core distance <= 6) | 40 | 0.700 | **0.725** |
+| four opponents, the 5 BLITZ maps (core distance <= 6) | 40 | 0.700 | **0.750** |
+| doctrine-diverse panel (weak-3 + `spar_econ`), 21 maps | 168 | 0.667 | **0.708** |
 | wide 12-bot panel, 21 maps | 504 | 0.796 | **0.798** |
 
 **Better on every panel, worse on none.**
@@ -98,6 +101,44 @@ and odin: **0.700 -> 0.725**, and off-pool overall **0.743 -> 0.757**. A blanket
 "open the economy at round N" deadline was tried first and is worse at every
 value (80 -> 0.625, 120 -> 0.675, 160/200 -> no change); abandoning the blitz
 early throws away the games it wins.
+
+## The third change: a sparring partner our panel was missing
+
+Every bot in our benchmark descends from the same lineage and plays the same
+small-economy doctrine, so the panel is structurally unable to price economy.
+The ladder is not like that: decoding `Pivot` vs `sporks` shows **36 builders,
+273 conveyors, 15 harvesters and 5,731 converted ammunition in one game** against
+our 7 / ~77 / ~7.
+
+So `bots/jon/spar_econ` was built as a sparring partner -- skadi with the economy
+opened right up (network cap 20, 14 live Builders, expansion from round 40, roles
+(2 economy, 0 attackers), one guard turret and one siege turret). It reproduces
+the ladder profile: 31 Builders, 551 conveyors, 13 Harvesters in a 1000-round
+game.
+
+It is **not** a better bot -- 0.683 against the standard panel against skadi's
+0.778 -- but it beats our whole lineage head to head: **skadi 0.476, vidar
+0.452** over the 21-map pool. That is a straight rock-paper-scissors result, and
+it is very likely why we lose to sporks on the ladder while beating the
+vidar-family panel comfortably.
+
+Forensics on those losses shows the mechanism, and it is not turrets: on `atoll`
+we lose **110 economy buildings to their 48**, and they deal **2,208 damage with
+Builder attacks against our 540**. A mass-Builder economy wins by chewing the
+belt with 2 Ti attacks, not by shooting it.
+
+The fix that measured is small and slightly counter-intuitive.
+`BUILDER_PRIORITY_RADIUS_SQ` is the range inside which a Sentinel drops
+everything to shoot an enemy Builder. At 20 it reaches most of the way to the
+Sentinel's own r^2=32, so against a swarm the battery spends its life plinking at
+Builders that walk in and out of the ring while the Core and the supply line go
+unshot. Narrowing it to 16 keeps the point-blank defence -- an intruder emplacing
+at our Core is still answered -- and gives the rest of the clock back to targets
+that stay dead.
+
+Measured: pool 0.762 -> **0.778**, BLITZ maps 0.725 -> **0.750**, doctrine-diverse
+panel 0.690 -> **0.708**, off-pool and full panel unchanged. Widening it instead
+(20 -> 32) is worse on every panel, and 13 buys the pool at the cost of off-pool.
 
 ## What was tried and rejected getting here
 

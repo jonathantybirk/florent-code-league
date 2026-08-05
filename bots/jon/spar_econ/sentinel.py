@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 # A Builder Bot this close is worth the shot ahead of anything else, at either
 # end of the map. Builder vision is r^2=20, so this is "close enough to be
 # doing something to us, or to the Core we are shooting".
-BUILDER_PRIORITY_RADIUS_SQ = 16
+BUILDER_PRIORITY_RADIUS_SQ = 20
 
 # Which enemy building is worth 10 ammunition, best first.
 #
