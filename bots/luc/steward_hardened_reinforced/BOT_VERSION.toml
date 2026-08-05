@@ -1,0 +1,5 @@
+source_commit = "a8dc58a3f"
+source_path = "bots/luc/steward_reinforced"
+engine = "2.3.6"
+status = "development"
+variant = "steward_reinforced plus the 2.3.4 defensive adaptations, measured"
