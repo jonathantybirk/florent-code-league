@@ -137,3 +137,80 @@ directions now. The remaining candidates, in order:
    only lever tried there was the count.
 3. **A mechanism, not a knob.** Every knob tested is at its optimum, which is
    what a local optimum looks like from the inside.
+
+
+---
+
+# Round two: replay forensics, and what the ladder leaders actually do
+
+Added `tools/replay_forensics.py`, which decodes a `.replay26` and reconstructs
+the causal story. The key is that **damage size names its source**: a `-18` HP
+delta is a Sentinel, `-7` a Gunner, `-2` a Builder's attack, `+4` a heal. So
+every death, every wasted shot and every heal race can be attributed exactly
+rather than guessed at. It reads downloaded ladder replays as well as local ones.
+
+    uv run python tools/replay_forensics.py <replay...> [--deaths] [--alerts]
+
+## What the top of the ladder does differently
+
+Profiled `Pivot` vs `sporks` (the two teams above and just below us), one game,
+912 rounds:
+
+| | builders | conveyors | harvesters | gunners | sentinels | ammo converted |
+|---|---|---|---|---|---|---|
+| sporks (won) | **36** | **273** | **15** | 119 | 9 | **5,731** |
+| Pivot | 25 | 46 | 6 | 83 | 0 | — |
+| **vidar (ours)** | **7** | **~77 peak** | **~7** | ~2 | ~4 | ~2,400 |
+
+Two things stand out. The ladder plays a **far larger and more disposable
+economy** than we do -- 273 conveyors built means conveyors are being shot and
+rebuilt continuously, not laid once. And **the ladder barely uses Sentinels**:
+Pivot built none at all in 912 rounds. Our lineage is Sentinel-first and the top
+of the ladder is Gunner-first, which is worth understanding before assuming
+either is right.
+
+## Why vidar loses, measured rather than guessed
+
+Every one of its four losses to vigil across the 21-map pool:
+
+| map | outcome | vidar's economy | the alert |
+|---|---|---|---|
+| bridge | round-1000 tiebreak | **0 harvesters**, 6 conveyors | 11 of 12 Builders died with **zero damage taken** |
+| vase | round-1000 tiebreak | 1 harvester at **r104**, 5 conveyors | built a Sentinel that never fired |
+| string | round-1000 tiebreak | 4 harvesters | out-damaged them 1,542 to 735 and still lost |
+| atoll | Core destroyed r303 | 2 harvesters | dealt 1,656 while vigil **healed 1,600 back (97%)** |
+
+**Three of the four are round-1000 tiebreaks lost on titanium collected, not
+fights lost.** vidar out-damages vigil on string and loses anyway.
+
+The bridge death list is the sharpest finding in this whole exercise. Eleven
+Builders died having taken **zero** damage -- every one a `WRITE_OFF_STUCK_BUILDERS`
+stand-down. Unopposed on the same map the bot has four Harvesters by round 15, so
+the economy planner is fine; under pressure it recycles the very Builders that
+would have built the economy, and ends the game with none.
+
+## Round-two sweeps, all on the sensitive panel
+
+Screening on 4-6 maps could not resolve anything -- almost every change came back
+at exactly the baseline. Switching to **vidar's three weak matchups (vigil,
+steward, prospect) over all 21 maps, both seats, 126 games** gives real
+resolution. Baseline **0.754** (95-31).
+
+| change | result | vs 0.754 |
+|---|---|---|
+| `BUILDER_PRIORITY_RADIUS_SQ` 20 -> 32 (shoot menders at full Sentinel reach) | 0.746 | -0.008 |
+| `WRITE_OFF_STUCK_BUILDERS = False` | 0.746 | -0.008 |
+| write-off gated on having an economy | 0.746 | -0.008 |
+| `STUCK_ROUNDS_BEFORE_STANDDOWN` 40 -> 80 | 0.746 | -0.008 |
+| `STUCK_ROUNDS_BEFORE_STANDDOWN` 40 -> 150 | 0.754 | inert |
+| `GUARD_TURRET_SENTINEL = False` (Gunner guards, as the ladder plays) | 0.714 | **-0.040** |
+| FORTIFY roles (1 econ, 1 atk) -> (2, 1), 4 opening Builders | 0.675 | **-0.079** |
+| `NETWORK_CAP_LATE` 8 -> 14 | 0.754 | inert |
+| `ECON_MAX_LIVE_BUILDERS` 7 -> 9 | 0.754 | inert |
+
+The economy caps are provably **inert**: vidar never reaches 8 Harvesters or 7
+economy Builders, so raising the ceiling changes nothing. The binding constraint
+is Builder-rounds, exactly as Lucas found -- and the bridge trace shows where a
+large block of them goes.
+
+**Still 0.754. vidar remains unbeaten.**
