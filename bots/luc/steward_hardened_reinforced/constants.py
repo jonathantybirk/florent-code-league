@@ -106,7 +106,7 @@ ROTATE_TITANIUM_RESERVE = 40
 # machine is: identical code on identical boards produced 11 different winners
 # in 210 matches, which is larger than most effects measured here, and it cuts
 # hardest on the contended machine the ladder actually runs on. See
-# SIEGE_SEARCH_EVERY and PATH_MAX_PADS for the deterministic bounds that
+# SIEGE_SEARCH_EVERY for the deterministic bound that
 # replaced it.
 # Rounds between attempts at the siege-seat search, the widest in the bot.
 SIEGE_SEARCH_EVERY = 6
@@ -338,12 +338,6 @@ WALK_FLOOD_RADIUS_SQ = 64
 # single round, over anything in between, which is faster than any walk and is
 # also the way past a firing line that cannot be crossed on foot.
 LAUNCH_HOPS_IN_PATHS = True
-# How many friendly Launchers may act as edges in one route search, nearest
-# first. Each pickup tile of a pad expands to that pad's whole 89-tile throw
-# field, so the edge count scales with live Launchers and this search runs
-# several times a turn. Chosen by distance rather than by a clock so routing
-# stays deterministic; see the call site in _travel.
-PATH_MAX_PADS = 4
 
 # --- Launcher screen: cover the approach, not the compass ---------------------
 # The old ring was eight compass sites at RING_RADIUS 2. Around a 2x2 Core that

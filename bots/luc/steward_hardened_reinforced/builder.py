@@ -82,7 +82,6 @@ from constants import (
     SEAL_EVERY_DOCTRINE,
     SECOND_MENDER_ALARM,
     SIEGE_SEARCH_EVERY,
-    PATH_MAX_PADS,
     ECON_EXPAND_BUILDERS,
     SECOND_MENDER_ON_CRITICAL,
     GUARD_HEALS_ON_ANY_DAMAGE,
@@ -2247,25 +2246,17 @@ def _travel(p, source, goals=None, hops=True, allow_fire=False,
     blocked.discard(source)
     pads = {}
     if hops and LAUNCH_HOPS_IN_PATHS:
-        # Only the nearest few pads are edges in this search.
+        # Every live Launcher is an edge, exactly as this router was written.
         #
-        # Every tile in a pad's pickup stamp expands to all 89 tiles of that
-        # pad's throw field, so the edge count grows with the number of live
-        # Launchers -- and this BFS runs several times in a turn. That was fine
-        # while a bug was killing our own Launchers on contact; with the
-        # Launchers surviving, jackpot put a Builder turn at 11.7 ms against a
-        # 10 ms limit, and an overrun means the unit does not act at all.
-        #
-        # Capped by distance from the source rather than by a clock, so a route
-        # stays a pure function of the position -- the same search on the same
-        # board gives the same answer on any machine, which is what makes the
-        # harness's matches reproducible. A pad far from the Builder is also the
-        # one it was least likely to route through: reaching it costs the walk
-        # this hop was meant to save.
-        near = sorted(getattr(p, "friendly_launchers", ()),
-                      key=lambda pad: _distance_sq(pad, source))[:PATH_MAX_PADS]
+        # A cap on the nearest few pads was tried while chasing the turn limit
+        # and is not here, because it was not what cost the time: the expense
+        # was `_throw_landings` rebuilding the identical 121-candidate list for
+        # every pad tile popped off this queue, hundreds of times a turn.
+        # Memoising that per turn took the worst Builder turn from 13,075 us to
+        # 4,507 against a 10,000 limit, which pays for the whole pad set with
+        # room to spare -- and the cap was worth one game in 210 anyway.
         pads = {tile: pad
-                for pad in near
+                for pad in getattr(p, "friendly_launchers", ())
                 for tile in _stamp(p, pad, LAUNCH_PICKUP_SQ)}
     goals = set(goals) if goals else None
     dist, prev = {source: 0}, {source: None}
@@ -2862,16 +2853,34 @@ def _throw_landings(p, launcher):
     the throw, and a route that assumes a landing which turns out illegal simply
     re-plans next round. Being pessimistic here is what would keep the hop out
     of routes it should be in.
+
+    Memoised per turn, and that is the whole reason the router can afford to
+    treat every Launcher as an edge. This is called once for *every pad tile
+    popped off the BFS queue* -- a pad's pickup stamp is eight tiles, each
+    expansion screens 121 candidates against four predicates, and the BFS itself
+    runs several times a turn. The list cannot change between those calls: it is
+    a pure function of the map, `p.walls`, `p.solids` and `p.threat`, none of
+    which move while a Builder is still deciding what to do. So the cache
+    returns the identical list rather than an approximation of it, and the hop
+    semantics are exactly what they were.
     """
+    if getattr(p, "landing_cache_round", None) != getattr(p, "round", -1):
+        p.landing_cache_round = getattr(p, "round", -1)
+        p.landing_cache = {}
+    cached = p.landing_cache.get(launcher)
+    if cached is not None:
+        return cached
     span = int(LAUNCH_RANGE_SQ ** 0.5)
-    return [(launcher[0] + dx, launcher[1] + dy)
-            for dx in range(-span, span + 1)
-            for dy in range(-span, span + 1)
-            if dx * dx + dy * dy <= LAUNCH_RANGE_SQ
-            and _inside(p, (launcher[0] + dx, launcher[1] + dy))
-            and (launcher[0] + dx, launcher[1] + dy) not in p.walls
-            and (launcher[0] + dx, launcher[1] + dy) not in p.solids
-            and not _threat_at(p, (launcher[0] + dx, launcher[1] + dy))]
+    landings = [(launcher[0] + dx, launcher[1] + dy)
+                for dx in range(-span, span + 1)
+                for dy in range(-span, span + 1)
+                if dx * dx + dy * dy <= LAUNCH_RANGE_SQ
+                and _inside(p, (launcher[0] + dx, launcher[1] + dy))
+                and (launcher[0] + dx, launcher[1] + dy) not in p.walls
+                and (launcher[0] + dx, launcher[1] + dy) not in p.solids
+                and not _threat_at(p, (launcher[0] + dx, launcher[1] + dy))]
+    p.landing_cache[launcher] = landings
+    return landings
 
 
 def _stamp(p, spot, radius_sq):
