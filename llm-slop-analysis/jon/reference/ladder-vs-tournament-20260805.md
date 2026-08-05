@@ -216,3 +216,96 @@ data export, or copy-paste the threads into a file under `docs/` if they are ver
 `llm-slop-analysis/` if summarised) and I can work from that. It is worth doing: a rules-adjacent
 rumour like this one is exactly the sort of thing that decides a competition, and right now we are
 guessing at second-hand paraphrases.
+
+---
+
+# Addendum — 2026-08-05, later the same day
+
+## The Pantheon problem solved itself, and it was not us
+
+| team | earlier today | now | rank |
+|---|---|---|---|
+| Pivot | 1961 | 1936 | #1 |
+| **Powered by SmartFridge** | 1836 | **1880** | **#2** |
+| team lazy | 1802 | 1846 | #3 |
+| sporks | 1738 | 1831 (63 matches) | #4 |
+| Pareto-ion | 1888 | 1800 | #7 |
+| HTTP 418 | 1631 | 1786 | #8 |
+| **Pantheon** | 1778 | **1677** | **#15** |
+
+Pantheon has fallen from 1960 pre-patch to 1677 — **−283 total** — and no longer appears in our
+match window at all. §4 and §7 above (the v24 counter, and "get the v16-vs-v24 replays") are
+**obsolete as a priority**. The mechanism read in §7 still stands as an explanation of the 2.3.4
+turret inversion; it is just no longer where our losses come from.
+
+We are **#2 of 99 at 1880**, our best position so far, without changing the active bot.
+
+## The new problem is Pivot, and it is a different kind of problem
+
+v16 since 08:00 UTC:
+
+| opponent | record | their builds |
+|---|---|---|
+| **Pivot** | **2W-6L (0.25)** | v25, v26, v27, v28 |
+| sporks | 2W-2L | v1 only |
+| Pareto-ion | 4W-2L | v34, v35 |
+| team lazy | 6W-2L | v73–v80 |
+| Erebus | 5W-1L | v36 |
+| CtrlAltDefeat | 6W-1L | v85 |
+
+Two things differ from the Pantheon case. **Pivot iterates fast** — four builds in six hours,
+against Pantheon's stubborn v24. And **the games are close**: almost every match is 3–2 or 2–3,
+one game out of five, where Pantheon v24 was winning 0–5 and 1–4. This is not a counter; it is a
+slightly better bot.
+
+## The meta has moved to long games — exactly as vidar predicted
+
+Decoded build censuses. Against Pantheon v24 earlier today, games ended on **turn 37–66**. Against
+Pivot they run **129–571 turns**, with both sides fielding 8–36 Builders and 14–33 Gunners.
+
+That is the shift `vidar` derived from first principles: defence is ~2.2× more titanium-efficient
+than offence, so Cores stop dying and the win condition becomes the round-1000 tiebreak. The
+lineage's "kill by turn 40" chassis is now playing a game it was not designed for.
+
+## v21 is vidar, and in its five matches it beat Pivot 4–1
+
+Lucas submitted **v21 = vidar 8b87da5** (10:01) and **v22 = steward_reinf smoke** (12:03). Both got
+five matches; **v16 remains active**.
+
+Decoded, `2d519b77` (v21 vs Pivot v25, won 4–1) against `aa47ec05` (v16 vs Pivot v28, lost 2–3):
+
+| | Builders | early turrets | conveyors |
+|---|---|---|---|
+| **v21 vidar** | **3** | **4–6 Sentinels @ r3–31** | 5–47 |
+| v16 | 4–9 | Gunners, 6 Launchers @ r2 | **55–88** |
+| Pivot | 8–36 | Gunners (14–33 late) | 9–39 |
+
+In game 4, Pivot built **36 Builders** and vidar won with **3**.
+
+**Caveat, stated plainly:** this is one five-game match, seats vary, and every candidate we submit
+gets exactly five matches before v16 is reactivated — which is far too few to distinguish anything.
+Treat it as a pointer, not a result. But it is the only direct evidence we have on the matchup that
+currently costs us the most, and it agrees with vidar's local numbers (0.826 pool / 0.731 generated)
+and with its independently-derived theory of the post-patch game.
+
+The five-match sample size is itself the finding: we cannot currently tell whether v21 is better
+than v16, and that is a property of our submission protocol, not of the bots.
+
+## Lucas's newest work: two rejected hypotheses, and why that is the deliverable
+
+Three commits on `x/luc`, ending `561800a` — *"the exploit attempt failed, and the negative results
+are the deliverable."* Both hypotheses about vidar's weakest matchup were rejected on all 103 maps:
+
+- **Earlier Core-death projection** (grace 40 → 15) moved nothing; **healing on any damage** cost
+  games (generated 0.731 → 0.723). "More healing is not the answer to the rush."
+- **The ammunition floor.** Tracing showed the team broke from round 30 — 10, 10, 7, 9, 7 Ti with
+  one Harvester — because `COMBAT_AMMO_FLOOR` overrides the construction reserve. Holding back a
+  Harvester's price won *that game* 78 → 230 and **lost the panel** (steward collapsed 0.810 →
+  0.524). So the 10 Ti bank is correct behaviour: *"a team that cannot shoot loses faster than one
+  that cannot build."*
+
+Both findings are written into `core.py` so the next session does not re-derive them — which is the
+right habit. And the closing note is a genuinely useful epistemic call:
+
+> "prospect at 0.655 has now resisted seven separate interventions without moving one game. That is
+> no longer evidence of a defect; it is what a genuinely close matchup looks like."
