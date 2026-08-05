@@ -8,6 +8,9 @@ by sweeping:
    now mines.
 3. **`BUILDER_PRIORITY_RADIUS_SQ` 20 -> 16** -- Sentinels stop breaking off to
    chase Builders at the edge of their reach.
+4. **An idle fallback** -- a Builder that has achieved nothing for ten
+   consecutive turns heals or hits whatever is next to it instead of standing
+   there.
 
 Nothing else differs from vidar: `core.py`, `builder.py`, `main.py`, `gunner.py`,
 `launcher.py` and `utils.py` are byte-identical.
@@ -20,12 +23,11 @@ the same configuration replays to the same result every time.
 
 | panel | games | vidar | skadi |
 |---|---|---|---|
-| weak matchups (vigil, steward, prospect), 21 official maps | 126 | 0.754 | **0.778** |
-| same three, 24 generated maps | 144 | 0.743 | **0.757** |
-| full panel (odin, steward, prospect, vigil, heimdall, gobbleglitch), 21 maps | 252 | 0.802 | **0.806** |
-| four opponents, the 5 BLITZ maps (core distance <= 6) | 40 | 0.700 | **0.750** |
-| doctrine-diverse panel (weak-3 + `spar_econ`), 21 maps | 168 | 0.667 | **0.708** |
-| wide 12-bot panel, 21 maps | 504 | 0.796 | **0.798** |
+| weak matchups (vigil, steward, prospect), 21 official maps | 126 | 0.754 | **0.786** |
+| same three, 24 generated maps | 144 | 0.743 | **0.778** |
+| full panel (odin, steward, prospect, vigil, heimdall, gobbleglitch), 21 maps | 252 | 0.802 | **0.821** |
+| four opponents, the 5 BLITZ maps (core distance <= 6) | 40 | 0.700 | **0.800** |
+| doctrine-diverse panel (weak-3 + `spar_econ`), 21 maps | 168 | 0.667 | **0.720** |
 
 **Better on every panel, worse on none.**
 
@@ -139,6 +141,41 @@ that stay dead.
 Measured: pool 0.762 -> **0.778**, BLITZ maps 0.725 -> **0.750**, doctrine-diverse
 panel 0.690 -> **0.708**, off-pool and full panel unchanged. Widening it instead
 (20 -> 32) is worse on every panel, and 13 buys the pool at the cost of off-pool.
+
+## The fourth change: a Builder that achieves nothing does something anyway
+
+A Builder can end its round having done absolutely nothing -- its target is
+unreachable, the tile it wants is occupied, the construction lock is held by
+someone else, or there is not enough titanium for the thing it wants to build.
+The plan is right to refuse in each of those cases. The *turn* is spent either
+way, and a Builder standing still is still paying +20% of cost scale.
+
+`run()` now compares position and action cooldown across `_run` and counts a
+turn as dead when neither moved. After **ten consecutive** dead turns the Builder
+heals the most damaged friendly thing next to it, or failing that shoots the
+weakest enemy building next to it. Both are adjacent-only, flat-priced and immune
+to cost scale, so the fallback can never cost more than the nothing it replaces.
+
+Ten is measured, and the threshold matters a great deal:
+
+| threshold | pool | generated |
+|---|---|---|
+| 3 | 0.754 | 0.792 |
+| 6 | 0.770 | 0.792 |
+| 8 | 0.778 | 0.771 |
+| **10** | **0.786** | **0.778** |
+| 14 | 0.762 | 0.778 |
+
+Firing early is actively harmful: acting sets the action cooldown, so a Builder
+that was one round away from a build loses it. Ten is long enough that only a
+genuinely stuck Builder qualifies. It is the largest single gain in this bot --
++3.2pp on the pool and +2.1pp off it over the three-change build, and it is the
+change that took the BLITZ maps from 0.750 to 0.800.
+
+`IDLE_DEBUG` (off by default) traces every firing and, more usefully, every case
+where the fallback finds nothing to do either -- a Builder walled in, broke, or
+chasing something unreachable. `print()` is embedded in the `.replay26` rather
+than written to the console, so it is read back out of the replay.
 
 ## What was tried and rejected getting here
 
