@@ -75,7 +75,12 @@ from constants import (
     RING_RADIUS,
     ATTACK_TURRET_CAP,
     DEFEND_TURRET_SENTINEL,
+    FLANK_REPLAN_ROUNDS,
+    STEAL_BEFORE_EXPAND,
+    STEAL_MAX_DISTANCE,
+    FLANK_WHEN_IDLE,
     HARVESTER_RECHECK_ROUNDS,
+    IDLE_BEFORE_FLANK,
     LANE_BARRIER_FIRST,
     SEAT_AWARE_DEFENCE,
     SEAT_B_TURRET_STEP,
@@ -396,6 +401,28 @@ def _run(p, ct):
         if worth_mending:
             _heal_core(p, ct)
             return
+    # A Builder that has stopped achieving anything goes and does something
+    # else, rather than pacing where it stands.
+    #
+    # Measured over 84 Builders that lived 60 rounds or more: 19% spend their
+    # last sixty rounds bouncing between three tiles or fewer while moving in a
+    # third of them, and the median Builder spends *all* of its last sixty
+    # rounds on its three most-visited tiles. A body that has run out of errands
+    # is still charging the team +20% on every price, so the floor for it is not
+    # "stand still", it is "go and find something".
+    #
+    # Deliberately last among the productive branches and first among the
+    # fallbacks: everything that can name a real job -- mending, plugging a cut,
+    # role work, repairs -- runs ahead of it, so this only fires for a Builder
+    # that genuinely has nothing. Menders are exempt by construction, because
+    # healing calls `_mark_progress` every round it happens.
+    if (FLANK_WHEN_IDLE and not p.is_launcher_builder
+            and ct.get_current_round() - p.last_progress_round > IDLE_BEFORE_FLANK
+            and ct.get_current_round() - getattr(p, "last_flank_round", -999)
+            > FLANK_REPLAN_ROUNDS):
+        p.last_flank_round = ct.get_current_round()
+        _explore(p, ct)
+        return
     # A belt we cut gets its barrier before this Builder does anything else.
     #
     # A cut on its own is rented damage: the tile costs them 3 Ti to relay and a
@@ -446,7 +473,22 @@ def _run(p, ct):
         return
     # Contesting their logistics is worth more than extending ours once ours is
     # saturated, and nothing before this point wants the round.
-    if p.network_load >= _network_cap(ct) and _contest_enemy_logistics(p, ct):
+    # Take theirs when theirs is nearer than ours.
+    #
+    # This used to run only once our own network was saturated, which on a close
+    # map is far too late: a Harvester of theirs four tiles away is cheaper to
+    # tap than a fresh deposit of ours fifteen tiles away is to belt, and on the
+    # tight maps -- vault, duel, showdown -- their line is often the nearest
+    # economy on the board. Tapping costs them nothing they can see and moves
+    # 2.5 Ti a round onto our belt; laying our own costs a Builder the walk, the
+    # conveyor chain and the Harvester.
+    #
+    # The comparison is the gate: contest early only when their logistics really
+    # is the closer job, otherwise keep the old saturation rule so this never
+    # pre-empts an expansion that was nearer all along.
+    saturated = p.network_load >= _network_cap(ct)
+    if (saturated or _enemy_logistics_is_nearer(p, ct)) \
+            and _contest_enemy_logistics(p, ct):
         return
     if p.network_load >= _network_cap(ct):
         p.phase = "harass"
@@ -994,6 +1036,28 @@ def _patrol_belt(p, ct):
         return False
     _step(p, ct, Position(*target), False)
     return True
+
+
+def _enemy_logistics_is_nearer(p, ct):
+    """Is an enemy Harvester or belt tile closer than our own next deposit?
+
+    Cheap and deliberately crude: Chebyshev on remembered positions, no routing.
+    A wrong answer costs one Builder-turn, and the branch it guards re-checks
+    everything properly.
+    """
+    if not STEAL_BEFORE_EXPAND:
+        return False
+    me = tuple(ct.get_position())
+    theirs = [t for t in p.enemy_harvesters] + [t for t in p.enemy_conveyors]
+    if not theirs:
+        return False
+    near_theirs = min(_cardinal_distance(me, t) for t in theirs)
+    if near_theirs > STEAL_MAX_DISTANCE:
+        return False
+    free_ore = p.ores - p.solids - set(p.conveyors)
+    near_ours = (min(_cardinal_distance(me, o) for o in free_ore)
+                 if free_ore else 999)
+    return near_theirs < near_ours
 
 
 def _contest_enemy_logistics(p, ct):
