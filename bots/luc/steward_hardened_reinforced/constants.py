@@ -99,11 +99,17 @@ ROTATE_TITANIUM_RESERVE = 40
 # --- CPU budget -------------------------------------------------------------
 # Each unit gets 10 ms of CPU per round, plus a 5% bank. Overrunning does not
 # truncate the work -- the unit is interrupted and does not act at all that
-# round -- so optional searches stop here and leave the rest of the turn for
-# the ordinary action. Deliberately well under the limit: the ladder runs on
-# AWS Graviton3 rather than this machine, and the measurement that set this
-# number is a local one.
-CPU_SOFT_BUDGET_US = 2500
+# round -- so optional searches have to be bounded.
+#
+# They are bounded by *work*, never by a clock. A guard that reads
+# `get_cpu_time_elapsed` makes the bot's decisions a function of how loaded the
+# machine is: identical code on identical boards produced 11 different winners
+# in 210 matches, which is larger than most effects measured here, and it cuts
+# hardest on the contended machine the ladder actually runs on. See
+# SIEGE_SEARCH_EVERY and PATH_MAX_PADS for the deterministic bounds that
+# replaced it.
+# Rounds between attempts at the siege-seat search, the widest in the bot.
+SIEGE_SEARCH_EVERY = 6
 
 # --- Sentinel siege ---------------------------------------------------------
 # When the attacker can find no Gunner lane onto the enemy Core -- walls,
@@ -228,6 +234,19 @@ ECON_MAX_TOTAL_BUILDERS = 6
 # where the extra reach buys nothing and rotation -- the one row the Gunner
 # still wins -- is worth more.
 DEFEND_TURRET_SENTINEL = True
+# Answer a live Gunner lane with a 3 Ti barrier before a 20-30 Ti turret. See
+# the ordering in _defend_core: the barrier was third behind two turret paths
+# that both consume the turn, so on the rounds it mattered it was never reached.
+LANE_BARRIER_FIRST = True
+# Home-guard turret escalation: `1 + damage // HOME_TURRET_STEP`, capped. The
+# guard escalates with sustained damage rather than committing a formation
+# before it knows one is needed; these two numbers set how fast and how far.
+HOME_TURRET_MAX = 4
+HOME_TURRET_STEP = 180
+# Run the outer barrier seal on every doctrine rather than FORTIFY only. The
+# seal is dozens of tiles and often will not finish before the game does, which
+# is why it was restricted -- but every loss left is a Core kill.
+SEAL_EVERY_DOCTRINE = False
 # Turrets the attacker will buy at the enemy base before it falls back to
 # harassment. Each one is a permanent +20% on every price the team pays for the
 # rest of the game -- including the mending and the defensive seats at home --
@@ -244,7 +263,15 @@ GUARD_HEALS_ON_ANY_DAMAGE = True
 # CRITICAL_HP, instead of answering with a further turret. See the call site:
 # one mender cancels two thirds of a Gunner, two out-heal it outright, and the
 # loss ledger says this bot dies holding turrets rather than short of them.
-SECOND_MENDER_ON_CRITICAL = False
+SECOND_MENDER_ON_CRITICAL = True
+# Alarm level at which the economy Builder joins the mending detail. 2 is the
+# Core below CRITICAL_HP; 1 is the Core's ordinary 50-HP repair alert.
+SECOND_MENDER_ALARM = 2
+# How far from the Core a Builder may be and still be pulled onto mending, in
+# Chebyshev tiles. This is a leash, not a recall radius: a miner summoned from
+# across the map arrives after the decision has been made, and the tempo it
+# gives up costs more games than the healing saves.
+MENDER_LEASH = 10
 
 # --- Sentinel target order ----------------------------------------------------
 # Let a Sentinel shoot the enemy supply line. `get_nearby_entities` returns

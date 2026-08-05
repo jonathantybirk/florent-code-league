@@ -11,7 +11,6 @@ from atlas import identify_visible
 from constants import (
     CLAIM_SLOTS,
     CORE_THREAT_RADIUS_SQ,
-    CPU_SOFT_BUDGET_US,
     D4_DELTAS,
     D8,
     ECON_EXPAND_ROUND,
@@ -76,6 +75,13 @@ from constants import (
     RING_RADIUS,
     ATTACK_TURRET_CAP,
     DEFEND_TURRET_SENTINEL,
+    LANE_BARRIER_FIRST,
+    HOME_TURRET_MAX,
+    HOME_TURRET_STEP,
+    MENDER_LEASH,
+    SEAL_EVERY_DOCTRINE,
+    SECOND_MENDER_ALARM,
+    SIEGE_SEARCH_EVERY,
     PATH_MAX_PADS,
     ECON_EXPAND_BUILDERS,
     SECOND_MENDER_ON_CRITICAL,
@@ -157,6 +163,7 @@ def _run(p, ct):
     # the start of the next round, so every Builder in a round reads the same
     # snapshot and ORs its bit onto it, and only the last writer's word lands.
     ct.write_store(SLOT_BUILDER_HEARTBEAT, ct.get_current_round() + 1)
+    p.round = ct.get_current_round()
     if not hasattr(p, "builder_index"):
         p.builder_index = ct.read_store(SLOT_BUILDER_TICKET)
         ct.write_store(SLOT_BUILDER_TICKET, p.builder_index + 1)
@@ -250,6 +257,7 @@ def _run(p, ct):
             p.is_launcher_builder = False
             p.is_attacker = False
         p.siege_sentinel = None
+        p.last_siege_search_round = -999
         p.sentinel_wrap = []
         p.atlas = (identify_visible(ct, own_core) if own_core is not None
                    else None)
@@ -306,8 +314,8 @@ def _run(p, ct):
         # Builder's: a miner recalled from across the map arrives after the
         # decision. Below that level the guard still answers with turrets, which
         # is what stops a scratch turning into a permanent mending detail.
-        if (SECOND_MENDER_ON_CRITICAL and alarm >= 2
-                and _chebyshev(tuple(ct.get_position()), p.core) <= 10):
+        if (SECOND_MENDER_ON_CRITICAL and alarm >= SECOND_MENDER_ALARM
+                and _chebyshev(tuple(ct.get_position()), p.core) <= MENDER_LEASH):
             _heal_core(p, ct)
             return
         _defend_core(p, ct)
@@ -344,7 +352,7 @@ def _run(p, ct):
     # of its turn is a Launcher, not a march. What is dropped is the FORTIFY
     # restriction and the 200-HP wait, neither of which survives the reason.
     if (p.is_launcher_builder
-            and _chebyshev(tuple(ct.get_position()), p.core) <= 10):
+            and _chebyshev(tuple(ct.get_position()), p.core) <= MENDER_LEASH):
         if GUARD_HEALS_ON_ANY_DAMAGE:
             worth_mending = bool(alarm) or _core_is_hurt(p, ct)
         else:
@@ -366,7 +374,8 @@ def _run(p, ct):
         # and the ring Builder mines instead of freezing in place: the
         # round-1000 tiebreak is delivered titanium, and a second miner is
         # worth more than a Builder holding a pose.
-        if p.doctrine == doctrine.FORTIFY and not _run_core_seal(p, ct):
+        if ((p.doctrine == doctrine.FORTIFY or SEAL_EVERY_DOCTRINE)
+                and not _run_core_seal(p, ct)):
             return
     if p.is_attacker:
         p.phase = "rush"
@@ -1603,7 +1612,7 @@ def _build_blocker_gunner(p, ct, target):
         return False
 
     source, destination = tuple(here), tuple(target)
-    protected_lanes = _friendly_turret_lanes(ct)
+    protected_lanes = _friendly_turret_lanes(ct, p)
     target_dx = destination[0] - source[0]
     target_dy = destination[1] - source[1]
     unit_priority = {
@@ -2117,20 +2126,6 @@ def _blocking_launchers(p, source, target, exact):
             if any(_chebyshev(launcher, tile) == 1 for tile in crossed)}
 
 
-def _out_of_time(ct, budget=CPU_SOFT_BUDGET_US):
-    """True once this turn has spent enough of its 10 ms to stop searching.
-
-    A unit that overruns is interrupted mid-run(): it does not act at all that
-    round, and nothing it was part-way through is kept. So an optional search
-    that might not fit is worth strictly less than the ordinary action it would
-    displace. Never let this raise -- a bad clock read must not cost the turn.
-    """
-    try:
-        return ct.get_cpu_time_elapsed() > budget
-    except Exception:  # noqa: BLE001
-        return False
-
-
 _NO_BASELINE = object()
 
 
@@ -2228,7 +2223,24 @@ def _travel(p, source, goals=None, hops=True, allow_fire=False,
 
     `hops=False` is for the callers that genuinely mean walking -- pricing a
     throw against a walk, or planning conveyor tiles.
+
+    Memoised for the duration of one turn. Several planners ask for the same
+    distance map inside a single `run()` -- target selection, then the route to
+    the target it chose, then the siege seat search pricing every candidate --
+    and each one was paying for a fresh flood of the whole map. A Builder acts
+    at most once a turn and every search happens before it acts, so nothing the
+    cache could go stale against has changed yet; the entries are dropped the
+    moment the round number moves. This is what replaced the CPU-clock guard:
+    the same work avoided, without making the answer depend on the machine.
     """
+    key = (source, None if goals is None else frozenset(goals), hops,
+           allow_fire, tuple(sorted(extra_blocked)))
+    if getattr(p, "travel_cache_round", None) != getattr(p, "round", -1):
+        p.travel_cache_round = getattr(p, "round", -1)
+        p.travel_cache = {}
+    cached = p.travel_cache.get(key)
+    if cached is not None:
+        return cached
     blocked = _no_go(p, source) | set(extra_blocked)
     if allow_fire:
         blocked = blocked - set(getattr(p, "threat", ()))
@@ -2272,6 +2284,7 @@ def _travel(p, source, goals=None, hops=True, allow_fire=False,
             dist[nxt] = dist[cur] + 1
             prev[nxt] = cur
             queue.append(nxt)
+    p.travel_cache[key] = (dist, prev)
     return dist, prev
 
 
@@ -3119,7 +3132,7 @@ def _aligned_turret_site(p, ct, enemies, kind=EntityType.GUNNER):
     rejects most of the seats a Sentinel could actually shoot from.
     """
     me = ct.get_position()
-    protected_lanes = _friendly_turret_lanes(ct)
+    protected_lanes = _friendly_turret_lanes(ct, p)
     sentinel = kind is EntityType.SENTINEL
     reach = SENTINEL_RANGE_SQ if sentinel else GUNNER_RANGE_SQ
     can_build = ct.can_build_sentinel if sentinel else ct.can_build_gunner
@@ -3217,13 +3230,31 @@ def _defend_core(p, ct):
     core_id = (ct.get_tile_building_id(core_position)
                if ct.is_in_vision(core_position) else None)
     damage = (ct.get_max_hp(core_id) - ct.get_hp(core_id)) if core_id else 0
-    desired = min(4, 1 + damage // 180)
+    desired = min(HOME_TURRET_MAX, 1 + damage // HOME_TURRET_STEP)
     # One turret per enemy Sentinel, before the generic escalation. A Sentinel
     # is the thing that actually kills our Core -- it out-ranges us, its line is
     # never blocked, and it cannot rotate, so a turret seated on it stays
     # useful for as long as it stands. Counting them individually is what stops
     # the guard building its second and third Gunner against the same shooter
     # while a new one goes up unopposed.
+    # The 3 Ti answer before the 30 Ti one.
+    #
+    # A barrier dropped in a live Gunner lane absorbs that Gunner's entire
+    # clock: measured in the lab at one Builder holding a Core on zero damage
+    # through 201 rounds of sustained fire for about 1 Ti a round, while the
+    # shooter burned 2 Ti a shot. It was third in this order, behind a
+    # counter-turret and an escalation turret that both consume the turn -- so
+    # on the rounds it was most needed it was never reached.
+    #
+    # Ordering it first is the cost-scale argument again, in its sharpest form.
+    # A barrier is 3 Ti and +1% scale; the turret it pre-empts is 20-30 Ti and a
+    # permanent +20% on every price the team pays afterwards, including the
+    # mending. And it answers the right thing: a Gunner's ray is blocked by
+    # terrain where a Sentinel's is not, and Gunner fire is the large majority
+    # of what kills a Core. Sentinel lanes are unblockable, find no site here,
+    # and fall through to the turret and the mending exactly as before.
+    if LANE_BARRIER_FIRST and _block_firing_lane(p, ct, enemies):
+        return
     if _counter_sentinels(p, ct):
         return
     if (ct.get_global_ammo() >= MIN_AMMO_FOR_GUNNER
@@ -3239,7 +3270,7 @@ def _defend_core(p, ct):
             _mark_progress(p, ct, "built defensive turret", tuple(position))
             p.home_gunners_built += 1
             return
-    if _block_firing_lane(p, ct, enemies):
+    if not LANE_BARRIER_FIRST and _block_firing_lane(p, ct, enemies):
         return
     _heal_core(p, ct)
 
@@ -3494,7 +3525,7 @@ def _block_siege_lane(p, ct):
         return False
     me = tuple(ct.get_position())
     team = ct.get_team()
-    protected = _friendly_turret_lanes(ct)
+    protected = _friendly_turret_lanes(ct, p)
     best = None
     for enemy_id in ct.get_nearby_buildings():
         if (ct.get_team(enemy_id) == team
@@ -3573,12 +3604,26 @@ def _build_siege_sentinel(p, ct, enemy_core):
     """
     if p.siege_sentinel is not None:
         return False
-    # This search is the widest in the bot (13x13 around four Core tiles) and
-    # it runs last, after two others have already spent the turn. Skipping it
-    # costs a fallback that fires in a handful of games; overrunning costs the
-    # whole round, for every unit, on the map where it happens.
-    if _out_of_time(ct):
+    # This search is the widest in the bot (13x13 around four Core tiles, a
+    # full-map BFS and ~160 engine calls) and it runs last, after two others
+    # have already spent the turn. It needs a bound: overrunning costs the whole
+    # round, for every unit, on the map where it happens.
+    #
+    # The bound used to be a clock read, and that was a defect rather than a
+    # tuning knob. `get_cpu_time_elapsed` makes the bot's *decisions* a function
+    # of how busy the machine is, so the same board played twice gives different
+    # answers -- measured here at 11 different winners in 210 matches of
+    # identical code against identical opponents, which is larger than most of
+    # the effects this bot is tuned on. It is also backwards where it matters:
+    # the ladder machine is contended, so the search that survives on a quiet
+    # laptop is the one that gets cut in the games that count.
+    #
+    # A round throttle bounds the same work deterministically. Retrying a wide
+    # fallback search every single round is what made it expensive; a seat that
+    # is not there this round is very rarely there the next.
+    if ct.get_current_round() < p.last_siege_search_round + SIEGE_SEARCH_EVERY:
         return False
+    p.last_siege_search_round = ct.get_current_round()
     if ct.get_global_ammo() < MIN_AMMO_FOR_SENTINEL:
         return False
     core_tiles = {(enemy_core[0] + dx, enemy_core[1] + dy)
@@ -3590,7 +3635,7 @@ def _build_siege_sentinel(p, ct, enemy_core):
         return False
     me = tuple(ct.get_position())
     distances = _distance_map(p, me)
-    protected_lanes = _friendly_turret_lanes(ct)
+    protected_lanes = _friendly_turret_lanes(ct, p)
     choices = []
     for core_tile in sorted(core_tiles):
         for dx in range(-6, 7):
@@ -3750,7 +3795,7 @@ def _build_basic_gunner(p, ct, enemy_core):
                   for dx in (0, 1) for dy in (0, 1)}
     me = tuple(ct.get_position())
     distances = _distance_map(p, me)
-    protected_lanes = _friendly_turret_lanes(ct)
+    protected_lanes = _friendly_turret_lanes(ct, p)
     choices = []
     for core_tile in sorted(core_tiles):
         for dx in range(-3, 4):
@@ -3838,7 +3883,7 @@ def _build_launcher_breaker_gunner(p, ct, blocking=None, route=None):
     if not targets:
         return False
     distances = _distance_map(p, me)
-    protected_lanes = _friendly_turret_lanes(ct)
+    protected_lanes = _friendly_turret_lanes(ct, p)
     choices = []
     for launcher_position in targets:
         if launcher_position in p.launcher_breakers:
@@ -3919,14 +3964,26 @@ def _ray_direction(source, target):
     return next((direction for direction in D8 if direction.delta() == step), None)
 
 
-def _friendly_turret_lanes(ct):
-    """Map protected firing-ray tiles to the friendly turret and its target."""
+def _friendly_turret_lanes(ct, p=None):
+    """Map protected firing-ray tiles to the friendly turret and its target.
+
+    Cached for the turn like `_travel`, and for the same reason: the seat
+    searches call it once each and the siege search calls it again, all inside
+    one `run()`, and it walks every nearby building against every nearby enemy
+    to rebuild the identical answer.
+    """
+    if p is not None:
+        if getattr(p, "lanes_cache_round", None) == getattr(p, "round", -1):
+            return p.lanes_cache
+        p.lanes_cache_round = getattr(p, "round", -1)
     lanes = {}
     enemies = [
         entity_id for entity_id in ct.get_nearby_entities()
         if ct.get_team(entity_id) != ct.get_team()
     ]
     if not enemies:
+        if p is not None:
+            p.lanes_cache = lanes
         return lanes
     for turret_id in ct.get_nearby_buildings():
         if ct.get_team(turret_id) != ct.get_team():
@@ -3949,6 +4006,8 @@ def _friendly_turret_lanes(ct):
             while tile != target_tile:
                 lanes.setdefault(tile, (turret_id, target_tile))
                 tile = tile[0] + dx, tile[1] + dy
+    if p is not None:
+        p.lanes_cache = lanes
     return lanes
 
 
