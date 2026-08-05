@@ -323,18 +323,55 @@ def outstanding_matches(run_dir: Path) -> set[str]:
 MAX_RESUBMITS = 3
 
 
+def _idle_arrays(bjobs: str) -> dict[str, bool]:
+    """Map job id -> "this array has nothing left to run", parsed from a `bjobs -A` table.
+
+    The table is one row per array:
+
+        JOBID       ARRAY_SPEC  OWNER   NJOBS PEND DONE  RUN EXIT SSUSP USUSP PSUSP
+        29034232    trn_auto  s234842       1    0    0    0    1     0     0     0
+
+    An array with no PEND, no RUN and nothing suspended has finished every element it will ever
+    finish, whatever the DONE/EXIT split says. Counting only DONE would be wrong in the other
+    direction: EXIT elements are finished too, they just produced no results.
+    """
+    idle: dict[str, bool] = {}
+    for line in (bjobs or "").splitlines():
+        fields = line.split()
+        if len(fields) < 11 or not fields[0].isdigit():
+            continue
+        try:
+            njobs, pend, done, run, exited, ssusp, ususp, psusp = (
+                int(value) for value in fields[3:11]
+            )
+        except ValueError:
+            continue
+        idle[fields[0]] = (pend + run + ssusp + ususp + psusp) == 0 and (done + exited) == njobs
+    return idle
+
+
 def _abandoned(state: dict) -> bool:
-    """True when every array this run submitted is gone from LSF.
+    """True when no array this run submitted will do any more work.
+
+    Two ways that happens, and both have wedged the ladder:
 
     `bjobs -A` answers "Job array <id> is not found" for an array the scheduler no longer knows
     about. One such line is not enough -- a run split across five arrays can have four finished
-    and one still going -- so every submitted id has to be accounted for as missing.
+    and one still going -- so every submitted id has to be accounted for.
+
+    An array LSF *does* still list, but whose every element has ended in EXIT, is equally never
+    coming back, and matching only on "not found" missed it: auto-ac98e09efc0e sat on 8 of 5,901
+    matches with one EXITed element, which recover_stranded_results() also skips because the
+    cluster never reached done == total. Nothing fetched it, nothing re-queued it, and it
+    deferred every later bot for as long as it was left alone.
     """
-    job_ids = state.get("job_ids") or []
+    job_ids = [str(job_id) for job_id in (state.get("job_ids") or [])]
     if not job_ids:
         return False
-    missing = set(re.findall(r"Job array <(\d+)> is not found", state.get("bjobs") or ""))
-    return missing >= {str(job_id) for job_id in job_ids}
+    bjobs = state.get("bjobs") or ""
+    missing = set(re.findall(r"Job array <(\d+)> is not found", bjobs))
+    idle = _idle_arrays(bjobs)
+    return all(job_id in missing or idle.get(job_id, False) for job_id in job_ids)
 
 
 def _resubmit_count(run_dir: Path) -> int:
@@ -603,6 +640,21 @@ def _publish(run_dir: Path, site_repo: Path, ref: str) -> None:
     _deploy(site_repo)
 
 
+def _unpushed(branch: str, remote: str) -> bool:
+    """True when HEAD carries commits the remote-tracking ref does not have.
+
+    Deliberately reads the local ref rather than asking the remote: a tick that runs while the
+    network is down should still try. A stale ref only costs a push that gets rejected, and the
+    caller already rebases and retries on rejection.
+    """
+    try:
+        ahead = _run(["git", "rev-list", "--count", f"{remote}/{branch}..HEAD"]).strip()
+    except RuntimeError:
+        # No remote-tracking ref yet -- a first push is exactly what is wanted.
+        return True
+    return ahead != "0"
+
+
 def _push_data(branch: str, remote: str = "origin") -> None:
     """Commit whatever run data this checkout has gained and push it to <remote>/<branch>.
 
@@ -633,11 +685,20 @@ def _push_data(branch: str, remote: str = "origin") -> None:
         return
 
     _run(["git", "add", "--", "tournament/runs"])
-    if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=REPO_ROOT).returncode == 0:
+    runs: list[str] = []
+    if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=REPO_ROOT).returncode != 0:
+        summary = _run(["git", "diff", "--cached", "--name-only"]).splitlines()
+        runs = sorted(
+            {Path(name).parts[2] for name in summary if name.startswith("tournament/runs/")}
+        )
+        _run(["git", "commit", "-m", "Add tournament results for " + ", ".join(runs)])
+
+    # Committing and pushing are separate failures, so returning early on "nothing new to commit"
+    # stranded every commit an earlier push had failed to deliver -- they could only leave on the
+    # back of the *next* run's data. auto-ac98e09efc0e lost a race at 19:52 and left 13 commits
+    # of match and rating CSVs sitting on this workstation with no retry in sight.
+    if not _unpushed(branch, remote):
         return
-    summary = _run(["git", "diff", "--cached", "--name-only"]).splitlines()
-    runs = sorted({Path(name).parts[2] for name in summary if name.startswith("tournament/runs/")})
-    _run(["git", "commit", "-m", "Add tournament results for " + ", ".join(runs)])
     try:
         _run(["git", "push", remote, f"{branch}:{branch}"])
     except RuntimeError as error:
@@ -647,7 +708,8 @@ def _push_data(branch: str, remote: str = "origin") -> None:
         _run(["git", "fetch", remote, branch])
         _run(["git", "rebase", f"{remote}/{branch}"])
         _run(["git", "push", remote, f"{branch}:{branch}"])
-    print(f"pushed run data to {remote}/{branch}: {', '.join(runs)}")
+    what = ", ".join(runs) if runs else "commits an earlier tick could not deliver"
+    print(f"pushed run data to {remote}/{branch}: {what}")
 
 
 def _deploy(site_repo: Path) -> None:
