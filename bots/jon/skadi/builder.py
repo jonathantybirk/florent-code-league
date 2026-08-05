@@ -71,6 +71,8 @@ from constants import (
     DENIAL_START_ROUND,
     REPAIR_ATTEMPT_LIMIT,
     TABU_WINDOW,
+    IDLE_FALLBACK_ROUNDS,
+    IDLE_DEBUG,
     STUCK_ROUNDS_BEFORE_STANDDOWN,
     WRITE_OFF_STUCK_BUILDERS,
     FERRY_ON_INFERENCE,
@@ -180,9 +182,110 @@ def _turret_kind(ct, prefer_sentinel):
     return EntityType.GUNNER
 
 
+# Orthogonal steps, for the idle fallback below.
+_ORTH = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+
+def _idle_fallback(p, ct) -> None:
+    """Spend a turn that the plan was going to waste.
+
+    A Builder can end its round having done nothing at all -- its target is
+    unreachable, the tile it wants is occupied, the construction lock is held by
+    someone else, or there is simply not enough titanium for the thing it wants
+    to build. The plan is right to refuse in each case, but the *turn* is spent
+    either way, and a Builder standing still is a Builder paying +20% of cost
+    scale for nothing.
+
+    Only fires after IDLE_FALLBACK_ROUNDS consecutive dead turns, so a Builder
+    that is deliberately saving for one round -- or waiting one round on the
+    lock -- is left alone. Acting sets the action cooldown, and taking that
+    cooldown away from a build that was one round out would be a real cost.
+
+    The two things it does are the two that are always worth doing and never
+    cost cost scale: heal something of ours that is damaged, or hit something of
+    theirs. Both are flat-priced, both are adjacent-only, and both are strictly
+    better than the alternative of nothing.
+    """
+    try:
+        if ct.get_action_cooldown() != 0:
+            return
+        here = ct.get_position()
+        team = ct.get_team()
+        bank = ct.get_global_resources()
+        best = None
+        for dx, dy in _ORTH:
+            tile = Position(here.x + dx, here.y + dy)
+            try:
+                if not ct.is_in_vision(tile):
+                    continue
+                building = ct.get_tile_building_id(tile)
+            except GameError:
+                continue
+            if building is None:
+                continue
+            if ct.get_team(building) == team:
+                # Ours and hurt: healing is 4 HP for a flat 1 Ti and is the most
+                # titanium-efficient act in the game.
+                missing = ct.get_max_hp(building) - ct.get_hp(building)
+                if missing > 0 and bank >= 1 and ct.can_heal(tile):
+                    rank = (0, -missing)
+                    if best is None or rank < best[0]:
+                        best = (rank, "heal", tile)
+            elif bank >= 2 and ct.can_fire(tile):
+                # Theirs: 2 Ti for 2 damage is a poor rate, but it is a rate,
+                # and it is being paid out of a turn that was worth zero.
+                rank = (1, ct.get_hp(building))
+                if best is None or rank < best[0]:
+                    best = (rank, "fire", tile)
+        if best is None:
+            if IDLE_DEBUG:
+                # Nothing adjacent to heal or hit either. This is the case worth
+                # looking at in a replay: a Builder that has achieved nothing for
+                # IDLE_FALLBACK_ROUNDS turns *and* has no fallback available is
+                # either walled in, broke, or chasing a target it cannot reach.
+                print(
+                    f"IDLE id={ct.get_id()} round={ct.get_current_round()} "
+                    f"streak={getattr(p, 'idle_streak', 0)} "
+                    f"pos=({here.x},{here.y}) ti={bank} "
+                    f"phase={getattr(p, 'phase', '?')} "
+                    f"task={getattr(p, 'task', None)} "
+                    f"path_failures={getattr(p, 'path_failures', 0)} "
+                    f"fallback=none",
+                    file=sys.stderr, flush=True)
+            return
+        _, kind, tile = best
+        if IDLE_DEBUG:
+            print(
+                f"IDLE id={ct.get_id()} round={ct.get_current_round()} "
+                f"streak={getattr(p, 'idle_streak', 0)} "
+                f"pos=({here.x},{here.y}) ti={bank} "
+                f"phase={getattr(p, 'phase', '?')} "
+                f"task={getattr(p, 'task', None)} "
+                f"fallback={kind}@({tile.x},{tile.y})",
+                file=sys.stderr, flush=True)
+        if kind == "heal":
+            ct.heal(tile)
+        else:
+            ct.fire(tile)
+    except GameError:
+        return
+
+
 def run(p: "Player", ct: Controller) -> None:
     try:
+        before_pos = ct.get_position()
+        before_cd = ct.get_action_cooldown()
         _run(p, ct)
+        # Did this turn actually do anything? A move changes position; an action
+        # raises the cooldown. Neither means the turn was dead.
+        try:
+            dead = (ct.get_position() == before_pos
+                    and ct.get_action_cooldown() <= before_cd)
+        except GameError:
+            dead = False
+        p.idle_streak = (getattr(p, "idle_streak", 0) + 1) if dead else 0
+        if p.idle_streak >= IDLE_FALLBACK_ROUNDS:
+            _idle_fallback(p, ct)
     except GameError as error:
         print(
             f"PLAN_FAILED id={ct.get_id()} round={ct.get_current_round()} "

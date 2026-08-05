@@ -443,6 +443,15 @@ REPAIR_ATTEMPT_LIMIT = 3
 # parallel session's measured handoff: on odin it is pool -1 / generated +2,
 # and pacing falls 3.3% -> 0.4% of Builder-rounds (benchmarks/pathology.py).
 TABU_WINDOW = 4
+# Consecutive turns a Builder may achieve nothing before it falls back to
+# healing or hitting whatever is next to it. See _idle_fallback in builder.py.
+IDLE_FALLBACK_ROUNDS = 10
+# Trace every time the idle fallback fires, and every time it fires and finds
+# nothing to do. Off by default because it is a print per stuck Builder-turn;
+# turn it on to find out *why* a Builder is useless in a specific replay.
+# print() never reaches stdout -- it is embedded in the .replay26 -- so this is
+# read back out of the replay rather than the console.
+IDLE_DEBUG = False
 WRITE_OFF_STUCK_BUILDERS = True
 STUCK_ROUNDS_BEFORE_STANDDOWN = 40
 # A Harvester this close is worth finishing before turning back to repairs, so
