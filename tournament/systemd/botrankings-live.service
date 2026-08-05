@@ -1,0 +1,22 @@
+[Unit]
+Description=Refresh the live Florent Code League ladder feed and publish it
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# A warm run is ~10s: one page of our match log, a page of the global log, the ladder, then a
+# wrangler upload. The generous timeout is for a cold start, where the whole history is paged in.
+TimeoutStartSec=900
+WorkingDirectory=/home/Ucals/projects/florent-code-league-ci
+Environment=PYTHONUNBUFFERED=1
+# Reads the platform API with the credentials in the invoking user's fcode config, and deploys
+# straight to Cloudflare. --deploy skips `astro build`: live_feed writes its output into dist/
+# itself, so a refresh costs an upload rather than a full site compile.
+ExecStart=/home/Ucals/projects/florent-code-league-ci/.venv/bin/python -m tournament.live_feed \
+    --deploy
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target

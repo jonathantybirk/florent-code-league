@@ -628,16 +628,20 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
 
 
 def _publish(run_dir: Path, site_repo: Path, ref: str) -> None:
-    """Refresh the site's data bundle and commit it, then deploy if the source is clean."""
+    """Refresh the site's data bundle and deploy it.
+
+    The bundle is deliberately *not* in git. It reached 185 MB across 167 files that are rewritten
+    wholesale on every run, so committing it grew `.git` larger than the data itself within a week
+    -- and bought nothing, because production is served from `wrangler deploy`, which uploads the
+    working tree and never reads the repository. `public/botrankings/data/` is gitignored.
+
+    That removes the side effect the deploy used to be triggered by. Committing the bundle moved
+    the site's HEAD, and `_deploy` fired on HEAD moving; with no commit, HEAD never moves and the
+    ladder would quietly stop updating. So a data refresh now asks for a deploy explicitly.
+    """
     output = site_repo / "public" / "botrankings" / "data"
     build_site_data(run_dir, output)
-    _run(["git", "add", "public/botrankings/data"], site_repo)
-    staged = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=site_repo)
-    if staged.returncode != 0:
-        _run(["git", "commit", "-m", f"Update bot rankings for {ref[:7]}"], site_repo)
-        _run(["git", "push", "origin", "main"], site_repo)
-        print("pushed updated ranking data")
-    _deploy(site_repo)
+    deploy_assets(site_repo, reason=f"ranking data for {ref[:7]}", build=True)
 
 
 def _unpushed(branch: str, remote: str) -> bool:
@@ -712,41 +716,74 @@ def _push_data(branch: str, remote: str = "origin") -> None:
     print(f"pushed run data to {remote}/{branch}: {what}")
 
 
-def _deploy(site_repo: Path) -> None:
-    """Build and deploy the site, but only from a clean tree and only if it has moved.
-
-    Called on every tick, not just after a run finishes: a commit that changes the page without
-    producing new results -- a UI fix, a rebuilt component -- still has to reach production.
-    Keying on the site's HEAD makes that cheap, two git commands when there is nothing to do.
+def _site_is_dirty(site_repo: Path) -> list[str]:
+    """Uncommitted *tracked* changes in the site checkout.
 
     `npm run build` compiles the working tree, so building while somebody edits the site would
-    deploy their unfinished work, including a file saved mid-edit. Ranking data is committed and
-    pushed regardless; only the deploy waits for a clean tree.
+    deploy their unfinished work, including a file saved mid-edit. Generated artefacts do not
+    count: the data bundle, `dist/` and the deploy stamp are all gitignored, and `git status
+    --porcelain` omits ignored paths, so this sees only genuine hand edits.
+    """
+    return [line for line in _run(["git", "status", "--porcelain"], site_repo).splitlines() if line]
+
+
+def deploy_assets(site_repo: Path, *, reason: str, build: bool = True) -> bool:
+    """Publish the site to Cloudflare. Returns True when a deploy actually happened.
+
+    `build=False` skips `astro build` for callers that have already written their output straight
+    into `dist/`. That is the difference between a refresh costing seconds and costing minutes,
+    which is what makes a feed on a five-minute timer viable at all. It is only safe when `dist/`
+    already exists -- otherwise there is nothing to upload, so we build regardless.
+
+    Two timers can reach this concurrently (the evaluator every two minutes, the live feed every
+    five), and two overlapping `wrangler deploy` runs against one project is a race whose loser
+    silently publishes stale assets. The lock serialises them; a caller that cannot get it returns
+    rather than queueing, because by the next tick its content will be republished anyway.
     """
     if not site_repo.exists():
-        return
-    dirty = [
-        line for line in _run(["git", "status", "--porcelain"], site_repo).splitlines()
-        if line and not line[3:].startswith("public/botrankings/data")
-    ]
+        return False
+    dirty = _site_is_dirty(site_repo)
     if dirty:
         print(
-            "site repo has uncommitted changes outside the data directory; not building or "
-            "deploying, so work in progress is not published:"
+            f"site repo has uncommitted changes; not deploying {reason}, so work in progress "
+            "is not published:"
         )
         for line in dirty[:10]:
             print(f"    {line}")
-        return
+        return False
 
+    lock_path = site_repo / ".deploy.lock"
+    with open(lock_path, "w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print(f"another deploy holds the lock; skipping {reason}")
+            return False
+
+        if build or not (site_repo / "dist").exists():
+            _run(["npm", "run", "build"], site_repo)
+        _run(["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"], site_repo)
+        (site_repo / ".last-deployed-commit").write_text(
+            _run(["git", "rev-parse", "HEAD"], site_repo).strip() + "\n"
+        )
+        print(f"deployed to Cloudflare ({reason})")
+        return True
+
+
+def _deploy(site_repo: Path) -> None:
+    """Per-tick deploy of *source* changes: a UI fix or rebuilt component with no new results.
+
+    Keyed on HEAD so the common case costs two git commands. Data and feed refreshes no longer
+    move HEAD, so they call `deploy_assets` directly instead of relying on this.
+    """
+    if not site_repo.exists():
+        return
     head = _run(["git", "rev-parse", "HEAD"], site_repo).strip()
     stamp = site_repo / ".last-deployed-commit"
     if stamp.exists() and stamp.read_text().strip() == head:
         return
     print(f"site moved to {head[:7]}; building and deploying")
-    _run(["npm", "run", "build"], site_repo)
-    _run(["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"], site_repo)
-    stamp.write_text(head + "\n")
-    print(f"deployed {head[:7]} to Cloudflare")
+    deploy_assets(site_repo, reason=f"source {head[:7]}", build=True)
 
 
 def run_once(

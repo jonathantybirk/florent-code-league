@@ -49,3 +49,6 @@ tournament/first-published.json
 
 # Derived import verdicts. Content-addressed, so it is a pure cache.
 tournament/unloadable.json
+
+# Live ladder feed cache (append-only, rebuilt on demand from the platform API).
+tournament/live-cache.jsonl
