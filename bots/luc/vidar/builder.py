@@ -385,6 +385,26 @@ def _run(p, ct):
         # has already walked inside it.
         if _guard_home(p, ct):
             return
+        # The guard cannot answer what it cannot see, and it can see r^2=20 of
+        # a disc that is r^2=64. `_guard_home` seats a turret only against a
+        # *visible* enemy unit, so a Gunner emplaced six tiles out and shooting
+        # our Core is answered by nothing -- and this Builder, standing on the
+        # Core while it dies, walks off to lay its Launcher ring. Traced on
+        # random-20260731-008-mirror-x against vigil: enemy turrets at our Core
+        # from round 15 through round 40, the guard idle throughout, Core dead
+        # on round 44. 84 of 94 losses to vigil on generated maps are Core
+        # kills at turns 44-53.
+        #
+        # Healing needs no sight of the shooter and is the most
+        # titanium-efficient act in the game: 4 HP for a flat 1 Ti, unaffected
+        # by cost scale, against the 4 Ti a Gunner pays for 7 damage and the
+        # 3.33 Ti a Sentinel pays for 6. Two menders out-heal a Gunner
+        # outright. The late Builders already do this -- `_heal_core` sits in
+        # their branch below -- and the one Builder actually posted at the Core
+        # was the only one that did not.
+        if raw_alarm & CORE_DYING_FLAG or alarm:
+            _heal_core(p, ct)
+            return
         if not _run_launcher_ring(p, ct):
             return
         # The outer threat-zone seal is worth its titanium only where games
