@@ -1,0 +1,13 @@
+{
+  "challengers": [
+    "lattice@1e4eddf",
+    "skadi@1e4eddf"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "8adfdd1d8d00a8c6790b38291f4e12463ecec81d",
+    "x/jon": "1e4eddffc35e3943a5caa54eeebba99b9e915003",
+    "x/luc": "cdc552fc07953647177fd78389c202b58c082567"
+  },
+  "submitted_at": "2026-08-05T19:21:25+00:00"
+}
