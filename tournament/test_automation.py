@@ -447,8 +447,9 @@ def test_publish_skips_deploy_when_the_site_source_is_dirty(tmp_path, monkeypatc
 
     assert ["npm", "run", "build"] not in calls, "must not build a dirty tree"
     assert not any(c[:2] == ["npm", "exec"] for c in calls), "must not deploy a dirty tree"
-    # The data is still committed and pushed, so no results are lost while the UI is in flux.
-    assert ["git", "push", "origin", "main"] in calls
+    # The bundle is gitignored now, so publishing never commits or pushes it anywhere.
+    assert not any(c[:2] == ["git", "push"] for c in calls)
+    assert not any(c[:2] == ["git", "commit"] for c in calls)
 
 
 def test_publish_deploys_when_the_source_is_clean(tmp_path, monkeypatch):
@@ -459,7 +460,7 @@ def test_publish_deploys_when_the_source_is_clean(tmp_path, monkeypatch):
     def fake_run(command, cwd=None):
         calls.append(command)
         if command[:2] == ["git", "status"]:
-            return " M public/botrankings/data/index.json\n"   # data only: still clean
+            return ""          # the bundle is gitignored, so a data refresh leaves no trace here
         if command[:3] == ["git", "rev-parse", "HEAD"]:
             return "b" * 40 + "\n"
         return ""
@@ -474,7 +475,13 @@ def test_publish_deploys_when_the_source_is_clean(tmp_path, monkeypatch):
     assert (tmp_path / ".last-deployed-commit").read_text().strip() == "b" * 40
 
 
-def test_publish_does_not_redeploy_the_same_commit(tmp_path, monkeypatch):
+def test_publish_deploys_even_when_head_has_not_moved(tmp_path, monkeypatch):
+    """The regression that gitignoring the bundle would otherwise have introduced.
+
+    Publishing used to commit the data, which moved HEAD, which is what `_deploy` triggered on.
+    With the bundle untracked HEAD never moves on a data refresh, so if `_publish` still deferred
+    to the HEAD check the ladder would silently freeze at whatever was last deployed.
+    """
     from tournament import automation
 
     (tmp_path / ".last-deployed-commit").write_text("c" * 40 + "\n")
@@ -493,7 +500,59 @@ def test_publish_does_not_redeploy_the_same_commit(tmp_path, monkeypatch):
     monkeypatch.setattr(automation.subprocess, "run",
                         lambda *a, **k: type("R", (), {"returncode": 0})())
     automation._publish(tmp_path, tmp_path, "abc1234")
+    assert ["npm", "run", "build"] in calls
+    assert ["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"] in calls
+
+
+def test_deploy_assets_can_skip_the_build_for_an_already_written_dist(tmp_path, monkeypatch):
+    """The live feed writes straight into dist/, so it uploads without recompiling the site."""
+    from tournament import automation
+
+    (tmp_path / "dist").mkdir()
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            return "d" * 40 + "\n"
+        return ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    assert automation.deploy_assets(tmp_path, reason="live feed", build=False) is True
     assert ["npm", "run", "build"] not in calls
+    assert ["npm", "exec", "--yes", "wrangler@latest", "--", "deploy"] in calls
+
+
+def test_deploy_assets_builds_anyway_when_dist_is_missing(tmp_path, monkeypatch):
+    """build=False is an optimisation, not a promise there is something to upload."""
+    from tournament import automation
+
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        return "e" * 40 + "\n" if command[:3] == ["git", "rev-parse", "HEAD"] else ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    assert automation.deploy_assets(tmp_path, reason="live feed", build=False) is True
+    assert ["npm", "run", "build"] in calls
+
+
+def test_deploy_assets_yields_rather_than_racing_a_concurrent_deploy(tmp_path, monkeypatch):
+    """Two overlapping wrangler runs against one project publish whichever finishes last."""
+    import fcntl
+
+    from tournament import automation
+
+    calls = []
+    monkeypatch.setattr(
+        automation, "_run",
+        lambda command, cwd=None: (calls.append(command), "")[1],
+    )
+    with open(tmp_path / ".deploy.lock", "w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        assert automation.deploy_assets(tmp_path, reason="live feed") is False
+    assert not any(c[:2] == ["npm", "exec"] for c in calls)
 
 
 def test_self_update_rolls_back_when_tests_fail(tmp_path, monkeypatch):

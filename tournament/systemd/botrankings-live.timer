@@ -1,0 +1,15 @@
+[Unit]
+Description=Refresh the live ladder feed every two minutes
+
+[Timer]
+# Deliberately a separate unit from botrankings-evaluator rather than another step inside its
+# tick. That tick already runs for about two minutes against a two-minute timer, so folding the
+# feed into it would make the feed as late as the slowest HPC collection of the day. Split, the
+# feed keeps its own cadence and the two only meet at the deploy lock.
+OnBootSec=4min
+OnUnitInactiveSec=2min
+Persistent=true
+Unit=botrankings-live.service
+
+[Install]
+WantedBy=timers.target

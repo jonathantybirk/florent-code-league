@@ -504,3 +504,67 @@ Status and logs:
 systemctl --user status botrankings-evaluator.timer
 journalctl --user -u botrankings-evaluator.service -f
 ```
+
+## The online ladder feed (`/botrankings/live`)
+
+Everything above is the *offline* tournament: our bots against each other, on our maps, scored with
+mElo and Nash. `tournament/live_feed.py` publishes a different thing entirely — the *online*
+platform ladder, with real opponents and real Elo — to `lucasrgpedersen.com/botrankings/live`.
+
+Run it by hand with `python -m tournament.live_feed --print`; add `--deploy` to publish. It keeps an
+append-only cache at `tournament/live-cache.jsonl` (gitignored) and pages the match log backwards
+only until it meets a match it already has, so a warm run costs one API page and about 7 seconds.
+
+### How the platform's ladder actually works
+
+Reverse-engineered from all 12255 rated matches between 1 August and 5 August. Both findings are
+exact, not approximate, and `live_feed.py` depends on them:
+
+- **The rating rule is plain Elo, K=32, with a series scored as games won out of 5.** So a 3–2 win
+  counts 0.6, not 1.0. Predicting every observed `eloDelta` from the two pre-match ratings under
+  this rule reproduces all 12255 of them with zero residual. Because the rule is exact, a bot's
+  equilibrium rating is exactly its Elo-scale strength — the fixed point of the update is where
+  expected score equals Elo-expected score, which happens only at true strength and is independent
+  of who it gets paired against. That is why the projected Elo is a one-parameter maximum
+  likelihood fit and not a ladder simulation.
+- **Pairing is a global round every 10 minutes on a fixed clock.** Every rated match in the sample
+  was created at minute ≡ 2 (mod 10), second 43, without exception. Each team with a ready
+  submission plays exactly one series per tick — 662 ticks, no team ever twice in one tick — so a
+  submission collects about 144 rated series a day and cannot choose its opponent.
+- **Within a tick, teams are sorted by rating, cut into consecutive groups of about 8, and paired
+  uniformly at random inside each group.** Rank distance between paired teams is hard-capped at 11
+  and decays smoothly; a block size of 8 fits the observed distribution to a total-variation
+  distance of 0.033, beating windowed matching and every other block size tried. The rare pairings
+  out at distance 9–11 come from how the final short group is absorbed. This is the one inference
+  here that is a best fit rather than a proof, so treat the group size as ~8, not as 8.
+
+The practical consequence for evaluating a submission: it will only ever meet the handful of teams
+nearest it in rating, so `vs pairing group` on the page is the number that predicts its results,
+and `vs the whole active field` is context.
+
+### Why it is a separate systemd unit
+
+`botrankings-live.timer` runs every two minutes, independently of `botrankings-evaluator.timer`.
+Folding the feed into the evaluator tick would have made it as late as the slowest HPC collection
+of the day — that tick already runs for about two minutes against a two-minute timer. Split, the
+two only interact at `deploy_assets`, which holds an exclusive `flock` on `.deploy.lock` in the
+site repo so two overlapping `wrangler deploy` runs cannot race.
+
+```sh
+cp tournament/systemd/botrankings-live.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now botrankings-live.timer
+```
+
+### The site's data bundle is not in git
+
+`public/botrankings/data/` is gitignored in the portfolio repo. It reached 185 MB across 167 files
+that are rewritten wholesale on every run, and committing it had grown `.git` to 202 MB — larger
+than the data — in five days. Nothing depended on it being committed: production is served by
+`wrangler deploy`, which uploads the working tree and never reads git.
+
+That removed the side effect the deploy used to fire on. `_publish` committed the bundle, the
+commit moved the site's HEAD, and `_deploy` triggered on HEAD moving. With no commit, HEAD never
+moves, so **a data or feed refresh now calls `deploy_assets` explicitly**; `_deploy` is only for
+source changes. If you ever restore the old commit-the-bundle behaviour, drop the explicit calls or
+every tick will deploy twice.
