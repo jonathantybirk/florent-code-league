@@ -77,7 +77,8 @@ PAIRING_KERNEL_PAIRS = 12211
 
 # A bot needs enough games before a strength estimate means anything. Below this we publish the
 # raw record and an explicit null rather than an interval nobody should read. The threshold bites
-# much harder than it looks, because only games against builds still in use count towards it.
+# much harder than it looks: only *rated* games against builds still in use count towards it,
+# which for most bots is a small fraction of what they played.
 MIN_GAMES_FOR_ESTIMATE = 25
 BOOTSTRAP_RESAMPLES = 400
 
@@ -233,9 +234,7 @@ def _fit_strength(games: list[tuple[float, int, int]]) -> float | None:
     return (low + high) / 2.0
 
 
-def _bootstrap_strength(
-    matches: list[dict], resamples: int, seed: int, field: list[float] | None = None
-) -> list[float]:
+def _bootstrap_strength(matches: list[dict], resamples: int, seed: int) -> list[float]:
     """Cluster bootstrap over matches, not games.
 
     Games inside one series share a map and an opponent build, so they are nowhere near
@@ -252,10 +251,9 @@ def _bootstrap_strength(
             cell = rows[round(match["opp_rating"], 3)]
             cell[0] += match["gf"]
             cell[1] += match["ga"]
-        cells = [(r, w, loss) for r, (w, loss) in rows.items()]
-        fit = _fit_strength(cells)
+        fit = _fit_strength([(r, w, loss) for r, (w, loss) in rows.items()])
         if fit is not None:
-            draws.append(_equilibrium(cells, fit, field) if field else fit)
+            draws.append(fit)
     return sorted(draws)
 
 
@@ -337,9 +335,10 @@ def _equilibrium(
     one-parameter answer, which is the right degenerate case. Opponents we have never played
     contribute the Elo prediction, since we know nothing else about them.
 
-    In practice this moves projections by -11 to +21 Elo, comfortably inside their intervals. It is
-    still worth doing: the alternative reports a number whose derivation assumes away the thing it
-    is most often wrong about.
+    Published as a sensitivity, not as the headline. Validated against the rating each bot actually
+    held during its unbroken ladder stints, this is out by 28 Elo on average where the plain
+    one-parameter fit is out by 6 -- at ~13 games per opponent the overdispersion driving it is
+    mostly sampling noise. Right idea, not enough data to estimate it.
     """
     dispersion = _overdispersion(current, strength)
     # Pseudo-games of pull toward the Elo prediction. Excess variance of zero means infinite pull
@@ -536,10 +535,25 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         ga = sum(r["ga"] for r in rows)
         rated = [r for r in rows if r["kind"] == "ladder"]
 
-        # The projection deliberately sees only games against builds still on the ladder. An
-        # opponent who has shipped twice since is a different bot, and counting those games would
-        # answer "how did this do against August's field", not "how would it do now".
-        live_rows = [r for r in rows if (r["opp"], r["opp_ver"]) in current_builds]
+        # The projection sees only rated games against builds still on the ladder.
+        #
+        # Two filters, two reasons. Retired builds are excluded because an opponent who has shipped
+        # twice since is a different bot. Unrated games are excluded because *we* choose those
+        # opponents, and we choose weak ones -- they average 88 Elo below us, against 4 on the
+        # ladder -- which would be harmless if Elo's curve were calibrated, and it is not. Across
+        # every match on the platform, a 100-point favourite scores 66.6% where the logistic
+        # predicts 62.2%, and a 200-point favourite 78.9% against 74.6%. The real curve is steeper
+        # than the 400-point scale, so games against weak opponents overperform the model and the
+        # fit reads that as enormous strength.
+        #
+        # That is not a small effect. It put steward_hardened_reinforced@f61245f at 1917 when its
+        # rated-only fit is 1878 and the rating it actually held all night averaged 1873, peaking
+        # at 1897 -- an "expected" rating it never once reached, which is what gave the bias away.
+        live_rows = [
+            r
+            for r in rows
+            if r["kind"] == "ladder" and (r["opp"], r["opp_ver"]) in current_builds
+        ]
         cells = defaultdict(lambda: [0, 0])
         for r in live_rows:
             cell = cells[round(r["opp_rating"], 3)]
@@ -565,14 +579,24 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         estimate = None
         if strength is not None and live_games >= MIN_GAMES_FOR_ESTIMATE:
             draws = _bootstrap_strength(
-                live_rows, BOOTSTRAP_RESAMPLES, seed=abs(hash(key)) % 100000,
-                field=active_ratings,
+                live_rows, BOOTSTRAP_RESAMPLES, seed=abs(hash(key)) % 100000
             )
             span = _interval(draws)
-            settles_at = _equilibrium(current_cells, strength, active_ratings)
+            # The headline is the single-parameter fit, not the matchup-aware fixed point.
+            #
+            # The fixed point is better theory -- a bot really can be held below its strength by an
+            # opponent it cannot beat and keeps drawing -- but it is worse practice here, and the
+            # only ground truth available says so. Checked against the rating each bot actually
+            # held during its unbroken stints, single theta is out by 6 Elo on average and the
+            # fixed point by 28, because it missed f61245f by 42. At ~13 games per opponent the
+            # overdispersion driving it is mostly sampling noise, and trusting it hands the
+            # projection to whichever opponent we happened to run hot against.
+            #
+            # Published as a sensitivity instead, with dispersion as a warning that a bot's results
+            # are lumpy. Revisit if cells ever get big enough to estimate a real variance component.
             estimate = {
-                "elo": settles_at,
-                "elo_if_purely_transitive": strength,
+                "elo": strength,
+                "elo_if_matchups_persist": _equilibrium(current_cells, strength, active_ratings),
                 "matchup_dispersion": _overdispersion(current_cells, strength),
                 "elo_lo": span[0] if span else None,
                 "elo_hi": span[1] if span else None,
