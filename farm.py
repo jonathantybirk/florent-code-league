@@ -82,6 +82,9 @@ def go_offline() -> None:
     fc.active_version = lambda: load_state().get("flagship_version") or 0  # type: ignore
     livefeed.load = lambda: feed                              # type: ignore[assignment]
     arms.newest_ratings_csv = lambda: FIXTURES / "ratings.csv"  # type: ignore[assignment]
+    # export_bot shells into the bot repo's git history, which an offline machine
+    # does not have; pretend the export succeeded so selection can be exercised
+    arms.export_bot = lambda name, commit, dest: dest          # type: ignore[assignment]
     log.info("offline: ladder, live feed and ratings come from fixtures/")
 
 
