@@ -596,9 +596,36 @@ active field` is an unweighted per-team average kept only as context.
 
 Neither is a pass mark. A bot rated exactly at its own strength scores under 50% whenever the teams
 around it are stronger than it — Elo already expects those losses, so its rating does not move.
-Whether a bot rises is projected Elo versus current rating, nothing else. Simulating the real rules
-confirms the fixed point: a bot of known strength settles within ±2 Elo of it from any starting
-rating, with an equilibrium wander of about ±24 Elo, so rating noise of that size means nothing.
+Whether a bot rises is projected Elo versus current rating, nothing else.
+
+### Why the projection is a fixed point and not a single parameter
+
+Under plain Elo, if one number described a bot then its equilibrium rating would equal that number
+whoever it played: at R = strength every term of the drift vanishes regardless of the opponent
+weights, and away from it every term shares a sign. Simulating the real rules agrees — a bot of
+known strength settles within ±2 Elo from any starting rating, wandering about ±24 Elo at
+equilibrium, so rating noise of that size means nothing.
+
+But that simulation draws wins from the logistic, so it assumes the thing it appears to prove. The
+assumption is testable and only approximately true: per-opponent results are about 1.5× more
+variable than binomial (pooled χ²/df = 1.48 across our rated bots, with `steward@e55aab5` and
+`steward_hardened_reinforced@c04e46e` individually overdispersed). Specific matchups do matter
+beyond rating.
+
+Once they do, the pairing kernel stops being decoration. A bot can sit well below its apparent
+strength purely because the ladder keeps drawing it against something it cannot beat, and no
+single-parameter model can express that. So `_equilibrium` solves the actual fixed point: expected
+score against each likely opponent taken from our record against *that* opponent, shrunk toward the
+Elo prediction in proportion to the measured overdispersion, weighted by the pairing kernel, with
+unplayed opponents contributing the Elo prediction. No overdispersion collapses it back to the
+one-parameter answer.
+
+The correction is worth −10 to +40 Elo on current bots — inside their intervals, but the largest
+single modelling choice on the page after the balance-era filter. One trap when reading the code:
+θ is fitted against each opponent's rating *at the time we played them*, while the projection needs
+the same records against their rating *now*, because that is what the pairing kernel returns.
+Keying the projection on historical ratings makes every lookup miss and the matchup term silently
+does nothing.
 
 ### Why it is a separate systemd unit
 

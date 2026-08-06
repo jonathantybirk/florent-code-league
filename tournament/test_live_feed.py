@@ -15,6 +15,8 @@ from tournament.live_feed import (
     _expected,
     _fit_strength,
     PAIRING_KERNEL,
+    _equilibrium,
+    _overdispersion,
     _pairing_weights,
     _pairing_score,
     _pre_epoch_counts,
@@ -85,6 +87,45 @@ def test_the_kernel_reaches_further_than_a_block_of_eight_could():
     """The observation that falsified the block model: a pairing eight ranks away."""
     assert max(PAIRING_KERNEL) == 11
     assert PAIRING_KERNEL[8] > 0, "we were drawn against a team eight places below us"
+
+
+def test_a_hard_counter_inside_the_pairing_range_drags_the_equilibrium_down():
+    """The objection that broke the one-parameter story.
+
+    A bot can have a perfectly respectable overall strength and still be dragged below it by one
+    opponent it never beats, provided the ladder keeps drawing them together. Under the
+    single-parameter model that is impossible by construction, which is exactly what was wrong
+    with it.
+    """
+    field = [1900.0, 1880.0, 1860.0, 1840.0, 1820.0, 1800.0, 1780.0, 1760.0, 1740.0, 1720.0]
+    even = [(r, 25, 25) for r in field[:5]]
+    fair = _equilibrium(even, 1840.0, field)
+
+    cursed = even + [(1860.0, 0, 40)]      # a near neighbour we simply cannot beat
+    haunted = _equilibrium(cursed, 1840.0, field)
+    assert haunted < fair - 5, "losing every game to a team we keep drawing must cost rating"
+
+
+def test_no_matchup_structure_collapses_to_the_one_parameter_answer():
+    """When results are pure Elo, the fixed point must reproduce plain strength."""
+    field = [1900.0, 1880.0, 1860.0, 1840.0, 1820.0, 1800.0, 1780.0, 1760.0]
+    strength = 1850.0
+    # Records generated to match the Elo prediction exactly, so dispersion is ~0.
+    cells = []
+    for r in field[:6]:
+        n = 100
+        wins = round(n * _expected(strength, r))
+        cells.append((r, wins, n - wins))
+    assert _overdispersion(cells, strength) < 0.5
+    assert math.isclose(_equilibrium(cells, strength, field), strength, abs_tol=12.0)
+
+
+def test_overdispersion_detects_matchup_structure():
+    field = [1900.0, 1850.0, 1800.0, 1750.0]
+    clean = [(r, round(40 * _expected(1830.0, r)), 40 - round(40 * _expected(1830.0, r)))
+             for r in field]
+    lumpy = [(1900.0, 40, 0), (1850.0, 0, 40), (1800.0, 40, 0), (1750.0, 0, 40)]
+    assert _overdispersion(clean, 1830.0) < _overdispersion(lumpy, 1830.0)
 
 
 def test_equilibrium_rating_equals_strength_whatever_the_pairing():
