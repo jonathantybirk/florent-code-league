@@ -7,6 +7,9 @@ The map dimensions carry the configuration -- a probe cannot be given arguments:
     N = (H - 10) // 4      healers   (team A, west Core)
     M = (H - 10) %  4      grinders  (team B, east Core)
     W = 24 Sentinel/no-ammo   25 Gunner/no-ammo   26 Sentinel/ammo   27 Gunner/ammo
+        28 Sentinel/no-ammo COLLAR: barriers on the N and S contact tiles, the
+           constructor garrisons W and heals the turret, and the N healers stand
+           OUTSIDE the contact ring at (11,2)/(11,4) healing the barriers
 
 The west side builds ONE turret at T=(12,3) facing EAST and parks N healers on its
 orthogonal neighbours; the east side parks M grinders on the remaining neighbours and
@@ -44,8 +47,12 @@ S_BEAT = 1      # turret's current round + 1  (freezes when the turret dies)
 S_ENGAGE = 2    # round the first heal landed, + 1
 S_ATK = 3       # turret attackable tiles: count * 16 + neighbour bitmask
 S_SHOTS = 4     # turret shots fired + 1
+S_OCC = 5       # contact census: friend_mask * 16 + enemy_mask over (E, N, S, W)
+S_BN = 6        # collar mode: north barrier hp + 1
+S_BS = 7        # collar mode: south barrier hp + 1
 S_HEAL = 8      # + healer index: cumulative heals landed, + 1
 S_FAIL = 12     # + healer index: cumulative rounds can_heal() was False, + 1
+S_BEAT_G = 8    # east team: + grinder index, that grinder's round + 1 (respawn probe)
 
 STEP = {
     (0, -1): Direction.NORTH,
@@ -53,6 +60,11 @@ STEP = {
     (1, 0): Direction.EAST,
     (-1, 0): Direction.WEST,
 }
+
+
+def _slots(mask):
+    out = "".join(n for bit, n in enumerate("ENSW") if mask & (1 << bit))
+    return out or "-"
 
 
 def config(ct):
@@ -66,6 +78,8 @@ class Player:
     def __init__(self):
         self.role = None
         self.west = None
+        self.step = 0
+        self.target = T
         self.path = None
         self.leg = 0
         self.built = False
@@ -73,6 +87,7 @@ class Player:
         self.heals = 0
         self.fails = 0
         self.hits = 0
+        self.blocked = 0
         self.engaged = False
         self.hidx = 0
         self.published = False
@@ -81,6 +96,7 @@ class Player:
         self.trace = []
         self.beats = []
         self.ti = {}
+        self.respawn = {}
         self.info = ""
         self.err = []
 
@@ -116,9 +132,10 @@ class Player:
 
         if self.west:
             plan = [(0, Position(3, 2))]
+            starts = (4, 10, 16) if w == 28 else (2, 4, 6)
             for i, y in enumerate((3, 5, 4)):
                 if i < healers:
-                    plan.append((2 + 2 * i, Position(3, y)))
+                    plan.append((starts[i], Position(3, y)))
         else:
             plan = []
             for i, y in enumerate((3, 4, 5)):
@@ -131,10 +148,25 @@ class Player:
             if ct.can_spawn(pos):
                 ct.spawn_builder(pos)
                 self.spawned.add(i)
+                self.respawn[i] = r
             break
+        else:
+            # A turret that shoots back kills its attackers; keep M grinders on the
+            # board so the ammo variants measure sustained pressure, not a one-off.
+            if not self.west and r >= 30:
+                for i, (_when, pos) in enumerate(plan):
+                    beat = ct.read_store(S_BEAT_G + i)
+                    if beat <= 0 or r - (beat - 1) <= 4:
+                        continue
+                    if r - self.respawn.get(i, -99) < 25:
+                        continue
+                    if ct.can_spawn(pos):
+                        ct.spawn_builder(pos)
+                        self.respawn[i] = r
+                    break
 
         if self.west:
-            if w >= 26 and ct.get_global_ammo() < 100 and ct.can_convert_ammo(40):
+            if w in (26, 27) and ct.get_global_ammo() < 100 and ct.can_convert_ammo(40):
                 ct.convert_ammo(40)
             self.trace.append(ct.read_store(S_HP) - 1)
             self.beats.append(ct.read_store(S_BEAT) - 1)
@@ -144,8 +176,8 @@ class Player:
                 ct.resign(self._report(ct, w, h, healers, grinders))
 
     def _report(self, ct, w, h, healers, grinders):
-        kind = "SENT" if w in (24, 26) else "GUN"
-        ammo = 1 if w >= 26 else 0
+        kind = "GUN" if w in (25, 27) else "SENT"
+        ammo = 1 if w in (26, 27) else 0
         hp = [v for v in self.trace]
         beat = self.beats
         alive_until = -1
@@ -185,13 +217,15 @@ class Player:
         return (
             "CFG %s N=%d M=%d %dx%d ammo=%d | BORN=r%d HP0=%d END=%d MIN=%d DEAD=r%d "
             "| TRACE(r%d..)=%s | ENGAGE=r%d HEALS=%d NOTI=%d SHOTS=%d ATK=%d/%d "
-            "| TIA=%s | %s | ERR=%s"
+            "| CONTACT f=%s e=%s COLLAR=%s/%s | TIA=%s | %s | ERR=%s"
             % (
                 kind, healers, grinders, w, h, ammo,
                 born, seq[0], seq[-1], min(seq), dead,
                 born, " ".join(parts) or "flat",
                 ct.read_store(S_ENGAGE) - 1, heals, fails,
                 max(0, ct.read_store(S_SHOTS) - 1), atk // 16, atk % 16,
+                _slots(ct.read_store(S_OCC) // 16), _slots(ct.read_store(S_OCC) % 16),
+                ct.read_store(S_BN) - 1, ct.read_store(S_BS) - 1,
                 ",".join("r%d:%d" % (k, self.ti[k]) for k in sorted(self.ti)),
                 self.info, ";".join(self.err),
             )
@@ -208,10 +242,19 @@ class Player:
             else:
                 self.role = {3: "gE", 4: "gN", 5: "gS"}.get(p.y, "idle")
             self.hidx = {"hW": 0, "hS": 1, "hN": 2}.get(self.role, 0)
+            collar = w == 28
+            self.target = T
+            if collar and self.role == "hW":
+                self.target = SLOT_N
+            elif collar and self.role == "hS":
+                self.target = SLOT_S
             self.path = {
-                "build": [Position(4, 2), Position(11, 2), SLOT_W],
-                "hW": [Position(4, 3), SLOT_W],
-                "hS": [Position(4, 5), Position(4, 6), Position(12, 6), SLOT_S],
+                "build": [Position(4, 2), Position(11, 2)] + ([] if collar else [SLOT_W]),
+                "hW": ([Position(4, 3), Position(4, 2), Position(11, 2)] if collar
+                       else [Position(4, 3), SLOT_W]),
+                "hS": ([Position(4, 5), Position(4, 6), Position(11, 6),
+                        Position(11, 4)] if collar
+                       else [Position(4, 5), Position(4, 6), Position(12, 6), SLOT_S]),
                 "hN": [Position(4, 4), Position(4, 0), Position(12, 0), SLOT_N],
                 "gE": [Position(w - 5, 3), SLOT_E],
                 "gN": [Position(w - 5, 4), Position(w - 5, 1),
@@ -219,6 +262,12 @@ class Player:
                 "gS": [Position(w - 5, 5), Position(w - 5, 7),
                        Position(12, 7), SLOT_S],
             }.get(self.role, [])
+
+        if self.role.startswith("g"):
+            # heartbeat while travelling too, so the Core does not double-spawn a
+            # replacement that is still walking back to the turret
+            ct.write_store(S_BEAT_G + {"gE": 0, "gN": 1, "gS": 2}[self.role],
+                           ct.get_current_round() + 1)
 
         if self.done:
             return
@@ -237,10 +286,28 @@ class Player:
                 d = STEP.get((dx, 0) if dx else (0, dy))
                 if d is not None and ct.can_move(d):
                     ct.move(d)
+                    return
+                # permanently blocked (a barrier collar, or a rival on the slot):
+                # a grinder must not idle -- chew whatever enemy building it touches
+                if not (self.role.startswith("g")
+                        and ct.get_current_round() >= ATTACK_START):
+                    return
+                self.blocked += 1
+                if self.blocked < 3:
+                    return
+                for dd in (Direction.EAST, Direction.NORTH,
+                           Direction.SOUTH, Direction.WEST):
+                    if ct.can_fire(p.add(dd)):
+                        ct.fire(p.add(dd))
+                        self.hits += 1
+                        break
                 return
 
         if self.role == "build":
-            kind = "SENT" if w in (24, 26) else "GUN"
+            kind = "GUN" if w in (25, 27) else "SENT"
+            if w == 28:
+                self._collar(ct)
+                return
             if not self.built:
                 ok = (ct.can_build_sentinel(T, Direction.EAST) if kind == "SENT"
                       else ct.can_build_gunner(T, Direction.EAST))
@@ -256,18 +323,20 @@ class Player:
             return
 
         if self.role.startswith("h"):
-            bid = ct.get_tile_building_id(T)
+            tgt = self.target
+            bid = ct.get_tile_building_id(tgt)
             if bid is None:
                 return
             r = ct.get_current_round()
             if not self.engaged:
                 hp = ct.get_hp(bid)
-                if hp <= ct.get_max_hp(bid) - HEAL_TRIGGER_DROP or r >= FORCE_HEAL_ROUND:
+                if (w == 28 or r >= FORCE_HEAL_ROUND
+                        or hp <= ct.get_max_hp(bid) - HEAL_TRIGGER_DROP):
                     self.engaged = True
                 else:
                     return
-            if ct.can_heal(T):
-                ct.heal(T)
+            if ct.can_heal(tgt):
+                ct.heal(tgt)
                 self.heals += 1
                 if not self.published:
                     self.published = True
@@ -279,12 +348,65 @@ class Player:
             return
 
         if self.role.startswith("g"):
-            if ct.get_current_round() < ATTACK_START:
+            r = ct.get_current_round()
+            if r < ATTACK_START:
                 return
             if ct.can_fire(T):
                 ct.fire(T)
                 self.hits += 1
+                return
+            # locked out of the contact ring: chew whatever enemy building is
+            # adjacent instead (the collar), rather than idling
+            for d in (Direction.EAST, Direction.NORTH,
+                      Direction.SOUTH, Direction.WEST):
+                q = p.add(d)
+                if ct.can_fire(q):
+                    ct.fire(q)
+                    self.hits += 1
+                    return
             return
+
+    def _collar(self, ct):
+        if self.step == 0:
+            if ct.can_build_barrier(SLOT_N):
+                ct.build_barrier(SLOT_N)
+                self.step = 1
+            return
+        if self.step == 1:
+            if ct.can_move(Direction.SOUTH):
+                ct.move(Direction.SOUTH)
+                self.step = 2
+            return
+        if self.step == 2:
+            if ct.can_build_sentinel(T, Direction.EAST):
+                ct.build_sentinel(T, Direction.EAST)
+                self.step = 3
+            return
+        if self.step == 3:
+            if ct.can_move(Direction.SOUTH):
+                ct.move(Direction.SOUTH)
+                self.step = 4
+            return
+        if self.step == 4:
+            if ct.can_build_barrier(SLOT_S):
+                ct.build_barrier(SLOT_S)
+                self.step = 5
+            return
+        if self.step == 5:
+            if ct.can_move(Direction.NORTH):
+                ct.move(Direction.NORTH)
+                self.step = 6
+            return
+        for slot, q in ((S_BN, SLOT_N), (S_BS, SLOT_S)):
+            bid = ct.get_tile_building_id(q)
+            ct.write_store(slot, (ct.get_hp(bid) + 1) if bid is not None else 0)
+        if ct.can_heal(T):
+            ct.heal(T)
+            self.heals += 1
+        else:
+            self.fails += 1
+        ct.write_store(S_HEAL + 2, self.heals + 1)
+        ct.write_store(S_FAIL + 2, self.fails + 1)
 
     # -------------------------------------------------------------- turret ---
     def _turret(self, ct):
@@ -301,8 +423,20 @@ class Player:
                 if (q.x, q.y) in tiles:
                     mask |= 1 << bit
             ct.write_store(S_ATK, len(tiles) * 16 + mask)
+        if r % 16 == 0:
+            mine = ct.get_team()
+            friend = enemy = 0
+            for bit, q in enumerate((SLOT_E, SLOT_N, SLOT_S, SLOT_W)):
+                uid = ct.get_tile_builder_bot_id(q)
+                if uid is None:
+                    continue
+                if ct.get_team(uid) == mine:
+                    friend |= 1 << bit
+                else:
+                    enemy |= 1 << bit
+            ct.write_store(S_OCC, friend * 16 + enemy)
         w = ct.get_map_width()
-        if w >= 26:
+        if w in (26, 27):
             for q in (SLOT_E, SLOT_N, SLOT_S, SLOT_W):
                 if ct.can_fire(q):
                     ct.fire(q)

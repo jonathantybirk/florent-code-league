@@ -43,6 +43,12 @@ condition**: deny the opponent titanium and workers rather than race to their Co
 - **A diagnostics suite** built on `ct.draw_indicator_line` / `ct.draw_indicator_dot`, which render
   into replays, plus offline replay analysis that flags idling, wasted actions, oscillation,
   dead-end routes and wrong-state selection with counts per game.
+- **Policy conditioned on map features, never on map identity.** The organisers have announced that
+  **half the map pool rotates weekly**, three rotations in total, the last on the 21st — four days
+  before finalists are picked. A parameter tuned to a named map therefore has an expected useful
+  life of about one week. A parameter tuned to a *property* — "Cores more than 20 walk-rounds
+  apart", "one dominant ore cluster", "few chokepoints" — survives every rotation and still
+  specialises, because it fires on exactly the maps that share the property.
 
 ## Capabilities
 
@@ -61,6 +67,9 @@ condition**: deny the opponent titanium and workers rather than race to their Co
   sealing, spawn-ring blocking, friendly-fire, action waste).
 - `diagnostics`: indicator overlays plus offline replay analysis that surface suboptimal behaviour
   numerically.
+- `map-feature-policy`: selecting behaviour parameters from measurable map properties rather than
+  map identity, and the fitting pipeline that lets a frozen final pool be specialised to in days
+  rather than built for.
 
 ### Modified Capabilities
 

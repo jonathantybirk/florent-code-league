@@ -119,10 +119,26 @@ class Player:
     def _try(self, fn, *args):
         """Call fn, returning a printable result or the verbatim exception."""
         try:
-            v = fn(*args)
-            return "ok" if v is None else show(v)
+            return show(fn(*args))
         except Exception as exc:
             return "%s<%s>" % (type(exc).__name__, str(exc)[:90])
+
+    def _occupant(self, ct, tile):
+        """Prove what is on the tile: entity id + type + team, for building and builder alike."""
+        bits = []
+        for getter in ("get_tile_building_id", "get_tile_builder_bot_id"):
+            try:
+                eid = getattr(ct, getter)(tile)
+            except Exception as exc:
+                bits.append("%s=%s" % (getter[9:], type(exc).__name__))
+                continue
+            if eid is None:
+                bits.append("%s=None" % getter[9:])
+            else:
+                bits.append("%s=%s/%s/%s" % (getter[9:], eid,
+                                             self._try(ct.get_entity_type, eid),
+                                             self._try(ct.get_team, eid)))
+        return "  ".join(bits)
 
     def _note(self, line):
         self.log.append(line)
@@ -179,8 +195,7 @@ class Player:
             "is_tile_passable=%s" % self._try(ct.is_tile_passable, tile),
             "is_tile_empty=%s" % self._try(ct.is_tile_empty, tile),
             "env=%s" % self._try(ct.get_tile_env, tile),
-            "building_id=%s" % self._try(ct.get_tile_building_id, tile),
-            "builder_id=%s" % self._try(ct.get_tile_builder_bot_id, tile),
+            self._occupant(ct, tile),
             "move_cd=%d" % ct.get_move_cooldown(),
         ]
         if d is None:
@@ -259,6 +274,50 @@ class Player:
         yield from self._measure("EMPTY", Position(7, 9), Direction.EAST)
         yield from self._measure("ORE_TITANIUM", Position(6, 8), Direction.NORTH)
         yield from self._measure("WALL", Position(5, 9), Direction.WEST)
+
+        # ---- trap: how far can the three predicates legally be called? ----
+        yield from self._idle_until_can_move()
+        ct = self.ct
+        here = ct.get_position()
+        ok_d, raise_d = set(), set()
+        for dx in range(-6, 7):
+            for dy in range(-6, 7):
+                p = Position(here.x + dx, here.y + dy)
+                if not (0 <= p.x < ct.get_map_width() and 0 <= p.y < ct.get_map_height()):
+                    continue
+                dsq = here.distance_squared(p)
+                try:
+                    ct.is_tile_passable(p)
+                    ok_d.add(dsq)
+                except Exception:
+                    raise_d.add(dsq)
+        self._note("VISION_GATE from %s vision_radius_sq=%d  is_tile_passable OK for d_sq in %s"
+                   % (show(here), ct.get_vision_radius_sq(), sorted(ok_d)))
+        self._note("VISION_GATE raises GameError for d_sq in %s ; is_in_vision(d_sq=20)=%s "
+                   "is_in_vision(d_sq=25)=%s ; len(get_nearby_tiles())=%s"
+                   % (sorted(raise_d),
+                      self._try(ct.is_in_vision, Position(here.x + 4, here.y + 2)),
+                      self._try(ct.is_in_vision, Position(here.x + 3, here.y + 4)),
+                      self._try(lambda: len(ct.get_nearby_tiles()))))
+
+        # ---- trap: does can_move conflate "impassable" with "still on move cooldown"? ----
+        yield from self._walk([(6, 10)])
+        yield from self._idle_until_can_move()
+        ct = self.ct
+        self._note("COOLDOWN pre-move  pos=%s move_cd=%d can_move(EAST)=%s"
+                   % (show(ct.get_position()), ct.get_move_cooldown(),
+                      self._try(ct.can_move, Direction.EAST)))
+        self._note("COOLDOWN post-move pos=%s move()=%s -> pos=%s move_cd=%d "
+                   "can_move(EAST)=%s (tile (8,10) is EMPTY)  second move()=%s -> pos=%s"
+                   % (show(ct.get_position()), self._try(ct.move, Direction.EAST),
+                      show(ct.get_position()), ct.get_move_cooldown(),
+                      self._try(ct.can_move, Direction.EAST),
+                      self._try(ct.move, Direction.EAST), show(ct.get_position())))
+        yield
+        ct = self.ct
+        self._note("COOLDOWN next round pos=%s move_cd=%d can_move(EAST)=%s"
+                   % (show(ct.get_position()), ct.get_move_cooldown(),
+                      self._try(ct.can_move, Direction.EAST)))
 
         # ---- lane row 10: one own building per stance, prop built to the NORTH ----
         yield from self._walk([(6, 10)])

@@ -1,4 +1,4 @@
-"""Build `maps/lab/duel.map26` -- the turret first-strike arena.
+"""Build `maps/lab/firstshot.map26` -- the turret first-strike arena.
 
 16x9, completely open (no walls, no ore). Horizontal (mirror-x) symmetry, so
 x -> 15 - x.
@@ -44,6 +44,6 @@ gm = GameMap(
     cores=[Core(entity_id=1, team=0, x=1, y=4), Core(entity_id=2, team=1, x=13, y=4)],
     symmetry=Symmetry.HORIZONTAL,
 )
-out = pathlib.Path(__file__).resolve().parent / "duel.map26"
+out = pathlib.Path(__file__).resolve().parent / "firstshot.map26"
 write_map(out, gm)
 print("wrote", out)

@@ -1,0 +1,1265 @@
+[
+ {
+  "key": "healer-vs-grinder",
+  "claimed": {
+   "question": "Can N friendly Builder Bots out-heal M enemy Builder Bots grinding a forward turret, and is a forward turret therefore holdable? (Task 1.1, fcode 2.3.6)",
+   "verdict": "CONFIRMED",
+   "headline": "Healing beats grinding exactly 4:1 in titanium and 2:1 in HP \u2014 one healer cancels two grinders for 1 Ti/round against their 4 Ti/round \u2014 so a forward turret escorted by 2 parked Builder Bots is mathematically unkillable by grinding, because a 1x1 turret has only 4 orthogonal contact tiles and 2 healers (+8 HP/round) always out-pace the at-most-2 grinders (-4 HP/round) that can still reach it.",
+   "numbers": [
+    {
+     "metric": "Grinder damage rate, per grinder in contact",
+     "value": "-2 HP/round (2 dmg per hit, 1 hit/round, 2 Ti/hit)",
+     "sample": "6 cells: (N=0,M=1/2/3) on both Sentinel and Gunner, 300 rounds each",
+     "probe": "grindheal on maps/lab/hg24x11-13 and hg25x11-13"
+    },
+    {
+     "metric": "Grinder damage vs Sentinel (40 HP) vs Gunner (25 HP)",
+     "value": "IDENTICAL -2/hit. Only time-to-kill differs: 20 rounds (Sentinel, 20 hits, 40 Ti) vs 13 rounds (Gunner, 13 hits, 26 Ti) for one grinder",
+     "sample": "hg24x11 died r44 with TRACE -2x19; hg25x11 died r37 with TRACE -2x12",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Heal on a BUILDING",
+     "value": "WORKS: +4 HP for 1 Ti, on Sentinel, Gunner and Barrier alike",
+     "sample": "all 13 no-ammo cells; e.g. hg24x15 recovered 30->40 at +2/round net",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Heal stacking within one round",
+     "value": "STACKS, fully simultaneous: 2 healers = +8 HP in the same round",
+     "sample": "hg24x20 (N=2,M=2) segment '+4x2' at r60-62 = +8 heal minus -4 grind; the preceding '+0x33' segment is 1 healer (+4) vs 2 grinders (-4) = 0",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Wasted healing at full HP",
+     "value": "ZERO. can_heal() returns False on a full-HP building, so surplus healers spend nothing",
+     "sample": "hg24x14 (N=1,M=0): HEALS=0, NOTI=240 over 240 rounds. hg24x19 (N=2,M=1): HEALS=270, NOTI=240 \u2014 the second healer never spent 1 Ti",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Break-even ratio",
+     "value": "1 healer exactly cancels 2 grinders (4 HP/round heal vs 4 HP/round damage). Net HP/round = 6k - 8 where k = contact tiles we hold",
+     "sample": "hg24x16 (N=1,M=2) held flat at 28 HP for 272 consecutive rounds, TRACE '+0x272'",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Ti/round to each side at the break-even point",
+     "value": "Defender 1.00 Ti/round (272 heals in 272 rounds); attacker 4.00 Ti/round (552 hits in 276 rounds). 4:1 in the defender's favour",
+     "sample": "hg24x16, 300 rounds. A_ti 442@r20 -> 869@r300 (rising); B_ti 1250 budget -> 80@r300 (falling)",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Who runs out of titanium first at break-even",
+     "value": "The ATTACKER, decisively. Run extended to 800 rounds: at ~r351 team B's grinding becomes intermittent, the turret recovers 28 -> 40 HP and holds. Final A_ti=1730, B_ti=6",
+     "sample": "hg24x16, 800-round run, TRACE '+0x323 +4 +0x2 +2 +4 ...'",
+     "probe": "grindheal (REPORT_ROUND temporarily 800)"
+    },
+    {
+     "metric": "Steady-state conversion of titanium into HP",
+     "value": "Passive income is 2.5 Ti/round. That buys 2.5 heals = +10 HP/round, or 1.25 attacks = -2.5 HP/round. Titanium buys repair at 4 HP/Ti and damage at 1 HP/Ti",
+     "sample": "derived from measured 1 Ti/heal, 2 Ti/hit; confirmed by exact B_ti reconciliation in every cell (e.g. hg24x11: 500 + 750 income - 30 builder - 40 grinding = 1180 = reported B_ti)",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Contact tiles on a 1x1 turret",
+     "value": "EXACTLY 4, and surplus bots are physically locked out \u2014 verified by in-engine census, not assumed",
+     "sample": "hg24x21 (N=2,M=3): CONTACT f=SW e=EN \u2014 the third grinder never reached contact, HP held at 40. hg24x25 (N=3,M=3): same. hg24x17 (N=1,M=3): CONTACT f=W e=ENS, all four tiles used, turret died r40",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Minimum escort that holds against ANY grinder count",
+     "value": "2 Builder Bots parked on 2 contact tiles: enemy gets at most 2 tiles, -4 HP/round vs +8 HP/round = +4 HP/round. 1 escort is NOT enough: enemy gets 3 tiles, -2 HP/round, turret dies",
+     "sample": "holds: (2,2),(2,3),(3,2),(3,3) all END=40 MIN=32 DEAD=-1 at r300. fails: (1,3) dead r40 Sentinel / r33 Gunner",
+     "probe": "grindheal on hg24x20/21/24/25 and hg24x17, hg25x17"
+    },
+    {
+     "metric": "Turret self-defence coverage",
+     "value": "Only 1 of its 4 contact tiles. Sentinel get_attackable_tiles()=5, Gunner=3, both masks = EAST only (the facing line)",
+     "sample": "ATK=5/1 on every width-24/26 run, ATK=3/1 on every width-25/27 run",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Cost of letting the turret shoot back instead of healing",
+     "value": "Ruinous. 66 Sentinel shots = 660 Ti of ammo (10 Ti/shot) to keep killing one 30 Ti grinder; A_ti bottomed at 44. It bought survival to r142 instead of r45 with zero healers, then died anyway",
+     "sample": "hg26x11 (Sentinel, ammo, N=0,M=1, grinder respawned on death): SHOTS=66, DEAD=r142, TIA r150:44",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Barrier collar on contact tiles",
+     "value": "Denies contact for 3 Ti/tile but only buys ~20 rounds alone: 2 barriers (30 HP each) cost the attacker 30 hits / 60 Ti to clear. With 2 healers behind it, holds indefinitely and bankrupts the attacker (B_ti 1250 -> 4)",
+     "sample": "hg28x13 (collar, N=0,M=3): both barriers cleared, CONTACT went W/ENS, turret dead r60. hg28x21 (collar, N=2,M=3): END=40 MIN=38 DEAD=-1, B_ti=4",
+     "probe": "grindheal"
+    }
+   ],
+   "probes": [
+    "bots/probes/grindheal/main.py \u2014 one bot played as BOTH sides; configuration encoded in map dimensions (H = 10 + 4N + M, W selects turret type / ammo / collar mode) because a probe cannot take arguments. The turret republishes its own HP into team store slot 0 every round; the west Core run-length-encodes the per-round delta and resigns the whole trajectory. A frozen heartbeat slot marks the death round.",
+    "maps/lab/mkgrind.py \u2014 generates the 80-arena hg<W>x<H>.map26 family: 24x20 open arena, Cores at (1,3) and (W-3,3), turret at (12,3), contact tiles W(11,3) N(12,2) E(13,3) S(12,4), all-EMPTY terrain so every cell has identical geometry.",
+    "Scratch runner: sweep.py (scratchpad/t11) \u2014 one run_game per cell, prints the resign message plus a_titanium / b_titanium so both economies reconcile.",
+    "Determinism check: 5 cells re-run after code edits produced byte-identical TRACE strings, so n=1 per cell is the full sample."
+   ],
+   "design_impact": "FORWARD TURRETS ARE HOLDABLE. The premise that a 40 Ti Builder Bot destroys a 310 Ti forward Sentinel is true only for an UNESCORTED turret, and the answer costs 20 Ti of healing, not a design change.\n\nThe rule to build into the bot: net HP/round on a forward turret = 6k - 8, where k is the number of the turret's 4 orthogonal tiles we occupy. k>=2 is positive, k=1 is -2, k=0 is -8.\n\nESCORT RATIO: 2 Builder Bots per forward turret, parked on 2 of its 4 orthogonal neighbours. That is the whole answer. Cost is 60 Ti of bodies once plus at most 2 Ti/round while actually under attack (0 Ti/round when undamaged, because can_heal is False at full HP). The enemy can then field at most 2 grinders for -4 HP/round against our +8 HP/round, and pays 4 Ti/round to our 2. A third escort adds nothing \u2014 measured (3,x) cells behave identically to (2,x).\n\nThree concrete consequences:\n\n1. Park the escort AT BUILD TIME, not on demand. In cells where healers walked in late they LOST the race for tiles: hg24x25 (N=3,M=3) reports CONTACT f=SW e=EN, so a grinder took the north tile and one of our three healers was locked out of its own turret. Whoever stands on the tile first owns it. The builder that constructs the turret should simply never leave.\n\n2. Do not buy ammo to defend the turret from grinders. A Sentinel covers only 1 of its 4 contact tiles (facing line, ATK mask = EAST only) and spends 10 Ti/shot, ~30 Ti per grinder killed, versus 1 Ti/round for a healer that covers the tile permanently. Reserve ammo for the Core-killing job it is for.\n\n3. Grinding an escorted building is a 4:1 losing exchange, which makes \"send builders to chew their turret\" a trap we should walk the OPPONENT into and never fall into ourselves. Send grinders only against buildings we can see are unescorted. Conversely, a forward turret that survives is a titanium pump: every 2 Ti they spend attacking it costs us 0.5 Ti to undo.\n\nExtrapolation to be tested, not assumed: a Core is 2x2, so it has 8 orthogonal contact tiles and the arithmetic becomes 6k - 16, i.e. 3 healers minimum to hold a Core against a full grind ring. Do not reuse the \"2 escorts\" number for Core defence.",
+   "caveats": "1. THE BIGGEST HOLE: Launchers are untested here and are the obvious counter to a parked escort. A Launcher (20 Ti, r^2=26) picks up EITHER team's Builder Bot, so one enemy Launcher may be able to throw our garrison off its contact tiles and re-open the ring for free. Everything above assumes the escort cannot be displaced. This should be the very next probe \u2014 if a Launcher can evict a garrison, the escort ratio has to be re-derived.\n\n2. No ore on the lab arenas, so both economies are pure passive Core income (10 Ti / 4 rounds, verified). The absolute bankruptcy rounds (attacker broke at ~r351) scale with harvester income and are not transferable; the PER-HIT and PER-HEAL costs (2 Ti / 1 Ti) and the 4:1 exchange ratio are structural and are.\n\n3. Turret facing was fixed EAST in all runs; Gunner rotation (10 Ti) was never exercised. The ATK mask result \u2014 turret self-defence reaches exactly 1 of 4 contact tiles \u2014 is therefore a statement about a fixed facing, not about a rotating Gunner.\n\n4. The (2,2) trace shows an unmodelled quirk of intra-round ordering: one healer engaged at r27 and the other only at the forced round 60, because units run in a fixed order within a round and only the healer running AFTER the grinders ever observed the dipped HP. The physics is unaffected (the +4/round segment with both healing is direct evidence of stacking), but a real bot must not gate healing on a threshold read at an arbitrary point in the turn order \u2014 just heal whenever can_heal is True, which costs nothing at full HP.\n\n5. Every cell is n=1. That is the complete sample because the engine is deterministic (already established in commit 8cb0867 and re-confirmed here: five cells re-run after source edits produced byte-identical traces).\n\n6. No CPU-time claims are made \u2014 get_cpu_time_elapsed() returns 0 on this machine.\n\n7. The collar-mode reports label themselves \"CFG GUN ... ammo=1\" in the first width-28 run; that was a cosmetic bug in the label derivation, fixed before the final width-28 runs quoted above. ATK=5/1 and SHOTS=0 confirm those runs were an unfired Sentinel throughout."
+  },
+  "verified": {
+   "question": "Can N friendly Builder Bots out-heal M enemy Builder Bots grinding a forward turret, and is a forward turret therefore holdable? (Task 1.1, fcode 2.3.6)",
+   "verdict": "REFUTED",
+   "headline": "The arithmetic half is exactly right (4:1 in titanium, 2:1 in HP, net HP/round = 6k - 8 where k is contact tiles held) and every one of the 11 grindheal cells I re-ran reproduced byte-identically -- but \"a forward turret escorted by 2 parked Builder Bots is mathematically unkillable\" is false: the escort only holds 2 tiles because grindheal hard-assigned disjoint slots, and when both sides race for the same 4 tiles on a genuinely forward turret the enemy arrives 3 rounds earlier, takes E/N/S, and the turret dies at -2 HP/round on round 32 with the 2nd and 3rd escorts standing uselessly outside (hg28x17 and hg28x21 identical, DEAD=r32).",
+   "numbers": [
+    {
+     "metric": "Heal-vs-grind exchange rate, re-derived from the engine not from a probe",
+     "value": "HEAL_AMOUNT=4 / BUILDER_BOT_HEAL_COST=1 vs BUILDER_BOT_ATTACK_DAMAGE=2 / BUILDER_BOT_ATTACK_COST=2 -> 4:1 titanium, 2:1 HP. CONFIRMED.",
+     "sample": "direct read of fcode 2.3.6 GameConstants, n/a",
+     "probe": "none -- .venv/Scripts/python.exe -c 'from fcode import GameConstants'"
+    },
+    {
+     "metric": "Reproducibility of the original finding",
+     "value": "11 of 11 grindheal cells reproduced the claimed resign string exactly, including HEALS/NOTI/TRACE/DEAD/CONTACT/SHOTS",
+     "sample": "hg24x14,16,17,19,20,21,25; hg25x17; hg26x11; hg28x13,21 -- 1 run each (engine deterministic)",
+     "probe": "grindheal re-run via scratchpad vsweep.py"
+    },
+    {
+     "metric": "Contact tiles on a 1x1 turret, and that surplus bots are locked out",
+     "value": "EXACTLY 4, orthogonal only. Confirmed independently of the probe by the official rules: Builder Bot action range is 'Orthogonally adjacent tile only (Build, Attack, Heal, Destroy - no radius)'",
+     "sample": "docs/official/docs/game-rules-builder-bot.txt + census CONTACT fields in all 11 re-runs",
+     "probe": "grindheal + docs"
+    },
+    {
+     "metric": "Break-even formula",
+     "value": "Net HP/round = 6k - 8, k = contact tiles the defender holds. k=1 vs 3 grinders = -2/round; k=2 vs 2 grinders = +4/round. CONFIRMED.",
+     "sample": "hg24x16 '+0x272' at k=1/M=2; hg24x17 '-2x13' dead r40 at k=1/M=3; hg24x20,21,25 all END=40 MIN=32 at k=2",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "THE REFUTATION -- forward turret, both sides commit at round 0, enemy on private lanes",
+     "value": "Enemy holds E, N and S; the escort gets only W. -6 heal-adjusted to -2 HP/round, turret DEAD at r32. Sending a 2nd or 3rd escort changes NOTHING: identical trace, they never park.",
+     "sample": "hg28x17 (N=1,M=3) and hg28x21 (N=2,M=3), Tx=17: both 'OCC r17:f=W/e=ENS | TRACE=-2x15 | DEAD=r32', byte-identical across a repeat run",
+     "probe": "vgrind (bots/probes/vgrind/main.py)"
+    },
+    {
+     "metric": "Race margin that decides it",
+     "value": "Enemy's N-bound grinder needs 10 moves from its spawn ring to (17,2); the escort needs 14. Enemy parks ~r11, escort arrives r14-15 and finds only W free. A 3-round deficit flips the turret from unkillable to dead.",
+     "sample": "hg28x17, PARK b0=W@r15 vs enemy census e=ENS already settled at the first census round r17",
+     "probe": "vgrind"
+    },
+    {
+     "metric": "Control -- same enemy policy, MIDFIELD turret (Tx=12)",
+     "value": "Escort wins the race, holds N and W (and S when a 3rd is sent); enemy gets S and E only. Turret holds at 36-40 HP for 200 rounds. This is the regime grindheal actually measured.",
+     "sample": "hg26x17 (N=1,M=3) END=36 MIN=36 DEAD=-1; hg26x21 (N=2,M=3) END=38 MIN=38 DEAD=-1; hg26x19 END=40 MIN=40",
+     "probe": "vgrind"
+    },
+    {
+     "metric": "Control -- FORWARD turret but the enemy only reacts after it is built (round 20)",
+     "value": "Escort holds N, S and W; enemy gets E only. END=38-40, DEAD=-1. So forwardness alone is not fatal -- simultaneous commitment is.",
+     "sample": "hg27x17 (N=1,M=3) END=38 MIN=38; hg27x21 (N=2,M=3) END=40 MIN=40",
+     "probe": "vgrind"
+    },
+    {
+     "metric": "The original probe's own data already contains the losing case",
+     "value": "grindheal reached CONTACT e=ENS (3 enemy tiles) in every N=1,M=3 cell and the turret died -- r40 Sentinel, r33 Gunner. The N=2 cells never allowed it because the slot table (healers W,S,N / grinders E,N,S) made a 3-tile enemy arithmetically impossible.",
+     "sample": "hg24x17 DEAD=r40, hg25x17 DEAD=r33, both re-run",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Wasted escort titanium when the race is lost",
+     "value": "60 Ti (2 extra Builder Bots) bought exactly zero HP: hg28x21's 3-escort trace is identical to hg28x17's 2-escort trace, both DEAD=r32",
+     "sample": "hg28x21 PARK b1=-@r-1 b2=-@r-1 (never reached a contact tile)",
+     "probe": "vgrind"
+    },
+    {
+     "metric": "Cost of shooting back instead of healing (claim re-checked)",
+     "value": "Reproduced exactly: 66 Sentinel shots, 660 Ti of ammo, turret still dead at r142, defender titanium bottomed at 44 on r150",
+     "sample": "hg26x11 (Sentinel, ammo, N=0, M=1)",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Barrier collar (claim re-checked)",
+     "value": "Reproduced exactly: collar + 2 healers END=40 MIN=38 DEAD=-1 with attacker titanium down to 4; collar with no healers cleared and the turret died r60",
+     "sample": "hg28x21 B_ti=4; hg28x13 DEAD=r60",
+     "probe": "grindheal"
+    },
+    {
+     "metric": "Harness trap found while verifying",
+     "value": "ct.is_tile_passable(pos) RAISES on an out-of-vision tile. Because probes wrap run() in try/except, this silently makes every bot inert for the whole game -- my first vgrind run reported 'TURRET NEVER BUILT' with 2 units alive and no error text.",
+     "sample": "hg24x15 and hg26x15, first vgrind revision",
+     "probe": "vgrind"
+    }
+   ],
+   "probes": [
+    "bots/probes/vgrind/main.py -- NEW. Both teams run the same greedy policy: claim the nearest contact tile with no bot on it, walk there, park, then heal (west) or grind (east). Removes grindheal's pre-assigned disjoint slots, which is where the 'enemy gets at most 2 tiles' premise was hiding. Map width selects (turret x, enemy start round, escort start round, enemy-deterministic flag): 24=(12,0,0,0) 25=(17,0,0,0) 26=(12,0,0,1) 27=(17,20,0,1) 28=(17,0,0,1). Height still encodes N and M as H = 10 + 4N + M. Bdet=1 routes the three grinders down private lanes to N/S/E so arrival order reflects travel distance rather than a head-on shoving match in row 3.",
+    "bots/probes/grindheal/main.py -- UNMODIFIED, re-run for reproduction.",
+    "maps/lab/hg<W>x<H>.map26 -- UNMODIFIED, the existing 80-arena family. vgrind reuses it; no new maps were needed.",
+    "Scratch runner: C:/Users/edlun/AppData/Local/Temp/claude/.../scratchpad/vsweep.py -- deletes every bots/ __pycache__ before each run_game, prints resign_message plus a_titanium/b_titanium/units/buildings."
+   ],
+   "design_impact": "Keep the arithmetic, throw away the word \"mathematically\". The escort works, but it is a footrace, not a theorem, and the bot has to be built around the race rather than around the ratio.\n\n1. Measure TILES HELD, not escorts sent. The threshold is k >= 2 contact tiles, and \"2 parked Builder Bots\" equals \"2 tiles\" only if both bots actually arrive first. Every extra escort beyond the tiles you can occupy is 30 Ti of pure waste (hg28x21 proves it: 3 escorts, identical death round to 2).\n\n2. Site the turret by ARRIVAL TIME, not by aggression. Build only where your escorts reach the contact tiles before the enemy's grinders. Escorts must leave with the constructor, not follow it. On the lab geometry the flip happened between Tx=12 (escort parks r10, holds) and Tx=17 (escort parks r15, enemy parked r11, dead r32).\n\n3. There is no relief operation. Builder Bots cannot attack units, so once the enemy has parked on 3 tiles you cannot evict them with builders at any cost -- your relief force stands adjacent and does nothing. Eviction needs a Launcher (r^2=26, picks up either team's builder) or a turret with ammo, and the ammo route is measured-ruinous at 660 Ti for 66 Sentinel shots. Prefer conceding the turret to feeding it.\n\n4. Turn the geometry around and use it defensively. The whole result is driven by contact-tile count, so a turret sited in a wall pocket with only 2 orthogonal neighbours needs just 1 escort to be unkillable by grinding, and one with 1 neighbour needs none. Siting for low contact-tile count is strictly better than siting forward and paying for escorts. (Geometric consequence of the verified orthogonal-only action rule; I did not build a walled arena to measure it.)\n\n5. Do not carry this to the Core. A 2x2 Core has 8 orthogonal contact tiles, so the 2-escort rule does not transfer -- 2 escorts cover a quarter of it, and the break-even there is k >= 6 of 8.",
+   "caveats": "What I could NOT break, and where my own test is soft:\n\n- Nothing in the mechanical claims is stale or fabricated. HEAL_AMOUNT, BUILDER_BOT_HEAL_COST, BUILDER_BOT_ATTACK_DAMAGE and BUILDER_BOT_ATTACK_COST come straight out of 2.3.6 GameConstants, the orthogonal-only action range comes from docs/official/docs/game-rules-builder-bot.txt, and all 11 re-run cells matched. No zeros-from-__pycache__, no missing spawns (unit counts reconcile), no pre-2.3.4 numbers.\n\n- My enemy is hand-routed, and that cuts both ways. With both sides on the naive greedy policy the three grinders bunch on the nearest tile and only ever claim 2, which flatters the original claim; giving them private lanes is what exposes the loss. A real rival will be somewhere between. The honest statement is that the outcome is decided by arrival order and both orderings are reachable, NOT that the enemy always wins.\n\n- The forwardness threshold (between Tx=12 and Tx=17 on this arena) is specific to hg geometry: all-EMPTY terrain, spawn rings at x=3 and x=W-4. On a real map walls change travel distance and can also remove contact tiles. I did not build a walled arena.\n\n- Untested counters I did not have time to measure: Launcher eviction of a parked escort, and an enemy barrier dropped on a contact tile before the escort arrives (3 Ti to deny a tile, which would make the race even harder to win). Both should be probed before anything ships.\n\n- No tournament sweeps were run and no timing claims are made (Windows get_cpu_time_elapsed() returns 0).\n\n- Scope note: \"unkillable by grinding\" is correctly scoped in the original -- a parked escort genuinely cannot be removed by another Builder Bot. The failure is upstream of that, in getting the escort parked at all."
+  }
+ },
+ {
+  "key": "sentinel-first-strike",
+  "claimed": {
+   "question": "Is the Sentinel duel decided by build order? (Task 1.2 \u2014 re-verify the ascending-global-entity-id turn order on fcode 2.3.6, measure the HP payoff of arriving first, run Gunner-vs-Gunner as a control, and test whether both turrets can die on a simultaneous kill.)",
+   "verdict": "CONFIRMED",
+   "headline": "Build order decides the Sentinel duel completely \u2014 the turret with the lower global entity id fires first and survives at exactly 4/40 HP in 11/11 configurations \u2014 but a head start beyond winning the tie is worth 0 HP for a Sentinel and exactly +7 HP (one free shot) for a Gunner, because entity ids are a strictly ascending never-recycled counter and there is nothing to shoot at until the enemy turret exists.",
+   "numbers": [
+    {
+     "metric": "Turn order re-verified on 2.3.6: ascending GLOBAL entity id across both teams, with ids genuinely interleaved. du_s_af ids: 1=coreA 2=coreB 3=builderA 4=builderB 5=turretA 6=turretB -> team A's turret (id 5) kills at round 25, A survives 4/40. du_s_bf (B's core spawns one round earlier) ids: 3=builderB 4=builderA 5=turretB 6=turretA, i.e. team-by-id = A,B,B,A,B,A -> team B's turret (id 5) kills at round 25, B survives 4/40. Both Sentinels built on the SAME round (20) in both runs, so creation round is identical and only the id differs.",
+     "value": "winner flips with spawn order; 12/12 games consistent, byte-identical over 3 repeats",
+     "sample": "6 configs (du_s_af, du_s_bf, du_g_af, du_g_bf reported from side A; du_s_afB, du_s_bfB reported from side B) x up to 4 runs = 18 games",
+     "probe": "du_s_af / du_s_bf / du_g_af / du_g_bf / du_s_afB / du_s_bfB on maps/lab/firstshot.map26"
+    },
+    {
+     "metric": "Entity ids are a strictly ascending global counter and are NEVER recycled. Barrier built -> id 4; destroyed and rebuilt on the SAME tile -> id 5 (not 4); third barrier -> 6; destroy id 5 then build -> 7. Builders: id 3, then id 8 spawned at r20, that builder self-destructs at r23, next spawn at r26 -> id 9 (not 8).",
+     "value": "0 reuses in 7 create-after-delete events",
+     "sample": "1 game vs noop",
+     "probe": "idrec"
+    },
+    {
+     "metric": "Consequence: 'built one round LATER but with a lower entity id' is UNCONSTRUCTIBLE. Creation order == id order == firing order, with no exception available in-engine. Within a single round the same holds: a turret built by a lower-id builder is created first and gets the lower id.",
+     "value": "0 counterexamples found",
+     "sample": "idrec (7 events) + 33 duel games in which every turret id matched its build order",
+     "probe": "idrec + the du_* battery"
+    },
+    {
+     "metric": "An entity created during round r is TARGETABLE that round but does not take its own turn until round r+1. Turret first-action round == build round + 1 in every game where the reporting side built. Direct evidence: du_g_m1, A's Gunner (built r19) shot B's Gunner at r20, the round B's Gunner was created (25 -> 18) and B did not shoot back that round (A stayed at 25).",
+     "value": "first_action = build_round + 1, 34/34 games",
+     "sample": "34 games",
+     "probe": "du_g_m1 / du_s_m1 / whole du_* battery"
+    },
+    {
+     "metric": "SENTINEL head-start payoff (40 HP / 18 dmg / cooldown 2 = a shot every 2 rounds, 3 shots to kill; turrets 3 tiles apart). h=0 with the lower id: WIN, survivor 4/40. h=0 with the higher id: LOSE. h=1,2,3,4,6,8 with B early: WIN, survivor 4/40, kill on round 24. h=1,3,4 with A early (mirror): WIN, survivor 4/40, kill on round 25.",
+     "value": "survivor HP = 4/40 in 11/11 configurations; head start buys the WIN, not HP",
+     "sample": "11 configs, 1 deterministic game each (4 of them repeated 3x, identical)",
+     "probe": "du_s_af, du_s_bf, du_s_h1..h8, du_s_m1/m3/m4"
+    },
+    {
+     "metric": "GUNNER control (25 HP / 7 dmg / cooldown 1 = a shot every round, 4 shots to kill). h=0 with the lower id: WIN, survivor 4/25. h=1,2,3,4,6,8 either side: WIN, survivor 11/25 \u2014 identical for every h.",
+     "value": "one round of head start = +7 HP (11/25 vs 4/25); rounds 2 through 8 add 0 more",
+     "sample": "11 configs, 1 deterministic game each",
+     "probe": "du_g_af, du_g_bf, du_g_h1..h8, du_g_m1/m3/m4"
+    },
+    {
+     "metric": "Simultaneous kill is IMPOSSIBLE. du_s_af round 25: both Sentinels at 4/40, both off cooldown (both last fired r23, cooldown 2), both teams holding 320+ ammo. Turret A (id 5) fired (shots=3, lastfire=25); turret B was gone at the start of round 26 and B's own store (du_s_afB) records shots=2, lastfire=23 \u2014 it never took its ready round-25 shot. Survivor A finished at 4/40, untouched that round.",
+     "value": "0 mutual kills in 22 duels; every duel ended exactly one dead, one alive",
+     "sample": "22 duel-mode games (11 Sentinel + 11 Gunner) plus the 2 loser-side reports",
+     "probe": "du_s_af + du_s_afB (loser-side confirmation)"
+    },
+    {
+     "metric": "Cadence and HP re-measured on 2.3.6 \u2014 the numbers in llm-slop-analysis/elias/exploits/sentinel-verdict.md (30 HP, cooldown 3) are STALE. Sentinel: 40 HP, HP trace 40 -> 22 -> 4 -> dead, shots landed at rounds 21,23,25,...,59 = 20 shots. Gunner: 25 HP, trace 25 -> 18 -> 11 -> 4 -> dead, one shot per round.",
+     "value": "Sentinel fires every 2 rounds, Gunner every 1",
+     "sample": "du_s_v0 (20 shots over rounds 21-59) + all 22 duel traces",
+     "probe": "du_s_v0 / du_g_v0"
+    },
+    {
+     "metric": "A Sentinel WILL fire at an empty tile; a Gunner will not. Sentinel at (6,4) EAST: 5 attackable tiles, all unoccupied (oc00000), can_fire True on all five (cf11111), fire() succeeded, global ammo -10. Gunner at (6,3) EAST: 3 attackable tiles, all unoccupied, can_fire False on all three (cf000).",
+     "value": "Sentinel cf=5/5 True on empty ground at 10 ammo/shot; Gunner cf=0/3",
+     "sample": "1 game vs noop, plus du_s_v0 where a Sentinel burned 17 extra shots (170 ammo) over 34 rounds after its target died",
+     "probe": "emptyfire (raw: SENT[n5 cf11111 oc00000 fy d10] GUN[n3 cf000 oc000 fn d0])"
+    },
+    {
+     "metric": "The void shot is not free: in du_s_v4 the Sentinel's empty-tile firing left it on cooldown on the round the enemy turret was created, costing it the free opening shot \u2014 kill slipped from round 24 (du_s_h4, strict targeting) to round 25.",
+     "value": "1 lost opening shot + ~5 wasted shots (50 ammo) per engagement",
+     "sample": "du_s_v4 vs du_s_h4, identical geometry and timing",
+     "probe": "du_s_v4 / du_s_h4"
+    },
+    {
+     "metric": "DENIAL is where extra head start actually pays, and only for the Sentinel. With free-fire targeting, a Sentinel built 6+ rounds early kills the enemy builder standing in its build slot and the enemy turret is NEVER built (report shows turret id = x, build round = x, a_units = 0). h=4 -> no denial, normal duel. h=5 -> builder built the turret and then died. Mirror runs with the sides swapped give the same threshold.",
+     "value": "6-round Sentinel head start = total turret denial; 5/5 games at h>=6 denied, 0/2 at h<=4",
+     "sample": "8 Sentinel free-fire configs (du_s_f4/f5/f6/f7/f8/f12, du_s_fm6, du_s_fm8)",
+     "probe": "du_s_f6, du_s_f7, du_s_f8, du_s_fm6, du_s_fm8"
+    },
+    {
+     "metric": "A Gunner never denies, at any head start. Its 3-tile line stops one tile short of the tile the enemy builder must stand on to build at a range-3 standoff (distance 4); the Sentinel's 5-tile line covers it. Attackable-tile counts measured in-engine: Sentinel 5, Gunner 3.",
+     "value": "0/5 denials at h = 4, 6, 8, 12 and mirrored h = 8",
+     "sample": "5 Gunner free-fire configs (du_g_f4, du_g_f6, du_g_f8, du_g_f12, du_g_fm8)",
+     "probe": "du_g_f8 / du_g_f12 / du_g_fm8"
+    }
+   ],
+   "probes": [
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/maps/lab/mkfirstshot.py \u2014 builds the arena",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/maps/lab/firstshot.map26 \u2014 16x9 open, mirror-x, Cores at (1,4)/(13,4), turret tiles (6,4)/(9,4) exactly 3 apart on a shared row",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/_gen_firstshot.py \u2014 stamps out all 82 du_* probe dirs from one template",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/_run_firstshot.py \u2014 runs a du_<tag>_a vs du_<tag>_b pair and prints the resign message plus the full result dict",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_s_af_a \u2014 Sentinel duel, team A spawns first (baseline)",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_s_bf_a \u2014 Sentinel duel, team B spawns first (the id-interleave discriminator)",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_s_afB_b \u2014 same duel reported from the losing side, confirming the id table",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_s_h1_a .. du_s_h8_a, du_s_m1_a/m3/m4 \u2014 Sentinel head-start sweep",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_g_af_a .. du_g_m4_a \u2014 Gunner control sweep",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_s_f6_a, du_s_f8_a, du_s_fm6_a, du_s_fm8_a \u2014 free-fire builder-denial threshold",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_s_v0_a, du_g_v0_a \u2014 empty-tile firing observed in a live duel",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/idrec/main.py \u2014 entity-id recycling",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/emptyfire/main.py \u2014 direct can_fire()/fire() on empty ground for both turret types"
+   ],
+   "design_impact": "1. \"BUILD FIRST\" IS A WIN CONDITION, but only because build order and entity id are the same thing. Ids are a strictly ascending global counter, never recycled, shared across both teams; the turret that exists first holds the lower id and therefore fires first for the rest of the match. There is no way to be late and still shoot first. 2. THE HP PAYOFF IS CAPPED AT ONE FREE SHOT and it is taken on the round the enemy turret is created (a fresh entity is shootable that round but does not act until the next). Gunner: 1 round of head start = +7 HP (survivor 11/25 instead of 4/25); rounds 2-8 add nothing. Sentinel: +0 HP at any head start \u2014 the survivor ends at 4/40 in all 11 configurations, because 3 shots kill and the loser lands 2 either way. So in a pure turret-vs-turret standoff, do NOT trade siting quality for arrival rounds beyond winning the tie: round 1 of head start is worth everything (it flips the duel), rounds 2 through 8 are worth zero. 3. WHERE EXTRA HEAD START PAYS IS DENIAL, AND ONLY FOR THE SENTINEL. Six rounds of Sentinel head start with fire on the tile the enemy builder must occupy kills that builder in its build slot and the enemy turret is never built at all (5/5 games at h>=6). The threshold is exactly 3 shots at cooldown 2 landing before the enemy's build round. A Gunner cannot do this at any head start: its 3-tile line stops one tile short of the builder's standing tile at a range-3 standoff. Turret siting should therefore optimise for a Sentinel whose 5-tile line covers the tiles an enemy builder must stand on, not merely the enemy turret tile. 4. NEVER CALL fire() ON A SENTINEL WITHOUT CHECKING THE TILE HOLDS AN ENEMY. can_fire() returns True on empty ground for a Sentinel (5/5 empty tiles) and fire() succeeds, burning 10 ammo; a Gunner correctly returns False. Worse than the ammo, the void shot puts the Sentinel on cooldown so it misses the free opening shot when the enemy turret finally appears \u2014 measured as the kill slipping from round 24 to round 25. Gate on get_tile_building_id()/get_tile_builder_bot_id() being non-None and enemy-owned, then can_fire(). 5. NO MUTUAL DESTRUCTION EXISTS. Resolution is strictly sequential, so any \"we both die\" contingency in combat logic is dead code \u2014 the lower-id unit always survives the exchange. 6. MIRRORED SCORING IS MANDATORY. On a symmetric map with symmetric openings, team A's Core is id 1, so its builder and then its turret both hold the lower id and team A wins every mirror duel. 7. OPENING TEMPO IS THE CHEAPEST LEVER IN THE GAME: one round earlier on the Core's first spawn propagates to every derived unit's id for the whole match.",
+   "caveats": "SCOPE: every number comes from one purpose-built open arena (maps/lab/firstshot.map26, 16x9, no walls or ore, mirror-x symmetric) with the two turrets exactly 3 tiles apart on a shared row and facing each other. The denial result depends on the enemy builder's standing tile falling inside the Sentinel's 5-tile line, which holds at a range-3 standoff but need not hold on real maps \u2014 that is the one result that must be re-measured on tournament geometry before it is relied on. DETERMINISM: three repeats of the four key configs produced byte-identical resign strings, so n=1 per configuration is a complete sample rather than a single draw. BOTH BOTS ARE MINE: this measures engine mechanics only, not any rival's behaviour, and nothing here is opponent-specific. TRAP FOUND: maps/duel.map26 already exists as a tournament map, so a lab map of the same name is silently shadowed by tools/runprobe.py's lookup order (maps/ before maps/lab/) \u2014 this cost one debugging cycle and is why the arena is named firstshot. SECOND TRAP: run_game's a_buildings/b_buildings counters did not track the duel outcome (the duel WINNER reported a_buildings=0), so all HP and death data here comes from in-engine get_hp() relayed through the store slots, not from the result dict; do not trust those counters. THIRD TRAP: resign_message is truncated at 499 characters \u2014 the first version of this battery silently lost most of its trace to that cap. STALE DOC CORRECTED: llm-slop-analysis/elias/exploits/sentinel-verdict.md states the Sentinel has 30 HP and cooldown 3; on 2.3.6 it is 40 HP and a shot every 2 rounds, both re-measured here. NO TIMING CLAIMS: get_cpu_time_elapsed() returns 0 on this machine, so nothing above is a CPU measurement. NOT RUN: no tournament sweeps were run, per the standing instruction about CPU contention."
+  },
+  "verified": {
+   "question": "Is the Sentinel duel decided by build order? (Task 1.2 \u2014 re-verify ascending-global-entity-id turn order on fcode 2.3.6, measure the HP payoff of arriving first, run Gunner-vs-Gunner as a control, and test whether both turrets can die on a simultaneous kill.)",
+   "verdict": "REFUTED",
+   "headline": "Every measured number in the claim reproduces exactly \u2014 lower global entity id fires first, survivor 4/40 in 11/11 bare-duel configs, Sentinel head start worth 0 HP, Gunner +7 \u2014 but the headline word \"completely\" and its stated cause are both wrong: ONE builder standing orthogonally adjacent healing +4 HP/round for 4 Ti flips the winner to the HIGHER-id turret (verified in both mirror directions, 2/2), and the claim's own free-fire data shows extra head start is not worthless, it buys total turret denial at h>=6.",
+   "numbers": [
+    {
+     "metric": "Turn order = ascending GLOBAL entity id, re-derived independently. du_s_af (A's core spawns first): A builder id 3, A turret id 5, B turret id 6 -> A kills at round 25, A survives 4/40. du_s_bf (B's core spawns first): A builder id 4, A turret id 6, B turret id 5 -> A's turret destroyed round 25, B survives 4/40. Same build round (20) both runs; only the id differs and the winner flips. This discriminates id-order from any team-first ordering.",
+     "value": "winner flips with spawn order, 4/4 baseline games; byte-identical over 3 repeats",
+     "sample": "4 baseline games (s_af, s_bf, g_af, g_bf) x 3 repeats for s_af",
+     "probe": "_run_firstshot.py s_af s_bf g_af g_bf on maps/lab/firstshot.map26"
+    },
+    {
+     "metric": "Entity ids are a strictly ascending, never-recycled global counter. Barriers: build (6,4) -> id 4; destroy and rebuild SAME tile -> id 5; third barrier -> 6; destroy id 5 then build -> 7. Builders: id 3, second spawned r20 -> id 8, self-destructs r23, third spawned r26 -> id 9 (not 8).",
+     "value": "0 id reuses in 7 create-after-delete events; raw: spawns=[3,8,9] a=4 b=5 c=6 d=7",
+     "sample": "1 game vs idle",
+     "probe": "idrec (re-run by me, reproduced exactly)"
+    },
+    {
+     "metric": "An entity created during round r is targetable that round but does not act until r+1. Discriminating case du_s_h1: B's turret (id 5, built r19) fired during round 20, the round A's turret (id 6) was created; A's turret took 18 damage before ever acting (log 20:x/40 -> 21:22/40). Turret id 6 > builder id 4, so it WOULD have acted that round if new entities acted immediately.",
+     "value": "first_action = build_round + 1 in 20/20 duel games I ran",
+     "sample": "20 duel games",
+     "probe": "du_s_h1 / du_s_af / whole du_* battery"
+    },
+    {
+     "metric": "SENTINEL bare-duel head start: h=0 lower id WIN survivor 4/40; h=0 higher id LOSE; h=1,2,3,4,6,8 (B early) WIN survivor 4/40; mirror h=1,3,4 (A early) WIN survivor 4/40. 40 HP - 2 x 18 dmg = 4 regardless of head start, because cooldown 2 means the loser always lands exactly 2 volleys before dying.",
+     "value": "survivor HP = 4/40 in 11/11 configurations; head start buys the WIN, 0 extra HP",
+     "sample": "11 configs, 1 deterministic game each",
+     "probe": "s_af, s_bf, s_h1, s_h2, s_h3, s_h4, s_h6, s_h8, s_m1, s_m3, s_m4"
+    },
+    {
+     "metric": "GUNNER control (25 HP, 7 dmg, cooldown 1, 4 shots to kill): h=0 lower id WIN survivor 4/25; h=1,2,4,8 and mirror h=1,3,4 WIN survivor 11/25, identical for every h.",
+     "value": "one round of head start = +7 HP (11/25 vs 4/25); rounds 2-8 add 0 more",
+     "sample": "9 configs, 1 deterministic game each",
+     "probe": "g_af, g_bf, g_h1, g_h2, g_h4, g_h8, g_m1, g_m3, g_m4"
+    },
+    {
+     "metric": "REFUTATION \u2014 one adjacent healing builder beats build order. Clean A/B with an IDENTICAL entity-id layout (1=coreA 2=coreB 3=builderA 4=builderB 5=extra builder 6=turretA 7=turretB); the only variable is whether the extra builder calls heal(). Control du_nh (extra builder idles at (9,5)): A's turret id 6 < B's id 7, A WINS, survivor 4/40. du_hl (same builder heals (9,4) every round): A's turret id 6 DESTROYED round 25, B's turret id 7 survives at 2/40 and heals back to 40/40. Mirror du_hm (ids swapped so B holds the lower turret id 6 and A the higher id 7, healer on A): A WINS, B's turret destroyed round 25, A survives at 2/40 -> 40.",
+     "value": "2/2 asymmetric-healer games flip the winner to the HIGHER entity id; 2/2 no-healer controls keep the lower id winning; byte-identical over 3 repeats each",
+     "sample": "4 configs (nh, hl, hh, hm) x 3 repeats = 12 games",
+     "probe": "du_nh / du_hl / du_hm (new, written for this verification)"
+    },
+    {
+     "metric": "Cost of overriding build order: HEAL_AMOUNT = 4 HP for BUILDER_BOT_HEAL_COST = 1 Ti, one action per builder per round. In du_hm the flip took 4 heals (rounds 22,23,24,25) = 4 Ti inside the decisive window, on top of a 30 Ti builder. Healers act before turrets whenever their id is lower, which is automatic since they are spawned before the turrets are built.",
+     "value": "4 Ti of healing + a 30 Ti builder overturns the id tie-break",
+     "sample": "du_hm HP trace 21:40/40 22:22/22 23:26/22 24:12/4 25:16/4 26:2/x",
+     "probe": "du_hm"
+    },
+    {
+     "metric": "Build order still decides when SUPPORT IS SYMMETRIC, but the '4/40' constant does not survive. du_hh, both sides one Sentinel + one adjacent healer, ids 7=turretA 8=turretB: A (lower id) wins, kill on round 27, survivor 10/40 \u2014 not 4/40.",
+     "value": "survivor 10/40 with symmetric healers vs 4/40 bare; lower id still wins",
+     "sample": "1 config x 1 game",
+     "probe": "du_hh (new)"
+    },
+    {
+     "metric": "Simultaneous kill is IMPOSSIBLE \u2014 re-confirmed at a second, harder HP point. du_hh round 27: both Sentinels at 10/40 after healing, both off cooldown (both last fired r25), each one's shot lethal to the other. Only turret A (id 7) fired; turret B was destroyed and never took its ready shot. Same pattern at du_s_af round 25 with both at 4/40.",
+     "value": "0 mutual kills in 24 decided duels; every duel ended exactly one dead, one alive",
+     "sample": "24 duel-mode games (11 Sentinel + 9 Gunner + 4 heal configs)",
+     "probe": "du_hh + du_s_af + full du_* battery"
+    },
+    {
+     "metric": "REFUTATION of the headline's stated cause ('there is nothing to shoot at until the enemy turret exists'). There is: the enemy builder. Free-fire Sentinel at h=4 -> normal duel; h=5 -> enemy turret built, then its builder killed; h>=6 -> enemy turret NEVER built (report shows tidx, brx, a_units=0). Mirror runs give the same threshold. So head start beyond the tie is worth far more than 0 \u2014 it is worth the entire enemy turret \u2014 just not HP under the probe's artificial turret-only targeting.",
+     "value": "4/4 denials at h>=6 (s_f6, s_f8, s_fm6, s_fm8); 0/1 at h=4",
+     "sample": "6 Sentinel free-fire configs",
+     "probe": "du_s_f4, du_s_f5, du_s_f6, du_s_f8, du_s_fm6, du_s_fm8"
+    },
+    {
+     "metric": "A Gunner never denies at any head start; its 3-tile line stops one tile short of the enemy builder's build tile. Attackable-tile counts measured in-engine: Sentinel 5, Gunner 3.",
+     "value": "0/3 denials at h = 8, 12 and mirrored h = 8",
+     "sample": "3 Gunner free-fire configs",
+     "probe": "du_g_f8, du_g_f12, du_g_fm8"
+    },
+    {
+     "metric": "A Sentinel WILL fire at empty ground; a Gunner will not. Sentinel (6,4) EAST: 5 attackable tiles, all unoccupied, can_fire True on all 5, fire() succeeded, global ammo -10. Gunner (6,3) EAST: 3 attackable tiles, all unoccupied, can_fire False on all 3.",
+     "value": "Sentinel cf=5/5 True on empty ground at 10 ammo/shot; Gunner cf=0/3",
+     "sample": "1 game vs idle",
+     "probe": "emptyfire (raw: SENT[n5 cf11111 oc00000 fy d10] GUN[n3 cf000 oc000 fn d0]) \u2014 reproduced exactly"
+    },
+    {
+     "metric": "2.3.6 constants re-read from fcode.GameConstants this session, not from notes: SENTINEL_MAX_HP 40, SENTINEL_DAMAGE 18, SENTINEL_FIRE_COOLDOWN 2, GUNNER_MAX_HP 25, GUNNER_DAMAGE 7, GUNNER_FIRE_COOLDOWN 1, HEAL_AMOUNT 4, BUILDER_BOT_HEAL_COST 1. Arithmetic checks: 40-2x18=4, 25-3x7=4, 25-2x7=11 \u2014 every survivor HP in the battery is exactly predicted.",
+     "value": "all quoted combat numbers measured on 2.3.6, 0 stale values used",
+     "sample": "direct GameConstants dump",
+     "probe": "python -c 'from fcode import GameConstants'"
+    }
+   ],
+   "probes": [
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_hl_a/main.py \u2014 NEW: id-race winner, no support (control half)",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_hl_b/main.py \u2014 NEW: id-race loser + one builder healing its Sentinel every round; HEAL flag toggles the control",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_nh_a/main.py, du_nh_b/main.py \u2014 NEW: the no-heal control, identical entity-id layout, healer idles on the same tile",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_hh_a/main.py, du_hh_b/main.py \u2014 NEW: symmetric healers on both sides",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_hm_a/main.py, du_hm_b/main.py \u2014 NEW: mirror of the heal flip, healer on the side holding the HIGHER turret id",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/_run_firstshot.py \u2014 runner, nukes __pycache__ before every game",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/maps/lab/firstshot.map26 \u2014 16x9 open, mirror-x, turret tiles (6,4)/(9,4) exactly 3 apart on a shared row",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/idrec/main.py \u2014 entity-id recycling (re-run, reproduced)",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/emptyfire/main.py \u2014 can_fire()/fire() on empty ground (re-run, reproduced)",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/du_s_af_a .. du_s_m4_a, du_g_af_a .. du_g_fm8_a \u2014 the original battery, 29 configs re-run by me"
+   ],
+   "design_impact": "Keep the mechanism, throw away the fatalism. (1) Turn order really is ascending global entity id, ids never recycle, and a turret created in round r cannot act until r+1 \u2014 so \"build the Sentinel one round earlier, or place it from your lowest-id builder\" is a genuine free win in an unsupported standoff, and \"built later but with a lower id\" is unconstructible. Use it. (2) But do NOT code the duel as pre-decided. Losing the id race is recoverable for 4 Ti: park one builder orthogonally adjacent to the Sentinel (on an off-axis tile, never in the enemy's cardinal lane) and heal every round. That flips the winner in both mirror directions. The defensive corollary is stronger than the offensive one \u2014 winning the id race is worth nothing if the enemy heals and you do not, so a Sentinel forward of your builders is a Sentinel you will lose. Pair every contested turret with a healer, and treat an unpaired enemy turret as the one you can actually kill. (3) The real prize for a big head start is not HP, it is denial: a free-firing Sentinel built 6+ rounds early kills the enemy builder standing in its build slot and the turret is never built at all (4/4). A Gunner cannot do this at any head start \u2014 3-tile line vs 5. If you are racing for map control, race with Sentinels. (4) Gate Sentinel fire on an occupied tile unless you are deliberately denying: a Sentinel fires at empty ground at 10 ammo/shot and the wasted cooldown cost the opening shot in the claimed du_s_v4 comparison. (5) Never expect a mutual kill to save you \u2014 0 in 24 decided duels; damage resolves strictly sequentially by id.",
+   "caveats": "Scope of the refutation: I reproduced EVERY number in the original claim, most of them byte-identical over 3 repeats. The engine mechanism (id-ordered turns, non-recycled ids, r+1 first action, no simultaneous kill) is solid and I found no counterexample. What fails is the universality of the headline: \"decides the Sentinel duel COMPLETELY\" and \"there is nothing to shoot at until the enemy turret exists\". Both are lab-arena conclusions from a probe whose turrets were forbidden to target anything but the enemy turret tile and whose builders deliberately walked out of the fight. Add the single cheapest realistic support unit and the conclusion inverts. The original claim's own free-fire numbers already contradicted its own causal clause; that contradiction was reported in the body but not carried into the headline. Other caveats: (a) everything is one 16x9 fully-open lab arena with turrets exactly 3 apart on a shared row \u2014 the mechanism generalises, the constants 4/40, 11/25, 10/40, 2/40 do not; on a real map a pure unsupported 1v1 Sentinel standoff is the rare case, not the default. (b) The claim reports the mirror configs (s_m1/m3/m4) killing on round 25; I measure round 24 (lastfire=24, dFOE observed 25 with the store's one-round lag). Minor, does not affect the headline. (c) I cannot separate \"ordered by entity id\" from \"ordered by creation order\" \u2014 they coincide by construction and ids never recycle, so no in-engine experiment can distinguish them. The claim says this correctly. (d) My first heal probe silently did nothing because I called a nonexistent ct.get_location(); the outer try/except swallowed the AttributeError and the run looked like a clean negative result identical to the control. I caught it only by checking the API surface. Flagging it because it is the same silent-zero failure class HARNESS.md warns about, and a probe that \"confirms\" a claim by no-oping is indistinguishable from one that measures it. (e) No timing or CPU claims are made \u2014 Windows cannot measure CPU. (f) I ran no tournament sweeps."
+  }
+ },
+ {
+  "key": "passability",
+  "claimed": {
+   "question": "TASK 1.4 \u2014 Produce a definitive, unambiguous passability table on fcode 2.3.6: for every tile content, measure (1) is_tile_passable, (2) can_move toward it, (3) whether move() actually relocated the unit; and settle the known traps (is_tile_empty under a Builder Bot, is_tile_passable(own_tile), diagonals, and the 2.3.4 doc claims about Harvester/Barrier/Conveyor/Splitter).",
+   "verdict": "CONFIRMED",
+   "headline": "22-row table measured cleanly: exactly 2 of 7 building types (Conveyor, Splitter) are walk-through, team NEVER matters on any row, is_tile_passable == can_move == did-actually-move in 21/21 cardinal rows \u2014 and the allied Core is IMPASSABLE in 6/6 configurations, refuting fcode's own is_tile_passable docstring.",
+   "numbers": [
+    {
+     "metric": "Cardinal rows where all three measurements agree (is_tile_passable == can_move == move-relocated)",
+     "value": "21 / 21 (100%)",
+     "sample": "21 cardinal tile-content rows across 2 games (pt_own 53 rounds, pt_foe 248 rounds)",
+     "probe": "pt_own + pt_foe"
+    },
+    {
+     "metric": "Own (allied) Core is_tile_passable / can_move / relocated",
+     "value": "False / False / False \u2014 move() raises GameError<Cannot move>",
+     "sample": "6 independent configurations: passlab tiles (2,5) and (2,6) from 2 stances, plus stock maps sprint, duel, vault, crossfire",
+     "probe": "pt_own, pt_foe, pt_core"
+    },
+    {
+     "metric": "Building types that are walk-through, out of 7",
+     "value": "2 of 7 \u2014 Conveyor and Splitter only",
+     "sample": "7 own + 6 enemy building rows, every occupant proved via get_entity_type(id)+get_team(id)",
+     "probe": "pt_own + pt_foe"
+    },
+    {
+     "metric": "Rows where the owning team changed the answer",
+     "value": "0 of 9 paired own/enemy rows",
+     "sample": "Core, Builder Bot, Conveyor, Splitter, Harvester, Barrier, Gunner, Sentinel, Launcher measured for both teams",
+     "probe": "pt_own + pt_foe"
+    },
+    {
+     "metric": "is_tile_empty() on a tile occupied by a Builder Bot",
+     "value": "True (lying predicate) \u2014 own bot id 4/BUILDER_BOT/A and enemy bot id 5/BUILDER_BOT/B",
+     "sample": "2 of 2 teams",
+     "probe": "pt_own + pt_foe"
+    },
+    {
+     "metric": "is_tile_passable(own_tile)",
+     "value": "False",
+     "sample": "1 direct measurement at (3,5); can_move(CENTRE) also False",
+     "probe": "pt_own"
+    },
+    {
+     "metric": "Diagonal and CENTRE moves",
+     "value": "can_move=False, move() raises GameError<Cannot move diagonally: builder bots move only in cardinal directions (N/E/S/W)>; position unchanged next round",
+     "sample": "3 of 3 (NORTHEAST, SOUTHEAST, CENTRE) \u2014 note is_tile_passable on the diagonal tile still returns True",
+     "probe": "pt_own"
+    },
+    {
+     "metric": "Vision gate on is_tile_passable (builder vision_radius_sq = 20)",
+     "value": "Succeeds for d_sq in {0,1,2,4,5,8,9,10,13,16,17,18,20}; raises GameError<Position out of vision range> for every d_sq >= 25",
+     "sample": "full 13x13 sweep around (6,9), 169 candidate tiles; get_nearby_tiles() returns 57",
+     "probe": "pt_own"
+    },
+    {
+     "metric": "In-vision but out-of-bounds tile (-1,5), d_sq=16",
+     "value": "is_tile_passable returns False WITHOUT raising; is_tile_empty and get_tile_env both raise GameError<Position out of bounds>",
+     "sample": "1 measurement; the out-of-vision OOB tiles instead raise 'out of vision range', so vision is checked before bounds",
+     "probe": "pt_own"
+    },
+    {
+     "metric": "can_move conflates move cooldown with impassability",
+     "value": "After a successful move, move_cd=1 and can_move(EAST) toward a verified-EMPTY tile returns False; second move() same round raises GameError<Cannot move>; next round move_cd=0 and can_move=True",
+     "sample": "1 controlled before/after/next-round triple at (6,10)->(7,10)",
+     "probe": "pt_own"
+    },
+    {
+     "metric": "move() position visibility",
+     "value": "Applies IMMEDIATELY \u2014 get_position() returns the new tile within the same round's call (pos_same_round == target in all 6 successful moves)",
+     "sample": "6 successful relocations",
+     "probe": "pt_own + pt_foe"
+    },
+    {
+     "metric": "destroy() on own buildings including turrets",
+     "value": "can_destroy=True and destroy succeeded 7/7 (conveyor, splitter, harvester, barrier, gunner, sentinel, launcher)",
+     "sample": "7 of 7 own building types",
+     "probe": "pt_own"
+    },
+    {
+     "metric": "resign_message truncation",
+     "value": "Hard cap at exactly 500 characters",
+     "sample": "1 probe emitting a 1212-char landmarked payload; output stopped mid-landmark at char 500",
+     "probe": "ptio"
+    },
+    {
+     "metric": "Bot sub-interpreter file write (undocumented output channel)",
+     "value": "WORKS \u2014 open()/write() from inside a bot succeeded, removing all encoding pressure on probe output",
+     "sample": "1 probe, verified by reading the file back",
+     "probe": "ptio"
+    }
+   ],
+   "probes": [
+    "ptio \u2014 channel feasibility: proved resign_message truncates at exactly 500 chars AND that a bot can write files. Absolute path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\ptio\\main.py",
+    "pt_own \u2014 own-side table (terrain, own Core, own Builder Bot, 7 own building types) plus the vision-gate sweep and the move-cooldown trap. Ran on passlab vs idle, 53 rounds. Path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\pt_own\\main.py ; output C:\\Users\\edlun\\AppData\\Local\\Temp\\claude\\c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league\\69495691-95ef-4878-adf9-aeca64f3e3b5\\scratchpad\\pt_own.txt",
+    "pt_foe \u2014 enemy-side table (enemy Core x2 tiles, enemy Builder Bot, 6 enemy building types + enemy Harvester on ore), every occupant proved by get_entity_type+get_team. Ran on passlab vs pt_prop, 248 rounds. Path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\pt_foe\\main.py ; output ...\\scratchpad\\pt_foe.txt",
+    "pt_prop \u2014 team-B partner that builds one enemy-owned prop at a time on the measured tile; synchronises with pt_foe purely on get_current_round() since teams share no state. Never converts ammo, so its turrets could not fire and disturb a row. Path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\pt_prop\\main.py",
+    "pt_core \u2014 map-agnostic replication of the single surprising claim (allied Core impassable) on stock maps sprint, duel, vault, crossfire. Path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\pt_core\\main.py",
+    "maps/lab/mkpass.py -> maps/lab/passlab.map26 \u2014 purpose-built 22x12 rot180 arena. Paths: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\maps\\lab\\mkpass.py and ...\\maps\\lab\\passlab.map26"
+   ],
+   "design_impact": "TRANSCRIBABLE TABLE (fcode 2.3.6, from a BUILDER_BOT's perspective; P = is_tile_passable, C = can_move measured only with get_move_cooldown()==0, M = move() actually relocated the unit).\n\n  tile content          P      C      M      is_tile_empty\n  EMPTY                 True   True   True   True\n  ORE_TITANIUM          True   True   True   True\n  WALL                  False  False  False  False\n  own Core              False  False  False  False\n  enemy Core            False  False  False  False\n  own Conveyor          True   True   True   False\n  enemy Conveyor        True   True   True   False\n  own Splitter          True   True   True   False\n  enemy Splitter        True   True   True   False\n  own Harvester         False  False  False  False\n  enemy Harvester       False  False  False  False\n  own Barrier           False  False  False  False\n  enemy Barrier         False  False  False  False\n  own Gunner            False  False  False  False\n  enemy Gunner          False  False  False  False\n  own Sentinel          False  False  False  False\n  enemy Sentinel        False  False  False  False\n  own Launcher          False  False  False  False\n  enemy Launcher        False  False  False  False\n  own Builder Bot       False  False  False  TRUE  <-- lying predicate\n  enemy Builder Bot     False  False  False  TRUE  <-- lying predicate\n  own tile (self)       False  n/a    n/a    True\n\nEvery failed move raises GameError<Cannot move>; failed diagonals raise GameError<Cannot move diagonally: ...>.\n\nTHE PATHFINDER RULE, in one line:\n  PASSABLE  = {EMPTY, ORE_TITANIUM} u {Conveyor, Splitter} (either team)\n  BLOCKED   = {WALL} u {Core, Harvester, Barrier, Gunner, Sentinel, Launcher} (either team) u {any Builder Bot, either team}\nTeam NEVER changes an answer (0 of 9 paired rows differ), so the pathfinder needs no team test at all \u2014 only the EntityType.\n\nWHAT THE BOT MUST DO DIFFERENTLY:\n1. Do NOT trust fcode's own is_tile_passable docstring, which claims a tile is passable if it \"has no building on it or has a conveyor, splitter, or the allied core\". The allied-Core clause is FALSE: measured impassable in 6/6 configurations across 4 stock maps and 2 lab stances. Only Conveyor and Splitter are walk-through. (The live bot at bot/main.py:2021 already blocks both cores in its BFS `blocked` set, so it is correct today \u2014 but any new code written from the docstring would path straight through its own Core and stall.)\n2. Never use is_tile_empty() as an occupancy test. It means only \"no building and not a wall\" \u2014 it returns True under a Builder Bot of either team. Use is_tile_passable, or get_tile_builder_bot_id.\n3. Never treat can_move()==False as evidence of impassability. It is False whenever get_move_cooldown() != 0, even toward a verified-EMPTY tile. Gate on get_move_cooldown()==0 first, or just use is_tile_passable \u2014 the two agree in 21/21 cardinal rows, so can_move buys the pathfinder nothing.\n4. is_tile_passable is vision-gated: it RAISES GameError<Position out of vision range> for any tile with d_sq > the unit's vision_radius_sq (20 for a builder, so only 57 tiles are legally queryable). A BFS across the map must run over a self-maintained wall/occupancy atlas, not over live is_tile_passable calls; wrap every call or pre-filter with is_in_vision.\n5. is_tile_passable is the only one of the three tile predicates that is bounds-SAFE: for an in-vision out-of-bounds tile it returns False, while is_tile_empty and get_tile_env raise GameError<Position out of bounds>. Vision is checked before bounds.\n6. Do not seed a search's start node from is_tile_passable \u2014 your own tile reports False.\n7. Diagonals remain illegal and Direction.CENTRE raises the same diagonal error, so only the 4 CARDINALS may ever be emitted as moves. Note is_tile_passable(diagonal_tile) still returns True: passability describes the tile, not reachability.\n8. move() applies immediately \u2014 get_position() reflects the new tile within the same round's call, so post-move logic can use it without waiting a round.\n9. Probe-authoring: bots CAN write files (undocumented). resign_message is capped at exactly 500 chars, so all future probes should dump to a file and keep resign as a one-line summary. This is worth adding to llm-slop-analysis/elias/exploits/HARNESS.md.",
+   "caveats": "All rows are measured from a BUILDER_BOT, which is the only mobile unit and is exactly what is_tile_passable's contract describes (\"a builder bot belonging to this team\"); nothing here is claimed for launched/thrown bots. n=1 per configuration is sufficient because the repo already established the engine is fully deterministic (commit 8cb0867); the one surprising claim (allied Core impassable) was nevertheless replicated across 6 distinct map/tile/stance configurations. Enemy-side rows were produced by my own team-B partner bot pt_prop, but every row proves the occupant with get_entity_type(id) and get_team(id)==B rather than assuming it. pt_prop never calls convert_ammo, so the enemy Gunner/Sentinel rows could not be perturbed by fire. I measured only that stepping onto an enemy Conveyor/Splitter is LEGAL \u2014 not what happens to a bot standing there (whether a belt carries or damages it) \u2014 which is a separate question worth its own probe. No timing or CPU claims: Windows returns 0 from get_cpu_time_elapsed(). Per the task rules I worked only in bots/probes/, maps/lab/ and the scratchpad, and ran no tournament sweeps. Housekeeping: a parallel agent's commit 1fb211f swept my in-progress files (pt_own v1, ptio, mkpass.py, passlab.map26) into their commit, which is why pt_own shows as modified rather than untracked; nothing of mine was lost and the working copy is the newer version. I have not committed anything."
+  },
+  "verified": {
+   "question": "TASK 1.4 \u2014 Is the definitive fcode 2.3.6 passability table correct: for every tile content, is_tile_passable vs can_move vs whether move() actually relocated the unit; plus the traps (is_tile_empty under a Builder Bot, is_tile_passable(own_tile), diagonals, and the 2.3.4 doc claims about Harvester/Barrier/Conveyor/Splitter)?",
+   "verdict": "CONFIRMED",
+   "headline": "Every substantive row reproduces on four probes I wrote from scratch \u2014 2 of 7 building types (Conveyor, Splitter) are walk-through for BOTH teams, and the allied Core is impassable in 64/64 configurations (all 4 footprint tiles x all 4 approach directions x 8 maps), not the 6 the original sampled; the only defects are bookkeeping (the claimed \"22-row / 21 cardinal\" table is 23 cardinal rows in the original's own logs) and a missing qualifier (the three-way equivalence holds only at move_cd == 0).",
+   "numbers": [
+    {
+     "metric": "Allied Core impassable \u2014 exhaustive sweep over EVERY (core footprint tile, cardinal approach direction) pair, not one sample per map",
+     "value": "64 / 64 pairs: is_tile_passable=False, can_move=False, relocated=False; move() raises GameError<Cannot move>",
+     "sample": "8 pairs/map x 8 maps (sprint, duel, vault, crossfire, quarry, hive, pinch, passlab); core footprint discovered via get_tile_building_id+get_entity_type+get_team, never hardcoded",
+     "probe": "vcore"
+    },
+    {
+     "metric": "Building types that are walk-through, out of 7 \u2014 own side, on STOCK maps (no lab arena)",
+     "value": "2 of 7 \u2014 Conveyor and Splitter. Barrier, Gunner, Sentinel, Launcher, Harvester all False/False/False",
+     "sample": "20 cardinal rows across duel and sprint; every occupant proved by get_entity_type+get_team",
+     "probe": "vown"
+    },
+    {
+     "metric": "Conveyor/Splitter passability vs belt facing \u2014 a variable the original never varied (pt_own built every belt facing NORTH and always stepped NORTH, i.e. always with the belt)",
+     "value": "Facing is irrelevant: conveyor facing EAST, WEST and NORTH all passable=True/can_move=True/relocated=True when entered heading EAST",
+     "sample": "3 conveyor facings + 2 splitter facings x 2 maps = 10 rows",
+     "probe": "vown"
+    },
+    {
+     "metric": "Is a belt tile merely enterable, or habitable? (does the conveyor carry the bot off?)",
+     "value": "Habitable \u2014 position unchanged and move_cd=0 for 4 consecutive rounds after stepping on; the belt does not transport builder bots",
+     "sample": "10 linger tests (5 belt variants x 2 maps), 4 rounds each",
+     "probe": "vown"
+    },
+    {
+     "metric": "Rows where the owning team changed the answer \u2014 enemy side measured with OCCUPANCY-GATED rows (refuses to record until it sees an enemy-team id on the tile) instead of round-number sync",
+     "value": "0 of 9. Enemy walk-through set = {CONVEYOR, SPLITTER}, identical to own side",
+     "sample": "9 enemy rows (conveyor, splitter, harvester, barrier, gunner, sentinel, launcher, builder bot, core), all 7 props standing simultaneously on distinct tiles, zero NEVER_APPEARED lines",
+     "probe": "vfoe + vprop"
+    },
+    {
+     "metric": "is_tile_passable == can_move == did-actually-move, measured only when get_move_cooldown()==0",
+     "value": "93 / 93 cardinal rows (100%)",
+     "sample": "64 vcore + 20 vown + 9 vfoe rows across 11 games and 9 maps",
+     "probe": "vcore + vown + vfoe"
+    },
+    {
+     "metric": "The qualifier the headline drops: can_move as a passability oracle when move_cd > 0",
+     "value": "is_tile_passable(3,4)=True but can_move(EAST)=False and move() raises GameError<Cannot move>, purely because move_cd=1; next round cd=0 and can_move=True",
+     "sample": "1 controlled before/after/next-round triple at (1,4)->(2,4) on duel",
+     "probe": "vmisc"
+    },
+    {
+     "metric": "is_tile_passable(own tile)",
+     "value": "False (and can_move(CENTRE)=False) \u2014 refutes the same docstring's clause 'no OTHER builder bot is there'",
+     "sample": "1 direct measurement at (1,4), plus is_tile_empty(own tile)=True",
+     "probe": "vmisc"
+    },
+    {
+     "metric": "is_tile_empty() on a tile occupied by a Builder Bot",
+     "value": "True \u2014 enemy bot id 4/BUILDER_BOT/B with is_tile_passable=False, and own tile likewise True",
+     "sample": "2 of 2 (enemy bot via vfoe, own tile via vmisc)",
+     "probe": "vfoe + vmisc"
+    },
+    {
+     "metric": "Diagonals and CENTRE",
+     "value": "is_tile_passable=True on all four diagonal tiles, but can_move=False and move() raises GameError<Cannot move diagonally: builder bots move only in cardinal directions (N/E/S/W)>; position and move_cd unchanged next round",
+     "sample": "5 of 5 (NORTHEAST, SOUTHEAST, SOUTHWEST, NORTHWEST, CENTRE) \u2014 the original tested 3",
+     "probe": "vmisc"
+    },
+    {
+     "metric": "Vision gate on is_tile_passable (builder vision_radius_sq = 20)",
+     "value": "Succeeds for d_sq in {0,1,2,4,5,8,9,10,13,16,17,18,20}; raises GameError<Position out of vision range> for every d_sq >= 25 \u2014 byte-identical to the original's set",
+     "sample": "15x15 sweep around (1,4) on duel",
+     "probe": "vmisc"
+    },
+    {
+     "metric": "In-vision but out-of-bounds tile (-1,4), d_sq=4",
+     "value": "is_tile_passable returns False WITHOUT raising; is_tile_empty and get_tile_env raise GameError<Position out of bounds>; at d_sq=49 it instead raises 'out of vision range' \u2014 vision is checked before bounds",
+     "sample": "2 measurements (in-vision OOB and out-of-vision OOB)",
+     "probe": "vmisc"
+    },
+    {
+     "metric": "resign_message truncation",
+     "value": "Exactly 500 characters",
+     "sample": "1140-char landmarked payload sent, len(run_game()['resign_message'])==500, cut mid-landmark at [0520]",
+     "probe": "vmisc via scratchpad/verify_len_run.py"
+    },
+    {
+     "metric": "fcode's own is_tile_passable docstring vs measurement",
+     "value": "Docstring (.venv/Lib/site-packages/fcode/_types.py:345-349) says passable if the tile 'has no building on it or has a conveyor, splitter, or the allied core'. Conveyor/splitter TRUE; allied core FALSE. Two clauses of one docstring are wrong (allied core, and 'no OTHER builder bot')",
+     "sample": "read from the shipped stub + 64 core measurements",
+     "probe": "vcore + vmisc"
+    },
+    {
+     "metric": "2.3.4-era doc discrepancies, re-checked against the docs shipped WITH 2.3.6",
+     "value": "Already fixed upstream: game-rules-harvester.txt now says Harvester 'Blocks movement: Yes' and game-rules-reference.txt lists Harvester Yes / Barrier Yes / Basic Conveyor No / Splitter No \u2014 all four now agree with measurement. The surviving contradiction is only the _types.py docstring",
+     "sample": "4 of 4 infrastructure buildings cross-checked doc vs measurement",
+     "probe": "doc read + vown + vfoe"
+    },
+    {
+     "metric": "Original probes re-run to rule out an inert/silent bot",
+     "value": "pt_core reproduces live on all 4 stock maps it claimed (sprint (1,1), vault (2,19), duel (1,8), crossfire (2,11)) \u2014 not a phantom result",
+     "sample": "4 re-runs with __pycache__ deleted",
+     "probe": "pt_core (original, re-run by me)"
+    },
+    {
+     "metric": "Row-count bookkeeping error in the claim",
+     "value": "Claim says '22-row table' and '21/21 cardinal rows'; the original's own two output files contain 23 cardinal rows (12 in pt_own.txt + 11 in pt_foe.txt). Direction of error is conservative \u2014 agreement is 100% either way",
+     "sample": "line count of pt_own.txt and pt_foe.txt",
+     "probe": "audit of pt_own + pt_foe output"
+    }
+   ],
+   "probes": [
+    "vcore \u2014 exhaustive own-Core sweep: enumerates every (core footprint tile, cardinal approach direction) pair, map-agnostic, and paths using RAW facts (get_tile_env / get_tile_building_id / get_tile_builder_bot_id) so the predicate under test is never used to reach its own measurement. Ran on 8 maps. Path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\vcore\\main.py ; outputs C:\\Users\\edlun\\AppData\\Local\\Temp\\claude\\c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league\\69495691-95ef-4878-adf9-aeca64f3e3b5\\scratchpad\\vcore_<map>.txt",
+    "vown \u2014 own-building table on STOCK maps (duel, sprint), with the belt-facing variable the original held constant and a 4-round linger test on each belt. Path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\vown\\main.py ; outputs ...\\scratchpad\\vown_duel.txt and vown_sprint.txt",
+    "vfoe \u2014 enemy-side table, occupancy-gated: refuses to record a row until get_tile_building_id/get_tile_builder_bot_id returns an id whose get_team is the enemy, so a failed prop yields a loud NEVER_APPEARED instead of a silent false 'impassable'. Path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\vfoe\\main.py ; output ...\\scratchpad\\vfoe.txt",
+    "vprop \u2014 team-B partner that builds all seven enemy props on distinct tiles and leaves them standing for the whole game (no round-number sync with the measurer). Never calls convert_ammo (turrets have no ammunition) and never calls launch. Path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\vprop\\main.py",
+    "vmisc \u2014 the traps: own tile, all four diagonals + CENTRE, vision gate sweep, in-vision vs out-of-vision out-of-bounds, move-cooldown conflation, and a 1140-char resign to measure the truncation cap. Path: C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\vmisc\\main.py ; output ...\\scratchpad\\vmisc.txt",
+    "verify_len_run.py \u2014 runner that reports len(resign_message) exactly (tools/runprobe.py only prints it). Path: C:\\Users\\edlun\\AppData\\Local\\Temp\\claude\\c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league\\69495691-95ef-4878-adf9-aeca64f3e3b5\\scratchpad\\verify_len_run.py",
+    "pt_core (the original probe, re-run by me on sprint/vault/duel/crossfire) to confirm it was not inert or silent"
+   ],
+   "design_impact": "Four rules the bot must encode, and two API calls it must stop trusting. (1) The allied Core footprint is a WALL in path search \u2014 64/64 measurements, all four tiles, all four approach directions, 8 maps. A builder cannot cut through its own base, so corridor and spawn-pocket logic must route around it, and the fcode docstring that says otherwise must not be believed. (2) Conveyors and Splitters do NOT block, for either team. A denial ring or a corridor plug must be built from Barrier (3 Ti), Harvester, or a turret; belts are worth zero denial. The mirror of that is offensive: enemy belts are a free highway, so attack pathing should treat enemy conveyor/splitter tiles as walkable rather than as obstacles. (3) can_move is NOT a passability oracle \u2014 it returns False on a verifiably passable tile whenever move_cd > 0. Use is_tile_passable to build the map model and can_move only for \"may I act this instant\"; conflating them makes the pathfinder hallucinate walls every other round. (4) is_tile_empty is not a step test: it is True under both own and enemy builder bots, so any code using it to pick a destination will walk into an occupied tile and eat a GameError. Two further constraints: is_tile_passable(own tile) is False, so a BFS that validates its own start node rejects every path; and is_tile_passable is vision-gated (raises beyond d_sq 20 for a builder, and checks vision BEFORE bounds), so a global map model must cache observations rather than query on demand. Finally, Harvesters block movement \u2014 auto-build must not harvest a corridor shut against its own builders.",
+   "caveats": "Three defects in the claim, none of which change a conclusion. (a) Row-count bookkeeping: \"22-row table\" / \"21/21 cardinal rows\" does not match the original's own logs, which hold 23 cardinal rows (12 + 11); the agreement rate is 100% either way, and 93/93 in my runs. (b) \"IMPASSABLE in 6/6 configurations\" overstates the sampling \u2014 pt_core records only one arbitrary (tile, direction) pair per map, so the six were really 2 tiles on passlab plus 4 single samples, none of which touched the far column of the core. My exhaustive sweep repairs this to 64/64 and the conclusion survives. (c) The headline's three-way equivalence is unconditional as written, but it holds only at move_cd == 0; the original measured the cooldown exception and disclosed it as a separate number, yet a reader who takes the headline alone will mis-implement pathing. Framing note: calling is_tile_empty a \"lying predicate\" is editorial \u2014 the shipped docstring says plainly \"no building and is not a wall\", so it is accurate to its own documentation; the trap belongs to robot-api.txt, which says \"no unit or building\". Scope limits: the enemy-side half necessarily runs on a lab arena because it needs controlled enemy prop placement, but nothing about passlab is unrealistic and the nine enemy rows match the own-side rows measured on stock maps exactly. The enemy turret and launcher rows were taken with team B holding zero global ammunition and never calling launch \u2014 that does not affect passability, but those rows say nothing about surviving beside an armed turret. The claim's \"get_nearby_tiles() returns 57\" is the one figure I did not re-derive; it is edge-clipping-dependent and low-stakes. Per the harness, get_cpu_time_elapsed() returns 0 on Windows, so no timing claim is made or checked here."
+  }
+ },
+ {
+  "key": "cpu-budget",
+  "claimed": {
+   "question": "What is the real per-unit CPU budget \u2014 the documented 10 ms, or the visualiser's 2 ms?",
+   "verdict": "CONFIRMED",
+   "headline": "The budget is 10 000 \u00b5s of CPU time per unit per round: with turn_timeout_ms=10 the engine hard-cuts a unit's turn at execTimeUs 10002-10009 (probe cpukeep, 10/10 rounds), and the visualiser's 2e3 is only a display fallback for replays that carry no tled flag.",
+   "numbers": [
+    {
+     "metric": "Cut-off point with turn_timeout_ms=10 (Linux, fcode 2.3.6)",
+     "value": "execTimeUs 10002, 10003, 10003, 10004, 10005, 10005, 10009 (steady state); overshoot <= 9 us",
+     "sample": "10 consecutive cut turns, sprint, 1 game",
+     "probe": "cpukeep"
+    },
+    {
+     "metric": "Cut-off point with turn_timeout_ms=2 \u2014 proves the threshold IS the parameter, 2 ms is not special to the engine",
+     "value": "min_tled = 2001 us, max_untled = 2005 us, 16 turns flagged",
+     "sample": "46 BotOutput records, 1 game, sprint",
+     "probe": "cpuedge"
+    },
+    {
+     "metric": "Bracket of the limit with turn_timeout_ms=10",
+     "value": "action at cpu=10201 us landed (turn ended 10208 us, untled); turns still running were cut at 10003-10006",
+     "sample": "18 escalating burn targets, 46 BotOutput records, 1 game",
+     "probe": "cpuedge"
+    },
+    {
+     "metric": "turn_timeout_ms=0 (the local default) \u2014 enforcement fully off",
+     "value": "0 tled out of 46 records, execTimeUs up to 50021 us, all 20 post-burn actions landed",
+     "sample": "1 game, sprint, Linux 2.3.6",
+     "probe": "cpuedge"
+    },
+    {
+     "metric": "Clock is CPU time, not wall clock",
+     "value": "time.sleep(0.3) burned 300144 us of wall clock; engine recorded execTimeUs=59, tled=0",
+     "sample": "2 sleep rounds (50 ms and 300 ms), tle=10 and tle=2",
+     "probe": "cpuedge"
+    },
+    {
+     "metric": "Budget is per UNIT, not per team",
+     "value": "6 units x 8 ms = 48 025 us of team CPU in one round, tled=0",
+     "sample": "13 rounds x 7 units = 90 BotOutput records, tle=10",
+     "probe": "cpushare"
+    },
+    {
+     "metric": "Work committed before the cut survives; work after it never runs",
+     "value": "10/10 cut rounds: global ammo +1 each round and Python self.tick advanced, yet the post-action burn never completed (reached=[]); Core survived at full HP, no catchable exception",
+     "sample": "10 cut rounds, tle=10 vs tle=0 control",
+     "probe": "cpukeep"
+    },
+    {
+     "metric": "Module-body CPU is OUTSIDE the per-turn budget",
+     "value": "40.01 ms of CPU burned at module scope -> round-0 execTimeUs = 49 us, tled=0",
+     "sample": "5 rounds x 2 units, tle=10 and tle=0",
+     "probe": "cpuimport"
+    },
+    {
+     "metric": "Windows enforces nothing at all",
+     "value": "burned 1000 ms of wall clock in one turn with turn_timeout_ms=10; 21/21 post-burn actions landed, unit at 500/500 HP",
+     "sample": "21 escalating burns (0-1000 ms), tle=0 and tle=10",
+     "probe": "cpuburn"
+    },
+    {
+     "metric": "Windows replays carry no timing data whatsoever",
+     "value": "1 890 465 BotOutput records, execTimeUs=0 on every single one, tled never set",
+     "sample": "all 115 .replay26 files in the repo",
+     "probe": "botout.py decoder (scratchpad)"
+    },
+    {
+     "metric": "What bot/main.py actually spends (Linux 2.3.6, tle=10)",
+     "value": "aurora: p50=30 p90=202 p99=800 max=1200 us, 0 TLE (n=828). sprint: p50=12 p90=134 p99=236 max=1289 us, 0 TLE (n=2637)",
+     "sample": "2 games, 3465 unit-rounds",
+     "probe": "real_cost.py + byteam.py (scratchpad)"
+    },
+    {
+     "metric": "A rival that does exceed it \u2014 luc1 on aurora, same game",
+     "value": "p90=3125 p99=10349 max=80404 us; 13 unit-rounds flagged tled (core round-0 at 83738 us + 12 builder turns at 10.8-80.4 ms)",
+     "sample": "1227 unit-rounds, 1 game",
+     "probe": "real_cost.py + byteam.py (scratchpad)"
+    },
+    {
+     "metric": "10 ms converted into operations (Windows perf_counter microbench; Linux constant will differ)",
+     "value": "get_nearby_tiles 14.9 us (67/ms), get_nearby_entities 1.08 us (926/ms), is_tile_passable 0.47 us, get_position 0.37 us, get_current_round 0.068 us, 1000 pure-Python adds 23.1 us",
+     "sample": "200-5000 iterations per op, 2 runs",
+     "probe": "cpuburn"
+    }
+   ],
+   "probes": [
+    "cpuburn \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/cpuburn/main.py \u2014 escalating wall-clock burn 0-1000 ms + operation microbenchmarks; establishes the Windows negative",
+    "cpuedge \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/cpuedge/main.py \u2014 burns to a target on the engine's own CPU clock then acts, brackets the threshold at tle=10/2/0, plus sleep rounds to separate CPU from wall clock",
+    "cpukeep \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/cpukeep/main.py \u2014 acts first then burns past the limit; proves pre-cut actions and Python state survive and the cut is a silent hard stop",
+    "cpushare \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/cpushare/main.py \u2014 6 units each burning 8 ms in the same round; proves the budget is per unit",
+    "cpuimport \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/cpuimport/main.py \u2014 40 ms of CPU in the module body; proves import-time precompute is outside the per-turn budget",
+    "botout.py / byteam.py / lin_drive.py / real_cost.py / burn_drive.py \u2014 C:/Users/edlun/AppData/Local/Temp/claude/c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league/69495691-95ef-4878-adf9-aeca64f3e3b5/scratchpad/ \u2014 replay decoder for BotOutput{id,stdout,execTimeUs,tled} (Update field 9), team splitter, and the Linux/WSL drivers"
+   ],
+   "design_impact": "Write the bot against 10 000 \u00b5s of CPU per unit per round, and stop treating 2 ms as a constraint \u2014 the 2e3 in the visualiser never fires on a real replay.\n\nConcretely, four things change:\n\n1. There is a large amount of unused headroom. bot/main.py peaks at 1289 \u00b5s on the two maps measured and sits at p50 = 12-30 \u00b5s, so we are using about 13% of the budget at worst and roughly 0.3% typically. Per-unit search, flood fills, and multi-step planning that were being avoided on a 2 ms assumption are affordable. At the measured Windows rates, 10 ms buys about 670 get_nearby_tiles() calls or 926 get_nearby_entities() calls per unit per round.\n\n2. The budget is PER UNIT, so it scales with army size \u2014 6 units burned 48 ms of team CPU in one round with nothing flagged. A 50-unit team has 500 ms of round budget. Do not build a team-wide compute governor; per-unit cost is what matters.\n\n3. Precompute belongs in the module body, which is completely outside the per-turn clock (40 ms there cost round 0 exactly 49 \u00b5s). Distance tables, symmetry candidates, and map-derived constants should be computed at module scope, not lazily on round 0. Note each unit re-executes the module, so this trades wall-clock startup for turn-time safety.\n\n4. The failure mode is a silent hard stop, not an exception and not a death. Everything the unit had already committed is kept; everything after the cut simply never happens, including prints, and try/except cannot see it. So order the round: issue the cheap high-value action FIRST, then do the expensive thinking. A unit that computes then acts loses its action entirely when it overruns; a unit that acts then computes loses only the refinement. luc1 loses 13 unit-turns this way on aurora.\n\nAlso correct HARNESS.md: print() is not swallowed. It is recorded in the replay as BotOutput.stdout, per unit per round, on Windows too (cpukeep: 13/13 rounds captured). It is only absent from run_game's result dict. That is a full-bandwidth per-unit debug channel that probes have not been using \u2014 but a print after the CPU cut is lost with the rest of the turn.",
+   "caveats": "Where the 2 ms lives, quoted exactly. File: c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/.venv/Lib/site-packages/fcode/data/visualiser/assets/main-CFfsim4r.js, byte offset 12007:\n\n  else if(n.botOutput){const s=n.botOutput,r=e.entities.get(s.id);if(r){const o=s.execTimeUs??0;r.execTimeUs=o,r.tled=s.tled??o>2e3,s.stdout&&(r.stdout=s.stdout)}}\n\nThe operative sub-expression is `r.tled=s.tled??o>2e3`. The engine's own `tled` bool wins; `o>2e3` is a nullish fallback for a replay that carries no flag. Since the file decodes replays via `Ma.Root.fromJSON(Al).lookupType(\"battlecode.Replay\").decode(...)` (protobufjs, which gives bool fields a `false` prototype default), the `??` branch is effectively unreachable \u2014 it is dead display code, never an enforcement threshold.\n\nThe 10 is stated by the engine's own CLI at .venv/Lib/site-packages/fcode/commands/run.py:119 \u2014\n  @click.option(\"--tle\", default=0, type=int, help=\"Turn time limit in ms (0 to disable, server uses 10)\")\nand the API is run_game(player_a, player_b, engine_root, map_path, replay='replay.replay26', seed=1, turn_timeout_ms=0). Yes, run_game takes a per-turn timeout; its default is 0, i.e. disabled locally.\n\nCaveats on the measurements:\n\n- Everything quantitative was measured on Linux under WSL2 (Ubuntu, kernel 6.6.87.2), with fcode 2.3.6 downloaded fresh from PyPI into /root/fc236, not on the tournament server. Windows cannot measure this at all. The 2.3.6 Linux wheel is the same version as the Windows install, so this is not a stale-version result \u2014 but it is not the ladder machine either.\n- The engine only enforces the limit it is given. Every threshold number here is \"the threshold equals turn_timeout_ms\", verified at 2, 10, and 0. That the server passes 10 rests on the CLI help string, not on a server-side measurement.\n- The cut is delivered asynchronously with roughly 200 \u00b5s of slop: turns that returned on their own at up to 10208 \u00b5s went unflagged, while turns still executing were cut at ~10005 \u00b5s. Treat 10 ms as a wall, not as a budget with guaranteed grace.\n- execTimeUs carries noise on a loaded machine \u2014 one 8 ms burn recorded 10399 \u00b5s during the cpushare run. Several agents are running in parallel on this box, so the tail of any distribution here is pessimistic.\n- Whether the server imposes a separate import/load timeout is not measurable locally. The \"module body is free\" result is only about the per-turn limit; do not read it as unlimited startup time.\n- The luc1 TLE figures are a by-product of measuring our own bot's cost in the same replay, not an opponent-specific investigation, and nothing here is proposed as a lever against any particular rival."
+  },
+  "verified": {
+   "question": "What is the real per-unit CPU budget \u2014 the documented 10 ms, or the visualiser's 2 ms?",
+   "verdict": "CONFIRMED",
+   "headline": "10 ms is right and 2 ms is not a budget at all \u2014 the enforced limit equals turn_timeout_ms exactly (509 chunks of work at tle=10 vs 106 at tle=2, a 4.8x ratio; 10 006-10 029 us steady state plus a real +5% bank giving 10 515-10 519 us on the first overrun) \u2014 BUT the claimed \"hard cut at execTimeUs 10002-10009\" is wrong as a general statement: the engine never pre-empts Python, it only stops the unit at its next Controller API call, so an API-free loop ran 110 580-138 218 us uncut at tle=10 on 20/20 rounds.",
+   "numbers": [
+    {
+     "metric": "Budget re-derived in work units, never trusting execTimeUs: chunks of a fixed pure-Python loop completed before the cut, tle=10 vs tle=2",
+     "value": "tle=10: 477-537 chunks (mean 509, n=11). tle=2: 96-112 chunks (mean 106, n=11). Ratio 4.8. Same loop at tle=0 completes 6000 chunks in 118 369-119 378 us => 19.79 us/chunk, so 509 chunks = 10 073 us and 106 chunks = 2 098 us",
+     "sample": "3 games (tle=0/10/2), 11 cut rounds each, sprint, Linux WSL2 fcode 2.3.6",
+     "probe": "vcut3"
+    },
+    {
+     "metric": "execTimeUs at the cut, per round, tle=10 and tle=2",
+     "value": "tle=10: round 2 = 10 519, rounds 3-12 = 10 006/10 008/10 009/10 012/10 014/10 014/10 016/10 023/10 023/10 073. tle=2: round 2 = 2 112, rounds 3-12 = 2 006-2 018. max_untled 24 us and 18 us",
+     "sample": "22 cut turns, 2 games, sprint",
+     "probe": "vcut3"
+    },
+    {
+     "metric": "The documented +5% bank is real and measurable",
+     "value": "first over-budget turn after cheap turns gets +519 us at tle=10 (10 519 vs 10 006-10 023 steady) and +112 us at tle=2 (2 112 vs 2 006-2 018) = 5.2% and 5.6%; reproduced at 10 515 us on round 0 of a third probe",
+     "sample": "3 games, 3 first-overrun turns vs 30 steady-state turns",
+     "probe": "vcut3 + vcut6"
+    },
+    {
+     "metric": "REFUTATION of the hard-cut claim: identical burn loop with ZERO Controller calls inside it, tle=10",
+     "value": "6000/6000 chunks completed and the post-loop code ran, on 20/20 burn rounds; execTimeUs 110 580-119 555 us, all 20 flagged tled=1 but none interrupted. Same at tle=2 (min 110 469 us) and tle=5 (min 110 408 us)",
+     "sample": "3 games x 20 burn rounds = 60 uncut over-budget turns, sprint",
+     "probe": "vcut"
+    },
+    {
+     "metric": "The check does not ride on the Python call path \u2014 a pure-Python nop() call per chunk is not enough to trigger it",
+     "value": "6000/6000 chunks completed, 11/11 rounds, execTimeUs 106 225-111 843 us, all flagged tled, none cut, tle=10",
+     "sample": "1 game, 11 over-budget rounds",
+     "probe": "vcut4"
+    },
+    {
+     "metric": "Where the axe actually falls: first Controller call after the budget is gone",
+     "value": "a 3000-chunk API-free burn (52 231-54 556 us) completed every round, then ct.get_cpu_time_elapsed() never returned \u2014 api_ok=0, acted=0, global ammo 0 after 11 rounds. Identical rounds at tle=0: api_ok=11, acted=11, ammo=11. No exception reached the bot's except-clause; the unit was not destroyed and ran again next round",
+     "sample": "3 games (tle=10/2/0), 11 rounds each",
+     "probe": "vcut2"
+    },
+    {
+     "metric": "Work committed before the overrun survives",
+     "value": "in every vcut/vcut3 run at tle=10 the convert_ammo issued before the burn landed: global ammo reached 20/20 and 11/11 while 100% of those rounds were flagged tled",
+     "sample": "31 tled rounds across 2 probes",
+     "probe": "vcut + vcut3"
+    },
+    {
+     "metric": "Budget is per UNIT, not per team (independent re-run of cpushare under my own driver/decoder)",
+     "value": "7 records/round of which 6 units burned 8.00 ms each: team total 48 014-48 049 us in a single round, tled=0 on all 90 records",
+     "sample": "14 rounds, 90 BotOutput records, 1 game, tle=10, Linux",
+     "probe": "cpushare"
+    },
+    {
+     "metric": "Import-time CPU is outside the per-turn budget",
+     "value": "40 059 us burned at module scope; round 0 still got 581 chunks / 10 515 us before its cut, the same as any later round (511-535 chunks)",
+     "sample": "1 game, 8 rounds, tle=10",
+     "probe": "vcut6"
+    },
+    {
+     "metric": "Windows enforces nothing and records nothing (re-derived with my probe)",
+     "value": "the loop that is cut at 509 chunks on Linux completed 6000/6000 chunks on Windows at turn_timeout_ms=10; execTimeUs=0 on all 28 records, tled never set, get_cpu_time_elapsed()=0",
+     "sample": "1 game, 11 rounds, sprint, fcode 2.3.6 win32",
+     "probe": "vcut3 on Windows"
+    },
+    {
+     "metric": "Every replay in the repo is timing-blind (prior claim said 115 files / 1 890 465 records; the repo has grown)",
+     "value": "148 .replay26 files, 1 994 628 BotOutput records, nonzero execTimeUs = 0, tled set = 0",
+     "sample": "full repo scan",
+     "probe": "vdrive.records decoder"
+    },
+    {
+     "metric": "The visualiser's 2e3 is not a budget \u2014 and is in fact dead code, not merely a fallback",
+     "value": "schema is BotOutput{id:1, stdout:2, execTimeUs:3, tled:4 bool} with NO proto3_optional; the single use is `r.tled = s.tled ?? o>2e3`. protobufjs yields false (not undefined) for an absent non-optional bool, so `??` never falls through. tled drives only a TLE sprite overlay",
+     "sample": "source read of fcode/data/visualiser/assets/main-CFfsim4r.js offsets 4225 and 11891",
+     "probe": "static source read"
+    },
+    {
+     "metric": "The engine serialises tled only when true (so the flag count is exact)",
+     "value": "my tle=10 replays: field-4-present == tled count exactly (20/20, 11/11); tle=0 replays: 0 present out of 68",
+     "sample": "7 replays",
+     "probe": "vdrive.records decoder"
+    },
+    {
+     "metric": "The ladder's value of 10 is documentation, not a local measurement \u2014 and cannot be one",
+     "value": "the engine enforces exactly whatever turn_timeout_ms it is handed (measured 2 -> 2 ms, 10 -> 10 ms). The 10 comes from docs/official/docs/game-rules-reference.txt (\"10 ms (+5% banked extra time)\"), cli-reference.txt (\"The ladder server always enforces 10 ms\") and the CLI's own --tle help (\"0 to disable, server uses 10\")",
+     "sample": "3 tle settings measured; 3 independent doc sources",
+     "probe": "vcut3 + source read of fcode/commands/run.py:119"
+    }
+   ],
+   "probes": [
+    "vcut \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vcut/main.py \u2014 fixed 6000-chunk pure-Python burn with ZERO Controller calls inside the loop, so nothing in the bot can stop it; this is what refutes the hard-cut claim",
+    "vcut3 \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vcut3/main.py \u2014 same loop plus one ct.get_current_round() per chunk; measures the cut point in chunks of work at tle=10/2/0, which converts to microseconds without trusting execTimeUs",
+    "vcut4 \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vcut4/main.py \u2014 same loop plus a pure-Python nop() call per chunk; separates 'any function call' from 'Controller entry point'",
+    "vcut2 \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vcut2/main.py \u2014 burns 3000 chunks API-free (52 ms), then calls the API and acts; locates the cut at the first Controller call and shows the action is lost",
+    "vcut6 \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vcut6/main.py \u2014 40 ms of CPU in the module body, then the API-polled loop; shows import CPU is not charged to round 0",
+    "cpushare \u2014 c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/cpushare/main.py \u2014 pre-existing probe, re-run under my own driver and decoder to replicate the per-unit (not per-team) result",
+    "vdrive.py \u2014 C:/Users/edlun/AppData/Local/Temp/claude/c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league/69495691-95ef-4878-adf9-aeca64f3e3b5/scratchpad/vdrive.py \u2014 cross-platform driver; runs a probe at several turn_timeout_ms values, prints the loaded fcode version, and decodes BotOutput{id,stdout,execTimeUs,tled} including whether field 4 was physically present",
+    "Linux runs used WSL2 Ubuntu with PYTHONPATH=/root/fc236 (fcode 2.3.6 verified at runtime); Windows runs used .venv/Scripts/python.exe (fcode 2.3.6)"
+   ],
+   "design_impact": "The 10 ms number stands, so nothing that was sized against 10 ms needs resizing \u2014 but the enforcement model in the verified note is wrong and that changes how the bot must be written. (1) The engine does NOT pre-empt Python. It stops the unit at its next Controller call after the budget is gone, silently, with no catchable exception. A heavy pure-Python planning phase will run to completion no matter how long it takes; the bot then dies at its next ct.* call and every action it had not yet issued that turn simply never happens (vcut2: zero ammo over 11 rounds where the tle=0 control got 11). (2) Therefore ordering is a hard rule: issue the highest-value action FIRST, then plan. Work committed before the overrun survives (ammo rose on 31/31 tled rounds). A bot that plans first and acts last loses the entire turn on an overrun; a bot that acts first loses only the tail. (3) Self-policing with ct.get_cpu_time_elapsed() still works and is the right tool, but be aware that call is itself a place the axe can fall \u2014 check early with margin and bail voluntarily. (4) Budget for ~10.0 ms, not 10.5: the +5% bank is real but only ~500 us and only on a turn that follows cheaper turns; consecutive heavy turns get 10 006-10 029 us. (5) Module-scope precompute is free (40 ms cost round 0 nothing), so push table building, map preprocessing and constant setup to import time. (6) The budget is per unit, so a 50-unit team gets ~500 ms/round \u2014 per-unit cost is the only thing that matters. (7) Ignore the visualiser's TLE overlay as a 2 ms signal; it renders the engine's tled flag and its 2e3 branch is unreachable. (8) All local Windows runs are timing-blind (every one of the 148 repo replays has execTimeUs=0), so any TLE gate in the harness must run under WSL with --tle, and must keep the repo's existing local-vs-ladder margin since the ladder is ARM.",
+   "caveats": "The verdict on the QUESTION (10 ms, not 2 ms) holds and is now re-derived by a second, independent method \u2014 counting units of work completed rather than reading execTimeUs. But one clause of the verified headline is refuted: \"the engine hard-cuts a unit's turn at execTimeUs 10002-10009\" is an artifact of the original probes, whose burn loops called ct.get_cpu_time_elapsed() every ~100 iterations. That polling is exactly what triggers the cut, which is why the overshoot looked like <=9 us. Remove the API calls and the same engine at the same tle=10 lets the turn run 110-138 ms. So execTimeUs is NOT bounded by the budget, and \"tled\" in a replay means \"went over\", not \"was stopped at\". Not re-verified by me, and I would not cite them without a re-run: the per-op microbenchmark table (get_nearby_tiles 14.9 us etc.) \u2014 those are Windows perf_counter numbers and the Linux/ARM constants will differ; and the real-bot percentiles for bot/main.py and luc1 (p50=30/p90=202, luc1 max=80 404 us) \u2014 bot/main.py is modified in the working tree, so those figures are not reproducible as stated. Finally, the ladder's own value of 10 is an inference from three documentation sources, not a measurement: the engine enforces precisely the turn_timeout_ms it is given, and no local probe can observe what the server passes."
+  }
+ },
+ {
+  "key": "store-and-roles",
+  "claimed": {
+   "question": "On fcode 2.3.6: re-verify the 16-slot communication store (count, init, value range, out-of-range exception class, write lag, cross-unit sharing, same-round collision), then design and prove a role-claim protocol that survives the claimant's death, and report how many rounds the role stays vacant.",
+   "verdict": "CONFIRMED",
+   "headline": "A one-slot lease word `(id+1) << 10 | round`, renewed every round and challenged at `round - stamp >= 2`, re-claims a dead role in exactly 2 rounds (1 if the challenger acts optimistically) with 0 false evictions in 1639 measured rounds, and costs zero extra slots because `word >> 10` is bit-identical to the `id+1` the bot already stores.",
+   "numbers": [
+    {
+     "metric": "Slot count and index range",
+     "value": "16 slots, indices 0..15; all initialised to 0",
+     "sample": "20 indices read on round 0, 1 game",
+     "probe": "st_ver (maps/lab/scal)"
+    },
+    {
+     "metric": "Out-of-range index exception class",
+     "value": "index 16 / 20 / 2**40 -> GameError; index -1 -> OverflowError; float index -> TypeError; bool index -> accepted (True == 1)",
+     "sample": "9 calls, 1 game",
+     "probe": "st_ver"
+    },
+    {
+     "metric": "Value range per slot",
+     "value": "u32 exact: 0, 1, 2**31, 2**32-1 all write and read back unchanged; 2**32 -> OverflowError; -1 -> OverflowError; 1.5 -> TypeError; 'x' -> TypeError; True -> stored as 1",
+     "sample": "9 values written round 1, read back round 2",
+     "probe": "st_ver"
+    },
+    {
+     "metric": "Write lag",
+     "value": "exactly 1 round. Same-round read returns the pre-turn snapshot (0, not the 777 just written); round+1 = 777; round+2 = 777",
+     "sample": "3 reads across rounds 2,3,4",
+     "probe": "st_ver"
+    },
+    {
+     "metric": "Cross-unit sharing",
+     "value": "team-wide, all unit types. Core wrote 12345; Builder, Gunner, Sentinel and Launcher each echoed back the correct verdict (1, 1, 7, 9)",
+     "sample": "4 reader unit types, 1 game",
+     "probe": "st_ver"
+    },
+    {
+     "metric": "Same-round collision, 3 writers",
+     "value": "highest entity id wins. Core(id 1)=200, builder(id 3)=122, builder(id 4)=111 -> slot held 111",
+     "sample": "1 collision round",
+     "probe": "st_ver"
+    },
+    {
+     "metric": "Same-round collision, 4 writers each writing its own id",
+     "value": "survivor = 6 = max(1,3,4,5,6). Rule is 'highest entity id wins', i.e. units act in ascending id order and the last write of the round lands",
+     "sample": "5 writers, 1 collision round",
+     "probe": "st_id"
+    },
+    {
+     "metric": "Same-unit double write in one round",
+     "value": "last write wins. Core wrote 1 then 2 -> 2. Builder wrote 31 then 32 -> 32",
+     "sample": "2 units, 2 rounds",
+     "probe": "st_ver"
+    },
+    {
+     "metric": "Write buffered in the round the unit dies",
+     "value": "LANDS. Builder wrote 999 then self_destruct() in the same round; slot held 999 two rounds later",
+     "sample": "1 death",
+     "probe": "st_ver"
+    },
+    {
+     "metric": "get_hp(id) on a LIVE teammate",
+     "value": "raises GameError as soon as the teammate leaves the caller's vision. Core (vision r^2=36) last succeeded at round 11, first failed at round 12, while the target walked on unharmed to x=20 and only died at round 40. A dead id gives the same GameError from get_hp, get_entity_type and get_position",
+     "sample": "40 consecutive rounds of polling",
+     "probe": "st_id"
+    },
+    {
+     "metric": "Role vacancy after the claimant dies (conservative lease, STALE=2)",
+     "value": "2 rounds. Owner renewed+acted then died on round 20 -> last act 20, next act 23. Owner died on round 40 without renewing -> last act 39, next act 42. Both gaps = 2 vacant rounds",
+     "sample": "2 kills per game, 4 and 7 builders, 2 games",
+     "probe": "st_hb (maps/lab/scal)"
+    },
+    {
+     "metric": "Role vacancy, optimistic variant (challenger acts on the round it challenges)",
+     "value": "1 round, but 3 units perform the role simultaneously on the handover round (maxconc=3 at rounds 22 and 41)",
+     "sample": "2 kills, 1 game",
+     "probe": "st_hb"
+    },
+    {
+     "metric": "Vacancy as a function of the staleness threshold",
+     "value": "linear: STALE=2 -> 2, STALE=3 -> 3, STALE=4 -> 4 vacant rounds conservative; STALE-1 optimistic",
+     "sample": "4 parameter settings, 2 kills each",
+     "probe": "st_hb"
+    },
+    {
+     "metric": "False evictions of a LIVE owner at STALE=2",
+     "value": "0. Lab: 396 acts over rounds 4..399 (4 builders) and 392 acts (7 builders), single owner, no gaps. Contested: 244+244+63+56+244 = 851 acts vs 5 rivals on 3 real maps, single owner, no gaps. 1639 lease-held rounds, 0 spurious owner changes",
+     "sample": "1639 rounds across 7 games",
+     "probe": "st_hb (vanguard/sprint, lockin/duel, jonbot/aurora, tempest/sprint, luc1/duel)"
+    },
+    {
+     "metric": "Simultaneous owners under the conservative lease",
+     "value": "1, always. Each builder reports into its own slot 8 + id%8 so a slot collision cannot hide double ownership; peak concurrency was 1 in every conservative run",
+     "sample": "7 games",
+     "probe": "st_hb"
+    },
+    {
+     "metric": "Entity id magnitude (packing budget)",
+     "value": "627 by round 950 in a real contested game; 0.89 ids/round under deliberate build/destroy churn -> ~913 projected at round 1000. The (id+1) << 10 encoding overflows u32 only at id 4194302, a headroom factor of ~4500",
+     "sample": "1 real 950-round game + 1 churn game",
+     "probe": "st_max"
+    },
+    {
+     "metric": "resign_message length cap",
+     "value": "500 characters, silently truncated",
+     "sample": "1 over-long message",
+     "probe": "st_ver (first run)"
+    }
+   ],
+   "probes": [
+    "bots/probes/st_ver/main.py \u2014 store mechanics on 2.3.6: slot count, init, index and value range with exception classes, write lag, sharing across Core/Builder/Gunner/Sentinel/Launcher, 3-way collision, same-unit double write, write buffered in the death round, id lookup on a dead id",
+    "bots/probes/st_id/main.py \u2014 can a unit tell whether a NAMED teammate is alive? Core polls get_hp on a builder walking east; plus a 5-way collision where every unit writes its own id",
+    "bots/probes/st_hb/main.py \u2014 the heartbeat lease itself: 4-8 builders, one ATTACKER role, owner killed twice (once after renewing, once before), full act transcript, owner-change list, gap sizes, and a per-unit concurrency check",
+    "bots/probes/st_max/main.py \u2014 entity id churn rate, to size the (id, round) packing",
+    "bots/probes/apistore/main.py \u2014 the 2.3.3 probe, re-run unchanged on 2.3.6 as a cross-check (all results agree)"
+   ],
+   "design_impact": "THE DEFECT. bot/main.py stores `S_RUSHER = id + 1` once (line 1211) and never touches it again. When that builder dies the slot still names it, every other builder reads a non-zero claim and stands down permanently, and the attack never resumes. The obvious repair \u2014 ask whether the claimant is still alive \u2014 is impossible: st_id shows get_hp on a LIVE teammate raises GameError the moment it leaves the caller's vision (6 tiles for the Core), and a rusher at the enemy Core is never in vision of anything at home. Liveness must travel in the store.\n\nTHE PROTOCOL (drop-in, zero new slots).\nEncoding, in the slot the id already occupies:\n    word = (owner_id + 1) << 10 | (round the owner last renewed)\n`word >> 10` is bit-for-bit the old `id + 1`, so the three existing read sites (bot/main.py lines 1209, 1221, 1596) need only `>> 10` added; `word == 0` still means unclaimed. Round < 1024 = MAX_TURNS 1000, so the stamp never wraps. Ids reach ~630 in a real game against the 4194302 ceiling.\n\nEvery unit, every round:\n    raw   = read_store(S_RUSHER)\n    stamp = raw & 1023\n    held  = (raw >> 10) - 1\n    fresh = raw != 0 and (round - stamp) < 2\n    if raw and held == mine:   self.owner = True      # our claim came back \u2014 the role is ours\n    elif fresh:                self.owner = False     # somebody live holds it\n    if self.owner:\n        write_store(S_RUSHER, ((mine + 1) << 10) | round)   # renew FIRST, unconditionally\n        ...perform the role...\n    elif not fresh:\n        write_store(S_RUSHER, ((mine + 1) << 10) | round)   # challenge; resolves next round\n\nThree measured facts make this correct with no handshake and no tie-break: (1) writes land exactly one round late, so the freshest stamp any reader can see is round-1 \u2014 STALE=2 is the tightest threshold that can never evict a living owner, and 1639 measured rounds produced 0 false evictions; (2) a same-round collision keeps the highest entity id, so when every idle builder challenges at once exactly one survives and the losers see a foreign id next round and stand down; (3) a write buffered in the round the owner dies still lands, so the lease is trustworthy right up to the last round the owner ran.\n\nSLOT BUDGET \u2014 unchanged, all 16 still spoken for. 0 core x+1, 1 core y+1, 2 spawn ordinal, 3 state word (alarm bit0 + posture bits1-2), 4-8 ore claims, 9 S_RUSHER2 -> becomes a lease word, 10 enemy core anchor + SIGHTED, 11 symmetry mask + archetype evidence, 12 S_RUSHER -> becomes a lease word, 13 rush done latch, 14 rush ray, 15 rush active. Only slots 9 and 12 change meaning, and only in their low 10 bits.\n\nCHOOSE THE VARIANT. Conservative (challenger waits one round to confirm): 2 vacant rounds, never more than one attacker on the board. Optimistic (challenger acts the round it challenges): 1 vacant round, but every idle builder performs the role for that one round \u2014 measured at 3 simultaneous actors. For the siege, take conservative: one wasted round is cheaper than three builders walking toward the enemy Core and then two of them turning around.\n\nTWO CONSEQUENCES TO HANDLE. The cold-start claim also costs 2 rounds (challenge, then confirm), which is 1 round slower than today's write-then-confirm \u2014 the same handshake, so the rush start is unaffected. And the S_RUSH_DONE / S_RUSH_ACTIVE latches are role state, not unit state: they correctly survive the handover, so the successor inherits a finished route rather than rebuilding it, and no reset is needed.",
+   "caveats": "Three limits on what was measured. (1) The kills were self_destruct, not enemy fire. Death by damage was never isolated \u2014 the owner survived all 5 rival games. The two measured modes bracket every possible cause though: either the owner's final turn included its renewal write (2 rounds vacant) or it did not (2 rounds vacant), and enemy fire must land in one of those. Both measure 2, so the result is cause-agnostic by construction, but it is an argument, not a third measurement. (2) The max-id figure is one observed number (627 at round 950 vs starter on sprint) plus a projection from a churn-maximising probe; a game with a much larger economy would mint more resource entities, though the 4500x headroom absorbs a lot. (3) Windows cannot measure CPU (get_cpu_time_elapsed returns 0), so the per-round cost of the extra write and mask is unmeasured here \u2014 it is one read, one write and two shifts, but that is asserted, not timed. Separately: resign_message is truncated at 500 characters, which cost one run and is worth adding to HARNESS.md."
+  },
+  "verified": {
+   "question": "On fcode 2.3.6: re-verify the 16-slot communication store (count, init, value range, out-of-range exception class, write lag, cross-unit sharing, same-round collision), then design and prove a role-claim protocol that survives the claimant's death, and report how many rounds the role stays vacant.",
+   "verdict": "CONFIRMED",
+   "headline": "The lease works and every store fact reproduces bit-for-bit on 2.3.6, but \"exactly 2 rounds\" is the modal case, not the rule: vacancy is 2*(1+k) where k is the number of consecutive claimants killed before they confirm \u2014 58 of 59 contested handovers took 2 rounds, one took 4, and a forced double-kill took 6; false evictions measured DIRECTLY (not inferred from gaps) are 0 in 2620 lease-held rounds.",
+   "numbers": [
+    {
+     "metric": "Store mechanics on 2.3.6, re-run unchanged",
+     "value": "IDENTICAL to the claim. 16 slots all init 0; idx 16..19 GameError, -1 OverflowError, float TypeError, bool ok; u32 exact (2**32 and -1 OverflowError, 1.5/'x' TypeError, True->1); write lag exactly 1; Core/Builder/Gunner/Sentinel/Launcher all share (echo 1,1,7,9); 3-way collision core200/A111(id4)/B122(id3) -> 111; double write last-wins 2 and 32; death-round write lands 999",
+     "sample": "1 game, all 9 sub-tests",
+     "probe": "st_ver (maps/lab/scal) re-run by me on fcode 2.3.6"
+    },
+    {
+     "metric": "STORE_SIZE / MAX_TURNS read from GameConstants on 2.3.6",
+     "value": "STORE_SIZE = 16, MAX_TURNS = 1000. A full idle-vs-idle game on duel returned turns=1000, so the 10-bit round field (max 1023) has 23 rounds of slack",
+     "sample": "1 full 1000-turn game",
+     "probe": "direct run_game call, duel"
+    },
+    {
+     "metric": "Vacancy, INDEPENDENT re-implementation, lab arena",
+     "value": "2 rounds, four times out of four. Kills at 25/70 (renew+act then die) and 45/95 (die without renewing) gave gaps 25>28(2), 44>47(2), 70>73(2), 94>97(2); 225 acts over rounds 7..239, concurrency 1",
+     "sample": "4 kills, 1 game",
+     "probe": "vf_lease (maps/lab/scal vs idle) \u2014 my own implementation, different slot map from st_hb"
+    },
+    {
+     "metric": "Vacancy on CONTESTED real maps (the number the lab could not establish)",
+     "value": "58 handovers of exactly 2 vacant rounds and 1 of 4. Total 59 handovers, 2395 lease-held rounds, across 21 games on 15 real maps vs 6 rivals. One handover (skerry/vanguard 53>56) was a NATURAL enemy kill, not a scheduled self_destruct, and it also took exactly 2",
+     "sample": "21 games: sprint/duel/aurora/quarry/fjord/showdown/pinch/atoll/runestone/meander/strait/heart/skerry/bridge/crossfire vs vanguard, lockin, tempest, jonbot, luc1, mistral",
+     "probe": "vf_lease"
+    },
+    {
+     "metric": "The 4-round gap, root cause MEASURED not inferred",
+     "value": "Owner 14 died round 45. Round 46 challenge won by builder 13 (lease reads 13@46 at r47). Builder 13 stamped its proof-of-life slot on round 46 and never again -> killed by tempest before its round-47 confirm. Builders 5 and 10 read a FRESH lease naming a corpse and stood down until it aged out; 10 won the round-48 challenge and acted at 49. Last act 44, next act 49",
+     "sample": "9 logged rounds (43..51), 1 game",
+     "probe": "vf_why (aurora vs tempest)"
+    },
+    {
+     "metric": "Compounding rule, forced deterministically",
+     "value": "vacancy = 2*(1+k), k = consecutive claimants that die before confirming. Owner id3 killed at r25 without renewing, then id8 and id7 each killed AFTER writing their challenge -> gap 24>31 = 6 vacant rounds, and ids 8 and 7 never appear in the owner list at all (own=3@6,6@31)",
+     "sample": "1 forced 3-death sequence",
+     "probe": "vf_comp (maps/lab/scal)"
+    },
+    {
+     "metric": "False evictions of a LIVE owner \u2014 measured DIRECTLY, not inferred from gaps",
+     "value": "0. Every builder that believed it was the owner and then read a fresh foreign lease raised an alarm into a dedicated slot. Alarm never fired in 2620 lease-held rounds (2395 contested + 225 lab). Peak simultaneous owners = 1 in every one of the 22 games. The original inferred this from 'no gaps + one owner'; the direct alarm is strictly stronger evidence and agrees",
+     "sample": "22 games",
+     "probe": "vf_lease (A2 alarm)"
+    },
+    {
+     "metric": "The lease's unmeasured hidden premise: does a LIVE unit ever skip a turn?",
+     "value": "0 skips. Every builder recorded the round of its previous turn and alarmed on round-prev>1. Never fired in 22 games. This is the assumption the whole STALE=2 safety argument rests on and neither st_hb nor st_ver ever tested it",
+     "sample": "22 games",
+     "probe": "vf_lease (A1 alarm)"
+    },
+    {
+     "metric": "Cross-unit same-round read (NEW \u2014 st_ver only tested a unit reading its OWN same-round write)",
+     "value": "Prior-round SNAPSHOT. The Core (id 1, lowest on the team) wrote 4242 on round 7; every builder read the same slot in the same round and saw 0, echoing verdict 2 in all 30 games. So no unit can ever see a write made this round by any unit, which is what makes 'the freshest stamp a reader can see is round-1' true and STALE=2 the floor",
+     "sample": "30 games",
+     "probe": "vf_lease (A4)"
+    },
+    {
+     "metric": "STALE threshold sweep, including the floor the original never tested",
+     "value": "STALE=2 -> 2, STALE=3 -> 3, STALE=4 -> 4 vacant rounds (linear, confirmed). STALE=1 is DEGENERATE, not merely tight: the lease is never fresh, so every unit latches owner=True permanently \u2014 concurrency 6 of 6 builders and acts collapse from 225 to 19",
+     "sample": "4 settings x 4 kills, lab",
+     "probe": "vf_s1, vf_lease, vf_s3, vf_s4 (maps/lab/scal)"
+    },
+    {
+     "metric": "Optimistic variant cost \u2014 pool-size dependent, claim understated it",
+     "value": "Vacancy 1 round (gaps 25>27, 44>46, 70>72, 94>96), confirmed. But concurrency was 5, not 3: EVERY idle unit performs the role on the handover round, so the cost is pool-size minus one, and the claim's '3' was an artifact of its 4-builder pool",
+     "sample": "4 kills, 6-builder pool, 1 game",
+     "probe": "vf_opt (maps/lab/scal)"
+    },
+    {
+     "metric": "Entity id churn / packing headroom",
+     "value": "Reproduced exactly: 0.89 ids/round under deliberate build-destroy churn, id 288 at round 300, projected 913 at round 1000. (id+1)<<10 overflows u32 at id 4194302, ~4500x headroom",
+     "sample": "1 churn game to round 300",
+     "probe": "st_max (maps/lab/scal) re-run"
+    },
+    {
+     "metric": "'Costs zero extra slots' \u2014 true, but it is arithmetic, not a measurement, and it is NOT drop-in",
+     "value": "word>>10 == id+1 holds by construction while round<1024. But bot/main.py:1213 compares the RAW slot (`if claim == mine:` with mine = get_id()+1). Adopting the lease requires changing that comparison to `claim >> 10 == mine` and adding a per-round renew; the shipped S_RUSHER claim at bot/main.py:1206-1228 writes once and never renews, which is exactly the never-reclaimed role the lease fixes",
+     "sample": "source read, bot/main.py:1206-1228",
+     "probe": "code inspection, not a probe"
+    }
+   ],
+   "probes": [
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vf_lease/main.py \u2014 independent re-implementation of the lease with a different slot map, plus the three things st_hb never measured: a DIRECT false-eviction alarm (owner reads a fresh foreign lease while alive), a turn-skip alarm (live unit whose round-prev>1), and a cross-unit same-round read test. Run on maps/lab/scal and on 21 contested real-map/rival pairs.",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vf_why/main.py \u2014 instruments the one 4-round gap (aurora vs tempest). Every builder stamps a private proof-of-life slot every turn, so the Core prints the live roster next to the lease word for rounds 43..51. Turns the arithmetic explanation into a measurement.",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vf_comp/main.py \u2014 forces the compounding case by entity id: owner dies without renewing, then the next two challenge winners die AFTER writing their claim. Produces a deterministic 6-round vacancy and an owner list that skips both dead claimants.",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vf_s1, vf_s3, vf_s4, vf_opt \u2014 STALE=1/3/4 and the optimistic variant, generated from vf_lease by single-constant substitution so the comparison is exact.",
+    "c:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/probes/vf_nat/main.py \u2014 natural-death sweep. Reported vac=NONE in all 6 games because the marching owner stalls at the first wall and never dies, and its conc=8 is an artifact (at round 1 the check `read_store(S_REP+i) == r-1` matches the 0 initialiser). Recorded as a negative result and superseded by vf_lease/vf_why.",
+    "Re-ran unchanged on 2.3.6: st_ver, st_hb, st_id, st_max. All four reproduce their claimed numbers exactly."
+   ],
+   "design_impact": "Adopt the lease, but budget the vacancy as 2*(1+k), not 2. Concretely: (1) Replace the write-once claim at bot/main.py:1206-1228 with a renew-every-round lease word `(get_id()+1) << 10 | round` and change `if claim == mine:` to `if claim >> 10 == mine:` \u2014 it is not a drop-in read. (2) Renew UNCONDITIONALLY at the top of the owner's turn, before any code that can raise; the whole safety proof is \"a live owner never misses a turn\", and one exception thrown before the renew manufactures a false eviction that 22 games of engine behaviour will never show you. (3) Keep STALE=2. STALE=1 is not merely tight, it is degenerate \u2014 reads are a prior-round snapshot, so a stamp of `round` is unreachable and every unit permanently believes it owns the role. (4) For a role that must not stall under fire (a rush), do not use the optimistic variant to buy the 1-round vacancy: it makes every idle unit perform the role on the handover round (5 of 6 measured), which for a rush means the whole builder pool marching. Instead have the challenger publish the challenge and have the LOSERS re-challenge at `round - stamp >= 2` even against an unconfirmed claim, or accept 2*(1+k). (5) The 10-bit round field has only 23 rounds of headroom against MAX_TURNS=1000; if the round budget is ever raised the id field corrupts silently, so assert `round < 1024` at the pack site.",
+   "caveats": "Three things this verification cannot settle. (1) TLE: Windows returns 0 from get_cpu_time_elapsed() and the time limit is never enforced here, so a turn skipped because a unit blew its budget cannot be produced or ruled out on this machine. The \"0 turn skips / 0 false evictions\" numbers are measured only under no time pressure, and a TLE-skipped turn is precisely the event that would evict a living owner. (2) My builders do almost nothing per turn; a real bot's owner runs hundreds of lines before renewing, so the exception-before-renew risk is real and untested. (3) \"Highest entity id wins the collision\" is what is measured; the claim's gloss \"i.e. units act in ascending id order and the last write of the round lands\" remains an inference \u2014 the snapshot semantics I measured (A4) mean act order is not directly observable through the store at all. It does not affect the protocol, which only needs exactly one writer to survive. Separately, the 21-game contested sweep produced only 59 handovers, so a 1-in-59 event like the dead-claimant case is measured to roughly a factor of two; the mechanism is proven deterministically by vf_comp, but its FREQUENCY under fire is not."
+  }
+ },
+ {
+  "key": "sabotage-exchange",
+  "claimed": {
+   "question": "On fcode 2.3.6, what does sabotage actually cost us? Re-measure the 2.3.3 finding that belt-sniping runs 6.3:1 against the attacker versus an opponent that simply rebuilds the cut link, and price the cut-then-occupy and barrier-on-ore variants.",
+   "verdict": "CONFIRMED",
+   "headline": "Belt-sniping still loses on 2.3.6 \u2014 3120 Ti spent to cost the victim 1430 Ti, 2.18:1 against the attacker \u2014 because the victim replants the cut link inside the same round (empty=0 in 800 rounds), but not vacating the tile flips it: one 3 Ti barrier held on the terminal conveyor tile denies 91% of the victim's harvest at 1:6.5 in the attacker's favour.",
+   "numbers": [
+    {
+     "metric": "Conveyor (20 HP) kill cost \u2014 BUILDER attack, 2 dmg / 2 Ti, fires every round",
+     "value": "20 Ti, 10 rounds",
+     "sample": "1 kill, HP ladder 20,18,16,...,2; treasury delta -20 Ti over r6->r16; ammo unchanged (builder attack costs titanium, not ammo)",
+     "probe": "sb_bkill (bots/probes/sb_bkill/main.py, map dopen vs noop)"
+    },
+    {
+     "metric": "Conveyor (20 HP) kill cost \u2014 GUNNER, 7 dmg / 4 ammo, fires every round (gaps=[1])",
+     "value": "12 Ti, 3 rounds \u2014 the cheapest killer in the game",
+     "sample": "10 kills from 30 fires (3.00 shots/kill), 120 ammo -> 0; HP ladder 20,13,6",
+     "probe": "sb_gkill (bots/probes/sb_gkill/main.py, map dopen vs noop)"
+    },
+    {
+     "metric": "Conveyor (20 HP) kill cost \u2014 SENTINEL, 18 dmg / 10 ammo, fires every 2nd round (gaps=[2])",
+     "value": "20 Ti, 4 rounds",
+     "sample": "6 kills from 12 fires (2.00 shots/kill), 120 ammo -> 0; HP ladder 20,2",
+     "probe": "sb_skill (bots/probes/sb_skill/main.py, map dopen vs noop)"
+    },
+    {
+     "metric": "Defender's rebuild cost for a cut conveyor \u2014 does NOT inflate with repetition",
+     "value": "3 Ti flat, forever; 1 round",
+     "sample": "8 consecutive destroy/rebuild cycles: cost 3,3,3,3,3,3,3,3 with scale pinned at 120%",
+     "probe": "sb_bkill churn phase"
+    },
+    {
+     "metric": "Cost scale attribution \u2014 what raises every price you pay",
+     "value": "+20% per UNIT (builder/gunner/sentinel), +1% per cheap building (conveyor, barrier), +5% per harvester; all costs = floor(base x scale/100)",
+     "sample": "units 1->9 gave scale 100->260 (sb_scale); 6 conveyors +1% each, 3 barriers +1% each, 1 harvester +5%, 3 gunners +20% each (sb_scale2)",
+     "probe": "sb_scale, sb_scale2"
+    },
+    {
+     "metric": "BELT-SNIPE exchange ratio, gunner vs an opponent that only rebuilds",
+     "value": "3120 Ti attacker : 1430 Ti defender = 2.18 : 1 AGAINST the attacker",
+     "sample": "800 rounds on sab.map26; 783 fires, 260 kills. Attacker a_titanium 1199 vs control 4319. Defender b_titanium 3000 vs control 4430 = 780 rebuilds (260 x 3 Ti) + 650 denied ore",
+     "probe": "sb_war vs sb_vic, control sb_warc vs sb_vic"
+    },
+    {
+     "metric": "Denial window created by cutting a conveyor",
+     "value": "ZERO rounds",
+     "sample": "empty=0 across all 800 rounds \u2014 the victim replanted the link within the same round, every one of 260 times. Throughput was never interrupted",
+     "probe": "sb_war"
+    },
+    {
+     "metric": "Titanium actually denied per conveyor kill (it is the stack in transit, not the flow)",
+     "value": "2.5 Ti per kill \u2014 25% of kills catch a 10 Ti stack",
+     "sample": "650 Ti denied / 260 kills = 2.500. A stack occupies the terminal conveyor 1 round in 4; a 3-round kill cycle catches it 25% of the time",
+     "probe": "sb_war (b_titanium_collected 1340 vs control 1990)"
+    },
+    {
+     "metric": "BELT-SNIPE exchange ratio, SENTINEL \u2014 the worst sabotage tool measured",
+     "value": "3915 Ti attacker : 585 Ti defender = 6.69 : 1 AGAINST, with ZERO titanium denied",
+     "sample": "800 rounds, 392 fires, 195 kills. b_titanium_collected 1990 = control exactly. The sentinel's 4-round kill cycle phase-locks with the 4-round stack cycle and always hits an empty conveyor",
+     "probe": "sb_occ vs sb_vic"
+    },
+    {
+     "metric": "Barrier (30 HP, 3 Ti) clear cost \u2014 the inverse of belt-sniping",
+     "value": "gunner 20 Ti / 5 shots; sentinel 20 Ti / 2 shots; builder 30 Ti / 15 rounds. Placing it costs 3 Ti",
+     "sample": "sb_barg 6 kills from 30 fires (5.00 shots/kill), HP ladder 30,23,16,9,2; sb_bars 6 kills from 12 fires (2.00); sb_barb 15 attacks, ladder 30..2",
+     "probe": "sb_barg, sb_bars, sb_barb"
+    },
+    {
+     "metric": "CUT-THEN-OCCUPY vs an opponent that rebuilds but owns no weapon",
+     "value": "285 Ti attacker : 1852 Ti defender = 1 : 6.5 IN THE ATTACKER'S FAVOUR",
+     "sample": "800 rounds. One 3 Ti barrier placed on round 76 and held 723 rounds. b_titanium_collected 180 vs control 1990 = 91% of the whole harvest denied. Attacker paid 300 Ti ammo (30 sentinel fires) + 3 Ti barrier",
+     "probe": "sb_occ2 vs sb_vic, control sb_occ2c vs sb_vic"
+    },
+    {
+     "metric": "CUT-THEN-OCCUPY vs an opponent that builds a sentinel to clear the barrier",
+     "value": "3247 Ti attacker : 4321 Ti defender = 1 : 1.33 in the attacker's favour \u2014 but both economies are destroyed",
+     "sample": "800 rounds. Barrier lost and replaced 103 times, held 416/800 rounds, 39% of harvest denied (1210 vs 1990). Defender ended on 49 Ti, attacker on 987 Ti (control 4234)",
+     "probe": "sb_occ2 vs sb_vics"
+    },
+    {
+     "metric": "Turn-order requirement \u2014 the occupier must outrank its own killer by entity id",
+     "value": "placed=0 when the occupier's id is lower than the turret's; placed=103 when it is higher",
+     "sample": "sb_occ spawned the occupier before the sentinel it built: empty=0, placed=0 across 800 rounds. sb_occ2 spawned a third builder only after the sentinel existed: it took the tile on its first opportunity, round 76",
+     "probe": "sb_occ vs sb_occ2"
+    },
+    {
+     "metric": "Heal-the-held-building return on investment",
+     "value": "4 Ti of healing forces ~10.8 Ti of extra enemy ammo = 2.7 : 1",
+     "sample": "412 heals / 103 barriers = 4.0 heals per barrier (+16 HP), which pushed the defender from 2 sentinel shots (20 Ti) to 3.08 shots (30.8 Ti, back-computed from b_titanium 49 vs control 4370)",
+     "probe": "sb_occ2 vs sb_vics"
+    },
+    {
+     "metric": "BARRIER-ON-ORE denial, once the tile is held",
+     "value": "3 Ti attacker : 1866 Ti defender = 1 : 622, and 100% of the harvest denied",
+     "sample": "One barrier placed on the victim's only ore (15,4) at round 14, held 786 rounds, never damaged. b_titanium_collected = 0 vs control 1890. The victim could never build a harvester (b_buildings = core + 2 conveyors only)",
+     "probe": "sb_ore vs sb_vicd (victim idle until round 40)"
+    },
+    {
+     "metric": "BARRIER-ON-ORE race against a normal opening \u2014 the reason it is mostly unavailable",
+     "value": "LOST. Attacker arrives round 14, defender's harvester has stood since round ~3",
+     "sample": "placed=0, theirs=787/800. The victim's home ore is 2 moves from its builder's spawn and 12 from the attacker's; builders move ~1 tile/round",
+     "probe": "sb_ore vs sb_vic"
+    },
+    {
+     "metric": "Ammo is 1:1 with titanium; per-shot costs verified, not assumed",
+     "value": "gunner 4 Ti/shot, sentinel 10 Ti/shot",
+     "sample": "a single fixed 120-ammo grant yielded exactly 30 gunner fires and exactly 12 sentinel fires, pool 120 -> 0 in both",
+     "probe": "sb_gkill, sb_skill"
+    },
+    {
+     "metric": "Belt-snipe burn rate against a one-chain economy",
+     "value": "4 Ti/round of ammo against ~5 Ti/round of total income = 80% of the economy",
+     "sample": "one harvester chain delivered 1990 Ti over 800 rounds = 2.49 Ti/round, passive adds 2.5 Ti/round; the gunner fired on 783 of 800 rounds",
+     "probe": "sb_war, sb_warc"
+    },
+    {
+     "metric": "ABANDON-CONDITION threshold \u2014 occupying-building replacements per 100 rounds",
+     "value": "0.125 uncontested vs 12.9 contested; a threshold of 2 separates them by 6x on both sides",
+     "sample": "placed=1 over 800 rounds vs sb_vic; placed=103 over 800 rounds vs sb_vics",
+     "probe": "sb_occ2 vs sb_vic and vs sb_vics"
+    }
+   ],
+   "probes": [
+    "bots/probes/sb_bkill/main.py \u2014 builder attack vs a 20 HP conveyor: HP ladder, Ti/kill, cadence, plus an 8-cycle destroy/rebuild churn proving the rebuild price never inflates",
+    "bots/probes/sb_gkill/main.py \u2014 gunner vs conveyors on a single fixed ammo grant, so shots/kill and ammo/shot are measured not derived",
+    "bots/probes/sb_skill/main.py \u2014 sentinel vs conveyors, same accounting",
+    "bots/probes/sb_barb/main.py, sb_barg/main.py, sb_bars/main.py \u2014 the same three weapons against a 30 HP barrier (clear cost)",
+    "bots/probes/sb_scale/main.py \u2014 the cost-scale curve as units are spawned (100% + 20%/unit)",
+    "bots/probes/sb_scale2/main.py \u2014 scale ATTRIBUTION: +1% per conveyor/barrier, +5% per harvester, +20% per turret",
+    "bots/probes/sb_war/main.py + sb_warc/main.py \u2014 the belt-sniping war and its zero-fire control, on sab.map26",
+    "bots/probes/sb_vic/main.py \u2014 the victim: one chain, one builder parked adjacent to the terminal conveyor, rebuilds the cut for 3 Ti and nothing else",
+    "bots/probes/sb_vics/main.py \u2014 the victim that fights back: same, plus a reactive sentinel to clear enemy buildings off the terminal tile",
+    "bots/probes/sb_vicd/main.py \u2014 the delayed victim (idle to round 40) that isolates ore-denial value from the tile race",
+    "bots/probes/sb_occ/main.py \u2014 cut-then-occupy, first attempt; REFUTED by entity-id turn order (placed=0)",
+    "bots/probes/sb_occ2/main.py + sb_occ2c/main.py \u2014 cut-then-occupy with the occupier spawned after its turret, and its no-sabotage control",
+    "bots/probes/sb_ore/main.py \u2014 barrier-on-ore, run against both the racing victim and the delayed one",
+    "maps/lab/mksab.py -> maps/lab/sab.map26 \u2014 22x10 arena built for this task: one ore per side, a clear firing column x=17 onto the victim's terminal conveyor (17,4), and (17,5) as the only tile the attacker can occupy next to it",
+    "scratchpad/sb_runfull.py \u2014 runner that prints the whole run_game result dict; the b_* fields are the only channel carrying the victim's ledger"
+   ],
+   "design_impact": "STOP SHOOTING CONVEYORS AND LEAVING THE TILE EMPTY. That is the one thing the bot must not do. Measured: 2.18:1 against with a gunner, 6.69:1 against with a sentinel, and a denial window of exactly zero rounds because the victim replants inside the same round. The only titanium you take is the 25% of kills that happen to catch a stack \u2014 2.5 Ti for your 12 Ti. Continuous sniping with one gunner eats 80% of a one-chain economy.\n\nINSTEAD, TAKE AND HOLD THE TILE. Kill the terminal conveyor and put your own 3 Ti barrier on the vacated tile. destroy() is allied-only, so they must shoot it: 20 Ti minimum (5 gunner shots or 2 sentinel shots) plus turret capital plus a permanent +20% scale tax, against your 3 Ti. Uncontested this is 1:6.5 in your favour and denies 91% of their harvest.\n\nFOUR IMPLEMENTATION CONSTRAINTS, ALL MEASURED:\n1. Entity-id scheduling. The occupying builder must be spawned AFTER the turret that clears the tile, so it holds the higher id and acts later in the round. Get this backwards and it never once sees the tile empty \u2014 placed=0 over 800 rounds.\n2. Use a SENTINEL for the clearing shot when your occupier stands in the lane. A gunner's line stops on your own builder; the sentinel's does not. On the only tile adjacent to their terminal conveyor, this is forced.\n3. Heal the held building every round it is damaged: 1 Ti per 4 HP returns 2.7:1 against their ammo.\n4. Target the TERMINAL conveyor tile \u2014 the one adjacent to their Core footprint. Cutting there zeroes the whole upstream chain (harvester and mid-conveyor untouched, collection still went to 180/1990).\n\nBARRIER-ON-ORE is the best exchange in the game (1:622, 100% denial, blocks the harvester from ever being built) but it is only available on ore you reach FIRST. Home ore is unwinnable \u2014 you arrive round 14, their harvester has stood since round 3. Only contest midfield/equidistant ore, and only if you can commit a builder there in the opening.\n\nABANDON CONDITION \u2014 count how many times your own occupying building is destroyed, per 100 rounds. Uncontested measures 0.125; contested by an enemy turret measures 12.9. Cross 2 per 100 rounds and the exchange has collapsed from 1:6.5 to 1:1.33, and at 1:1.33 both economies are gone by round 800 (defender ended on 49 Ti, attacker on 987 vs a 4234 control). At that point stop paying for the clearing shots \u2014 hold the barrier only while it survives for free, and spend the sentinel's ammo somewhere that is not a 3 Ti conveyor.\n\nSECOND ABANDON SIGNAL, cheaper to compute: if get_global_resources() is falling while your turret fires, you are converting your entire economy into their 3 Ti rebuilds. And remember the asymmetry that makes attrition unwinnable \u2014 their rebuild is a flat 3 Ti forever (destroyed buildings stop counting toward scale), while every turret you build is a permanent +20% on every price you pay.",
+   "caveats": "SCOPE \u2014 this is a mechanism measurement, not a ship-ready exploit. Per the standing constraint in HARNESS.md it has NOT been run against three rivals or on unseen maps. Everything here is one purpose-built arena (maps/lab/sab.map26, 22x10 open, ONE harvester chain and ONE ore per side) against two hand-written lab victims: sb_vic, the cheapest possible rebuilder, and sb_vics, the cheapest possible counter-battery. A real rival will sit somewhere between them.\n\nDENIAL PERCENTAGES ARE UPPER BOUNDS. With one chain per side, cutting the terminal conveyor removes 100% of harvest income. A rival running three chains would see the same absolute Ti denied but a third of the percentage, and would need three occupations to reproduce these ratios \u2014 which triples the attacker's turret capital and its scale tax.\n\nTHE ORE FIGURE NEEDED A HANDICAP. The 1:622 barrier-on-ore number required delaying the victim 40 rounds (sb_vicd). Against a normal opening the race is lost outright (sb_ore vs sb_vic: placed=0, theirs=787). Treat 1:622 as the value of ore you already hold, never as a reason to send a builder at a defended ore tile.\n\nTURN ORDER IS INFERRED, NOT READ. \"Team A acts before team B, and within a team in entity-id order\" is deduced from the placed=0 -> placed=103 flip between sb_occ and sb_occ2, not from engine source. It reproduces exactly, but it was only ever exercised with the saboteur as team A. If the bot sabotages as team B the ordering may not favour it, and the occupier-id trick needs re-measuring on that side.\n\nCONTROLS ARE NOT PERFECT. sb_occ's attacker cost (3915 Ti) is compared against sb_warc, which builds a gunner rather than a sentinel and no third builder, so treat 6.69:1 as approximate; the belt-snipe (2.18:1) and occupy (1:6.5, 1:1.33) ratios all use matched controls and are exact. The defender's ammo spend in the contested-occupy case (317 sentinel shots) is back-computed from b_titanium rather than counted directly \u2014 team B has no reporting channel.\n\nALL RUNS ARE 800 ROUNDS OF A 1000-ROUND GAME, ended by the attacker resigning. Every figure reproduces bit-identically on re-run, consistent with the engine being deterministic. No timing or CPU claims are made \u2014 Windows returns 0 from get_cpu_time_elapsed().\n\nThe 2.3.3 note that a barrier on an ore tile denies 100% of that tile's output is re-confirmed on 2.3.6, as is destroy()/heal() being allied-only while fire() is team-blind, and that only stacks landing on a Core footprint tile count toward titanium_collected. One correction worth recording: titanium_collected counts ORE DELIVERED ONLY and excludes the 10 Ti/4 rounds passive, so it is a clean harvest meter (measured 2.49 Ti/round per chain)."
+  },
+  "verified": {
+   "question": "On fcode 2.3.6, what does sabotage actually cost us? Re-measure the 2.3.3 belt-sniping 6.3:1 finding against an opponent that simply rebuilds the cut link, and price the cut-then-occupy and barrier-on-ore variants.",
+   "verdict": "REFUTED",
+   "headline": "Half the headline holds and half is a script artifact: belt-sniping reproduces bit-exact at 2.18:1 against the attacker (3120 Ti spent, 1430 Ti inflicted, empty=0), but the claimed flip is not real \u2014 the 91% denial and 1:6.5 exist only because sb_vic is hard-coded to deliver through one of the victim core's 8 intake tiles; against a victim that lays a 4-conveyor bypass one row north, the identical 285 Ti attack denies 1.0% of the harvest and costs the defender 74 Ti, i.e. 3.85:1 AGAINST the attacker.",
+   "numbers": [
+    {
+     "metric": "BELT-SNIPE exchange ratio, gunner vs rebuild-only victim \u2014 re-run from scratch",
+     "value": "3120 Ti attacker : 1430 Ti defender = 2.18 : 1 AGAINST the attacker (CONFIRMED, bit-exact)",
+     "sample": "800 rounds on maps/lab/sab.map26. fires=783 kills=260 empty=0 dry=0, firstfire=r18. a_titanium 1199 vs control 4319 (delta 3120); b_titanium 3000 vs control 4430 (delta 1430 = 260x3 Ti rebuilds + 650 denied). Both economies collected 1990, so the comparison is apples-to-apples",
+     "probe": "sb_war vs sb_vic; control sb_warc vs sb_vic (fresh runs, __pycache__ nuked)"
+    },
+    {
+     "metric": "Denial window per cut \u2014 re-verified, and the finding's wording corrected",
+     "value": "0 rounds of interruption, but 650 Ti (32.7% of harvest) still denied",
+     "sample": "empty=0 across 800 rounds (gunner acts before team B, so a same-round replant is the only explanation). But b_titanium_collected 1340 vs control 1990 \u2014 the finding's phrase 'throughput was never interrupted' is loose; a third of it was denied, at 2.5 Ti per kill",
+     "probe": "sb_war, sb_warc"
+    },
+    {
+     "metric": "CUT-THEN-OCCUPY vs the scripted victim \u2014 reproduces exactly as claimed",
+     "value": "285 Ti attacker : 1852 Ti defender = 1 : 6.5 for the attacker, 91% of harvest denied",
+     "sample": "800 rounds. placed=1 at r76, ours=723, heals=0. a_titanium 3949 vs control 4234; b_titanium 2578 vs 4430; b_titanium_collected 180 vs 1990",
+     "probe": "sb_occ2 vs sb_vic; control sb_occ2c vs sb_vic"
+    },
+    {
+     "metric": "THE REFUTATION \u2014 same attack, same 285 Ti, vs a victim that routes around the held tile",
+     "value": "285 Ti attacker : 74 Ti defender = 3.85 : 1 AGAINST the attacker; denial falls from 91% to 1.0%",
+     "sample": "800 rounds, identical attacker (a_titanium 3949, senfires=30, placed=1, ours=723 \u2014 the barrier was held the whole game). b_titanium_collected 1970 vs control 1990 (20 Ti denied); b_titanium 4356 vs control 4430 (74 Ti total cost); b_buildings 6 vs 4 = the four bypass conveyors",
+     "probe": "sb_vicr (bots/probes/sb_vicr/main.py) vs sb_occ2; control sb_occ2c vs sb_vicr"
+    },
+    {
+     "metric": "Why the occupation cannot generalise \u2014 intake tiles adjacent to a 2x2 core",
+     "value": "8 empty tiles; the occupation held 1",
+     "sample": "maps/lab/sab.map26 decoded: Core B foot {(18,4),(19,4),(18,5),(19,5)}; orthogonally adjacent EMPTY tiles = (17,4),(17,5),(18,3),(18,6),(19,3),(19,6),(20,4),(20,5). sb_vic is scripted to use (17,4) and only (17,4); the attacker's rig (occupier at (17,5), sentinel at (17,9) firing NORTH, reach 5 -> max (17,4)) cannot touch row 3 at all",
+     "probe": "map decode of maps/lab/sab.map26 + sb_occ2 vs sb_vicr"
+    },
+    {
+     "metric": "Tile-held rounds are NOT a denial signal \u2014 the abandon condition in the finding is unsound",
+     "value": "ours=723/800 in BOTH the 91%-denial game and the 1%-denial game",
+     "sample": "sb_occ2 reported placed=1, ours=723, theirs=2, empty=1, firsthold=76 identically vs sb_vic (180 Ti collected) and vs sb_vicr (1970 Ti collected). Nothing the attacker can observe about its own barrier distinguishes the two",
+     "probe": "sb_occ2 vs sb_vic and vs sb_vicr"
+    },
+    {
+     "metric": "Cheapest counter to an occupation \u2014 the victim's already-idle parked builder shoots it. NEW, and it fails hard",
+     "value": "WORSE THAN DOING NOTHING: 1009 Ti attacker : 3300 Ti defender = 1 : 3.27 for the attacker",
+     "sample": "800 rounds. Occupier healed 723 times (heals=723 vs 0 vs sb_vic); barrier placed once and never died. Builder attack 2 dmg / 2 Ti loses outright to heal +4 HP / 1 Ti. b_titanium 1130 vs control 4430; a_titanium 3225 vs 4234; denial still 91% (180 vs 1990)",
+     "probe": "sb_vicb (bots/probes/sb_vicb/main.py) vs sb_occ2; control sb_occ2c vs sb_vicb"
+    },
+    {
+     "metric": "Belt-snipe is NOT an artifact of the victim script (unlike the occupy result)",
+     "value": "bit-identical against the rerouting victim",
+     "sample": "sb_war vs sb_vicr: fires=783 kills=260 empty=0, a_titanium 1199, b_titanium 3000, b_titanium_collected 1340 \u2014 every field equal to the sb_vic run. Sniping never leaves a squatter, so the reroute never triggers",
+     "probe": "sb_war vs sb_vicr"
+    },
+    {
+     "metric": "SENTINEL belt-snipe \u2014 reproduced, and the shots/kill re-derived on 2.3.6",
+     "value": "~3920 Ti attacker : 585 Ti defender = 6.70 : 1 AGAINST, zero titanium denied",
+     "sample": "800 rounds. senfires=392, tilechanges=195 = 2.01 shots/kill (18 dmg x2 >= 20 HP conveyor). b_titanium_collected 1990 = control exactly. b_titanium 3845 vs 4430 = 585 Ti. a_titanium 404",
+     "probe": "sb_occ vs sb_vic"
+    },
+    {
+     "metric": "Gunner shots/kill on a 20 HP conveyor, re-derived from the war run rather than quoted",
+     "value": "3.01 shots/kill (783 fires / 260 kills)",
+     "sample": "matches 7 dmg x 3 = 21 >= 20 from the 2.3.6 constants; no pre-2.3.4 number is load-bearing anywhere in the belt-snipe ledger",
+     "probe": "sb_war"
+    },
+    {
+     "metric": "BARRIER-ON-ORE \u2014 both halves reproduce, and it stays unavailable",
+     "value": "1:622 for the attacker but ONLY against a victim idle to round 40; against a normal opening placed=0",
+     "sample": "vs sb_vicd: placed=1 at r14, held 786 rounds, b_titanium_collected 0, b_titanium 2464. vs sb_vic: arrived=14, placed=0, theirs=787/800 \u2014 the race is lost every time",
+     "probe": "sb_ore vs sb_vicd and vs sb_vic"
+    }
+   ],
+   "probes": [
+    "sb_war vs sb_vic + sb_warc vs sb_vic \u2014 belt-sniping war and its zero-fire control, re-run from scratch with __pycache__ deleted; reproduced the claimed 3120/1430 ledger bit-exact",
+    "sb_occ2 vs sb_vic + sb_occ2c vs sb_vic \u2014 cut-then-occupy and its no-sabotage control; reproduced 285/1852 and 91% denial bit-exact",
+    "bots/probes/sb_vicr/main.py (NEW) \u2014 the refutation probe: same victim, same opening, plus one behaviour \u2014 after 3 consecutive rounds of an enemy building on the terminal tile, lay a 4-conveyor bypass one row north ((16,4)->NORTH, (16,3)E, (17,3)E, (18,3)S into the core foot), which nothing in the attacker's rig can reach. Run against sb_occ2 and against sb_occ2c as control",
+    "bots/probes/sb_vicb/main.py (NEW) \u2014 the zero-new-entity counter: the already-parked chain builder fires at any enemy building on the terminal tile. Establishes that heal (+4 HP / 1 Ti) beats builder attack (2 dmg / 2 Ti), so a healed barrier is builder-proof and this counter is worse than passivity",
+    "sb_war vs sb_vicr \u2014 control showing the belt-snipe half is robust to the reroute behaviour (every result field identical)",
+    "sb_occ vs sb_vic \u2014 sentinel belt-snipe / first occupy attempt; 392 fires, 195 tile changes, zero denial",
+    "sb_ore vs sb_vic and vs sb_vicd \u2014 barrier-on-ore against the racing and the delayed victim",
+    "map decode of maps/lab/sab.map26 via maps/generated/generate_maps.read_map \u2014 counted the 8 empty tiles orthogonally adjacent to the victim's 2x2 core foot",
+    "scratchpad vfy.py \u2014 runner that deletes __pycache__ under both bots before every run and prints the whole run_game dict (the b_* fields are the victim's only ledger)"
+   ],
+   "design_impact": "Keep the belt-snipe prohibition \u2014 it is measured, robust, and applies to both gunner (2.18:1) and sentinel (6.70:1, zero denial). Do NOT ship the cut-then-occupy plan the finding recommends: its 1:6.5 evaporates against the cheapest generic defence, and the attacker cannot tell the difference from inside its own bot \u2014 the occupier's observable state (placed=1, ours=723/800, heals=0) is byte-identical in the game where it denied 91% and the game where it denied 1%. So the finding's proposed abandon condition ('occupying-building replacements per 100 rounds, threshold 2') is unsound: in the refutation run replacements were 0.125/100 rounds, comfortably under threshold, i.e. the bot would have held a worthless tile for 723 rounds and called it a win. Any occupation logic must gate on the victim's actual delivery rate, not on tile tenure, and must budget for holding up to 8 core-intake tiles rather than 1. Two genuinely portable takeaways survive: (1) heal +4 HP/1 Ti strictly beats builder attack 2 dmg/2 Ti, so a barrier with a builder beside it cannot be removed by builders at all \u2014 only turret fire clears it, which is worth knowing on both offence and defence; (2) our own economy should carry the sb_vicr reroute behaviour, since 4 conveyors reduced a 1852 Ti loss to 74 Ti.",
+   "caveats": "The 2.3.3 baseline of 6.3:1 cannot be reproduced on this machine \u2014 no 2.3.3 engine is installed \u2014 so only the 2.3.6 number is measured; the claim that the ratio 'changed' from 6.3:1 to 2.18:1 rests on a note, not a run. The finding's sentinel figure of '3915 Ti attacker' borrowed sb_warc (a gunner build) as the control for a sentinel run; the ammo spend measured directly (392 fires x 10 Ti = 3920 Ti) happens to agree, so the conclusion stands but the control was mismatched. All runs are single-seed; a prior commit in this repo records the engine as fully deterministic and my re-runs of sb_war/sb_occ2/sb_occ2c matched the original digits exactly, which supports that. My sb_vicr bypass is safe from this particular attacker rig by construction \u2014 a re-aiming attacker was not measured; what is measured is that the defender's counter costs 74 Ti while the attacker's committed rig (sentinel + two builders, 285 Ti of spend) is stranded, and that there are 8 intake tiles to chase. Barrier-on-ore's 1:622 remains real but reachable only against an opponent that idles ~40 rounds, which is not a real opening."
+  }
+ }
+]
