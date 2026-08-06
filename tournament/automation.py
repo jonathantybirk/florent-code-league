@@ -18,6 +18,7 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
 
 from tournament import duplicates, hpc, report
@@ -221,6 +222,28 @@ def _ladder_match_files() -> list[Path]:
     return files
 
 
+RETIRED_PATH = REPO_ROOT / "tournament" / "retired.json"
+
+
+@lru_cache(maxsize=1)
+def retired_bot_ids() -> frozenset[str]:
+    """Bots removed from the published ladder, by exact `name@commit`.
+
+    The v2 prune retired whole bot *directories*, which discovery excludes could express. This one
+    retires individual versions -- `odin@38e1456` stays and its siblings go -- so it has to be a
+    list of bot_ids, and it has to be applied to the match pool rather than to discovery.
+
+    Note the asymmetry with `played_bot_ids` below, which deliberately does *not* filter. The two
+    answer different questions: "who is on the ladder" (this) and "whose code have we already
+    measured" (that). Filtering both would drop a retired bot's code hash out of the ledger, the
+    next tick would see its directory on a live branch as an unevaluated implementation, and it
+    would be scheduled straight back into the field it was just retired from.
+    """
+    if not RETIRED_PATH.exists():
+        return frozenset()
+    return frozenset(json.loads(RETIRED_PATH.read_text())["bot_ids"])
+
+
 def played_bot_ids() -> set[str]:
     """Every bot_id that has actually played a rating match, read from the match CSVs.
 
@@ -229,6 +252,8 @@ def played_bot_ids() -> set[str]:
     not been rated. Experiment-marked runs are excluded for the same reason on the other side:
     a bot that has only been swept in an experiment has not been rated either, and must still
     be scheduled against the full field if it lands on a bot branch.
+
+    Retired bots stay in here on purpose -- see `retired_bot_ids`.
     """
     found: set[str] = set()
     for path in _ladder_match_files():
@@ -468,6 +493,11 @@ def resubmit_abandoned_runs(run_names: list[str], *, dry_run: bool = False) -> l
         if dry_run:
             requeued.append(tid)
             continue
+        # Count the attempt before making it, so a re-queue that *fails* still counts against the
+        # cap. Recording it only on success meant a re-submission that could never work retried
+        # every two minutes for ever: auto-b5878840642b spent 45 minutes printing "attempt 1 of 3"
+        # against a remote directory that had been deleted.
+        _record_resubmit(run_dir)
         try:
             if never_submitted:
                 # Nothing of this run reached the cluster, so there is nothing to fetch and the
@@ -479,7 +509,6 @@ def resubmit_abandoned_runs(run_names: list[str], *, dry_run: bool = False) -> l
         except (hpc.HpcError, OSError) as error:
             print(f"  {tid}: re-submission failed ({error}); still treating it as in flight")
             continue
-        _record_resubmit(run_dir)
         requeued.append(tid)
     return requeued
 
@@ -1107,13 +1136,21 @@ def pooled_matches() -> list[dict]:
     content-addressed, so the same pairing recorded by two runs collapses to one row.
     "All the evidence" means ladder evidence: runs carrying an EXPERIMENT marker are private
     sweeps and never enter the published pool (see the note above _ladder_match_files).
+
+    Retired bots are dropped here, which is the single place that removes them from the ladder:
+    the canonical field, the ratings, the duplicate groups and the website's bundle are all
+    derived from this list. Their matches stay in the run CSVs untouched -- retiring a bot is a
+    statement about the published field, not a deletion of what it played.
     """
+    retired = retired_bot_ids()
     seen: set[str] = set()
     rows: list[dict] = []
     for path in _ladder_match_files():
         with open(path, newline="") as handle:
             for row in csv.DictReader(handle):
                 if row.get("kind") == "compliance":
+                    continue
+                if row["bot_a"] in retired or row["bot_b"] in retired:
                     continue
                 if row["match_id"] in seen:
                     continue
@@ -1221,11 +1258,22 @@ def finalise(
     for bot_id, covered_by in sorted(dropped):
         print(f"    duplicate: {bot_id} -> {covered_by}")
 
-    # Merged, rated, and about to be published: the cluster's copy of this run's scratch has
-    # stopped being the only copy of anything, and is now ~400 MB of pure cost against a 30 GB
-    # quota that has filled twice. Reclaim it here rather than on a timer, because this is the
-    # exact moment it becomes safe.
-    hpc.discard_workspace(tid, settings)
+    # Reclaim the cluster's ~400 MB of scratch -- but only once every scheduled match is actually
+    # on this machine, which is a stricter test than the one that got us this far.
+    #
+    # finalise() rates when merged >= rating_match_count(), while unfinished_runs() keys on
+    # outstanding_matches(); the two disagree, and on 2026-08-06 auto-b5878840642b was rated and
+    # published with 27 results still only on the cluster. Deleting there destroyed the only copy,
+    # hpc.status() then read 0/4683 because it counts remote result files, and every later tick
+    # tried to re-queue a run whose remote directory no longer existed. Gate on the rule that
+    # decides whether a run is still in flight, not on the rule that decides whether it can rate.
+    still_out = outstanding_matches(destination)
+    if still_out:
+        print(
+            f"  {tid}: keeping remote workspace; {len(still_out)} result(s) are not merged locally"
+        )
+    else:
+        hpc.discard_workspace(tid, settings)
 
     head = next(iter(info.get("heads", {}).values()), tid)
     if publish:

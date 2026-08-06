@@ -676,8 +676,10 @@ def build(run_dir: Path, output_dir: Path) -> dict:
         "run_id": run_dir.name,
         # Bumped when the roster or engine changes enough that ratings across the boundary are
         # not comparable. v2 = 2026-08-04: fcode 2.3.4 turret balance patch, 21 bots retired,
-        # over-time strategies dropped from every published field.
-        "leaderboard_version": 2,
+        # over-time strategies dropped from every published field. v3 = 2026-08-06: the map pool
+        # was replaced, and the field cut from 144 to those that earned a place (see
+        # tournament/retired.json for the rule and the list).
+        "leaderboard_version": 3,
         **{
             f"field{pool_suffix}{field_suffix}": {
                 "bots": len(benchmarks[f"{pool_suffix}{field_suffix}"][1]),
