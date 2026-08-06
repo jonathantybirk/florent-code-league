@@ -664,6 +664,7 @@ def run_round(dry_run: bool = False) -> None:
     opponents = validated_opponents(policy.choose_opponents(ctx), ctx)
 
     log.info("round %d: testing %s (v%d) -- %s", state.get("rounds", 0) + 1, bot_id, version, why)
+    log.info("policy %r chose:", getattr(policy, "NAME", "unnamed"))
     log.info("opponents: %s", ", ".join(f"{o['teamName']}(#{o['_rank']})" for o in opponents))
 
     if dry_run:

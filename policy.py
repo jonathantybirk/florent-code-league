@@ -25,6 +25,11 @@ import random
 from dataclasses import dataclass, field
 
 
+# Shown in the round log, so it is obvious which policy is actually deployed.
+# Change it when you change the policy.
+NAME = "default: 2 top / 2 near / 1 wide"
+
+
 @dataclass
 class Context:
     """Everything known when picking opponents."""
