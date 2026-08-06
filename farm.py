@@ -538,7 +538,7 @@ def run_round(dry_run: bool = False) -> None:
     collect(state)
 
     config = load_config()
-    for spec in config.get("test_next") or []:
+    for spec in (config.get("test_next") or []) if not dry_run else []:
         # "name@commit" or "name@commit:rounds" -- pushed by whoever wants it tested
         bot, _, rounds = str(spec).partition(":")
         if bot not in [e["bot_id"] for e in state.get("queue", [])] and \
