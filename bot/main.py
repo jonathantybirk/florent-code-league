@@ -170,6 +170,9 @@ SIEGE_BUILDERS = 10
 # genuine squat survives this many rounds. Distinct from the withdrawn BUILD_PATIENCE timer,
 # which fired on unfunded tiles too and measured worse for exactly that reason.
 BODY_PATIENCE = 10
+# Extra Builders the Core will spawn beyond its own cap to replace losses. Bounded so a bot
+# that is being farmed at its own doorstep stops feeding 30 Ti bodies into the grinder.
+REPLACE_CAP = 4
 # Core HP below which the alarm is raised. A scratch is not a siege; one stray shot must not
 # recall the whole economy.
 ALARM_PERCENT = 88
@@ -463,6 +466,7 @@ class Player:
     def __init__(self):
         # Core
         self.spawned = 0
+        self.peak_units = 0        # high-water unit count; a drop means we lost one
         self.spawn_order = None        # ring tiles ranked by walk to the rusher's first build site
 
         # Builder
@@ -867,6 +871,37 @@ class Player:
         if hurt:
             cap = self._pv("siege_builders")
             reserve = self._pv("alarm_reserve")
+        # REPLACE THE DEAD. `self.spawned` is cumulative and never decremented, so this gate used to
+        # mean "three builders EVER", not "three builders ALIVE". Once the opening tranche was spent
+        # the Core never spawned again, however many of them had been killed -- and with ATTACKERS
+        # equal to BUILDERS, every one of them is carrying the attack.
+        #
+        # That is a whole strategy class we simply lost to. A bot that kills our rusher on its own
+        # doorstep -- one 10 Ti Gunner emplaced on sighting kills a 40 HP Builder in four rounds --
+        # did not merely win the exchange, it ended the game, because nothing came after. Measured
+        # against exactly that: 2-40.
+        #
+        # `get_unit_count` counts Core, Builders and turrets together, so it cannot name what died.
+        # It does not have to: a drop below the high-water mark means we lost SOMETHING, and while
+        # we are under our own cap the answer to losing something is another Builder. Bounded by
+        # REPLACE_CAP so a bot being farmed does not feed builders into a meat grinder for 1000
+        # rounds, and by the same titanium reserve as the opening.
+        #
+        # HONEST RESULT: this fixes a real defect and did NOT fix the matchup that exposed it.
+        # Against `heimdall` it moved 2-40 to 1-41, i.e. nothing -- a guard Gunner that is
+        # already emplaced kills the replacement exactly as it killed the first. Neutral on
+        # `vanguard` (37-5) and `undertow` (35-7). Kept because never replacing a loss is wrong
+        # against any bot that kills Builders, not because it bought a game here.
+        live = None
+        try:
+            live = ct.get_unit_count()
+        except Exception:
+            live = None
+        if live is not None:
+            if live > self.peak_units:
+                self.peak_units = live
+            if live < self.peak_units and self.spawned < cap + REPLACE_CAP:
+                cap = self.spawned + 1
         if self.spawned >= cap or not self._can_act(ct):
             return
         try:

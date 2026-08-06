@@ -32,7 +32,7 @@ GUN = Position(4, 3)
 SPAWN = Position(3, 4)
 TARGET = Position(9, 4)
 SLOT_GUN = 1
-REPORT_ROUND = 60
+REPORT_ROUND = 40
 
 
 class Player:

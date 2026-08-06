@@ -1,0 +1,5 @@
+source_commit = "38f9c239f"
+source_path = "bots/luc/tempest_reinforcements"
+engine = "2.3.3"
+status = "unfair"
+variant = "turret-meta-with-standdown"
