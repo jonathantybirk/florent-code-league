@@ -17,8 +17,12 @@ dead space south of row 7 changes size.
     Core A (team 0) anchor (1,3)      Core B (team 1) anchor (W-3,3)
     turret tile T = (12,3)            contact tiles: W(11,3) N(12,2) E(13,3) S(12,4)
 
-Travel lanes are chosen so no two bots ever need the same transit tile in any
-legal cell (N + M <= 4, because a 1x1 turret has only four orthogonal neighbours):
+Cells with N + M > 4 are deliberately over-subscribed: a 1x1 turret has only four
+orthogonal neighbours, so the surplus bots physically cannot reach contact and the
+cell measures how much grinding a garrison denies.
+
+Travel lanes are chosen so no two bots ever need the same transit tile when
+N + M <= 4:
 
     row 3  west  -> healer W and the constructor      row 3  east -> grinder E
     row 0        -> healer N                          row 1       -> grinder N
@@ -40,7 +44,7 @@ from generate_maps import (  # noqa: E402
 )
 
 OUT = pathlib.Path(__file__).resolve().parent
-WIDTHS = (24, 25, 26, 27)
+WIDTHS = (24, 25, 26, 27, 28)
 
 
 def build(width, height):
@@ -62,8 +66,6 @@ def main():
     for width in WIDTHS:
         for healers in range(4):
             for grinders in range(4):
-                if healers + grinders > 4:
-                    continue
                 height = 10 + 4 * healers + grinders
                 gm = build(width, height)
                 assert Symmetry.HORIZONTAL in matching_symmetries(gm), (width, height)

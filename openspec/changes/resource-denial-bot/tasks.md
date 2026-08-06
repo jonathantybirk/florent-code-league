@@ -94,11 +94,29 @@ Run before any behaviour is written. Each produces a number and a verdict in
 - [ ] 8.4 Per-state productivity report to justify each state's existence; delete states that never
   pay.
 
-## 9. Evaluation and review loop
+## 9. Map-feature policy and late specialisation
 
-- [ ] 9.1 Baseline: candidate vs `bot/` control and vs each panel bot; record per-map results.
-- [ ] 9.2 After each accepted change: re-run the panel, report win counts and titanium differential,
+Built now, run on 21 Aug when the final pool freezes. Nothing here may reference a map by name.
+
+- [ ] 9.1 Feature extractor: map dimensions, Core separation in walk-rounds, ore cluster count and
+  dominance ratio, chokepoint density, open-tile fraction, mean corridor width. Computable at
+  runtime inside the CPU budget.
+- [ ] 9.2 `tools/mapfeatures.py`: dump the feature vector for every map in a pool, so a rotation can
+  be characterised the day it lands.
+- [ ] 9.3 Parameter selector: a small, inspectable function from feature vector to behaviour
+  parameters, with every input logged at selection time.
+- [ ] 9.4 Fitting pipeline reusing the Sequential-Halving harness, fitting the selector rather than
+  a flat parameter vector.
+- [ ] 9.5 Held-out validation: fit on a subset of maps, validate on the remainder plus generated
+  maps in the same feature ranges. Reject fits that do not transfer.
+- [ ] 9.6 Rotation drill: when a rotation lands, re-characterise the pool and re-fit end to end
+  without code changes. Run it on the first weekly rotation as a rehearsal for the 21st.
+
+## 10. Evaluation and review loop
+
+- [ ] 10.1 Baseline: candidate vs `bot/` control and vs each panel bot; record per-map results.
+- [ ] 10.2 After each accepted change: re-run the panel, report win counts and titanium differential,
   and regenerate replays for visual review.
-- [ ] 9.3 Report diagnostics counts alongside every result so behaviour regressions surface even when
+- [ ] 10.3 Report diagnostics counts alongside every result so behaviour regressions surface even when
   the score does not move.
-- [ ] 9.4 Keep `findings.md` current — every finding with its number, sample size and probe.
+- [ ] 10.4 Keep `findings.md` current — every finding with its number, sample size and probe.

@@ -89,7 +89,24 @@ a measured multi-tile displacement; the cost scale is a live census, so destroyi
 refunds its +10%. *Alternative:* walk — rejected where the hop's round saving clears a measured
 threshold, kept where it does not.
 
-**D8 — Evaluate on margin, not just wins.** Ladder Elo consumes the fractional series score, so the
+**D8 — Build general now, specialise last.** The organisers rotate half the pool weekly, three
+times, ending on the 21st with four days before finalists are picked. Two consequences. First,
+anything tuned to today's 15 maps is roughly half worthless in a week, so until the final rotation
+every parameter must be justified by a map *property*, not a map. Second, four days is enough to
+*run* a specialisation pass and nowhere near enough to *build* one — so the feature-to-parameter
+fitting pipeline is built now and left idle, and the final rotation becomes an execution step.
+
+The mechanism is a feature-conditioned policy: cheap features computed at runtime (map dimensions,
+Core separation in walk-rounds, ore cluster count and dominance, chokepoint density, open-tile
+fraction) map to parameters. This is simultaneously the general solution and the specialisation
+route — closing in on optimal trends rather than hardcoding map names, which is also the only form
+of specialisation that survives a rotation we cannot see in advance.
+
+*Alternative considered:* ship a per-map table once the final pool is known — rejected. It was
+already measured worthless on the previous pool (oracle variants scored 21–21 against their own fair
+twins), it dies to any late engine or pool change, and it cannot be validated on held-out maps.
+
+**D9 — Evaluate on margin, not just wins.** Ladder Elo consumes the fractional series score, so the
 metric is games won out of games played across the panel plus delivered-titanium differential, and
 regressions are read per map because the engine is deterministic and a sweep delta is always a
 nameable set of flipped maps.

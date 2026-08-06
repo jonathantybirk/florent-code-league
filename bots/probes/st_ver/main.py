@@ -85,8 +85,8 @@ class Player:
             self._core(ct)
         elif et == EntityType.BUILDER_BOT:
             self._builder(ct)
-        elif et == EntityType.GUNNER:
-            self._gunner(ct)
+        elif et in (EntityType.GUNNER, EntityType.SENTINEL, EntityType.LAUNCHER):
+            self._turret(ct, et)
 
     # ------------------------------------------------------------------ the core
     def _core(self, ct):
@@ -150,11 +150,13 @@ class Player:
             self.n.append("V7 core1then2=%d" % ct.read_store(S_DBL_CORE))
             return
 
-        if r == 18:
+        if r == 17:
             ida = ct.read_store(S_ID_A)
             idb = ct.read_store(S_ID_B)
             idg = ct.read_store(S_ID_G)
-            self.n.append("V5 bld=%d gun=%d" % (ct.read_store(S_ECHO_B), ct.read_store(S_ECHO_G)))
+            self.n.append("V5 bld=%d gun=%d sen=%d/7 lau=%d/9" % (
+                ct.read_store(S_ECHO_B), ct.read_store(S_ECHO_G),
+                ct.read_store(13), ct.read_store(14)))
             self.n.append("V7 bld31then32=%d" % ct.read_store(S_DBL_BLD))
             self.n.append("V8 dyingwrite=%d/999" % ct.read_store(S_DEATH))
             self.n.append("V9 A=%d B=%d G=%d hpA=%s hpB=%s tB=%s pB=%s hpG=%s u=%d" % (
@@ -164,7 +166,7 @@ class Player:
                 self._probe_id(ct, idg), ct.get_unit_count()))
             return
 
-        if r == 20:
+        if r == 19:
             self.done = True
             ct.resign("STVER|" + "|".join(self.n))
 
@@ -219,8 +221,12 @@ class Player:
                 ct.write_store(S_ECHO_B, 1 if ct.read_store(S_RELAY) == RELAY else 2)
                 return
             if r in (6, 7) and not self.built:
-                self._build_gunner(ct)
+                self._build(ct, EntityType.GUNNER)
                 return
+            if r in (8, 9):
+                self._build(ct, EntityType.SENTINEL)
+                return
+
             if r == 10:
                 ct.write_store(S_COLLIDE, 111)
                 return
@@ -231,6 +237,9 @@ class Player:
             return
 
         if self.role == "B":
+            if r in (11, 12, 13):
+                self._build_launcher(ct)
+                return
             if r == 10:
                 ct.write_store(S_COLLIDE, 122)      # highest id of the three writers
                 return
@@ -240,26 +249,41 @@ class Player:
                 ct.self_destruct()
                 return
 
-    def _build_gunner(self, ct):
+    def _build_launcher(self, ct):
+        p = ct.get_position()
+        for d in (Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST):
+            q = p.add(d)
+            try:
+                if ct.can_build_launcher(q):
+                    ct.build_launcher(q)
+                    return
+            except Exception:
+                continue
+
+    def _build(self, ct, kind):
         p = ct.get_position()
         for d in (Direction.EAST, Direction.SOUTH, Direction.NORTH, Direction.WEST):
             q = p.add(d)
             try:
-                if ct.can_build_gunner(q, Direction.EAST):
-                    ct.build_gunner(q, Direction.EAST)
+                if ct.can_build(kind, q, Direction.EAST):
+                    ct.build(kind, q, Direction.EAST)
                     self.built = True
                     return
             except Exception:
                 continue
 
     # -------------------------------------------------------------------- gunner
-    def _gunner(self, ct):
+    def _turret(self, ct, et):
+        """V5 for every non-builder unit type: can a TURRET read and write the team store?"""
         if self.done:
             return
+        slot, tag = {EntityType.GUNNER: (S_ECHO_G, 1),
+                     EntityType.SENTINEL: (13, 7),
+                     EntityType.LAUNCHER: (14, 9)}[et]
         try:
-            v = ct.read_store(S_RELAY)
-            ct.write_store(S_ECHO_G, 1 if v == RELAY else 2)
-            ct.write_store(S_ID_G, ct.get_id())
+            ct.write_store(slot, tag if ct.read_store(S_RELAY) == RELAY else 99)
+            if et == EntityType.GUNNER:
+                ct.write_store(S_ID_G, ct.get_id())
             self.done = True
         except Exception:
             pass

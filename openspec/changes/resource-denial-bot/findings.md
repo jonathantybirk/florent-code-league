@@ -74,3 +74,75 @@ rounds to kill a Core, many games on this pool will reach turn 1000 and be decid
 
 The 2.5:1 titanium deficit is the resource-denial thesis stated as a measurement: we are not losing
 close fights, we are being out-resourced.
+
+
+## Gating investigations — 6 questions, 12 agents, adversarially verified
+
+Each probe's headline was re-derived by an independent verifier told to refute it. **Three of six
+headlines did not survive.** Raw returns in `gating-raw.json`.
+
+### G1 Healer vs grinder — arithmetic CONFIRMED, "unkillable" REFUTED
+
+| metric | value | evidence |
+|---|---|---|
+| net HP/round on a forward turret | **6k − 8**, k = contact tiles we hold | 11 cells, `grindheal` |
+| heal vs grind exchange | **4:1 in titanium, 2:1 in HP** | 272-round flat hold at 28 HP |
+| heal on a building | works, +4 HP/1 Ti, and **stacks** simultaneously | 2 healers = +8 in one round |
+| wasted healing at full HP | **zero** — `can_heal` is False, surplus healers spend nothing | 240 rounds, 0 Ti |
+| contact tiles on a 1×1 turret | exactly **4**; surplus bots physically locked out | in-engine census |
+| who bankrupts first at break-even | the **attacker** — B_ti 1250 → 6 by r800 | 800-round run |
+
+**But the verifier broke the conclusion.** The probe hard-assigned disjoint tiles to each side. When
+both sides genuinely race for the same 4 tiles, **the enemy arrives 3 rounds earlier, takes E/N/S,
+and the turret dies at −2 HP/round on round 32** with the 2nd and 3rd escorts standing uselessly
+outside. Forward turrets are holdable **only if we win the tile race** — a timing requirement, not a
+cost one. Park the escort at build time; the builder that constructs the turret must never leave.
+
+### G2 Sentinel first-strike — id order CONFIRMED, "decides completely" REFUTED
+
+Lower global entity id fires first, survivor at exactly **4/40 HP in 11/11** bare duels. A head start
+beyond winning the tie is worth **0 HP for a Sentinel, +7 for a Gunner**.
+
+**But one builder healing +4 HP/round flips the winner to the HIGHER-id turret** (2/2, both mirror
+directions). The duel is decided by escort, not by build order. Separately, a head start of ≥6 rounds
+buys total turret denial — you shoot the site before they can build on it.
+
+### G3 Passability — CONFIRMED, and it refutes the engine's own docstring
+
+Only **Conveyor and Splitter** are walk-through, of 7 building types. **Team never matters on any
+row.** The **allied Core is impassable in 64/64 configurations**, contradicting `is_tile_passable`'s
+docstring. The three-way equivalence `is_tile_passable == can_move == did-move` holds only at
+`move_cd == 0`.
+
+### G4 CPU budget — CONFIRMED at 10 ms, with a hazard
+
+The enforced limit equals `turn_timeout_ms` exactly — 509 chunks of work at tle=10 against 106 at
+tle=2, a 4.8× ratio. The visualiser's 2 ms is only a display fallback for replays carrying no `tled`
+flag. There is a real **+5% bank** (10 515–10 519 µs on first overrun).
+
+**Hazard:** the engine never pre-empts Python. It stops a unit only at its next Controller API call,
+so an API-free loop ran **110 580–138 218 µs uncut**. Long computation between API calls is not
+protected by the engine; it just runs.
+
+### G5 Store slots and role leases — CONFIRMED
+
+A one-slot lease word `(id+1) << 10 | round`, renewed every round and challenged at
+`round − stamp >= 2`, costs **zero extra slots** (`word >> 10` is the id the bot already stores).
+**0 false evictions in 2620 lease-held rounds**, measured directly rather than inferred. Vacancy is
+`2*(1+k)` rounds where k is consecutive claimants killed before confirming — 58 of 59 contested
+handovers took 2 rounds, one took 4, a forced double-kill took 6.
+
+### G6 Sabotage — REFUTED, and this one costs us a plan
+
+Belt-sniping reproduces bit-exact at **2.18:1 against the attacker**: 3120 Ti spent to inflict
+1430 Ti, with the victim replanting the cut link inside the same round (`empty=0` across 800 rounds).
+
+The probe then claimed a flip — a 3 Ti barrier held on the terminal conveyor tile denying 91% of the
+harvest at 1:6.5 in our favour. **That was a script artifact.** The victim was hard-coded to deliver
+through one of its Core's 8 intake tiles. Against a victim that lays a 4-conveyor bypass one row
+north, the identical 285 Ti attack denies **1.0%** of the harvest and costs the defender 74 Ti —
+**3.85:1 against the attacker**.
+
+**A Core has 8 intake tiles and a bypass costs 12 Ti. Belt sabotage is a trap at every price we can
+pay for it.** The denial thesis has to rest on something with no cheap bypass — an occupied ore tile
+has none, because the ore cannot be moved. That is now the load-bearing untested mechanic.
