@@ -4,12 +4,45 @@ Turns the platform's 5-unrated-matches-per-10-minutes allowance into a standing
 data feed: roughly every 12 minutes it plays one bot against five ladder teams,
 records every game, and keeps a running Elo estimate per bot.
 
-## Two timers
+## Working on it from another machine
+
+The farm deploys from the `x/ladderfarm` branch. Clone it, change it, push it:
+
+```bash
+git clone --single-branch -b x/ladderfarm https://github.com/jonathantybirk/florent-code-league.git
+python3 farm.py --once --dry-run     # works anywhere; fires nothing
+git push origin x/ladderfarm
+```
+
+`sync.sh` runs immediately before every round, so a push is live on the **next
+round** (within ~11 minutes), and again on a 5-minute timer in between. It
+exports the pushed commit to a scratch directory and runs a full dry run first;
+only a clean exit is deployed, otherwise the running code stays and the failure
+is logged. `state.json`, `data/` and `exports/` are gitignored and survive the
+hard reset. `sync.sh` itself is deliberately untracked, so a bad push cannot
+break the thing that deploys the fix.
+
+## Giving the rate limit back to a human
+
+The account may run **5 unrated matches per 10 minutes, shared by everyone**, and
+the farm spends about 25 of the ~30 an hour. Anyone who wants to test their own
+bot needs that budget back, and can take it by pushing `config.json`:
+
+```json
+{ "yield_until": "2026-08-06T18:30:00Z" }   // stops firing until then, resumes itself
+{ "enabled": false }                        // stops firing until someone re-enables
+```
+
+Prefer `yield_until`: it cannot be forgotten. Either way the farm keeps collecting
+results and deciding the live bot; it just stops spending slots.
+
+## Three timers
 
 | unit | when | what |
 |---|---|---|
-| `ladderfarm.timer` | `:05 :16 :27 :38 :49` | fires a round of five challenges |
+| `ladderfarm.timer` | `:05 :16 :27 :38 :49` | pulls, then fires a round of five |
 | `ladderfarm-decide.timer` | every `:X2:30` | collects, re-estimates, promotes |
+| `ladderfarm-sync.timer` | every 5 min | deploys pushed changes if they pass |
 
 The ladder scheduler queues rated matches at ~`:X2:43`. Rounds keep two minutes
 clear either side of it, which confines them to cycle offsets 4:43–10:00 — that
@@ -81,6 +114,7 @@ qualified challenger whose Elo already beats it, which is a normal promotion.
 ## Commands
 
 ```bash
+python3 farm.py --test-next NAME@COMMIT --rounds 2   # jump the queue with a specific build
 python3 farm.py --once      # fire one round (what ladderfarm.timer runs)
 python3 farm.py --decide    # collect + re-estimate + promote (ladderfarm-decide.timer)
 python3 farm.py --collect   # harvest finished matches only, fire nothing
