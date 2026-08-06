@@ -544,6 +544,34 @@ exact, not approximate, and `live_feed.py` depends on them:
   11. We were once drawn against a team eight places below us. The kernel above therefore makes no
   claim about the algorithm, which is not observable; it is only what the ladder is seen to do.
 
+  **Rank, not Elo gap.** The obvious alternative is that the scheduler pairs within a rating window
+  rather than a rank window, so this was tested rather than assumed: fit each kernel
+  non-parametrically on the first 389 ticks — exposure-adjusted, as (pairs observed in a bin) /
+  (candidate pairs available in that bin), so a common gap does not look preferred — then score the
+  remaining 260 ticks by mean log-likelihood per pairing.
+
+  | predictor | held-out mean log-lik |
+  |---|---|
+  | rank offset | **−2.511** |
+  | Elo gap, best of 10/25/50/75/100/150-pt bins | −2.988 |
+  | Elo gap / field sd, best of 0.05–0.3 sd bins | −3.063 |
+
+  Rank wins by about 0.48 nats per pairing at every binning tried, and with fewer bins.
+  Standardising the Elo gap by the field's spread makes it *worse*, not better, because the field
+  sd is a global number dominated by the long low-rating tail while pairing is local — rank is
+  already the local density normalisation, done exactly rather than approximated.
+
+  The mechanism shows up directly in how each kernel moves as the field grows from under 30 teams
+  to over 46. Relative propensity by rank offset holds still (1.00 / 0.81 / 0.74 / 0.58 → 1.00 /
+  0.82 / 0.81 / 0.64), while by Elo gap it tightens sharply (0.74 / 0.40 / 0.21 / 0.13 → 0.55 /
+  0.22 / 0.12 / 0.03) — more teams packed into the same rating range means a fixed rank rule
+  translates into an ever-narrower Elo window. That is the signature of a rank rule, not a rating
+  one.
+
+  One caveat on the comparison: it treats each pairing as an independent choice, when the tick is
+  really a global matching. That approximation handicaps every model equally, so the ranking
+  between them stands even though the absolute likelihoods do not mean much.
+
 ### Results are not pooled across a balance patch
 
 fcode 2.3.4 rewrote the Gunner and the Sentinel (details in the note at the top of this file), so
