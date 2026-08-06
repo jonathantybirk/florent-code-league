@@ -1,7 +1,7 @@
 {
  "version": 3,
  "decided_at": "2026-08-06",
- "rule": "Retired from the published ladder for leaderboard v3. Cut: win rate below 60% OR Nash core on at most 1 map, measured on the 21-map old official pool against the 144-bot v2 field. Rescued from that cut: the best bot of every name-prefix lineage by win rate and by Nash average (so up to two per lineage), provided it clears a 40% win rate, plus the best bot of every contributor by the same two measures with no floor, so nobody loses their whole presence on the ladder.",
+ "rule": "Retired from the published ladder for leaderboard v3. Cut: win rate below 60% OR Nash core on at most 1 map, measured on the 21-map old official pool against the 144-bot v2 field. Rescued from that cut: the best bot of every name-prefix lineage by win rate and by Nash average (so up to two per lineage), provided it clears a 40% win rate, plus the best bot of every contributor by the same two measures with no floor, so nobody loses their whole presence on the ladder. Plus v233_h@90fc9f3, added 2026-08-06 after the backfill: a probe in bots/jon/versions/probes/ that the v2 field had already pruned as a behavioural duplicate, and that re-entered only because adding twelve maps of results for every other bot split it from its representative. Integrating it would have cost 4,340 games on the old and held-out pools to re-admit a duplicate the harness exists to collapse.",
  "measured_from": "auto-cbf15637b9be",
  "kept": [
   "aegis@e55aab5",
@@ -115,6 +115,7 @@
   "v233_e@9713344",
   "v233_f@9713344",
   "v233_g@9713344",
+  "v233_h@90fc9f3",
   "valkyrie@30d0491",
   "valkyrie@d181312",
   "vanguard@818f3b4",

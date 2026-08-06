@@ -473,6 +473,21 @@ Measured on the 21-map old pool against the 144-bot v2 field, from run `auto-cbf
 144 → 58 judged bots. The canonical field is **70**, the extra twelve being bots that arrived after
 the run the prune was measured on and so could not have been judged by it. 10,296 pairs → 2,415.
 
+### Backfilling new maps un-prunes duplicates. Schedule them anyway
+
+Hit on 2026-08-06 and guaranteed to recur on the next pool change. A backfill run is planned
+against `canonical_field()`, which has already dropped behavioural duplicates — so the duplicates
+do not play the new maps. But duplicate groups are judged **on results**, and once every other bot
+has twelve maps of results that the pruned copy does not, its profile no longer matches its
+representative. It un-prunes, re-enters the field with no record on the new maps at all, and
+`finalise` refuses to publish: every unplayed pair is against that one bot.
+
+The symptom is unmistakable — dozens of missing pairs, all naming the same bot. The fix is a
+one-bot challenger run over the same maps (`v3-gapfill-20260806`, 70 pairs, minutes). The cheaper
+move next time is to plan the backfill over `canonical_field()` **plus the pruned copies**: paying
+for a duplicate's maps costs one bot's worth of games and avoids a failed publish cycle that
+errors every two minutes until somebody notices.
+
 ## Local live-ladder automation
 
 `tournament.automation` is the one-shot worker behind the public bot ladder. It is designed to be
