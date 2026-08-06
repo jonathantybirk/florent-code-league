@@ -87,6 +87,7 @@ from constants import (
     STANDOFF_WAIT,
     LAUNCH_RETRY_COOLDOWN,
     SEAT_AWARE_DEFENCE,
+    SEAT_B_YIELDS_ORE,
     SEAT_B_PREFERS_RANGE,
     SEAT_B_SKIPS_DUEL,
     SEAT_B_TURRET_STEP,
@@ -802,6 +803,21 @@ def _pick(p, ct):
         p.ores - claimed,
         key=lambda ore: max(abs(ore[0] - me[0]), abs(ore[1] - me[1])),
     )
+    # Seat B does not race for the contested deposit.
+    #
+    # Units act in ascending entity id across both teams, so team A moves first
+    # every round for the whole match and wins every tie -- including the race
+    # to the deposit both miners can see. Measured against skadi: eleven of the
+    # 21 maps split exactly 1-2, won from seat A and lost from seat B, which is
+    # the single largest term left in this bot's floor.
+    #
+    # Arriving second at a deposit is worse than arriving first at the next one,
+    # because the loser has walked the distance and still has to walk again. So
+    # from seat B the nearest deposit is skipped when there is another to take,
+    # which turns a race we lose into a walk we own.
+    if (SEAT_B_YIELDS_ORE and getattr(p, "seat_b", False)
+            and len(candidates) > 1):
+        candidates = candidates[1:]
     for ore in candidates:
         route = _route(p, ore)
         travel = _distance(p, me, _adjacent(p, ore))

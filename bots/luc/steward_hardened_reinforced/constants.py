@@ -297,6 +297,9 @@ HOME_TURRET_STEP = 180
 # race to a tile, the first shot in a duel, the heal that lands before the shot.
 # Seat B therefore escalates its home defence on less damage.
 SEAT_AWARE_DEFENCE = False
+# Seat B skips the nearest deposit when another is available: team A wins every
+# tie, so the contested ore is a race seat B loses after paying the walk.
+SEAT_B_YIELDS_ORE = False
 # Team A acts first every round for the whole match. Measured on the hard panel
 # that is worth 0.667 from seat A against 0.514 from seat B -- a 15.2pp gap that
 # appears against every opponent and has nothing to do with which opponent it
