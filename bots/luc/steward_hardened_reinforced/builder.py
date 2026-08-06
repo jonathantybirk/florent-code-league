@@ -100,6 +100,7 @@ from constants import (
     SECOND_MENDER_ALARM,
     SECOND_MENDER_ON_ANY_DAMAGE,
     SIEGE_SEARCH_EVERY,
+    SIEGE_SENTINEL_TARGET,
     ECON_EXPAND_BUILDERS,
     SECOND_MENDER_ON_CRITICAL,
     GUARD_HEALS_ON_ANY_DAMAGE,
@@ -299,6 +300,7 @@ def _run(p, ct):
         # seat B, a 23.8pp swing that has nothing to do with the opponent.
         p.seat_b = ct.get_team() is Team.B
         p.siege_sentinel = None
+        p.siege_sentinels_built = 0
         p.last_siege_search_round = -999
         p.sentinel_wrap = []
         p.atlas = (identify_visible(ct, own_core) if own_core is not None
@@ -3932,7 +3934,22 @@ def _build_siege_sentinel(p, ct, enemy_core):
     2.78x more per point of damage, which is why this runs only after the
     Gunner and Launcher-breaker searches have both come up empty.
     """
-    if p.siege_sentinel is not None:
+    # One siege Sentinel can never kill a mended Core, and until now that was
+    # the hard cap: `p.siege_sentinel is not None` stopped each attacker after
+    # exactly one, and SIEGE_SENTINEL_TARGET sat in constants.py unused.
+    #
+    # The arithmetic the whole field is built on runs both ways. A Builder heals
+    # 4 HP for a flat 1 Ti, so the two menders every bot on this ladder now
+    # posts restore 8 HP a round -- which is why a Core under one Sentinel's
+    # 6 a round never falls, the siege stalls, and `SIEGE_STALL_ROUNDS` gives up
+    # on it. Two Sentinels are 12 a round and three are 18, and *that* breaks
+    # the equilibrium: past 8 the healing cannot keep up and the Core dies on a
+    # clock no amount of mending changes.
+    #
+    # Each seat is +20% on every later price, so this is bounded rather than
+    # unlimited, and the seats are spread by SENTINEL_SPREAD_LINES so one enemy
+    # turret cannot answer two of them without rotating.
+    if p.siege_sentinels_built >= SIEGE_SENTINEL_TARGET:
         return False
     # This search is the widest in the bot (13x13 around four Core tiles, a
     # full-map BFS and ~160 engine calls) and it runs last, after two others
@@ -4016,6 +4033,7 @@ def _build_siege_sentinel(p, ct, enemy_core):
         _mark_progress(p, ct, "built siege sentinel", spot)
         p.solids.add(spot)
         p.siege_sentinel = spot
+        p.siege_sentinels_built += 1
         # Wrap the exposed sides so conventional return fire cannot reach it;
         # its own shot pierces the wrap. Enemy-facing side first.
         p.sentinel_wrap = sorted(
