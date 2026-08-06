@@ -637,6 +637,11 @@ def run_round(dry_run: bool = False) -> None:
                 "opponent_rating": round(opp["rating"], 1),
             })
     finally:
+        if queued and fired == 0:
+            # a round that fired nothing (rate limit, API trouble) must not spend
+            # a hand-queued build's allowance
+            queue_bot(state, queued, 1)
+            log.info("refunded a queued round to %s: nothing was fired", queued)
         restored = restore_flagship(state)
         state["rounds"] = state.get("rounds", 0) + 1
         save_state(state)
