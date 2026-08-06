@@ -804,14 +804,30 @@ def _dist_is_behind(site_repo: Path) -> bool:
     while every log line says "deployed". That is exactly how the site got stuck two runs behind
     while the feed kept publishing happily on top of it. Comparing the two manifests makes the
     fast path self-correcting: it notices it is about to ship something stale and compiles instead.
+
+    The manifest alone was not enough. Archiving a leaderboard version adds `public/botrankings/v2/`
+    and rewrites `versions.json` without touching `data/index.json` at all, so every later deploy
+    happily shipped a `dist/` that had never heard of either -- the version switcher offered v3 and
+    the archive 404'd. Anything untracked that lands under `public/botrankings/` has the same
+    problem, so the check is now "does `dist/` have the same entries", not just "the same data".
     """
-    published = site_repo / "public" / "botrankings" / "data" / "index.json"
-    compiled = site_repo / "dist" / "botrankings" / "data" / "index.json"
-    if not published.exists():
+    published_root = site_repo / "public" / "botrankings"
+    compiled_root = site_repo / "dist" / "botrankings"
+    if not published_root.exists():
         return False
-    if not compiled.exists():
+    if not compiled_root.exists():
         return True
-    return published.read_bytes() != compiled.read_bytes()
+    if {path.name for path in published_root.iterdir()} - {
+        path.name for path in compiled_root.iterdir()
+    }:
+        return True
+    for name in ("data/index.json", "versions.json"):
+        published, compiled = published_root / name, compiled_root / name
+        if not published.exists():
+            continue
+        if not compiled.exists() or published.read_bytes() != compiled.read_bytes():
+            return True
+    return False
 
 
 def deploy_assets(site_repo: Path, *, reason: str, build: bool = True) -> bool:
