@@ -15,12 +15,18 @@ from __future__ import annotations
 
 import csv
 import math
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-RUNS_DIR = Path(__file__).resolve().parent.parent / "runs"
-BOT_REPO = Path("/home/Ucals/projects/florent-code-league-llm-rl")
+# Absolute, because the farm no longer lives inside the tournament checkout: it
+# deploys from its own branch and must still find the CI runs and the git history
+# the bots are extracted from. Override per machine with the env vars.
+RUNS_DIR = Path(os.environ.get(
+    "LADDERFARM_RUNS", "/home/Ucals/projects/florent-code-league-ci/tournament/runs"))
+BOT_REPO = Path(os.environ.get(
+    "LADDERFARM_BOT_REPO", "/home/Ucals/projects/florent-code-league-llm-rl"))
 
 LN10_OVER_400 = math.log(10) / 400.0
 
