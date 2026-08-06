@@ -14,8 +14,10 @@ CARDINALS = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST]
 SLOT_ORE_X = 0
 SLOT_ORE_Y = 1
 
+
 def in_bounds(ct: Controller, pos: Position) -> bool:
     return 0 <= pos.x < ct.get_map_width() and 0 <= pos.y < ct.get_map_height()
+
 
 class Player:
     def __init__(self):

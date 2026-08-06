@@ -22,7 +22,7 @@ The only resource is titanium. Your team earns a passive income every 4 rounds, 
 
 Competition structure
 
-Matches are run as a best-of-five series. Each series result is reflected on the leaderboard. You can submit as many times as you like — each submission replaces the previous one on the ladder.
+Matches are run as a best-of-five series, and each series updates both teams' ladder rating. You can submit as many times as you like — only your active submission plays ladder matches. See Submitting Your Bot, Matches & Scheduling, and Ladder & Rating for details.
 
 Ready to begin?
 

@@ -6,8 +6,8 @@ Tutorials: https://game.code.florent.vc/tutorials
 
 ## Setup
 
-The game package currently supports CPython 3.12 and 3.13. This project pins
-Python 3.13.14, the newest supported release:
+The game package publishes wheels for CPython 3.12 and 3.13. This project pins
+Python 3.13.14, the newest compatible release:
 
 ```sh
 uv sync
