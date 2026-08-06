@@ -11,15 +11,28 @@ rather than reimplemented, so geometry helpers like Direction.rotate_left
 or Position.add match production exactly. Only Controller itself is
 injected from Rust at runtime and needs a stand-in.
 
-Not a full engine: no resource-stack physical movement/timing, no unit
-cap, no CPU-time accounting, no launcher throws. Scoped to what's needed
-to exercise a bot's decision logic -- movement, building (existence +
-facing + adjacency legality), the comm store, and vision/adjacency
-queries -- across one or many simulated rounds. Add a method here when a
-test needs one rather than working around the gap; keep it named and
-shaped like the real Controller method it stands in for (see
-fcode._types.Controller's TYPE_CHECKING stub for the authoritative
-signatures and docstrings).
+Not a full engine: no resource-stack physical movement between conveyors/
+splitters/harvesters, no unit cap, no CPU-time accounting, no launcher
+throws. Scoped to what's needed to exercise a bot's decision logic --
+movement, building (existence + facing + adjacency legality), the comm
+store, and vision/adjacency queries -- across one or many simulated
+rounds. Add a method here when a test needs one rather than working
+around the gap; keep it named and shaped like the real Controller method
+it stands in for (see fcode._types.Controller's TYPE_CHECKING stub for
+the authoritative signatures and docstrings).
+
+Passive titanium income (+PASSIVE_TITANIUM_AMOUNT every
+PASSIVE_TITANIUM_INTERVAL rounds, verified against the real engine) and
+cost scaling (get_scale_percent() and the get_<entity>_cost() getters,
+per-team, rising as entities are built and falling again on destroy/
+self_destruct -- see SCALE_CONTRIBUTION) are both modeled; advance_round()
+applies the income tick and every build/spawn/destroy path spends and
+adjusts scale together. Conveyor/Splitter storage (get_stored_resource(),
+get_stored_resource_id()) is exposed as a flag a test sets directly via
+World.set_stored_resource() -- since the physical stack movement that
+would fill it in the real engine still isn't simulated, treat it the same
+way as setting .hp below .max_hp: state a test asserts against, not state
+that arises on its own.
 
 Combat is modeled for a Builder Bot's adjacent-building attack (its full
 real scope) and for a Gunner's ray -- straight-line trace along its
@@ -47,7 +60,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fcode import Direction, EntityType, Environment, GameError, Position, Team
+from fcode import Direction, EntityType, Environment, GameConstants, GameError, Position, ResourceType, Team
 
 BUILDING_TYPES = {
     EntityType.CORE,
@@ -90,6 +103,21 @@ GUNNER_RANGE_SQ = 13
 GUNNER_AMMO_COST = 4
 ROTATE_COST = 10
 
+# Percentage points each built entity adds to its team's cost scale, removed
+# again on destroy()/self_destruct() -- see docs/official/docs/game-rules-
+# resources.txt. Verified against the real engine: one Builder Bot spawn
+# takes a fresh team from 100.0 to 120.0.
+SCALE_CONTRIBUTION: dict[EntityType, float] = {
+    EntityType.CONVEYOR: 1.0,
+    EntityType.SPLITTER: 1.0,
+    EntityType.BARRIER: 1.0,
+    EntityType.HARVESTER: 5.0,
+    EntityType.LAUNCHER: 10.0,
+    EntityType.BUILDER_BOT: 20.0,
+    EntityType.GUNNER: 20.0,
+    EntityType.SENTINEL: 20.0,
+}
+
 
 @dataclass
 class Entity:
@@ -104,6 +132,8 @@ class Entity:
     move_cooldown: int = 0
     used_move: bool = False
     used_action: bool = False
+    stored_resource: ResourceType | None = None
+    stored_resource_id: int | None = None
 
 
 class World:
@@ -127,11 +157,13 @@ class World:
         self.entities: dict[int, Entity] = {}
         self.resources: dict[Team, int] = {Team.A: starting_resources, Team.B: starting_resources}
         self.ammo: dict[Team, int] = {Team.A: 0, Team.B: 0}
+        self.scale_percent: dict[Team, float] = {Team.A: 100.0, Team.B: 100.0}
         self.store: dict[Team, list[int]] = {Team.A: [0] * 16, Team.B: [0] * 16}
         self._pending_store: dict[Team, dict[int, int]] = {Team.A: {}, Team.B: {}}
         self._converted_this_round: set[Team] = set()
         self.round = 0
         self._next_id = 1
+        self._next_resource_id = 1
 
     # --- setup ---
 
@@ -140,6 +172,24 @@ class World:
         self._next_id += 1
         self.entities[id_] = Entity(id=id_, pos=pos, team=team, etype=etype, direction=direction)
         return id_
+
+    def set_stored_resource(self, building_id: int, resource: ResourceType | None) -> int | None:
+        """Test setup helper: put resource on a Conveyor/Splitter, or clear
+        it with None. Assigns a fresh id per call (mirroring how
+        get_stored_resource_id lets real bots recognize the same physical
+        stack persisting across rounds) -- conveyor movement itself still
+        isn't simulated, so set this directly rather than building a chain
+        and waiting for a stack to arrive.
+        """
+        e = self.entities[building_id]
+        if resource is None:
+            e.stored_resource = None
+            e.stored_resource_id = None
+            return None
+        e.stored_resource = resource
+        e.stored_resource_id = self._next_resource_id
+        self._next_resource_id += 1
+        return e.stored_resource_id
 
     def controller_for(self, id: int) -> FakeController:
         return FakeController(self, id)
@@ -160,6 +210,9 @@ class World:
             e.used_move = False
             e.used_action = False
         self.round += 1
+        if self.round % GameConstants.PASSIVE_TITANIUM_INTERVAL == 0:
+            for team in self.resources:
+                self.resources[team] += GameConstants.PASSIVE_TITANIUM_AMOUNT
 
     # --- shared queries ---
 
@@ -236,6 +289,18 @@ class FakeController:
         if d is None:
             raise GameError("entity has no direction")
         return d
+
+    def get_stored_resource(self, id: int | None = None) -> ResourceType | None:
+        e = self._entity(id)
+        if e.etype not in (EntityType.CONVEYOR, EntityType.SPLITTER):
+            raise GameError("entity has no storage")
+        return e.stored_resource
+
+    def get_stored_resource_id(self, id: int | None = None) -> int | None:
+        e = self._entity(id)
+        if e.etype not in (EntityType.CONVEYOR, EntityType.SPLITTER):
+            raise GameError("entity has no storage")
+        return e.stored_resource_id
 
     def get_hp(self, id: int | None = None) -> int:
         return self._entity(id).hp
@@ -353,31 +418,37 @@ class FakeController:
         self.world._converted_this_round.add(team)
 
     def get_scale_percent(self) -> float:
-        return 100.0
+        return self.world.scale_percent[self._self.team]
+
+    def _scaled_cost(self, etype: EntityType) -> int:
+        # effective_cost = base_cost * scale_percent / 100, floored -- verified
+        # against the real engine (3 Ti conveyor at scale 120.0 costs 3, not 4).
+        scale = self.world.scale_percent[self._self.team]
+        return int(BASE_COST[etype] * scale / 100.0 + 1e-9)
 
     def get_conveyor_cost(self) -> int:
-        return BASE_COST[EntityType.CONVEYOR]
+        return self._scaled_cost(EntityType.CONVEYOR)
 
     def get_splitter_cost(self) -> int:
-        return BASE_COST[EntityType.SPLITTER]
+        return self._scaled_cost(EntityType.SPLITTER)
 
     def get_harvester_cost(self) -> int:
-        return BASE_COST[EntityType.HARVESTER]
+        return self._scaled_cost(EntityType.HARVESTER)
 
     def get_barrier_cost(self) -> int:
-        return BASE_COST[EntityType.BARRIER]
+        return self._scaled_cost(EntityType.BARRIER)
 
     def get_gunner_cost(self) -> int:
-        return BASE_COST[EntityType.GUNNER]
+        return self._scaled_cost(EntityType.GUNNER)
 
     def get_sentinel_cost(self) -> int:
-        return BASE_COST[EntityType.SENTINEL]
+        return self._scaled_cost(EntityType.SENTINEL)
 
     def get_launcher_cost(self) -> int:
-        return BASE_COST[EntityType.LAUNCHER]
+        return self._scaled_cost(EntityType.LAUNCHER)
 
     def get_builder_bot_cost(self) -> int:
-        return BASE_COST[EntityType.BUILDER_BOT]
+        return self._scaled_cost(EntityType.BUILDER_BOT)
 
     # --- movement ---
 
@@ -422,11 +493,13 @@ class FakeController:
             return False
         if self.world.builder_at(position) is not None:
             return False
-        return self.world.resources[self._self.team] >= BASE_COST[etype]
+        return self.world.resources[self._self.team] >= self._scaled_cost(etype)
 
     def _build(self, position: Position, etype: EntityType, direction: Direction | None) -> int:
+        cost = self._scaled_cost(etype)
         id_ = self.world.spawn(position, self._self.team, etype, direction)
-        self.world.resources[self._self.team] -= BASE_COST[etype]
+        self.world.resources[self._self.team] -= cost
+        self.world.scale_percent[self._self.team] += SCALE_CONTRIBUTION.get(etype, 0.0)
         self._self.used_action = True
         self._self.action_cooldown = 1
         return id_
@@ -536,9 +609,11 @@ class FakeController:
             raise GameError("cannot destroy")
         b = self.world.building_at(building_pos)
         assert b is not None
+        self.world.scale_percent[b.team] -= SCALE_CONTRIBUTION.get(b.etype, 0.0)
         del self.world.entities[b.id]
 
     def self_destruct(self) -> None:
+        self.world.scale_percent[self._self.team] -= SCALE_CONTRIBUTION.get(self._self.etype, 0.0)
         del self.world.entities[self.id]
 
     def resign(self, message: str | None = None) -> None:
@@ -654,13 +729,15 @@ class FakeController:
                 break
             else:
                 return False
-        return self.world.resources[self._self.team] >= BASE_COST[EntityType.BUILDER_BOT]
+        return self.world.resources[self._self.team] >= self._scaled_cost(EntityType.BUILDER_BOT)
 
     def spawn_builder(self, position: Position) -> int:
         if not self.can_spawn(position):
             raise GameError("cannot spawn")
+        cost = self._scaled_cost(EntityType.BUILDER_BOT)
         id_ = self.world.spawn(position, self._self.team, EntityType.BUILDER_BOT)
-        self.world.resources[self._self.team] -= BASE_COST[EntityType.BUILDER_BOT]
+        self.world.resources[self._self.team] -= cost
+        self.world.scale_percent[self._self.team] += SCALE_CONTRIBUTION[EntityType.BUILDER_BOT]
         self._self.used_action = True
         self._self.action_cooldown = 1
         return id_
