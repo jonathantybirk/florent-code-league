@@ -1,9 +1,7 @@
 {
   "_comment": "Tracked in git, so anyone who can push can change it and it takes effect on the next round (~11 min). Runtime state lives in state.json, which is NOT tracked.",
-
   "enabled": true,
   "_enabled": "false makes every round collect and decide but fire nothing. Use it to hand the account's 5-unrated-per-10-minutes budget back to a human who wants to test their own bot -- the farm otherwise consumes almost all of it.",
-
-  "yield_until": null,
+  "yield_until": "2026-08-06T13:56:00Z",
   "_yield_until": "ISO-8601 UTC timestamp, e.g. '2026-08-06T18:30:00Z'. Fires nothing until then, then resumes by itself. Prefer this over enabled:false -- it cannot be forgotten."
 }
