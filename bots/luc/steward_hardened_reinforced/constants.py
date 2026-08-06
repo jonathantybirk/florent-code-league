@@ -196,12 +196,12 @@ ECON_EXPAND_ROUND = 120
 # Harvesters the opening has not bought yet, where the same +20% levied at
 # round 200 falls almost entirely on conveyors at 3 Ti -- 0.6 Ti a tile against
 # the 2.5 Ti a round a connected Harvester returns for the rest of the match.
-ECON_EXPAND_BUILDERS = False
+ECON_EXPAND_BUILDERS = True
 ECON_BUILDER_ROUND = 200
 # Only genuine surplus. A Builder is 30 Ti before scale and this holds back
 # roughly a Harvester and the belt to reach it on top of the Builder itself, so
 # expanding never takes the titanium the existing miners are already waiting on.
-ECON_EXPAND_RESERVE = 120
+ECON_EXPAND_RESERVE = 60
 # Total Builders the expansion may ever add, counted from spawns rather than
 # from a live headcount -- because a live headcount is not available.
 #
@@ -285,6 +285,13 @@ HOME_TURRET_STEP = 180
 # race to a tile, the first shot in a duel, the heal that lands before the shot.
 # Seat B therefore escalates its home defence on less damage.
 SEAT_AWARE_DEFENCE = False
+# Team A acts first every round for the whole match. Measured on the hard panel
+# that is worth 0.667 from seat A against 0.514 from seat B -- a 15.2pp gap that
+# appears against every opponent and has nothing to do with which opponent it
+# is. These two flags are seat B's answer: fight where the first shot matters
+# least (range), and decline the exchange where it matters most (the duel).
+SEAT_B_PREFERS_RANGE = False
+SEAT_B_SKIPS_DUEL = False
 SEAT_B_TURRET_STEP = 90
 # Run the outer barrier seal on every doctrine rather than FORTIFY only. The
 # seal is dozens of tiles and often will not finish before the game does, which
