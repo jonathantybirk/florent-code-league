@@ -6,6 +6,7 @@ The Core is stationary — it can't move or attack. Its one job is spawning Buil
 
 from fcode import Controller, EntityType
 
+
 class Player:
     def run(self, ct: Controller) -> None:
         etype = ct.get_entity_type()

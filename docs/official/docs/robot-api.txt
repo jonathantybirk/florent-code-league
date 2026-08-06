@@ -175,7 +175,7 @@ ct.fire(target)
 
 None
 
-Fire at target position (turrets only). Gunners and Sentinels spend from your team's global ammunition balance (2 and 10 per shot respectively); Launchers use no ammo.
+Fire at target position (turrets only). Gunners and Sentinels spend from your team's global ammunition balance (4 and 10 per shot respectively); Launchers use no ammo.
 
 ct.can_fire(target)
 
@@ -241,13 +241,13 @@ ct.can_launch(bot_pos, target)
 
 bool
 
-Check if this Launcher can pick up the bot at bot_pos (must be adjacent, incl. diagonal) and throw it to target (within throw range, bot-passable).
+Check if this Launcher can pick up the bot at bot_pos (either team; must be adjacent, incl. diagonal) and throw it to target (within throw range, bot-passable).
 
 ct.launch(bot_pos, target)
 
 None
 
-Pick up the Builder Bot at bot_pos and throw it to target (Launcher only).
+Pick up the Builder Bot at bot_pos (either team) and throw it to target (Launcher only).
 
 Vision & Sensing
 

@@ -13,6 +13,7 @@ from fcode import Controller, Direction, Environment, EntityType
 # Builder bots move only in the four cardinal directions.
 CARDINALS = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST]
 
+
 class Player:
     def run(self, ct: Controller) -> None:
         etype = ct.get_entity_type()
