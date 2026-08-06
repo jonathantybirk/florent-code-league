@@ -154,18 +154,40 @@ def test_build_rates_each_map_pool_separately_and_counts_core_maps(tmp_path):
     _write_run(tmp_path / "run", bots, matches)
     index = build(tmp_path / "run", tmp_path / "site")
 
-    assert [pool["id"] for pool in index["map_pools"]] == ["", "_secret", "_combined"]
-    assert index["field"]["maps"] == 2
+    # Every union of the three pools is offered, in POOLS order, smallest combination first.
+    assert [pool["id"] for pool in index["map_pools"]] == [
+        "_official", "_legacy", "_secret",
+        "_official_legacy", "_official_secret", "_legacy_secret",
+        "_official_legacy_secret",
+    ]
+    # atoll is in both official pools and duel only in the old one, so `new + old` is two maps,
+    # not three: combining pools is a union, and the shared map is not counted twice.
+    assert index["field_official"]["maps"] == 1
+    assert index["field_legacy"]["maps"] == 2
+    assert index["field_official_legacy"]["maps"] == 2
     assert index["field_secret"]["maps"] == 1
-    assert index["field_combined"]["maps"] == 3
+    assert index["field_legacy_secret"]["maps"] == 3
+    assert index["field"]["maps"] == 2
+
+    # Nothing here is a fully played pool, so the headline stays on the one with most evidence.
+    assert index["default_pool"] == "_legacy"
+    assert index["pool_coverage"]["official"] == {
+        "played": 1, "defined": 15, "label": "New official maps",
+    }
+
+    # Selections covering the same maps share one table instead of shipping copies of it.
+    assert index["pool_aliases"]["_legacy"] == ""
+    assert index["pool_aliases"]["_official_legacy"] == ""
+    assert "rankings_legacy" not in index and "rankings_official_legacy" not in index
 
     def core_maps(key: str) -> dict[str, int]:
         return {bot["bot_id"]: bot["nash_core_maps"] for bot in index[key]}
 
     # Counted within the selected pool: alpha owns both official maps, beta owns the held-out one.
     assert core_maps("rankings") == {"alpha": 2, "beta": 0}
+    assert core_maps("rankings_official") == {"alpha": 1, "beta": 0}
     assert core_maps("rankings_secret") == {"alpha": 0, "beta": 1}
-    assert core_maps("rankings_combined") == {"alpha": 2, "beta": 1}
+    assert core_maps("rankings_legacy_secret") == {"alpha": 2, "beta": 1}
     assert {bot["pool_maps"] for bot in index["rankings_secret"]} == {1}
 
     # The pooled ratings themselves are pool-scoped, not filtered client-side.
@@ -192,17 +214,58 @@ def test_build_refuses_to_publish_a_pool_with_unplayed_pairs(tmp_path, capsys):
     _write_run(tmp_path / "run", ["alpha", "beta", "gamma"], matches)
     index = build(tmp_path / "run", tmp_path / "site")
 
-    # Only the held-out pool has the hole. Pooled over both map sets every pair has played
-    # something, so the combined matrix is full and stays publishable.
-    assert [pool["id"] for pool in index["map_pools"]] == ["", "_combined"]
+    # Only the held-out pool on its own has the hole. Pooled with an official map every pair has
+    # played something, so those matrices are full and stay publishable.
+    assert "_secret" not in [pool["id"] for pool in index["map_pools"]]
     assert "rankings_secret" not in index
-    assert "rankings_combined" in index
+    assert "rankings_official_secret" in index
     output = capsys.readouterr().out
     assert "_secret" in output and "beta" in output and "gamma" in output
 
 
-def test_build_raises_when_the_standard_pool_itself_is_incomplete(tmp_path):
+def test_build_raises_when_the_primary_pool_itself_is_incomplete(tmp_path):
     matches = [_match("alpha", "beta", "atoll", 1), _match("gamma", "alpha", "atoll", 1)]
     _write_run(tmp_path / "run", ["alpha", "beta", "gamma"], matches)
-    with pytest.raises(RuntimeError, match="standard map pool is incomplete"):
+    with pytest.raises(RuntimeError, match="primary map pool is incomplete"):
         build(tmp_path / "run", tmp_path / "site")
+
+
+def test_expected_elo_is_joined_from_the_live_feed_and_missing_for_everyone_else(tmp_path):
+    """Most of the field was never submitted, and an absent estimate must read as unmeasured.
+
+    The join is on `name@commit`, which the live feed recovers by hashing each submission's source
+    against the repo -- so a bot rated here and a submission on the public ladder line up only
+    when they are literally the same code.
+    """
+    matches = [_match("alpha", "beta", "atoll", 1), _match("beta", "alpha", "atoll", 0)]
+    _write_run(tmp_path / "run", ["alpha", "beta"], matches)
+    (tmp_path / "site").mkdir()
+    (tmp_path / "site" / "live.json").write_text(json.dumps({
+        "bots": [
+            {
+                "canonical": "alpha",
+                "versions": [30],
+                "is_active": True,
+                "rated": 115,
+                "estimate": {"elo": 1868.61, "elo_lo": 1793.2, "elo_hi": 1945.4},
+            },
+            # Submitted, but no split record yet, so the fit has no finite answer to report.
+            {"canonical": "beta", "versions": [31], "rated": 0, "estimate": None},
+        ]
+    }))
+    index = build(tmp_path / "run", tmp_path / "site")
+
+    found = {bot["bot_id"]: bot["expected_elo"] for bot in index["rankings"]}
+    assert found["alpha"] == {
+        "elo": 1868.6, "lo": 1793.2, "hi": 1945.4,
+        "rated_games": 115, "versions": [30], "active": True,
+    }
+    assert found["beta"] is None
+
+
+def test_expected_elo_is_absent_rather_than_wrong_when_the_live_feed_is_missing(tmp_path):
+    """The two generators run on different timers; one being late must not invent numbers."""
+    matches = [_match("alpha", "beta", "atoll", 1), _match("beta", "alpha", "atoll", 0)]
+    _write_run(tmp_path / "run", ["alpha", "beta"], matches)
+    index = build(tmp_path / "run", tmp_path / "site")
+    assert all(bot["expected_elo"] is None for bot in index["rankings"])

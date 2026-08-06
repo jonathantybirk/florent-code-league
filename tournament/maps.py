@@ -7,6 +7,12 @@ choice of which of those trees to glob.
 The held-out pool is the exception: it lives outside maps/ entirely, in tournament/custom_maps/,
 because that directory is gitignored. Keeping it off the maps/ tree means neither `official` nor
 `generated` can pick it up by accident, and a developer globbing maps/ never trips over it.
+
+The two *official* pools cannot be told apart by path, because they overlap: when Florent replaced
+the pool on 2026-08-06 they kept atoll, hive and jackpot. So both pools are written out by name
+below, a map may belong to both, and combining pools always means the union -- never a partition.
+Globbing maps/ would silently merge the eras, which is exactly the mistake the named lists exist
+to prevent.
 """
 
 from __future__ import annotations
@@ -23,12 +29,54 @@ SECRET_ROOT = REPO_ROOT / "tournament" / "custom_maps"
 # apart -- match CSVs and the website both classify on the label, never on a path.
 SECRET_PREFIX = "secret/"
 
+# The competition pool as served by `fcode maps list`, synced 2026-08-06. This list is the one
+# thing here that can go stale without anything failing: if Florent adds a map, runs keep playing
+# the old fifteen and the omission is invisible. `fcode maps sync` reports what the platform has;
+# compare it against this tuple whenever the pool is said to have changed.
+CURRENT_OFFICIAL = (
+    "antler", "archipelago", "atoll", "drumlin", "eider", "fjordgate", "heart", "hive",
+    "jackpot", "lighthouse", "meander", "moonrise", "nordkap", "saga", "snowflake",
+)
+
+# The pool every published rating before 2026-08-06 was computed over. Kept whole, including the
+# three maps the current pool retained: these names define what the historical numbers mean, and
+# dropping the overlap to make the pools disjoint would redefine them retroactively.
+LEGACY_OFFICIAL = (
+    "atoll", "aurora", "bridge", "crossfire", "duel", "fjord", "hive", "jackpot", "longship",
+    "pinch", "quarry", "runestone", "showdown", "skerry", "sprint", "strait", "string",
+    "sweden", "twins", "vase", "vault",
+)
+
+# Pool identifiers, in the order the website offers them.
+POOLS = ("official", "legacy", "secret")
+
 # The fast subset x/jon uses for iteration (scratch/gauntlet.py:SCREEN).
 SCREEN = ("atoll", "aurora", "duel", "pinch", "quarry", "twins")
 
 
+def _named(names: tuple[str, ...]) -> list[Path]:
+    return [MAPS_ROOT / f"{name}.map26" for name in names]
+
+
+def _union(*groups: list[Path]) -> list[Path]:
+    """Deduplicated union, because the official pools share three maps."""
+    seen: dict[Path, None] = {}
+    for group in groups:
+        for path in group:
+            seen[path] = None
+    return sorted(seen)
+
+
 def _official() -> list[Path]:
-    return sorted(MAPS_ROOT.glob("*.map26"))
+    return _named(CURRENT_OFFICIAL)
+
+
+def _legacy() -> list[Path]:
+    return _named(LEGACY_OFFICIAL)
+
+
+def _all_official() -> list[Path]:
+    return _union(_official(), _legacy())
 
 
 def _generated() -> list[Path]:
@@ -44,18 +92,47 @@ def is_secret(map_label: str) -> bool:
     return map_label.startswith(SECRET_PREFIX)
 
 
+def pools_of(map_label: str) -> tuple[str, ...]:
+    """Which pools a map label belongs to -- more than one where the pools overlap."""
+    if is_secret(map_label):
+        return ("secret",)
+    found = []
+    if map_label in CURRENT_OFFICIAL:
+        found.append("official")
+    if map_label in LEGACY_OFFICIAL:
+        found.append("legacy")
+    return tuple(found)
+
+
+def pool_labels(pool: str) -> tuple[str, ...]:
+    """The map labels a pool identifier covers."""
+    if pool == "official":
+        return CURRENT_OFFICIAL
+    if pool == "legacy":
+        return LEGACY_OFFICIAL
+    if pool == "secret":
+        return tuple(label(path) for path in _secret())
+    raise ValueError(f"unknown map pool {pool!r}")
+
+
 def resolve(spec: str) -> list[Path]:
     """Return absolute map paths for a map-set name or an explicit comma-separated list."""
     if spec == "official":
         maps = _official()
+    elif spec == "legacy":
+        maps = _legacy()
+    elif spec == "all_official":
+        maps = _all_official()
     elif spec == "generated":
         maps = _generated()
     elif spec == "secret":
         maps = _secret()
     elif spec == "official_secret":
         maps = _official() + _secret()
+    elif spec == "all_official_secret":
+        maps = _all_official() + _secret()
     elif spec == "all":
-        maps = _official() + _generated()
+        maps = _all_official() + _generated()
     elif spec == "screen":
         maps = [MAPS_ROOT / f"{name}.map26" for name in SCREEN]
     else:

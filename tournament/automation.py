@@ -35,6 +35,17 @@ from tournament.site_data import build as build_site_data
 
 STATE_VERSION = 2
 
+# What every automated run plays. Both official pools, so a new bot arrives with a record on the
+# current competition maps *and* a record comparable to the 144 bots already rated on the old
+# ones -- 33 maps rather than 15, at 57% more compute per challenger.
+#
+# Note what this does not do: it schedules the challenger against the field, so the field's own
+# pairwise results on the twelve new maps still do not exist, and the new-official pool stays
+# incomplete -- and therefore unpublished -- until somebody backfills the whole matrix over them.
+# Dropping this back to "official" is the right move once that backfill has landed and the old
+# pool has become a museum piece.
+RUN_MAP_SPEC = "all_official"
+
 
 @dataclass(frozen=True)
 class Source:
@@ -1058,7 +1069,7 @@ def run_once(
     destination, schedule = planning.plan(
         tid,
         representatives,
-        "official",
+        RUN_MAP_SPEC,
         (1,),
         0,
         versus=canonical_specs,
