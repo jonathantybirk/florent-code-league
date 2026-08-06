@@ -537,23 +537,26 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
 
         # The projection sees only rated games against builds still on the ladder.
         #
-        # Two filters, two reasons. Retired builds are excluded because an opponent who has shipped
-        # twice since is a different bot. Unrated games are excluded because *we* choose those
-        # opponents, and we choose weak ones -- they average 88 Elo below us, against 4 on the
-        # ladder -- which would be harmless if Elo's curve were calibrated, and it is not. Across
-        # every match on the platform, a 100-point favourite scores 66.6% where the logistic
-        # predicts 62.2%, and a 200-point favourite 78.9% against 74.6%. The real curve is steeper
-        # than the 400-point scale, so games against weak opponents overperform the model and the
-        # fit reads that as enormous strength.
+        # One filter now, not two. Retired builds are still excluded -- an opponent who has
+        # shipped twice since is a different bot -- but unrated games count, because the opponent's
+        # exact submission version is known and that is what the record is keyed on. Selecting who
+        # we play cannot bias a fit that conditions on who we played; it would only bias one that
+        # leaned on their team rating as a stand-in for their strength.
         #
-        # That is not a small effect. It put steward_hardened_reinforced@f61245f at 1917 when its
-        # rated-only fit is 1878 and the rating it actually held all night averaged 1873, peaking
-        # at 1897 -- an "expected" rating it never once reached, which is what gave the bias away.
-        live_rows = [
-            r
-            for r in rows
-            if r["kind"] == "ladder" and (r["opp"], r["opp_ver"]) in current_builds
-        ]
+        # The earlier rated-only rule was measured against the rating each build actually held
+        # while live, on the 7 builds with >=25 rated games post-epoch: rated-only is out by a mean
+        # 17 Elo, all-games by 26. So the exclusion did buy accuracy, but modestly and
+        # inconsistently -- v28 was *better* with unrated included -- and it cost nearly everything
+        # else. Under it only 4 of 19 builds with matches had an estimate at all, every one of them
+        # a current or former flagship, because rated games are the one thing a bot cannot get
+        # until it is already live. The farm could gather data forever and never promote anything.
+        #
+        # The related claim in the previous comment, that the platform's curve is much steeper than
+        # the 400 scale, did not reproduce on the cached matches: the MLE scale is 425 (log-lik
+        # -5796.6 against -5797.8 at 400, i.e. nothing over 9006 games), and moderate favourites
+        # *under*-perform the model rather than over-perform it. The residuals are not monotone in
+        # the gap, so a single scale is the wrong knob regardless.
+        live_rows = [r for r in rows if (r["opp"], r["opp_ver"]) in current_builds]
         cells = defaultdict(lambda: [0, 0])
         for r in live_rows:
             cell = cells[round(r["opp_rating"], 3)]
@@ -672,13 +675,20 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
     bots.sort(key=lambda b: (b["uploaded"] or b["first_seen"] or "", min(b["versions"])))
 
     # ---- each bot against each opponent build --------------------------------------------------
-    matchups: dict[tuple[str, str, int], list[int]] = defaultdict(lambda: [0, 0, 0, 0])
+    matchups: dict[tuple[str, str, int], list[int]] = defaultdict(lambda: [0, 0, 0, 0, 0, 0])
     for row in ours:
         cell = matchups[(bot_key(row["ver"]), row["opp"], row["opp_ver"])]
         cell[0] += 1 if row["win"] else 0
         cell[1] += 0 if row["win"] else 1
         cell[2] += row["gf"]
         cell[3] += row["ga"]
+        # Split out so the site can show where a record came from. Both count towards the
+        # estimate; a reader still wants to see which games were the ladder's choice of
+        # opponent and which were ours.
+        if row["kind"] == "ladder":
+            cell[4] += row["gf"] + row["ga"]
+        else:
+            cell[5] += row["gf"] + row["ga"]
     matchup_rows = [
         {
             "key": key,
@@ -688,9 +698,11 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
             "losses": loss,
             "games_for": gf,
             "games_against": ga,
+            "rated_games": rated_g,
+            "unrated_games": unrated_g,
             "opponent_build_current": (opp, oppver) in current_builds,
         }
-        for (key, opp, oppver), (w, loss, gf, ga) in sorted(matchups.items())
+        for (key, opp, oppver), (w, loss, gf, ga, rated_g, unrated_g) in sorted(matchups.items())
     ]
 
     return {
