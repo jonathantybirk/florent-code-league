@@ -38,17 +38,17 @@ uv run python -m tournament run  --tid smoke --jobs 8
 uv run python -m tournament rate --tid smoke --matrix
 ```
 
-`plan` also adds three short timing probes for every bot selected by `--bots` (or the whole roster
-when `--bots` is omitted). They sample every unit-turn on `atoll`, `duel`, and `quarry`, flag a
-measured turn at 9 ms as **close** and one over the ladder's 10 ms limit as **exceeded**, and never
-enter the rating matrix:
+`plan` also adds a short timing probe on **every map in `maps/`** for each bot selected by `--bots`
+(or the whole roster when `--bots` is omitted) — 33 of them since the pool replacement, not the
+three this used to say. They sample every unit-turn, flag a measured turn at 9 ms as **close** and
+one over the ladder's 10 ms limit as **exceeded**, and never enter the rating matrix:
 
 ```sh
 uv run python -m tournament compliance --tid smoke
 ```
 
 To refresh timing distributions without scheduling any rating matches, use
-`plan --compliance-only`; this still runs the three instrumented probe maps for every selected bot.
+`plan --compliance-only`; this still runs the full instrumented probe set for every selected bot.
 
 The per-bot summary is durable in `compliance.csv`; it includes the observed per-turn minimum,
 25th percentile, median, 75th percentile, and maximum. Individual probe distributions, sample
@@ -235,6 +235,22 @@ across the whole field, `default_pool` stays on `legacy` and the new pool is off
 selectable-but-thin option, labelled with its coverage. Getting it promoted needs a full backfill
 of the field over the twelve new maps — `automation.RUN_MAP_SPEC` only schedules *challengers*, so
 incremental ticks never fill in the field's own pairwise results.
+
+### Syncing maps also tightens the compliance bar
+
+`compliance.MAPS` globs `maps/`, so downloading the twelve new maps widened the timing probe from
+21 maps to 33 with nobody choosing that. The new pool is physically bigger -- `archipelago` and
+`snowflake` are 26x26, `eider` and `heart` 28x20 -- and **11 of 71 bots went over the 10 ms turn
+limit** and out of every published field, leaving 60.
+
+Ten of them were already over-time or unpublished under v2. The one genuine new casualty is
+`v233_i@902be71`: 7382 us in v2, over the limit now, failing on **exactly one map** (`archipelago`)
+and passing the other 32.
+
+The glob is doing the right thing today, and it was checked: every one of the 11 exceeds on at
+least one map in the *current* pool, so none is excluded merely for being slow on a retired one.
+The day that stops being true, narrow `MAPS` to `CURRENT_OFFICIAL` -- excluding a bot for missing
+the limit on terrain nobody plays any more would be a straightforward false positive.
 
 ### The held-out pool
 
