@@ -370,6 +370,49 @@ def cancel(tid: str, settings: dict | None = None) -> None:
         print(ssh(host, f"bkill {job_id} 2>&1 || true", check=False, quiet=True).strip())
 
 
+# Everything a finished run leaves on the cluster that this machine already has a copy of.
+# schedule.jsonl and the job scripts stay: they are small, and they are what makes a remote run
+# directory legible if someone goes looking months later.
+WORKSPACE_DIRS = ("results", "logs", "stage", "compliance-stage")
+
+
+def discard_workspace(tid: str, settings: dict | None = None) -> None:
+    """Delete the bulky remote scratch of a run whose results are merged and rated locally.
+
+    The cluster home is a 30 GB per-user quota, and a run costs ~400 MB of it: ~216 MB of staged
+    bot sources (every entrant, re-copied per run), ~154 MB of per-match result JSON and ~34 MB of
+    LSF logs. Nothing used to remove any of it, so the quota filled twice. The second time, on
+    2026-08-06, rsync failed mid-push with "No space left on device", the run never reached bsub,
+    and because no hpc.json was written neither recovery path could see it -- the ladder sat at
+    0/6489 for four hours.
+
+    Safe by construction: every file here has already been fetched and merged into matches.csv
+    before finalise() gets this far, and local_finished() unions the local result set with the
+    remote one precisely so a cleaned run is not re-run.
+
+    Never raises. Reclaiming space is housekeeping; failing a rated, published run over it would
+    trade a disk problem for a ladder problem.
+    """
+    settings = settings or config()
+    root = remote_run(settings, tid)
+    if not tid or "/" in tid or tid.startswith("."):
+        raise HpcError(f"refusing to clean a suspicious tid: {tid!r}")
+    targets = " ".join(shlex.quote(f"{root}/{name}") for name in WORKSPACE_DIRS)
+    try:
+        ssh(settings["host"], f"rm -rf -- {targets}", check=True, quiet=True)
+    except (HpcError, OSError) as error:
+        print(f"  {tid}: could not reclaim remote workspace ({error})")
+        return
+    print(f"  {tid}: reclaimed remote workspace ({', '.join(WORKSPACE_DIRS)})")
+
+
+# Deliberately no pre-flight quota check. DTU's getquota_zhome.sh reports a figure refreshed
+# only every ~240 minutes -- it still read "30.00G of 30.00G" long after 20 GB had been deleted --
+# so gating a submission on it would block pushes that would in fact succeed, and would miss a
+# quota filled since the last refresh. Cleaning up after every finished run is what keeps the
+# headroom; resubmit_abandoned_runs() is what recovers when a push fails anyway.
+
+
 # --------------------------------------------------------------------------------------------
 # status / fetch / watch
 # --------------------------------------------------------------------------------------------

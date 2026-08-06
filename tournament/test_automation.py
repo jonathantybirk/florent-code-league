@@ -178,10 +178,15 @@ def test_a_bot_that_played_but_has_no_source_is_an_error(monkeypatch):
 # ------------------------------------------------------------------------------------------
 
 
-def _write_run(root, name, entries, merged_ids=()):
+def _write_run(root, name, entries, merged_ids=(), submitted=True):
     run = root / name
     run.mkdir(parents=True)
     (run / "schedule.jsonl").write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+    if submitted:
+        # hpc.submit() always writes this before returning, so an in-flight run has one. Its
+        # absence is the signal that a run never reached bsub -- see
+        # test_a_run_that_never_reached_the_cluster_is_pushed_and_queued.
+        (run / "hpc.json").write_text(json.dumps({"job_ids": ["999"]}))
     if merged_ids:
         import csv as _csv
 
@@ -791,10 +796,17 @@ def test_push_data_does_nothing_when_the_branch_is_level(monkeypatch):
     assert not any(c[:2] == ["git", "push"] for c in calls)
 
 
-def _stranded_run(root, tid, *, merged: int, scheduled: int) -> None:
-    """A run whose schedule is only partly present in matches.csv."""
+def _stranded_run(root, tid, *, merged: int, scheduled: int, submitted: bool = True) -> None:
+    """A run whose schedule is only partly present in matches.csv.
+
+    Writes an hpc.json by default, because hpc.submit() always writes one before it returns --
+    so in production a run with outstanding matches and no hpc.json is precisely a run that never
+    reached bsub. Pass submitted=False to model that case.
+    """
     run_dir = root / tid
     run_dir.mkdir(parents=True)
+    if submitted:
+        (run_dir / "hpc.json").write_text(json.dumps({"job_ids": ["999"]}))
     entries = [
         {"match_id": f"m{i}", "bot_a": "alpha", "bot_b": "beta", "kind": "rating"}
         for i in range(scheduled)
@@ -977,6 +989,36 @@ def test_an_array_with_work_left_is_never_requeued(tmp_path, monkeypatch, state)
                         lambda tid, settings=None: pytest.fail("re-queued a live run"))
 
     assert automation.resubmit_abandoned_runs(["auto-live"]) == []
+
+
+def test_a_run_that_never_reached_the_cluster_is_pushed_and_queued(tmp_path, monkeypatch):
+    """No hpc.json means no bsub ever ran, so nothing owns the run and nothing retries it.
+
+    On 2026-08-06 the staging rsync hit a full quota, the tick died before hpc.json was written,
+    and auto-33ab234bb994 sat at 0/6489 for four hours deferring every later bot. _abandoned()
+    returns False on empty job_ids and recover_stranded_results() needs done == total, so neither
+    could see it. Recovery has to push first: nothing of this run is on the cluster yet.
+    """
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-never-sent", merged=0, scheduled=100, submitted=False)
+    assert not (root / "auto-never-sent" / "hpc.json").exists()
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100, "done": 0, "job_ids": [], "bjobs": "",
+    })
+    calls = []
+    monkeypatch.setattr(automation.hpc, "push",
+                        lambda tid, settings=None: calls.append(("push", tid)))
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda tid, settings=None: calls.append(("submit", tid)))
+    monkeypatch.setattr(automation.hpc, "fetch",
+                        lambda tid, settings=None: pytest.fail("nothing to fetch; it never ran"))
+
+    assert automation.resubmit_abandoned_runs(["auto-never-sent"]) == ["auto-never-sent"]
+    assert calls == [("push", "auto-never-sent"), ("submit", "auto-never-sent")]
 
 
 def test_requeueing_gives_up_after_the_cap(tmp_path, monkeypatch):
