@@ -83,6 +83,8 @@ from constants import (
     IDLE_BEFORE_FLANK,
     LANE_BARRIER_FIRST,
     SEAT_AWARE_DEFENCE,
+    SEAT_B_PREFERS_RANGE,
+    SEAT_B_SKIPS_DUEL,
     SEAT_B_TURRET_STEP,
     PLUG_CUT_IMMEDIATELY,
     PLUG_CUT_LEASH,
@@ -3296,7 +3298,7 @@ def _edge_distance(p, dx, dy):
     return min(spans) if spans else p.w + p.h
 
 
-def _turret_kind(ct, prefer_sentinel):
+def _turret_kind(ct, prefer_sentinel, p=None):
     """The turret a defensive role should buy right now.
 
     The Aug 4 patch inverted the turret table and this lineage never noticed.
@@ -3312,6 +3314,19 @@ def _turret_kind(ct, prefer_sentinel):
     that fires beats a Sentinel that was unaffordable. Rotation is the one row
     the Gunner still wins, which is why this is not applied to every role.
     """
+    # Seat B fights at range rather than in a duel.
+    #
+    # Units act in ascending entity id across both teams, so team A takes every
+    # action first, every round, for the whole match -- and that shows up as a
+    # 15.2pp seat gap against every opponent on the hard panel (A 0.667, B
+    # 0.514). A first-strike advantage is worth most in a symmetric close-range
+    # exchange, which is exactly a Gunner duel: both turrets can reach, and the
+    # one that fires first wins it. It is worth least where the exchange is not
+    # symmetric, which is what a Sentinel's r^2=32 against a Gunner's 13 buys.
+    if (SEAT_B_PREFERS_RANGE and getattr(p, "seat_b", False)
+            and ct.get_global_resources() >= ct.get_sentinel_cost()
+            and ct.get_global_ammo() >= MIN_AMMO_FOR_SENTINEL):
+        return EntityType.SENTINEL
     if (prefer_sentinel
             and ct.get_global_resources() >= ct.get_sentinel_cost()
             and ct.get_global_ammo() >= MIN_AMMO_FOR_SENTINEL):
@@ -3470,7 +3485,7 @@ def _defend_core(p, ct):
         return
     if (ct.get_global_ammo() >= MIN_AMMO_FOR_GUNNER
             and p.home_gunners_built < desired):
-        kind = _turret_kind(ct, DEFEND_TURRET_SENTINEL)
+        kind = _turret_kind(ct, DEFEND_TURRET_SENTINEL, p)
         site = _aligned_turret_site(p, ct, enemies, kind)
         if site is None and kind is EntityType.SENTINEL:
             kind = EntityType.GUNNER
@@ -3500,6 +3515,11 @@ def _counter_sentinels(p, ct):
     Builder is what turns one Sentinel into three, and a turret covering the
     ground it is working on kills the reinforcements as well as the shooter.
     """
+    if SEAT_B_SKIPS_DUEL and getattr(p, "seat_b", False):
+        # Answering a turret with a turret is the symmetric exchange seat B
+        # loses. The 3 Ti lane barrier and the mender are not symmetric, and
+        # they run immediately below this in `_defend_core`.
+        return False
     sentinels = [entity_id for entity_id in ct.get_nearby_entities()
                  if ct.get_team(entity_id) != ct.get_team()
                  and ct.get_entity_type(entity_id) == EntityType.SENTINEL]
@@ -3518,7 +3538,7 @@ def _counter_sentinels(p, ct):
         ct.get_position(entity_id).distance_squared(Position(*p.core)),
     ))
     for entity_id in outstanding:
-        kind = _turret_kind(ct, DEFEND_TURRET_SENTINEL)
+        kind = _turret_kind(ct, DEFEND_TURRET_SENTINEL, p)
         site = _aligned_turret_site(p, ct, [entity_id], kind)
         if site is None and kind is EntityType.SENTINEL:
             kind = EntityType.GUNNER
