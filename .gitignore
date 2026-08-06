@@ -53,3 +53,11 @@ tournament/unloadable.json
 # Live ladder feed cache (append-only, rebuilt on demand from the platform API).
 tournament/live-cache.jsonl
 tournament/live-identity.json
+
+# Per-match logs from tournament runs. matches-distinct.csv routinely exceeds
+# GitHub's 100 MiB per-file hard limit -- 13 of them blocked every push to
+# x/tournament for 70 commits until they were stripped from history on
+# 2026-08-06. ratings.csv is the summary everything actually consumes and stays
+# tracked; the raw per-match rows are regenerable from the run.
+tournament/runs/*/matches-distinct.csv
+tournament/runs-v1/*/matches-distinct.csv
