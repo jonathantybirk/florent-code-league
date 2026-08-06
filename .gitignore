@@ -1,0 +1,10 @@
+# Runtime state: local to whichever machine runs the farm, never deployed.
+# `sync.sh` does a hard reset, so anything tracked here would be destroyed --
+# these stay untracked so they survive every deploy.
+state.json
+state.json.tmp
+data/
+exports/
+farm.log
+PAUSE
+sync.sh
