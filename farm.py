@@ -191,6 +191,37 @@ def per_bot_opponent_counts() -> dict[str, dict[str, int]]:
     return counts
 
 
+def queue_bot(state: dict, bot_id: str, rounds: int) -> None:
+    """Force the next `rounds` rounds to test `bot_id`, ahead of UCB selection.
+
+    For trying a specific build on demand -- something a collaborator handed us,
+    or a bot the internal leaderboard has not nominated. Queued entries live in
+    state.json, which is gitignored, so a deploy never clears them.
+    """
+    queue = state.setdefault("queue", [])
+    for entry in queue:
+        if entry["bot_id"] == bot_id:
+            entry["rounds_left"] += rounds
+            return
+    queue.append({"bot_id": bot_id, "rounds_left": rounds,
+                  "queued_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+
+
+def take_queued(state: dict) -> str | None:
+    """Next queued bot, consuming one round of its allowance."""
+    queue = state.get("queue") or []
+    while queue:
+        entry = queue[0]
+        if entry["rounds_left"] <= 0:
+            queue.pop(0)
+            continue
+        entry["rounds_left"] -= 1
+        if entry["rounds_left"] <= 0:
+            queue.pop(0)
+        return entry["bot_id"]
+    return None
+
+
 def validated_opponents(chosen, ctx) -> list[dict]:
     """Enforce the policy contract before anything is fired at a real team.
 
@@ -494,6 +525,31 @@ def run_round(dry_run: bool = False) -> None:
         stats.setdefault(bot_id, arms.ArmStats(bot_id))
     bot_id, why = arms.ucb_select(stats, list(by_id))
 
+    queued = take_queued(state) if not dry_run else (state.get("queue") or [{}])[0].get("bot_id")
+    if queued:
+        name, _, commit = queued.partition("@")
+        if queued not in state.get("uploads", {}):
+            export_dir = HERE / "exports" / queued.replace("@", "_")
+            if arms.export_bot(name, commit, export_dir) is None:
+                log.error("queued %s cannot be exported from git, skipping it", queued)
+                queued = None
+            elif not dry_run:
+                version = fc.submit(export_dir, f"{name} {commit} (queued)")
+                state.setdefault("uploads", {})[queued] = {
+                    "version": version,
+                    "name": f"{name} {commit} (queued)",
+                    "uploaded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    "reasons": "queued by hand",
+                    "run": "manual",
+                }
+                log.info("uploaded queued %s as v%d", queued, version)
+                restore_flagship(state)
+    if queued:
+        bot_id = queued
+        remaining = next((e["rounds_left"] for e in state.get("queue", [])
+                          if e["bot_id"] == queued), 0)
+        why = f"queued by hand ({remaining} further round(s) after this one)"
+
     # An unqualified flagship stays live -- it is still the best bot we can
     # defend -- but it becomes the bot under test, so it fills in the closest
     # opponents it has not faced. The exception is a qualified challenger that
@@ -507,7 +563,7 @@ def run_round(dry_run: bool = False) -> None:
     if closest and incumbent_id:
         seen, ok = qualification(incumbent_id, closest, state, feed)
         challenger = best_challenger(state, stats, team_rating, closest, live=feed)[0]
-        if not ok and challenger is None:
+        if not ok and challenger is None and not queued:
             filling_coverage = True
             if bot_id != incumbent_id:
                 bot_id = incumbent_id
@@ -654,6 +710,12 @@ def print_status() -> None:
         print(f"{bot_id:<34}{info['version']:>5}{games:>7}{est:>8.0f}{half:>6.0f}"
               f"{cover:>9}{live_mark:>7}")
 
+    queue = state.get("queue") or []
+    if queue:
+        print("\nqueued by hand (tested before UCB selection):")
+        for entry in queue:
+            print(f"  {entry['bot_id']:<34}{entry['rounds_left']} round(s) left")
+
     print(f"\n(qualified = faced {QUALIFY_MIN} of the {CLOSEST_K} opponents closest to us in "
           f"rating;\n among qualified bots the highest expected Elo goes live)")
 
@@ -666,6 +728,10 @@ def main() -> int:
     parser.add_argument("--collect", action="store_true", help="only harvest finished matches")
     parser.add_argument("--status", action="store_true", help="show arms and estimates")
     parser.add_argument("--dry-run", action="store_true", help="decide but do not upload or fire")
+    parser.add_argument("--test-next", metavar="NAME@COMMIT",
+                        help="queue a specific build to be tested ahead of UCB selection")
+    parser.add_argument("--rounds", type=int, default=1,
+                        help="how many rounds --test-next should get (5 matches each)")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -675,7 +741,15 @@ def main() -> int:
         handlers=[logging.FileHandler(LOG_PATH), logging.StreamHandler(sys.stdout)],
     )
 
-    if args.status:
+    if args.test_next:
+        state = load_state()
+        queue_bot(state, args.test_next, args.rounds)
+        save_state(state)
+        print(f"queued {args.test_next} for {args.rounds} round(s) "
+              f"({args.rounds * CHALLENGES_PER_ROUND} matches)")
+        for entry in state.get("queue", []):
+            print(f"  {entry['bot_id']:<34}{entry['rounds_left']} round(s) left")
+    elif args.status:
         print_status()
     elif args.decide:
         run_decision(dry_run=args.dry_run)
