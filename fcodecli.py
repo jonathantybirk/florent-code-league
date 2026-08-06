@@ -7,10 +7,14 @@ checkout as its working directory regardless of where the farm itself runs.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
-BOT_REPO = Path("/home/Ucals/projects/florent-code-league-llm-rl")
+# The `fcode` CLI lives in the bot repo's uv environment. Configurable so a
+# collaborator can point at their own checkout.
+BOT_REPO = Path(os.environ.get(
+    "LADDERFARM_BOT_REPO", "/home/Ucals/projects/florent-code-league-llm-rl"))
 
 
 class FcodeError(RuntimeError):

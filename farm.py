@@ -35,6 +35,7 @@ import live as livefeed
 import policy
 
 HERE = Path(__file__).resolve().parent
+FIXTURES = HERE / "fixtures"
 STATE_PATH = HERE / "state.json"
 SERIES_CSV = HERE / "data" / "series.csv"
 GAMES_CSV = HERE / "data" / "games.csv"
@@ -65,6 +66,24 @@ log = logging.getLogger("ladderfarm")
 # --------------------------------------------------------------------------
 # state
 # --------------------------------------------------------------------------
+
+def go_offline() -> None:
+    """Run every decision against committed fixtures instead of the network.
+
+    So the logic can be developed on a machine with no credentials, no bot repo
+    and no CI runs -- which is every machine except the one that hosts the farm.
+    Nothing here can fire a challenge: --offline implies --dry-run.
+    """
+    import json as _json
+
+    ladder = _json.loads((FIXTURES / "ladder.json").read_text())
+    feed = _json.loads((FIXTURES / "live.json").read_text())
+    fc.ladder = lambda limit=100: ladder                      # type: ignore[assignment]
+    fc.active_version = lambda: load_state().get("flagship_version") or 0  # type: ignore
+    livefeed.load = lambda: feed                              # type: ignore[assignment]
+    arms.newest_ratings_csv = lambda: FIXTURES / "ratings.csv"  # type: ignore[assignment]
+    log.info("offline: ladder, live feed and ratings come from fixtures/")
+
 
 def load_config() -> dict:
     """Tracked config -- editable by anyone who can push to the branch."""
@@ -515,7 +534,17 @@ def run_round(dry_run: bool = False) -> None:
 
     collect(state)
 
-    allowed, why_not = firing_allowed(load_config())
+    config = load_config()
+    for spec in config.get("test_next") or []:
+        # "name@commit" or "name@commit:rounds" -- pushed by whoever wants it tested
+        bot, _, rounds = str(spec).partition(":")
+        if bot not in [e["bot_id"] for e in state.get("queue", [])] and \
+                bot not in (state.get("test_next_done") or []):
+            queue_bot(state, bot, int(rounds or 1))
+            state.setdefault("test_next_done", []).append(bot)
+            log.info("queued %s from config.json", bot)
+
+    allowed, why_not = firing_allowed(config)
     if not allowed and not dry_run:
         log.info("not firing: %s", why_not)
         save_state(state)
@@ -769,6 +798,8 @@ def main() -> int:
     parser.add_argument("--collect", action="store_true", help="only harvest finished matches")
     parser.add_argument("--status", action="store_true", help="show arms and estimates")
     parser.add_argument("--dry-run", action="store_true", help="decide but do not upload or fire")
+    parser.add_argument("--offline", action="store_true",
+                        help="decide against fixtures/ -- no credentials needed, implies --dry-run")
     parser.add_argument("--test-next", metavar="NAME@COMMIT",
                         help="queue a specific build to be tested ahead of UCB selection")
     parser.add_argument("--rounds", type=int, default=1,
@@ -781,6 +812,10 @@ def main() -> int:
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[logging.FileHandler(LOG_PATH), logging.StreamHandler(sys.stdout)],
     )
+
+    if args.offline:
+        args.dry_run = True
+        go_offline()
 
     if args.test_next:
         state = load_state()
