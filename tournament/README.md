@@ -440,6 +440,39 @@ near-limit turn, but a pass means only that no issue was observed in the sampled
 
 Bots that use unseeded `random` are also non-deterministic; the engine does not seed bot-side RNG.
 
+## Retiring bots from the published field
+
+`tournament/retired.json` lists bot_ids that no longer count. `pooled_matches()` drops every match
+involving one, and that single filter is what removes them from the canonical field, the ratings,
+the duplicate groups and the website bundle. Their rows stay in the run CSVs: retiring a bot is a
+statement about the published field, not a deletion of what it played.
+
+Two things about it are easy to get wrong.
+
+**It is by bot_id, not by path.** The v2 prune retired whole directories, which discovery excludes
+could express; v3 retires individual versions, keeping `odin@38e1456` while dropping its siblings.
+No path pattern can say that.
+
+**`played_bot_ids()` deliberately does not filter.** The two functions answer different questions
+— "who is on the ladder" and "whose code have we already measured". Filter both and a retired
+bot's code hash drops out of the ledger; the next tick sees its directory sitting on a live branch,
+reads it as an unevaluated implementation, and schedules it straight back into the field it was
+just retired from.
+
+### The v3 rule (2026-08-06)
+
+Measured on the 21-map old pool against the 144-bot v2 field, from run `auto-cbf15637b9be`:
+
+- **Cut**: win rate below 60% **or** Nash core on at most one map.
+- **Rescued**: each name-prefix lineage's best by win rate and by Nash average — up to two per
+  lineage — provided it clears a 40% win rate.
+- **Also rescued**: each contributor's best by the same two measures, with no floor. Without this
+  clause the floor removed every bot Elias and Viktor have, and a shared ladder that only two
+  people appear on is not much of a shared reference.
+
+144 → 58 judged bots. The canonical field is **70**, the extra twelve being bots that arrived after
+the run the prune was measured on and so could not have been judged by it. 10,296 pairs → 2,415.
+
 ## Local live-ladder automation
 
 `tournament.automation` is the one-shot worker behind the public bot ladder. It is designed to be
