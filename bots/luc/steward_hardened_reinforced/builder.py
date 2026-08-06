@@ -81,7 +81,11 @@ from constants import (
     FLANK_WHEN_IDLE,
     HARVESTER_RECHECK_ROUNDS,
     IDLE_BEFORE_FLANK,
+    BOT_STANDOFF,
     LANE_BARRIER_FIRST,
+    STANDOFF_BACKOFF,
+    STANDOFF_WAIT,
+    LAUNCH_RETRY_COOLDOWN,
     SEAT_AWARE_DEFENCE,
     SEAT_B_PREFERS_RANGE,
     SEAT_B_SKIPS_DUEL,
@@ -1692,6 +1696,21 @@ def _step(p, ct, target, exact, allow_launcher=True):
         p.path_failures = 0
         return False
 
+    # Before treating this as a failed route: is the only thing in the way
+    # another *bot*? Bots move; walls do not, and the escalation for each is
+    # different. Traced from the pacing benchmark -- our Builders park against
+    # enemy Builders in corridors, and because the enemy often paces back and
+    # forth the route flickers between clear and blocked, so nothing ever
+    # settles and both bodies are removed from the game.
+    #
+    # The ladder here is deliberately the human one: hold still and let them
+    # pass, then give ground and see whether they take it, and only then decide
+    # the tile is theirs and go around. Holding first is what makes it cheap --
+    # most blockages clear on their own within a round or two, and a Builder
+    # that immediately reroutes around a passer-by pays for a detour it did not
+    # need.
+    if _bot_standoff(p, ct, target, exact):
+        return True
     p.path_failures += 1
     # Going over the obstacle is tried before shooting through it. Both cost
     # 20 Ti, but the throw resolves in one round and puts the Builder past
@@ -1718,6 +1737,56 @@ def _step(p, ct, target, exact, allow_launcher=True):
         p, ct, "move", target,
         "no route, safe launcher, aligned gunner, or legal local move",
     )
+    return False
+
+
+def _bot_standoff(p, ct, target, exact):
+    """Wait out, then give way to, then route around another bot in the way.
+
+    Returns True when the turn has been spent on the standoff.
+
+    Only runs when the route is blocked *by bots alone* -- if the same search
+    with bots treated as passable also fails, the obstruction is terrain and
+    this has nothing to say about it.
+    """
+    if not BOT_STANDOFF:
+        return False
+    source = tuple(ct.get_position())
+    goals = {tuple(target)} if exact else _adjacent(p, tuple(target))
+    dist, _ = _travel(p, source, goals=goals, ignore_bots=True)
+    if not (goals & set(dist)):
+        # Terrain blocks it too; not a standoff.
+        p.standoff_rounds = 0
+        return False
+    p.standoff_rounds = getattr(p, "standoff_rounds", 0) + 1
+    # 1. Hold. Most blockages are a body walking past.
+    if p.standoff_rounds <= STANDOFF_WAIT:
+        return True
+    # 2. Give ground, and see whether they take it. A step away is also a step
+    #    out of whatever ray they were standing in.
+    if p.standoff_rounds <= STANDOFF_WAIT + STANDOFF_BACKOFF:
+        blockers = [t for t in p.bot_occupied
+                    if _cardinal_distance(source, t) <= 2]
+        if blockers:
+            away = min(blockers, key=lambda t: _cardinal_distance(source, t))
+            best, best_score = None, None
+            for direction in D8:
+                spot = tuple(ct.get_position().add(direction))
+                if spot in _no_go(p, source) or not ct.can_move(direction):
+                    continue
+                score = (-_distance_sq(spot, away), _distance_sq(spot, tuple(target)))
+                if best_score is None or score < best_score:
+                    best, best_score = direction, score
+            if best is not None:
+                ct.move(best)
+                return True
+    # 3. They are not moving and neither of us is giving way. Their tile is
+    #    theirs: write it off for a while and let the router find another way.
+    for tile in list(p.bot_occupied):
+        if _cardinal_distance(source, tile) <= 2:
+            p.solids.add(tile)
+            p.deferred_ores.pop(tile, None)
+    p.standoff_rounds = 0
     return False
 
 
@@ -2057,9 +2126,21 @@ def _consume_launch_rejection(p, ct):
     if launched:
         _note_displacement(p, ct)
     if not launched:
-        # Answered and refused: the slot is ours to reuse next round, with a
-        # map that now knows why.
-        p.launch_retry_round = ct.get_current_round()
+        # Answered and refused: hold off before asking again.
+        #
+        # This used to set the stamp to the *current* round, and the gate that
+        # reads it is `current_round < launch_retry_round` -- never true, so
+        # there was no cooldown and a Builder could re-ask the round after every
+        # refusal. Refusals are not rare: with the economy expanded they run 281
+        # of 650 requests (43%), because the pad correctly declines to throw a
+        # passenger into a firing line. Each retry cycle costs the passenger a
+        # round of standing still, and the reason for the refusal -- a turret
+        # covering the landing -- does not usually clear in one round.
+        #
+        # Walking for a few rounds is strictly better than asking again into the
+        # same answer, and the intel the refusal carried is already folded into
+        # the threat map, so the route it walks is the informed one.
+        p.launch_retry_round = ct.get_current_round() + LAUNCH_RETRY_COOLDOWN
     return True
 
 
@@ -2390,7 +2471,7 @@ def _no_go(p, source=None):
 
 
 def _travel(p, source, goals=None, hops=True, allow_fire=False,
-            extra_blocked=()):
+            extra_blocked=(), ignore_bots=False):
     """The single BFS every planner in this file uses.
 
     There were four of these -- one for movement, one for choosing which target
@@ -2421,7 +2502,7 @@ def _travel(p, source, goals=None, hops=True, allow_fire=False,
     the same work avoided, without making the answer depend on the machine.
     """
     key = (source, None if goals is None else frozenset(goals), hops,
-           allow_fire, tuple(sorted(extra_blocked)))
+           allow_fire, tuple(sorted(extra_blocked)), ignore_bots)
     if getattr(p, "travel_cache_round", None) != getattr(p, "round", -1):
         p.travel_cache_round = getattr(p, "round", -1)
         p.travel_cache = {}
@@ -2429,6 +2510,11 @@ def _travel(p, source, goals=None, hops=True, allow_fire=False,
     if cached is not None:
         return cached
     blocked = _no_go(p, source) | set(extra_blocked)
+    if ignore_bots:
+        # Other Builders are obstacles that walk away. Treating them as solid is
+        # right for choosing a route and wrong for deciding a route is
+        # impossible, which is the only question this flag is asked.
+        blocked = blocked - p.bot_occupied
     if allow_fire:
         blocked = blocked - set(getattr(p, "threat", ()))
     blocked.discard(source)

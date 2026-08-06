@@ -256,6 +256,18 @@ FLANK_WHEN_IDLE = True
 IDLE_BEFORE_FLANK = 25
 FLANK_REPLAN_ROUNDS = 12
 HARVESTER_RECHECK_ROUNDS = 90
+# Rounds a Builder waits before asking a pad for another throw after a refusal.
+# The stamp this feeds was previously set to the current round, against a gate
+# reading `current < stamp`, so the cooldown never existed.
+LAUNCH_RETRY_COOLDOWN = 0
+# Another bot in the way is not a wall. Bots move, so the escalation is: hold
+# still and let them pass, then give ground and see whether they take it, and
+# only then decide the tile is theirs and route around. Enemy Builders often
+# pace back and forth, which makes the route flicker between clear and blocked
+# so that nothing ever settles and both bodies leave the game.
+BOT_STANDOFF = False
+STANDOFF_WAIT = 2
+STANDOFF_BACKOFF = 2
 LANE_BARRIER_FIRST = True
 # A conveyor we break gets a barrier in the hole on the very next turn, ahead of
 # whatever else that Builder was doing. Cutting without plugging is rented
