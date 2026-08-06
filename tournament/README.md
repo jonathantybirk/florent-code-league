@@ -187,34 +187,68 @@ bots here go 21/42, each winning every map as player A.
 
 ## Map sets
 
-The official pool and Jon's synthetic corpora are kept separate on disk, and a map set just picks
-which trees to glob:
+Jon's synthetic corpora are kept separate on disk from the official maps, but the two *official*
+pools cannot be — they overlap. A map set therefore picks a tree to glob or a name list to read:
 
 | `--maps` | maps | games per pair | where |
 |---|---|---|---|
-| `official` (default) | 21 | 42 | `maps/*.map26` |
+| `official` | 15 | 30 | `maps.CURRENT_OFFICIAL` — the live competition pool |
+| `legacy` | 21 | 42 | `maps.LEGACY_OFFICIAL` — the pool before 2026-08-06 |
+| `all_official` (what runs use) | 33 | 66 | the union of the two |
 | `generated` | 82 | 164 | `maps/generated/**` |
-| `all` | 103 | 206 | both |
+| `all` | 115 | 230 | official ∪ legacy ∪ generated |
 | `screen` | 6 | 12 | the fast subset for iteration |
 | `secret` | 10 | 20 | `tournament/custom_maps/*.map26` |
-| `official_secret` | 31 | 62 | official + held-out |
+| `official_secret` | 25 | 50 | current official + held-out |
+| `all_official_secret` | 43 | 86 | both official pools + held-out |
 
 Every pair plays every map in **both orders**, which is what makes first-player advantage cancel in
 the aggregate. Generated-map labels are prefixed (`generated/stress/...`) so they can never collide
 with an official map in the CSV.
 
+### Three pools, two of which overlap
+
+On **2026-08-06** Florent replaced the competition pool: twelve new maps, and three of the old
+twenty-one — `atoll`, `hive`, `jackpot` — carried over. All thirty-three sit bare in `maps/`, so
+the pools are told apart by the name tuples in `tournament/maps.py` and by nothing else. Two
+consequences, both of which look wrong at a glance and are not:
+
+- **Globbing `maps/` is now a bug.** It silently merges the eras. `pools_of(label)` is the only
+  supported way to ask which pool a map is in, and it returns *both* for the three shared maps.
+- **Combining pools means the union, never concatenation.** New + old is 33 maps, not 36, and a
+  bot's record on `atoll` counts once. The website's checkboxes work the same way.
+
+The old pool is kept whole, shared maps included, rather than trimmed to the 18 that are
+exclusively old. Its name list is what every published rating before 2026-08-06 *means*; making
+the pools disjoint after the fact would redefine those numbers retroactively.
+
+Adding a map to the competition pool is a manual step: `fcode maps sync` downloads it, and
+`CURRENT_OFFICIAL` has to be edited to match. Nothing fails if you forget — runs simply keep
+playing the fifteen maps the tuple lists, and the omission is invisible. `fcode maps list` prints
+what the platform actually serves.
+
+#### The new pool is not the published default yet
+
+`site_data.build` promotes a pool to the headline only once the run has played **all** of it, and
+the current pool is three maps in (the three it inherited). Until a run covers the other twelve
+across the whole field, `default_pool` stays on `legacy` and the new pool is offered as a
+selectable-but-thin option, labelled with its coverage. Getting it promoted needs a full backfill
+of the field over the twelve new maps — `automation.RUN_MAP_SPEC` only schedules *challengers*, so
+incremental ticks never fill in the field's own pairwise results.
+
 ### The held-out pool
 
 `secret` is the evaluation pool: terrain nobody has developed against, used to tell generalisation
-apart from fitting to the 21 official maps. It is deliberately awkward to reach by accident:
+apart from fitting to the official maps. It is deliberately awkward to reach by accident:
 
 - The maps live in `tournament/custom_maps/`, **outside `maps/`**, so no `maps/` glob finds them,
   and the directory is gitignored (only its README is tracked). They exist on the evaluation
   machine and nowhere else. See `tournament/custom_maps/README.md` for the rules.
 - Labels are prefixed `secret/<name>`, and a bare `--maps geode` **fails** rather than resolving
   into the pool. Mixing pools has to be spelled out as `--maps official_secret`.
-- The standing automation still plays `official` only. Held-out runs are explicit:
-  `plan --tid <id> --maps secret`, then `hpc push` / `hpc submit`.
+- The standing automation plays `automation.RUN_MAP_SPEC` (both official pools) and never the
+  held-out maps. Held-out runs are explicit: `plan --tid <id> --maps secret`, then `hpc push` /
+  `hpc submit`.
 - `ratings.csv`, `duplicates.csv` and the canonical field are computed from official matches only,
   so a held-out run never moves the published ladder. The held-out rows do travel in
   `matches-distinct.csv`, which is how the website offers them as a separately-rated map pool.
@@ -626,6 +660,26 @@ single modelling choice on the page after the balance-era filter. One trap when 
 the same records against their rating *now*, because that is what the pairing kernel returns.
 Keying the projection on historical ratings makes every lookup miss and the matchup term silently
 does nothing.
+
+### The projection also appears on `/botrankings`
+
+`site_data.build` reads `live.json` out of its own output directory and joins each estimate onto
+the ranking rows as `expected_elo`, matching on `name@commit` — the identity the live feed recovers
+by hashing each platform submission's source against every bot directory in git. Three or four
+bots of 144 have one, and that is the point: the internal ladder rates everything, the public one
+rates only what was submitted.
+
+Two things to keep straight when reading that column:
+
+- It is **not pool-scoped.** Every other number on the page is relative to the checked map pools;
+  this one comes from the online ladder, on whatever maps the platform is using, and does not move
+  when the checkboxes do.
+- An em dash means **never measured**, not measured as average. The sort order puts those rows at
+  the bottom for exactly that reason — treating a missing estimate as a low one would rank an
+  unsubmitted bot below a submitted bad one.
+
+The join is best-effort by design: the two generators run on different timers, and a missing or
+half-written `live.json` yields no estimates rather than stale ones.
 
 ### Why it is a separate systemd unit
 

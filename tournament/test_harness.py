@@ -214,17 +214,40 @@ def test_same_name_at_two_commits_are_distinct_entrants():
 
 def test_official_and_generated_map_sets_are_disjoint():
     """The two corpora are deliberately kept apart on disk; selecting one must not leak the other."""
-    official = set(resolve("official"))
+    official = set(resolve("all_official"))
     generated = set(resolve("generated"))
     assert official and generated
     assert not (official & generated)
     assert set(resolve("all")) == official | generated
 
 
-def test_official_pool_is_the_21_competition_maps():
-    official = resolve("official")
-    assert len(official) == 21
-    assert all(path.parent.name == "maps" for path in official)
+def test_the_two_official_pools_are_named_and_overlap():
+    """Both pools sit bare in maps/, so only the name lists tell the eras apart.
+
+    They share atoll, hive and jackpot: the 2026-08-06 pool replacement kept three maps. That is
+    why combining pools has to mean the union rather than concatenation, and why neither pool can
+    be recovered by globbing maps/.
+    """
+    current, legacy = set(resolve("official")), set(resolve("legacy"))
+    assert len(current) == 15
+    assert len(legacy) == 21
+    assert {path.stem for path in current & legacy} == {"atoll", "hive", "jackpot"}
+    assert all(path.parent.name == "maps" for path in current | legacy)
+
+
+def test_combining_the_official_pools_deduplicates_the_overlap():
+    assert len(resolve("all_official")) == 15 + 21 - 3
+    assert set(resolve("all_official")) == set(resolve("official")) | set(resolve("legacy"))
+
+
+def test_a_map_reports_every_pool_it_belongs_to():
+    from tournament.maps import pools_of
+
+    assert pools_of("atoll") == ("official", "legacy")
+    assert pools_of("antler") == ("official",)
+    assert pools_of("duel") == ("legacy",)
+    assert pools_of("secret/anything") == ("secret",)
+    assert pools_of("generated/stress/whatever") == ()
 
 
 def test_map_labels_distinguish_the_corpora():
@@ -236,7 +259,9 @@ def test_map_labels_distinguish_the_corpora():
 
 
 def test_screen_is_a_subset_of_official():
-    assert set(resolve("screen")) <= set(resolve("official"))
+    # Jon's iteration subset predates the pool replacement, so five of its six maps are only in
+    # the old pool -- it is a subset of the official maps, not of the current competition pool.
+    assert set(resolve("screen")) <= set(resolve("all_official"))
     assert len(resolve("screen")) == 6
 
 

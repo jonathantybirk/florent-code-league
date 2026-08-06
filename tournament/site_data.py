@@ -12,11 +12,13 @@ import hashlib
 import json
 from collections import defaultdict
 from datetime import UTC, datetime
+from itertools import combinations
 from pathlib import Path
 
 from maps.generated.generate_maps import read_map
 from tournament import plan as planning
 from tournament import ages as ages_module
+from tournament import maps as map_pools_module
 from tournament import registry
 from tournament.fairness import is_unfair
 from tournament import report
@@ -24,6 +26,13 @@ from tournament.maps import is_secret
 from tournament.maps import resolve as resolve_map
 from tournament.outcome import score_a as evaluation_score_a
 from tournament.rating import evaluate
+
+
+POOL_LABELS = {
+    "official": "New official maps",
+    "legacy": "Old official maps",
+    "secret": "Secret maps",
+}
 
 
 def _read(path: Path) -> list[dict]:
@@ -251,6 +260,46 @@ def _benchmark(
     )
 
 
+def _expected_elo(output_dir: Path) -> dict[str, dict]:
+    """Online-ladder Elo projections, keyed by the same `name@commit` the rankings use.
+
+    Produced by the live feed, which resolves each platform submission back to a repo commit by
+    hashing its source. Only bots that have been submitted and have played a rated game with a
+    split record get one, so this covers a handful of the field and nothing else -- an absent
+    entry means "never measured", never "measured as average".
+
+    Deliberately not pool-scoped: this number comes from the public ladder, not from any map pool
+    on this page, and it does not change when the map checkboxes do.
+    """
+    path = output_dir / "live.json"
+    if not path.exists():
+        return {}
+    try:
+        feed = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    found: dict[str, dict] = {}
+    for bot in feed.get("bots", []):
+        estimate = bot.get("estimate")
+        canonical = bot.get("canonical")
+        if not estimate or not canonical or estimate.get("elo") is None:
+            continue
+        found[canonical] = {
+            "elo": round(estimate["elo"], 1),
+            "lo": round(estimate["elo_lo"], 1) if estimate.get("elo_lo") is not None else None,
+            "hi": round(estimate["elo_hi"], 1) if estimate.get("elo_hi") is not None else None,
+            "rated_games": bot.get("rated", 0),
+            "versions": bot.get("versions", []),
+            "active": bool(bot.get("is_active")),
+        }
+    return found
+
+
+def _attach_expected_elo(rows: list[dict], lookup: dict[str, dict]) -> None:
+    for row in rows:
+        row["expected_elo"] = lookup.get(row["bot_id"])
+
+
 def _map_catalog(map_names: list[str]) -> list[dict]:
     """Catalog entries for the website.
 
@@ -362,13 +411,54 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     # field: Nash averaging asks "unexploitable against which opponents, on which maps". Pooling
     # the held-out maps into the official numbers would silently redefine every published rating,
     # so each pool is evaluated separately and the page picks one.
+    #
+    # There are three pools now, and the two official ones overlap: atoll, hive and jackpot are in
+    # both. Selecting several pools therefore means their union, deduplicated -- a map played once
+    # is one map, however many pools claim it -- so the combinations are built from label sets
+    # rather than by concatenating pools.
     map_labels = sorted({row["map"] for row in benchmark_matches})
-    secret_labels = [name for name in map_labels if is_secret(name)]
-    standard_labels = [name for name in map_labels if not is_secret(name)]
-    pools = {"": standard_labels}
-    if secret_labels:
-        pools["_secret"] = secret_labels
-        pools["_combined"] = map_labels
+    covered: dict[str, list[str]] = {pool: [] for pool in map_pools_module.POOLS}
+    orphans = []
+    for name in map_labels:
+        owners = map_pools_module.pools_of(name)
+        if not owners:
+            orphans.append(name)
+        for pool in owners:
+            covered[pool].append(name)
+    if orphans:
+        # A map nobody claims would vanish from every published pool while still sitting in the
+        # match CSVs, which is the kind of gap that reads as a rating change months later.
+        print(
+            f"  warning: {len(orphans)} played map(s) belong to no pool and are excluded from "
+            f"every published rating: {', '.join(orphans)}"
+        )
+    available = [pool for pool in map_pools_module.POOLS if covered[pool]]
+    if not available:
+        raise RuntimeError("no played map belongs to a known pool; refusing to publish")
+
+    # The headline ladder moves to the current competition pool only once that pool has actually
+    # been played end to end. Until then it stays on whichever pool has the most evidence, because
+    # publishing "rank 1 of 144" off the three maps the new pool happens to share with the old one
+    # would look like a full rating and be nothing of the kind.
+    # Never the held-out pool, however complete it is: those ratings are earned on terrain chosen
+    # to be unlike the competition's, and making them the headline would misdescribe the ladder.
+    candidates = [pool for pool in available if pool != "secret"] or available
+    complete = [
+        pool for pool in candidates
+        if len(covered[pool]) == len(map_pools_module.pool_labels(pool))
+    ]
+    primary = complete[0] if complete else max(candidates, key=lambda p: len(covered[p]))
+
+    def _pool_key(parts: tuple[str, ...]) -> str:
+        return "_" + "_".join(parts)
+
+    pools: dict[str, list[str]] = {"": sorted(covered[primary])}
+    pool_parts: dict[str, tuple[str, ...]] = {"": (primary,)}
+    for size in range(1, len(available) + 1):
+        for parts in combinations(available, size):
+            union = sorted({name for pool in parts for name in covered[pool]})
+            pools[_pool_key(parts)] = union
+            pool_parts[_pool_key(parts)] = parts
 
     # Per-map ratings come first: a bot's Nash-core map count is an aggregate over them, so the
     # pooled rows cannot be finished until every map has been solved.
@@ -414,23 +504,54 @@ def build(run_dir: Path, output_dir: Path) -> dict:
         for left, right in gaps[:5]:
             print(f"    {left}  vs  {right}")
         pools.pop(pool_suffix)
+        pool_parts.pop(pool_suffix, None)
     if "" not in pools:
-        raise RuntimeError("the standard map pool is incomplete; refusing to publish")
+        raise RuntimeError("the primary map pool is incomplete; refusing to publish")
 
-    benchmarks: dict[str, tuple[list[dict], list[dict]]] = {}
+    # Seven selectable combinations over three pools, and several of them coincide while the
+    # current pool is only partly played -- `official + legacy` is the same set of maps as
+    # `legacy` until the twelve new maps have been run, and the primary pool's "" key is by
+    # construction a second name for one of them. Nash averaging over 144 bots is the expensive
+    # part of this build, so identical label sets are solved once, and only the first key of each
+    # set carries its rankings into the bundle: publishing four byte-identical 144-row tables
+    # tripled index.json for nothing.
+    canonical: dict[frozenset[str], str] = {}
+    aliases: dict[str, str] = {}
     for pool_suffix, pool_labels in pools.items():
-        pool_set = set(pool_labels)
+        signature = frozenset(pool_labels)
+        if signature in canonical:
+            aliases[pool_suffix] = canonical[signature]
+        else:
+            canonical[signature] = pool_suffix
+    benchmarks: dict[str, tuple[list[dict], list[dict]]] = {}
+    solved: dict[tuple[frozenset[str], str], tuple[list[dict], list[dict]]] = {}
+    for pool_suffix, pool_labels in pools.items():
+        pool_set = frozenset(pool_labels)
         pool_matches = [row for row in benchmark_matches if row["map"] in pool_set]
         for field_suffix, ids in fields.items():
-            matches, rows = _benchmark(pool_matches, ids, metadata, compliance)
-            for row in rows:
-                # Counted within the selected pool, against the same field: "core on 7 of these
-                # 22 maps" only means anything if both halves describe the table being read.
-                row["nash_core_maps"] = sum(
-                    row["bot_id"] in core_maps[field_suffix][name] for name in pool_labels
-                )
-                row["pool_maps"] = len(pool_labels)
-            benchmarks[f"{pool_suffix}{field_suffix}"] = (matches, rows)
+            cached = solved.get((pool_set, field_suffix))
+            if cached is None:
+                matches, rows = _benchmark(pool_matches, ids, metadata, compliance)
+                for row in rows:
+                    # Counted within the selected pool, against the same field: "core on 7 of
+                    # these 22 maps" only means anything if both halves describe the table being
+                    # read.
+                    row["nash_core_maps"] = sum(
+                        row["bot_id"] in core_maps[field_suffix][name] for name in pool_labels
+                    )
+                    row["pool_maps"] = len(pool_labels)
+                cached = (matches, rows)
+                solved[(pool_set, field_suffix)] = cached
+            benchmarks[f"{pool_suffix}{field_suffix}"] = cached
+
+    # Stamped on every table, pooled and per-map alike, because it is a property of the bot rather
+    # than of the field or the pool it is being read next to.
+    expected_elo = _expected_elo(output_dir)
+    for _, rows in benchmarks.values():
+        _attach_expected_elo(rows, expected_elo)
+    for per_field in map_rankings_by_name.values():
+        for rows in per_field.values():
+            _attach_expected_elo(rows, expected_elo)
 
     within_time_matches, ranking_rows = benchmarks[""]
 
@@ -569,21 +690,44 @@ def build(run_dir: Path, output_dir: Path) -> dict:
         },
         "maps": map_labels,
         "map_catalog": map_catalog,
+        # Every pool the bundle can actually answer for, plus which of the three components each
+        # one unions. The page builds its key from the checkboxes and looks it up here, so a pool
+        # that got dropped as incomplete simply cannot be selected.
         "map_pools": [
             {
                 "id": pool_suffix,
-                "label": {
-                    "": "Standard maps",
-                    "_secret": "Secret maps",
-                    "_combined": "Standard + secret maps",
-                }[pool_suffix],
-                "secret": pool_suffix != "",
+                "label": " + ".join(POOL_LABELS[part] for part in pool_parts[pool_suffix]),
+                "components": list(pool_parts[pool_suffix]),
+                "secret": "secret" in pool_parts[pool_suffix],
                 "maps": pool_labels,
+                # Present when this selection covers exactly the same maps as another, and so
+                # reads its rankings rather than carrying its own copy.
+                **({"alias_of": aliases[pool_suffix]} if pool_suffix in aliases else {}),
             }
             for pool_suffix, pool_labels in pools.items()
+            if pool_suffix != ""
         ],
+        "pool_aliases": aliases,
+        # Which combination the headline numbers are computed over, and which the page should
+        # start on. Not always the current competition pool: see the `primary` choice above.
+        "default_pool": _pool_key((primary,)),
+        "pool_coverage": {
+            pool: {
+                "played": len(covered[pool]),
+                # The held-out pool is defined by what is on disk, and the machine building this
+                # bundle need not hold it -- in which case the matches themselves are the only
+                # evidence of how big it is.
+                "defined": max(
+                    len(map_pools_module.pool_labels(pool)), len(covered[pool])
+                ),
+                "label": POOL_LABELS[pool],
+            }
+            for pool in map_pools_module.POOLS
+        },
         **{
-            f"rankings{suffix}": benchmark[1] for suffix, benchmark in benchmarks.items()
+            f"rankings{suffix}": benchmark[1]
+            for suffix, benchmark in benchmarks.items()
+            if suffix.removesuffix("_fair") not in aliases
         },
         "duplicates": duplicate_rows,
         "methodology": {
