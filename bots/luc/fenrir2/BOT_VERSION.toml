@@ -1,0 +1,5 @@
+source_commit = "93e46da3d"
+source_path = "bots/luc/odin"
+engine = "2.3.3"
+status = "development"
+variant = "odin-plus-soft-body-route-fallback"
