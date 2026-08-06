@@ -39,6 +39,7 @@ STATE_PATH = HERE / "state.json"
 SERIES_CSV = HERE / "data" / "series.csv"
 GAMES_CSV = HERE / "data" / "games.csv"
 PAUSE_FILE = HERE / "PAUSE"
+CONFIG_PATH = HERE / "config.json"
 LOG_PATH = HERE / "farm.log"
 
 # The ladder scheduler queues rated matches ~2:43 past every ten-minute mark.
@@ -64,6 +65,35 @@ log = logging.getLogger("ladderfarm")
 # --------------------------------------------------------------------------
 # state
 # --------------------------------------------------------------------------
+
+def load_config() -> dict:
+    """Tracked config -- editable by anyone who can push to the branch."""
+    try:
+        return json.loads(CONFIG_PATH.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def firing_allowed(config: dict) -> tuple[bool, str]:
+    """Whether this round may spend rate-limit slots, and why not if it may not.
+
+    The farm eats nearly the whole 5-per-10-minutes account budget, so a human
+    who wants to test their own bot needs a way to take it back -- and everyone
+    who might need that works from a different machine, so the switch has to be
+    something they can push rather than a file on this one.
+    """
+    if not config.get("enabled", True):
+        return False, "config.json has enabled=false"
+    until = config.get("yield_until")
+    if until:
+        try:
+            deadline = datetime.fromisoformat(str(until).replace("Z", "+00:00"))
+        except ValueError:
+            return True, ""
+        if datetime.now(timezone.utc) < deadline:
+            return False, f"yielding the rate limit until {until}"
+    return True, ""
+
 
 def load_state() -> dict:
     if STATE_PATH.exists():
@@ -484,6 +514,12 @@ def run_round(dry_run: bool = False) -> None:
         return
 
     collect(state)
+
+    allowed, why_not = firing_allowed(load_config())
+    if not allowed and not dry_run:
+        log.info("not firing: %s", why_not)
+        save_state(state)
+        return
 
     # Checked before anything that changes the active submission -- `fcode submit`
     # auto-activates, so an upload inside the pairing window is as dangerous as a
