@@ -122,6 +122,19 @@ if TYPE_CHECKING:
     from main import Player
 
 
+# What the harasser breaks first. Harvesters are deliberately absent.
+#
+# They looked like the best target on this ladder: `vidar`, `vidar_r*` and
+# `skadi` all carry the deposit-staleness bug this build fixed in itself, so a
+# Harvester of theirs destroyed out of their sight retires that deposit
+# permanently rather than for the rounds it takes to rebuild. Measured, adding
+# it at top priority costs 3.4pp of mean and 7.2pp of the floor.
+#
+# The original note was right about why: a tap takes the same Harvester's 2.5 Ti
+# a round *onto our belt* and denies it to them at the same time, so destroying
+# it trades a resource we were already collecting for a denial we partly had.
+# The permanent-denial bug is real and is still exploited -- by the Sentinel,
+# which shoots Harvesters first and is not giving up anything to do it.
 HARASS_PRIORITY = {EntityType.SPLITTER: 0, EntityType.CONVEYOR: 1}
 # Mirror of launcher.KIND_INDEX, for decoding rejection intel.
 REJECT_KINDS = {0: EntityType.GUNNER, 1: EntityType.SENTINEL,
