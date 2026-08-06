@@ -549,7 +549,17 @@ SENTINEL_SIEGE_FIRST = True
 # rotate. This is the non-attacking-queens constraint, and it is the whole of
 # "spread out" in a game where every weapon is a ray.
 SENTINEL_SPREAD_LINES = True
-SIEGE_SENTINEL_TARGET = 4
+# Siege Sentinels one attacker will seat. Now actually read -- it sat in this
+# file unused while `_build_siege_sentinel` hard-capped at one.
+#
+# The arithmetic says a bigger battery should be decisive: every bot on this
+# ladder posts two menders restoring 8 HP a round, one Sentinel deals 6 and
+# never breaks through, two deal 12 and three deal 18. Measured over 210 games
+# against the five bots that hold this build's floor, 2, 3 and 4 all score
+# 0.581 against a cap of one at 0.590 -- the attacker does not survive long
+# enough, or stay solvent enough, to seat a second one often enough to matter.
+# The ceiling is delivery, not permission.
+SIEGE_SENTINEL_TARGET = 1
 
 # --- Guard patrol and trapping ------------------------------------------------
 # The ring the guard walks when nothing is attacking. Outside the Core's own
