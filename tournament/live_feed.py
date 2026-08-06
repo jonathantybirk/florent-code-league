@@ -17,11 +17,19 @@ Three things make the online ladder worth its own feed:
 
 The rating model is not a guess. `tournament/README.md` records the derivation; briefly, the
 platform runs plain Elo with K=32 over a five-game series scored as (games won / 5), and that
-reproduces all 12255 observed rating deltas to the last decimal place. Because the model is exact,
-a version's equilibrium rating is exactly its Elo-scale strength: the fixed point of the update is
-the rating at which expected score equals Elo-expected score, which happens only at the true
-strength, independent of who it gets paired against. So the projection is one maximum-likelihood
-parameter per version, not a simulation of the ladder.
+reproduces all 12255 observed rating deltas to the last decimal place.
+
+Given that, a bot's equilibrium rating would be exactly its Elo-scale strength, whoever it played,
+*if* a single number described it -- at R = strength every term of the drift vanishes regardless of
+the opponent weights. It very nearly does, but not quite: per-opponent results are about 1.5x more
+variable than binomial, so specific matchups matter a little beyond rating. Once that is true, who
+you are drawn against decides where you settle, and a bot can sit below its apparent strength
+purely because the ladder keeps handing it an opponent it cannot beat.
+
+So the projection solves the fixed point rather than asserting it: per-opponent records, shrunk
+toward the Elo prediction by as much as the measured overdispersion warrants, weighted by the
+pairing kernel. With no overdispersion it collapses back to the one-parameter answer. In practice
+it moves projections by -10 to +40 Elo, inside their intervals but not negligible.
 """
 
 from __future__ import annotations
@@ -225,7 +233,9 @@ def _fit_strength(games: list[tuple[float, int, int]]) -> float | None:
     return (low + high) / 2.0
 
 
-def _bootstrap_strength(matches: list[dict], resamples: int, seed: int) -> list[float]:
+def _bootstrap_strength(
+    matches: list[dict], resamples: int, seed: int, field: list[float] | None = None
+) -> list[float]:
     """Cluster bootstrap over matches, not games.
 
     Games inside one series share a map and an opponent build, so they are nowhere near
@@ -242,9 +252,10 @@ def _bootstrap_strength(matches: list[dict], resamples: int, seed: int) -> list[
             cell = rows[round(match["opp_rating"], 3)]
             cell[0] += match["gf"]
             cell[1] += match["ga"]
-        fit = _fit_strength([(r, w, loss) for r, (w, loss) in rows.items()])
+        cells = [(r, w, loss) for r, (w, loss) in rows.items()]
+        fit = _fit_strength(cells)
         if fit is not None:
-            draws.append(fit)
+            draws.append(_equilibrium(cells, fit, field) if field else fit)
     return sorted(draws)
 
 
@@ -288,6 +299,82 @@ def _pairing_weights(rating: float, field: list[float]) -> list[tuple[float, flo
         for i in reachable:
             weights.append((pool[i][0], probability / len(reachable)))
     return weights
+
+
+def _overdispersion(cells: list[tuple[float, int, int]], strength: float) -> float:
+    """Ratio of observed to binomial variance in per-opponent results. 1.0 means pure Elo.
+
+    Above 1 means specific opponents matter beyond their rating -- a counter we keep losing to, a
+    style we happen to beat. Measured at 1.48 pooled across our bots, so the effect is real but
+    modest; it is what sets how far per-opponent records are trusted over the Elo prediction.
+    """
+    usable = [(r, w, loss) for r, w, loss in cells if w + loss >= 5]
+    if len(usable) < 4:
+        return 1.0
+    chi = 0.0
+    for rating, wins, losses in usable:
+        n = wins + losses
+        p = _expected(strength, rating)
+        if 0.0 < p < 1.0:
+            chi += (wins - n * p) ** 2 / (n * p * (1.0 - p))
+    return chi / max(1, len(usable) - 1)
+
+
+def _equilibrium(
+    current: list[tuple[float, int, int]], strength: float, field: list[float]
+) -> float:
+    """The rating at which this bot stops drifting, given who it will actually be drawn against.
+
+    The one-parameter answer -- equilibrium equals Elo-scale strength, whoever you play -- is only
+    true if a single number really does describe the bot. It does not, quite: per-opponent results
+    are about 1.5x more variable than binomial, so specific matchups matter beyond rating. Once
+    that is admitted, *who you are paired against decides where you settle*, and the pairing kernel
+    stops being decoration for the headline number.
+
+    So solve the fixed point instead of asserting it. Expected score against each likely opponent
+    comes from our record against that opponent, shrunk toward the Elo prediction by an amount the
+    measured overdispersion implies -- no overdispersion shrinks all the way back to the
+    one-parameter answer, which is the right degenerate case. Opponents we have never played
+    contribute the Elo prediction, since we know nothing else about them.
+
+    In practice this moves projections by -11 to +21 Elo, comfortably inside their intervals. It is
+    still worth doing: the alternative reports a number whose derivation assumes away the thing it
+    is most often wrong about.
+    """
+    dispersion = _overdispersion(current, strength)
+    # Pseudo-games of pull toward the Elo prediction. Excess variance of zero means infinite pull
+    # (trust rating only); heavy excess means trust the head-to-head record.
+    excess = max(dispersion - 1.0, 0.0)
+    pull = 6.0 / excess if excess > 1e-6 else float("inf")
+
+    observed: dict[float, float] = {}
+    if pull != float("inf"):
+        for opponent, wins, losses in current:
+            played = wins + losses
+            if played:
+                prior = _expected(strength, opponent)
+                observed[opponent] = (wins + pull * prior) / (played + pull)
+
+    def drift(candidate: float) -> float:
+        weights = _pairing_weights(candidate, field)
+        total = sum(w for _, w in weights)
+        if not total:
+            return 0.0
+        return sum(
+            w * (observed.get(r, _expected(strength, r)) - _expected(candidate, r))
+            for r, w in weights
+        ) / total
+
+    if not field:
+        return strength
+    low, high = 600.0, 3200.0
+    for _ in range(80):
+        mid = (low + high) / 2.0
+        if drift(mid) > 0:
+            low = mid
+        else:
+            high = mid
+    return (low + high) / 2.0
 
 
 def _pairing_score(strength: float, rating: float, field: list[float]) -> float | None:
@@ -419,6 +506,9 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
     # The pairing group is evaluated at *our team's* current rating, because that is the slot a
     # newly activated bot inherits -- it does not start at its own strength.
     current_builds = {(o["team"], o["current_version"]) for o in opponents}
+    current_rating = {
+        (o["team"], o["current_version"]): o["rating"] for o in opponents if o["rating"] is not None
+    }
 
     # ---- pool by code, not by upload slot ------------------------------------------------------
     # A submission version is a slot; the same bot can occupy several. v26 and v27 are byte
@@ -456,16 +546,34 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
             cell[0] += r["gf"]
             cell[1] += r["ga"]
         live_games = sum(r["gf"] + r["ga"] for r in live_rows)
-        strength = _fit_strength([(r, w, loss) for r, (w, loss) in cells.items()])
+        cell_rows = [(r, w, loss) for r, (w, loss) in cells.items()]
+        strength = _fit_strength(cell_rows)
+        # Fitting theta uses each opponent's rating *at the time we played them*, which is right.
+        # Projecting forward needs the same records against their rating *now*, because that is
+        # what the pairing kernel returns -- keying the projection on historical ratings meant the
+        # lookup never matched and the matchup term silently did nothing.
+        current_cells_map: dict[float, list[int]] = defaultdict(lambda: [0, 0])
+        for r in live_rows:
+            rating_now = current_rating.get((r["opp"], r["opp_ver"]))
+            if rating_now is None:
+                continue
+            slot = current_cells_map[rating_now]
+            slot[0] += r["gf"]
+            slot[1] += r["ga"]
+        current_cells = [(r, w, loss) for r, (w, loss) in current_cells_map.items()]
 
         estimate = None
         if strength is not None and live_games >= MIN_GAMES_FOR_ESTIMATE:
             draws = _bootstrap_strength(
-                live_rows, BOOTSTRAP_RESAMPLES, seed=abs(hash(key)) % 100000
+                live_rows, BOOTSTRAP_RESAMPLES, seed=abs(hash(key)) % 100000,
+                field=active_ratings,
             )
             span = _interval(draws)
+            settles_at = _equilibrium(current_cells, strength, active_ratings)
             estimate = {
-                "elo": strength,
+                "elo": settles_at,
+                "elo_if_purely_transitive": strength,
+                "matchup_dispersion": _overdispersion(current_cells, strength),
                 "elo_lo": span[0] if span else None,
                 "elo_hi": span[1] if span else None,
                 "vs_active_field": _field_score(strength, active_ratings),
