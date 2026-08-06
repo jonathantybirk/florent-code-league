@@ -73,7 +73,7 @@ def choose_opponents(ctx: Context) -> list[dict]:
         return sorted(band_rows, key=lambda r: (ctx.series_by_team.get(r["teamId"], 0),
                                                 ctx.global_by_team.get(r["teamId"], 0)))
 
-    top = band(lambda rank: rank <= 3)  # friend test: tighter top band
+    top = band(lambda rank: rank <= 5)
     near = band(lambda rank: ctx.our_rank is not None and abs(rank - ctx.our_rank) <= 5)
     wide = band(lambda _: True)
 
