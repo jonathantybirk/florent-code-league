@@ -418,24 +418,52 @@ def resubmit_abandoned_runs(run_names: list[str], *, dry_run: bool = False) -> l
         except (hpc.HpcError, OSError, KeyError) as error:
             print(f"  {tid}: cannot ask the cluster whether its jobs are gone ({error})")
             continue
-        if state["done"] >= state["total"] or not _abandoned(state):
+        # A run that never recorded a job id was never queued at all -- planning wrote the
+        # schedule, then the push or the bsub died before hpc.json existed. _abandoned() cannot
+        # see it (it returns False on empty job_ids) and recover_stranded_results() cannot either
+        # (the cluster never reaches done == total), so nothing owned it. On 2026-08-06 the
+        # staging rsync hit a full quota and auto-33ab234bb994 sat at 0/6489 for four hours,
+        # deferring every later bot behind a run no machine was working on.
+        # All three have to hold. A missing hpc.json on its own is not proof: the file can be
+        # absent while the cluster is demonstrably working the run, and re-pushing under a live
+        # array would duplicate staged bots on the very quota this is meant to protect.
+        never_submitted = (
+            not (run_dir / "hpc.json").exists()
+            and not state.get("job_ids")
+            and state["done"] == 0
+        )
+        if state["done"] >= state["total"] or not (never_submitted or _abandoned(state)):
             continue
+        unrun = state["total"] - state["done"]
+        # Say which of the three it is. "every array is gone" was written for the vanished-array
+        # case and read as a lie in the other two, which cost real time when reading the log.
+        if never_submitted:
+            cause = "was never queued (no job id was ever recorded)"
+        elif _idle_arrays(state.get("bjobs") or ""):
+            cause = "has no element left running"
+        else:
+            cause = "has lost every array"
         attempts = _resubmit_count(run_dir)
         if attempts >= MAX_RESUBMITS:
             print(
-                f"  {tid}: arrays gone with {state['total'] - state['done']} match(es) unrun, but "
-                f"it has already been re-submitted {attempts} time(s); leaving it for a human"
+                f"  {tid}: {cause} with {unrun} match(es) unrun, but it has already been "
+                f"re-submitted {attempts} time(s); leaving it for a human"
             )
             continue
         print(
-            f"  {tid}: every array is gone with {state['total'] - state['done']} match(es) never "
-            f"run; re-submitting the gaps (attempt {attempts + 1} of {MAX_RESUBMITS})"
+            f"  {tid}: {cause} with {unrun} match(es) never run; "
+            f"re-submitting the gaps (attempt {attempts + 1} of {MAX_RESUBMITS})"
         )
         if dry_run:
             requeued.append(tid)
             continue
         try:
-            hpc.fetch(tid, settings)
+            if never_submitted:
+                # Nothing of this run reached the cluster, so there is nothing to fetch and the
+                # staged bots still have to be pushed before bsub has anything to run.
+                hpc.push(tid, settings)
+            else:
+                hpc.fetch(tid, settings)
             hpc.submit(tid, settings)
         except (hpc.HpcError, OSError) as error:
             print(f"  {tid}: re-submission failed ({error}); still treating it as in flight")
@@ -1181,6 +1209,12 @@ def finalise(
     print(f"  {tid}: rated {len(desired)} distinct bot(s) over {len(distinct_rows)} matches")
     for bot_id, covered_by in sorted(dropped):
         print(f"    duplicate: {bot_id} -> {covered_by}")
+
+    # Merged, rated, and about to be published: the cluster's copy of this run's scratch has
+    # stopped being the only copy of anything, and is now ~400 MB of pure cost against a 30 GB
+    # quota that has filled twice. Reclaim it here rather than on a timer, because this is the
+    # exact moment it becomes safe.
+    hpc.discard_workspace(tid, settings)
 
     head = next(iter(info.get("heads", {}).values()), tid)
     if publish:
