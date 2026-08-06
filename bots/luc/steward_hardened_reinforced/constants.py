@@ -297,6 +297,13 @@ HOME_TURRET_STEP = 180
 # race to a tile, the first shot in a duel, the heal that lands before the shot.
 # Seat B therefore escalates its home defence on less damage.
 SEAT_AWARE_DEFENCE = False
+# Seat B acts second every round, so their shot lands before our heal and our
+# Core is the one that spends the round damaged. It therefore recalls the second
+# mender from further out. This is a *live* path -- the mender branch runs every
+# round the Core is hurt -- unlike the three seat flags below it, which tune
+# `_defend_core` and are pre-empted by that same mender.
+SEAT_B_MENDS_HARDER = False
+SEAT_B_MENDER_LEASH = 18
 # Seat B skips the nearest deposit when another is available: team A wins every
 # tie, so the contested ore is a race seat B loses after paying the walk.
 SEAT_B_YIELDS_ORE = False
@@ -392,6 +399,11 @@ LAUNCH_REJECTION_FLAG = 1 << 31
 LAUNCH_REJECTION_POSITION_BITS = 11
 LAUNCH_REJECTION_POSITION_MASK = (1 << LAUNCH_REJECTION_POSITION_BITS) - 1
 SLOT_SYMMETRY_REJECT_START = 9  # slots 9..10, one writer per opening Builder
+# Width of the owner field in the shared construction lock. Two bits held three
+# Builders and silently wrapped the fourth to 0, which is the "unowned" value --
+# see _refresh_construction_lock. Four bits hold fifteen.
+LOCK_OWNER_BITS = 4
+LOCK_OWNER_MASK = (1 << LOCK_OWNER_BITS) - 1
 SLOT_CONSTRUCTION_LOCK = 11
 SLOT_CORE_DAMAGED = 12
 SLOT_ENEMY_CORE = 13

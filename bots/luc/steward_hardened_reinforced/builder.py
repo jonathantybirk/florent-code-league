@@ -83,10 +83,14 @@ from constants import (
     IDLE_BEFORE_FLANK,
     BOT_STANDOFF,
     LANE_BARRIER_FIRST,
+    LOCK_OWNER_BITS,
+    LOCK_OWNER_MASK,
     STANDOFF_BACKOFF,
     STANDOFF_WAIT,
     LAUNCH_RETRY_COOLDOWN,
     SEAT_AWARE_DEFENCE,
+    SEAT_B_MENDER_LEASH,
+    SEAT_B_MENDS_HARDER,
     SEAT_B_YIELDS_ORE,
     SEAT_B_PREFERS_RANGE,
     SEAT_B_SKIPS_DUEL,
@@ -377,8 +381,11 @@ def _run(p, ct):
         # answer costs.
         mend = (_core_is_hurt(p, ct) if SECOND_MENDER_ON_ANY_DAMAGE
                 else alarm >= SECOND_MENDER_ALARM)
+        leash = (SEAT_B_MENDER_LEASH
+                 if (SEAT_B_MENDS_HARDER and getattr(p, "seat_b", False))
+                 else MENDER_LEASH)
         if (SECOND_MENDER_ON_CRITICAL and mend
-                and _chebyshev(tuple(ct.get_position()), p.core) <= MENDER_LEASH):
+                and _chebyshev(tuple(ct.get_position()), p.core) <= leash):
             _heal_core(p, ct)
             return
         _defend_core(p, ct)
@@ -1276,12 +1283,28 @@ def _write_off(p, ct):
 
 def _read_construction_lock(ct):
     value = ct.read_store(SLOT_CONSTRUCTION_LOCK)
-    return value & 0x3, value >> 2
+    return value & LOCK_OWNER_MASK, value >> LOCK_OWNER_BITS
 
 
 def _refresh_construction_lock(p, ct):
-    ct.write_store(SLOT_CONSTRUCTION_LOCK,
-                   (p.builder_index + 1) | ((ct.get_current_round() + 20) << 2))
+    """Claim the shared build lock.
+
+    The owner field was two bits wide, which holds three Builders. `owner` is
+    `builder_index + 1`, so the fourth Builder wrote 4, `4 & 0b11` is 0, and 0
+    is the value that means "nobody owns this lock". That Builder therefore
+    never matched its own claim, rewrote the slot with a fresh expiry every
+    round, and -- because units act in ascending entity id -- did so *after* the
+    early miner had claimed it, erasing the claim of the one Builder actually
+    laying belt, which then waited for a lock it could never be granted.
+
+    Three Builders is what the opening has, so this was unreachable until
+    ECON_EXPAND_BUILDERS was turned on and index 3 started existing. Four bits
+    hold fifteen owners, which is past ECON_MAX_TOTAL_BUILDERS.
+    """
+    ct.write_store(
+        SLOT_CONSTRUCTION_LOCK,
+        ((p.builder_index + 1) & LOCK_OWNER_MASK)
+        | ((ct.get_current_round() + 20) << LOCK_OWNER_BITS))
 
 
 def _prelay(p, ct):
