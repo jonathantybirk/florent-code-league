@@ -8,3 +8,7 @@ exports/
 farm.log
 PAUSE
 sync.sh
+
+# Never deploy compiled bytecode.
+__pycache__/
+*.pyc

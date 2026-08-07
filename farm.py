@@ -652,6 +652,11 @@ def run_round(dry_run: bool = False) -> None:
     by_id = {c["bot_id"]: c for c in eligible}
     for bot_id in by_id:
         stats.setdefault(bot_id, arms.ArmStats(bot_id))
+    # Loaded here rather than further down because arm selection now needs the
+    # mechanics epoch out of it. Reading it below its later assignment raised
+    # UnboundLocalError -- Python marks `feed` local for the whole function the
+    # moment it is assigned anywhere in it, so the earlier read hit an empty slot.
+    feed = livefeed.load()
     # Uncertainty sampling, not UCB: the internal tournament already ranks our builds
     # over thousands of games, so the live budget is spent narrowing what we do NOT
     # know -- how each build performs against the real ladder -- rather than
@@ -693,7 +698,6 @@ def run_round(dry_run: bool = False) -> None:
     closest = closest_opponents(ladder_rows)
     incumbent_id = {info["version"]: b for b, info in state.get("uploads", {}).items()}.get(
         state.get("flagship_version"))
-    feed = livefeed.load()
     if closest and incumbent_id:
         seen, ok = qualification(incumbent_id, closest, state, feed)
         challenger = best_challenger(state, stats, team_rating, closest, live=feed)[0]
