@@ -1,0 +1,34 @@
+{
+  "submissions": [
+    {
+      "job_id": "29041205",
+      "name": "trn_v3-gapfill-20260806",
+      "elements": 86,
+      "chunk": 20,
+      "range": "1-86",
+      "submitted_at": "2026-08-06T14:18:57+0200"
+    },
+    {
+      "job_id": "29041287",
+      "name": "trn_v3-gapfill-20260806",
+      "elements": 1,
+      "chunk": 20,
+      "range": "1-1",
+      "submitted_at": "2026-08-06T14:44:07+0200"
+    },
+    {
+      "job_id": "29041314",
+      "name": "trn_v3-gapfill-20260806",
+      "elements": 1,
+      "chunk": 20,
+      "range": "1-1",
+      "submitted_at": "2026-08-06T15:08:07+0200"
+    }
+  ],
+  "job_ids": [
+    "29041314"
+  ],
+  "job_id": "29041314",
+  "host": "dtu",
+  "remote": "florent-tournament/v3-gapfill-20260806"
+}

@@ -1,0 +1,12 @@
+{
+  "challengers": [
+    "warden_@d142ef0"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "d142ef07df7ff6bd81f6857c8de9309e9cfcaff9",
+    "x/jon": "6a2af02a9d07ed943bf730e686b34e71c633b3c5",
+    "x/luc": "366cd1b96f80ab63c439ae87fa255a7645d9f06c"
+  },
+  "submitted_at": "2026-08-06T10:15:21+00:00"
+}

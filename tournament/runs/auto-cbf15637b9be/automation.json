@@ -1,0 +1,12 @@
+{
+  "challengers": [
+    "steward_hardened_reinforced@f1f2bda"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "8adfdd1d8d00a8c6790b38291f4e12463ecec81d",
+    "x/jon": "6a2af02a9d07ed943bf730e686b34e71c633b3c5",
+    "x/luc": "f1f2bdad53c4f0a40ccadc507c4857e8c0ea570b"
+  },
+  "submitted_at": "2026-08-06T00:38:37+00:00"
+}
