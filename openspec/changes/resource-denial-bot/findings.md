@@ -146,3 +146,56 @@ north, the identical 285 Ti attack denies **1.0%** of the harvest and costs the 
 **A Core has 8 intake tiles and a bypass costs 12 Ti. Belt sabotage is a trap at every price we can
 pay for it.** The denial thesis has to rest on something with no cheap bypass — an occupied ore tile
 has none, because the ore cannot be moved. That is now the load-bearing untested mechanic.
+
+
+## Uncle Stewart ablations, Nash-weighted (base: steward, 15-map pool, both seats)
+
+Baseline weighted score 0.451. Weights steward 0.442, vigil 0.200, heimdall 0.195,
+odin 0.114, prospect_rushonly 0.050.
+
+### Single changes -- all seven pass
+
+| variant | weighted | gain | shape |
+|---|---|---|---|
+| wary_cost2 (coverage as +2 step cost) | **0.518** | +0.068 | up on ALL five surfaces |
+| wary_cost12 | 0.518 | +0.067 | vigil +4, heimdall +4 |
+| wary_cost (penalty 6) | 0.508 | +0.057 | |
+| frontier_stake_hold | 0.507 | +0.056 | vigil +5, odin +4, prospect -3 |
+| frontier_stake | 0.506 | +0.056 | vigil +3, odin +3, prospect -2 |
+| ore_deny_preempt | 0.502 | +0.052 | vigil +7, odin +4 |
+| frontier_stake_relay | 0.493 | +0.043 | |
+
+### Stacks -- composition is sub-additive, and one pairing is destructive
+
+| stack | weighted | gain | verdict |
+|---|---|---|---|
+| **stack_wf** (wary + frontier_stake) | **0.524** | +0.074 | SHIPPABLE, best gated |
+| stack_wfh (wary + frontier_hold) | 0.557 | +0.107 | REJECTED, prospect -6 cliff |
+| stack_wo (wary + ore_deny) | 0.507 | +0.056 | passes, but WORSE than wary alone |
+| stack_all (all three) | 0.496 | +0.046 | REJECTED, and worse than every part |
+
+**F28 Stacking is sub-additive.** wary +0.068 and frontier +0.056 would be +0.124 if
+independent; stacked they give +0.074, about 60% of the sum.
+
+**F29 Ore denial and danger-avoidance actively fight each other.** stack_wo scores 0.507
+against wary_cost2's 0.518 alone -- adding ore denial to the danger-aware bot makes it
+worse. The mechanism is visible in the design: ore denial sends builders to enemy-side ore,
+which is precisely the ground the coverage penalty has just made expensive. Two changes
+that each win alone can cancel, and only the stack test reveals it.
+
+**F30 All three together is worse than any one of them.** stack_all 0.496 against 0.518,
+0.506 and 0.502 for its parts. More accepted changes is not a better bot.
+
+**F31 Seizing contested ore opens a hole against pure rushers.** Both frontier stacks lose
+heavily to prospect_rushonly (stack_wfh 9-21, i.e. 30%), because committing a builder to
+mid-map ore early leaves home thin. This is the one archetype weakness in the set and it is
+the thing standing between us and stack_wfh's +0.107, the largest gain measured.
+
+**F32 Two ablations inside the danger idea came back negative**, and both are general
+lessons: coverage as a HARD BLOCK loses the mirror 14-16 and regresses two opponents, and
+WITHDRAW-UNDER-FIRE subtracts from every surface it is added to. Pricing danger is worth
+it; refusing to enter it, or fleeing once inside, is not.
+
+**F33 The conveyor maze is dead at the premise.** Belts do not displace units at all --
+measured three ways (own belt, loaded belt with stacks stepping every round, enemy-owned
+belt), 40-60 idle rounds each, zero movement. There is nothing to recirculate.
