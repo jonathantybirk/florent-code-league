@@ -199,3 +199,50 @@ it; refusing to enter it, or fleeing once inside, is not.
 **F33 The conveyor maze is dead at the premise.** Belts do not displace units at all --
 measured three ways (own belt, loaded belt with stacks stepping every round, enemy-owned
 belt), 40-60 idle rounds each, zero movement. There is nothing to recirculate.
+
+
+## Diagnosis: why builders and turrets idle (root cause found and fixed)
+
+**Symptom.** 71 idle runs in one game, units idle 37 consecutive rounds, "13 rounds for a
+3-round path". Initially read as a pathfinding defect. It is not.
+
+**F34 The idling is economic, not navigational.** Traced per unit per round: the worst
+idlers are GUNNERS, not builders -- unit 22 fires rounds 15-21 then does nothing for the
+remaining 67 rounds (91% idle). The team ammunition pool is 120 at round 2, drained to 3 by
+round 23, and sits at 1-3 for the rest of the game while five turrets stand silent.
+
+**F35 The bot builds four to eight times more turrets than it can feed.** Derived from
+constants: a Gunner shot costs 4 Ti since 2.3.4 (it was 2) against passive income of
+2.50 Ti/round, so passive sustains **0.62 gunners** firing every round and a full harvester
+chain reaches **1.25**. The bot routinely builds five. Across 10 games on 5 maps, **22% of
+all turret-owning rounds had too little ammunition to fire once** -- 81-85% on maps where
+the economy delivered nothing, 0% where it delivered well. Dryness tracks delivery exactly.
+
+**F36 Raising the ammunition gate treats the symptom and wins nothing.**
+`MIN_AMMO_FOR_GUNNER` 20 -> 120 cuts dryness 54% -> 34% and banks far more titanium
+(+12980 against heimdall), but the weighted score moves 0.451 -> 0.451. Denied turrets, the
+bot simply holds the titanium: it has no other way to convert resources into wins. The
+lever is income, not spending -- which is why the economy variants gained.
+
+**F37 ROOT CAUSE: a doctrine constant tuned on a map pool and an engine that no longer
+exist.** `doctrine.BLITZ_MAX_DISTANCE = 6` sends the whole team to attack with no economy
+when the Cores are close. Its own comment documents the evidence honestly: measured "over
+the 21 official maps" against showdown, sprint, duel, bridge and quarry -- **none of which
+are in the current 15-map pool** -- and measured before 2.3.4, when a Gunner cost 10 Ti and
+2 ammunition instead of 20 and 4, so a blitz needed half the titanium it needs now.
+
+On `fjordgate` (inside the threshold) the base builds **0 harvesters, 0 conveyors, 5
+gunners, collects 0 titanium, is 81% dry, and dies at turn 88.**
+
+**F38 The fix.** `BLITZ_MAX_DISTANCE = 0`: weighted 0.451 -> **0.469 (+0.019)**, gaining on
+four of five surfaces with no regression anywhere. On fjordgate: dryness 81% -> **0%**,
+collection 0 -> 850, and a loss becomes a win. Setting it to 4 instead is byte-identical to
+the base, which pins the mechanism exactly -- no pool map has a Core distance <= 4, so the
+threshold only bites in the 5-6 band.
+
+**What would have prevented it.** Nothing was careless: the constant carried a scrupulous
+record of what it was measured on. What was missing is any check that the named evidence is
+still valid. With half the map pool rotating weekly, **a constant justified by a named
+instance set needs an expiry test** -- something that flags a tuned value whose cited maps
+are no longer in the pool, or whose cited engine version has moved. That check is cheap and
+would have caught this the morning the pool rotated.
