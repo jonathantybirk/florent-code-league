@@ -521,13 +521,13 @@ def test_shipped_walltime_covers_the_default_chunk():
 
 
 def test_walltime_guard_rejects_an_element_that_cannot_finish():
-    from tournament.hpc import HpcError, SLOWEST_MATCH_SECONDS, check_walltime
+    from tournament.hpc import BATCH_BUDGET_SECONDS_PER_MATCH, HpcError, check_walltime
 
     settings = {"walltime": "22"}
-    check_walltime(settings, 20)
-    over = 22 * 60 // SLOWEST_MATCH_SECONDS + 1
+    fits = 22 * 60 // BATCH_BUDGET_SECONDS_PER_MATCH
+    check_walltime(settings, fits)
     with pytest.raises(HpcError, match="cannot cover"):
-        check_walltime(settings, over)
+        check_walltime(settings, fits + 1)
 
 
 def test_job_script_reads_its_slice_from_the_worklist():

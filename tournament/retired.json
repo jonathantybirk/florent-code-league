@@ -1,7 +1,7 @@
 {
  "version": 3,
  "decided_at": "2026-08-06",
- "rule": "Retired from the published ladder for leaderboard v3. Cut: win rate below 60% OR Nash core on at most 1 map, measured on the 21-map old official pool against the 144-bot v2 field. Rescued from that cut: the best bot of every name-prefix lineage by win rate and by Nash average (so up to two per lineage), provided it clears a 40% win rate, plus the best bot of every contributor by the same two measures with no floor, so nobody loses their whole presence on the ladder. Plus v233_h@90fc9f3, added 2026-08-06 after the backfill: a probe in bots/jon/versions/probes/ that the v2 field had already pruned as a behavioural duplicate, and that re-entered only because adding twelve maps of results for every other bot split it from its representative. Integrating it would have cost 4,340 games on the old and held-out pools to re-admit a duplicate the harness exists to collapse.",
+ "rule": "Retired from the published ladder for leaderboard v3. Cut: win rate below 60% OR Nash core on at most 1 map, measured on the 21-map old official pool against the 144-bot v2 field. Rescued from that cut: the best bot of every name-prefix lineage by win rate and by Nash average (so up to two per lineage), provided it clears a 40% win rate, plus the best bot of every contributor by the same two measures with no floor, so nobody loses their whole presence on the ladder. Plus v233_h@90fc9f3, added 2026-08-06 after the backfill: a probe in bots/jon/versions/probes/ that the v2 field had already pruned as a behavioural duplicate, and that re-entered only because adding twelve maps of results for every other bot split it from its representative. Integrating it would have cost 4,340 games on the old and held-out pools to re-admit a duplicate the harness exists to collapse. Plus spar_econ@aad5f44, retired 2026-08-06 on operational cost, not on merit or compliance: it passes the 10 ms probe at 3,692 us against a 10,000 us limit with zero timeouts, and sat at rank 5 with a 0.7356 win rate. It plays to the 1,000-round limit (median 901 turns, 48% reaching the cap), which on the larger v3 maps produces matches of up to 1,258 s -- 19x the 66 s worst case hpc.toml's walltime budget assumes. Every one of the 42 matches over 660 s in the v3 pool involves it; without it the worst case is 366.9 s. It killed 108 array elements at TERM_RUNLIMIT in v3-newmaps-20260806 alone.",
  "measured_from": "auto-cbf15637b9be",
  "kept": [
   "aegis@e55aab5",
@@ -85,6 +85,7 @@
   "pantheon_replica_day3@840a180",
   "ragnarok@79582fc",
   "sharedglobals@045b5cc",
+  "spar_econ@aad5f44",
   "steward@e55aab5",
   "tempest_blindfire@fdc1e1f",
   "tempest_fast@eb1f0f3",

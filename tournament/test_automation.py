@@ -402,6 +402,45 @@ def test_finalise_reports_a_run_that_is_still_going(tmp_path, monkeypatch):
                                site_repo=tmp_path, publish=False) is False
 
 
+def test_finalise_keeps_the_remote_copy_when_results_are_not_all_local(tmp_path, monkeypatch):
+    """The cleanup must key on outstanding_matches(), not on the looser rating threshold.
+
+    finalise() rates once merged >= rating_match_count(); unfinished_runs() keys on
+    outstanding_matches(). The two disagreed, so auto-b5878840642b was rated and published with 27
+    results still only on the cluster -- and deleting there destroyed the only copy, leaving a run
+    that hpc.status() read as 0/4683 and that no later tick could ever complete.
+    """
+    from tournament import automation
+
+    runs = tmp_path / "runs"
+    # Rated (merge reports enough), but m2 never reached matches.csv.
+    run = _write_run(runs, "auto-z", [_entry("m1"), _entry("m2")], merged_ids=["m1"])
+    (run / "automation.json").write_text(json.dumps({"challengers": [], "heads": {}}))
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", runs)
+    monkeypatch.setattr(automation.planning, "run_dir", lambda tid: runs / tid)
+    monkeypatch.setattr(automation.planning, "rating_match_count", lambda dest: 1)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "check_connection", lambda host: None)
+    monkeypatch.setattr(automation.hpc, "fetch", lambda tid, settings: None)
+    monkeypatch.setattr(automation, "merge", lambda dest: (None, 1))
+    monkeypatch.setattr(automation.hpc, "discard_workspace", lambda tid, settings=None: pytest.fail(
+        "deleted the cluster's only copy of an unmerged result"))
+    # Let the rating stage through cheaply so execution actually reaches the cleanup gate; an
+    # earlier version of this test raised before it and passed without proving anything.
+    monkeypatch.setattr(automation, "pooled_matches", list)
+    monkeypatch.setattr(automation, "canonical_field", lambda: ([], []))
+    monkeypatch.setattr(automation, "evaluate",
+                        lambda rows: type("R", (), {"complete": True, "missing_pairs": []})())
+    monkeypatch.setattr(automation, "_write_csv", lambda path, rows: None)
+    monkeypatch.setattr(automation.report, "write_csv", lambda *a, **k: None)
+    monkeypatch.setattr(automation.duplicates, "behaviour_groups", lambda rows: [])
+    monkeypatch.setattr(automation.duplicates, "write_csv", lambda groups, path: None)
+
+    assert automation.outstanding_matches(run) == {"m2"}
+    assert automation.finalise("auto-z", state={}, state_path=tmp_path / "s.json",
+                               site_repo=tmp_path, publish=False) is True
+
+
 def test_rating_match_count_ignores_compliance_probes(tmp_path):
     from tournament.plan import rating_match_count
 
@@ -637,6 +676,47 @@ def test_a_feed_deploy_compiles_when_dist_is_missing_newer_ranking_data(tmp_path
     calls.clear()
     automation.deploy_assets(tmp_path, reason="live feed", build=False)
     assert ["npm", "run", "build"] not in calls
+
+
+def test_a_feed_deploy_compiles_when_dist_is_missing_a_whole_archived_bundle(tmp_path, monkeypatch):
+    """Archiving a leaderboard version never touches data/index.json, so comparing it is not enough.
+
+    Snapshotting v2 adds public/botrankings/v2/ and rewrites versions.json. With the manifest as
+    the only signal, every later deploy shipped a dist/ that had never heard of either: the version
+    switcher offered the new version and the archive 404'd.
+    """
+    from tournament import automation
+
+    published = tmp_path / "public" / "botrankings"
+    compiled = tmp_path / "dist" / "botrankings"
+    for root in (published, compiled):
+        (root / "data").mkdir(parents=True)
+        (root / "data" / "index.json").write_text('{"run_id": "auto-same"}')
+        (root / "versions.json").write_text('{"current": "v3"}')
+
+    calls = []
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        return "a" * 40 + "\n" if command[:3] == ["git", "rev-parse", "HEAD"] else ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
+    automation.deploy_assets(tmp_path, reason="live feed", build=False)
+    assert ["npm", "run", "build"] not in calls, "identical trees must stay on the fast path"
+
+    # The archive lands, and the manifest it was copied from is untouched by it.
+    (published / "v2").mkdir()
+    (published / "v2" / "index.json").write_text('{"run_id": "auto-old"}')
+    calls.clear()
+    automation.deploy_assets(tmp_path, reason="live feed", build=False)
+    assert ["npm", "run", "build"] in calls, "a new entry under public/ must force a compile"
+
+    # So does rewriting the switcher in place, which adds no entry at all.
+    (compiled / "v2").mkdir()
+    (published / "versions.json").write_text('{"current": "v4"}')
+    calls.clear()
+    automation.deploy_assets(tmp_path, reason="live feed", build=False)
+    assert ["npm", "run", "build"] in calls
 
 
 def test_the_pending_marker_does_not_block_the_deploy_it_exists_to_rescue(tmp_path, monkeypatch):
@@ -989,6 +1069,70 @@ def test_an_array_with_work_left_is_never_requeued(tmp_path, monkeypatch, state)
                         lambda tid, settings=None: pytest.fail("re-queued a live run"))
 
     assert automation.resubmit_abandoned_runs(["auto-live"]) == []
+
+
+def test_each_requeue_asks_for_more_walltime_than_the_one_that_died(tmp_path, monkeypatch):
+    """An element that busts a budget set from the worst batch ever seen needs more room, not luck.
+
+    Re-queueing under the same limit killed v3-newmaps-20260806 three times over and then stalled
+    it for a human with 115 matches unrun.
+    """
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-slow", merged=40, scheduled=100)
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu", "walltime": "10"})
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100, "done": 40, "job_ids": ["111"], "bjobs": _bjobs_missing("111"),
+    })
+    monkeypatch.setattr(automation.hpc, "fetch", lambda tid, settings=None: None)
+    seen = []
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda tid, settings=None: seen.append(settings["walltime"]))
+
+    for _ in range(automation.MAX_RESUBMITS):
+        automation.resubmit_abandoned_runs(["auto-slow"])
+    assert seen == ["20", "40", "80"], seen
+
+
+def test_walltime_escalation_is_capped():
+    from tournament import automation
+
+    settings = {"walltime": "10"}
+    assert automation._escalated_walltime(settings, 99)["walltime"] == str(
+        automation.MAX_RESUBMIT_WALLTIME_MINUTES
+    )
+    # A malformed walltime must not crash a recovery path.
+    assert automation._escalated_walltime({"walltime": "bogus"}, 1) == {"walltime": "bogus"}
+
+
+def test_a_failed_requeue_still_counts_against_the_cap(tmp_path, monkeypatch):
+    """Recording the attempt only on success made a hopeless retry loop for ever.
+
+    auto-b5878840642b re-queued against a remote directory that no longer existed and printed
+    "attempt 1 of 3" every two minutes for 45 minutes, because _record_resubmit() ran after the
+    submit that never happened.
+    """
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-doomed", merged=40, scheduled=100)
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100, "done": 0, "job_ids": ["111"], "bjobs": _bjobs_missing("111"),
+    })
+    monkeypatch.setattr(automation.hpc, "fetch", lambda tid, settings=None: (_ for _ in ()).throw(
+        automation.hpc.HpcError("rsync failed: no such directory")))
+
+    for expected in (1, 2, 3):
+        assert automation.resubmit_abandoned_runs(["auto-doomed"]) == []
+        assert automation._resubmit_count(root / "auto-doomed") == expected
+    # Capped: the fourth visit gives up instead of retrying a fourth time.
+    assert automation._resubmit_count(root / "auto-doomed") == automation.MAX_RESUBMITS
+    automation.resubmit_abandoned_runs(["auto-doomed"])
+    assert automation._resubmit_count(root / "auto-doomed") == automation.MAX_RESUBMITS
 
 
 def test_a_run_that_never_reached_the_cluster_is_pushed_and_queued(tmp_path, monkeypatch):

@@ -229,24 +229,38 @@ def compress_indices(indices: list[int]) -> str:
     return ",".join(parts)
 
 
-# Slowest match seen in 14,465 real results was 63.9s; round up for headroom. Used only to check
-# that walltime covers a full element -- see the walltime note in hpc.toml.
-SLOWEST_MATCH_SECONDS = 66
+# Seconds per match to budget for an element, taken from the largest REAL batch ever measured plus
+# a 10% margin, rather than from the slowest single match. Measured 2026-08-06 over 7,507
+# contiguous batches of 10 (75,086 matches, 33-map v3 pool, spar_econ retired): the worst batch
+# took 502s, so 552s with the margin, i.e. 55.2s per match; 56 rounds up. See hpc.toml for the
+# full distribution.
+#
+# The old model multiplied chunk by the single slowest match ever seen, which assumes every match
+# in an element is simultaneously the worst one. That bound is ~16x the worst batch actually
+# observed, and by the time the tail reached 1,258s it demanded 7 hours for chunk=20 -- so it
+# could only ever be satisfied by chunk=1. Meanwhile the constant itself had gone stale (66s
+# against a real 1,258s), so the guard was certifying budgets that could not hold: 108 elements
+# died in one run.
+BATCH_BUDGET_SECONDS_PER_MATCH = 56
 
 
 def check_walltime(settings: dict, chunk: int) -> None:
-    """Refuse to submit an element that cannot finish inside its walltime.
+    """Refuse to submit an element whose walltime cannot cover a batch of `chunk` matches.
 
-    Walltime is a hard kill. An element running `chunk` matches back to back needs
-    chunk x worst-case-match seconds; getting this wrong silently wastes a whole element's work
-    (recoverable -- a re-submit picks the gaps back up -- but only after the fact).
+    Walltime is a hard kill. Getting this wrong silently wastes a whole element's work --
+    recoverable, since a re-submit picks the gaps back up, but only after the fact.
+
+    Note this is a linear approximation: the per-match figure is a p99 batch divided by the chunk
+    it was measured at. It gets *conservative* as chunk grows, because a longer batch concentrates
+    around its mean, so erring here costs headroom rather than dead elements.
     """
     minutes = int(str(settings["walltime"]).split(":")[0])
-    needed = chunk * SLOWEST_MATCH_SECONDS
+    needed = chunk * BATCH_BUDGET_SECONDS_PER_MATCH
     if needed > minutes * 60:
         raise HpcError(
-            f"walltime {minutes} min cannot cover {chunk} matches x {SLOWEST_MATCH_SECONDS}s "
-            f"= {needed / 60:.1f} min. Raise `walltime` in hpc.toml or lower --chunk."
+            f"walltime {minutes} min cannot cover a batch of {chunk} matches "
+            f"({chunk} x {BATCH_BUDGET_SECONDS_PER_MATCH}s = {needed / 60:.1f} min). "
+            f"Raise `walltime` in hpc.toml or lower --chunk."
         )
 
 
