@@ -1,0 +1,13 @@
+{
+  "challengers": [
+    "v233_h@90fc9f3"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "d142ef07df7ff6bd81f6857c8de9309e9cfcaff9",
+    "x/jon": "6a2af02a9d07ed943bf730e686b34e71c633b3c5",
+    "x/luc": "366cd1b96f80ab63c439ae87fa255a7645d9f06c"
+  },
+  "submitted_at": "2026-08-06T12:22:00+00:00",
+  "note": "v3 backfill gap. v233_h was a behavioural duplicate and so absent from the main v3 run; adding twelve maps of data for every OTHER bot split it from its twin, because duplicate groups are judged on results and the twin now had results v233_h did not. It re-entered the canonical field with no new-map record at all, and every one of the 36 unplayed pairs was against it."
+}

@@ -1,0 +1,74 @@
+{
+  "submissions": [
+    {
+      "job_id": "29039880",
+      "name": "trn_v3-newmaps-20260806_1",
+      "elements": 1000,
+      "chunk": 20,
+      "range": "1-1000",
+      "submitted_at": "2026-08-06T13:18:28+0200"
+    },
+    {
+      "job_id": "29039881",
+      "name": "trn_v3-newmaps-20260806_2",
+      "elements": 1000,
+      "chunk": 20,
+      "range": "1001-2000",
+      "submitted_at": "2026-08-06T13:18:29+0200"
+    },
+    {
+      "job_id": "29039883",
+      "name": "trn_v3-newmaps-20260806_3",
+      "elements": 1000,
+      "chunk": 20,
+      "range": "2001-3000",
+      "submitted_at": "2026-08-06T13:18:30+0200"
+    },
+    {
+      "job_id": "29039884",
+      "name": "trn_v3-newmaps-20260806_4",
+      "elements": 14,
+      "chunk": 20,
+      "range": "3001-3014",
+      "submitted_at": "2026-08-06T13:18:34+0200"
+    },
+    {
+      "job_id": "29041248",
+      "name": "trn_v3-newmaps-20260806",
+      "elements": 27,
+      "chunk": 20,
+      "range": "1-27",
+      "submitted_at": "2026-08-06T14:24:31+0200"
+    },
+    {
+      "job_id": "29041293",
+      "name": "trn_v3-newmaps-20260806",
+      "elements": 15,
+      "chunk": 20,
+      "range": "1-15",
+      "submitted_at": "2026-08-06T14:50:21+0200"
+    },
+    {
+      "job_id": "29041326",
+      "name": "trn_v3-newmaps-20260806",
+      "elements": 8,
+      "chunk": 20,
+      "range": "1-8",
+      "submitted_at": "2026-08-06T15:17:23+0200"
+    },
+    {
+      "job_id": "29043400",
+      "name": "trn_v3-newmaps-20260806",
+      "elements": 115,
+      "chunk": 1,
+      "range": "1-115",
+      "submitted_at": "2026-08-06T18:15:26+0200"
+    }
+  ],
+  "job_ids": [
+    "29043400"
+  ],
+  "job_id": "29043400",
+  "host": "dtu",
+  "remote": "florent-tournament/v3-newmaps-20260806"
+}

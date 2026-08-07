@@ -1,0 +1,42 @@
+{
+  "submissions": [
+    {
+      "job_id": "29039274",
+      "name": "trn_auto-b5878840642b",
+      "elements": 235,
+      "chunk": 20,
+      "range": "1-235",
+      "submitted_at": "2026-08-06T12:15:21+0200"
+    },
+    {
+      "job_id": "29040701",
+      "name": "trn_auto-b5878840642b",
+      "elements": 2,
+      "chunk": 20,
+      "range": "1-2",
+      "submitted_at": "2026-08-06T13:32:50+0200"
+    },
+    {
+      "job_id": "29041247",
+      "name": "trn_auto-b5878840642b",
+      "elements": 1,
+      "chunk": 20,
+      "range": "1-1",
+      "submitted_at": "2026-08-06T14:24:11+0200"
+    },
+    {
+      "job_id": "29041273",
+      "name": "trn_auto-b5878840642b",
+      "elements": 4,
+      "chunk": 1,
+      "range": "1-4",
+      "submitted_at": "2026-08-06T14:29:03+0200"
+    }
+  ],
+  "job_ids": [
+    "29041273"
+  ],
+  "job_id": "29041273",
+  "host": "dtu",
+  "remote": "florent-tournament/auto-b5878840642b"
+}

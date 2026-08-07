@@ -1,2 +1,2 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-steward_hardened_reinforced@04300bf,steward_hardened_reinforced,04300bf,pass,21,21,21,3649,15,34,88,1090,7247,0,0,9000,10000
+steward_hardened_reinforced@366cd1b,steward_hardened_reinforced,366cd1b,pass,21,21,21,3649,13,32,83,1072,6016,0,0,9000,10000
