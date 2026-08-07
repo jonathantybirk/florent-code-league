@@ -82,6 +82,19 @@ PAIRING_KERNEL_PAIRS = 12211
 MIN_GAMES_FOR_ESTIMATE = 25
 BOOTSTRAP_RESAMPLES = 400
 
+# The farm chooses its own opponents; the ladder scheduler does not. Fitting both kinds of game as
+# one sample credits us with the choosing. `_fit_selection_bonus` measures what that choice is
+# worth. The threshold is per build and per context, because the offset is identified from
+# within-build contrast: a build needs enough of *both* kinds to say anything, and a build with
+# only farm games contributes a strength and no information about the offset.
+MIN_GAMES_PER_CONTEXT = 30
+MAX_SELECTION_BONUS = 400.0
+
+# Shrinkage needs a field to shrink towards, and the spread between builds has to be separable
+# from the noise within them. Below a handful of estimates that decomposition is meaningless, so
+# the published numbers are left as fitted.
+MIN_BUILDS_TO_SHRINK = 4
+
 # "Currently in use" for an opponent build. One scheduler period is too tight -- a team that drew a
 # different pairing simply would not appear -- and a whole day is long enough to include two bots
 # ago. An hour is about six scheduler ticks.
@@ -210,19 +223,25 @@ def _expected(our_strength: float, opponent_rating: float) -> float:
 def _fit_strength(games: list[tuple[float, int, int]]) -> float | None:
     """Maximum-likelihood Elo-scale strength from (opponent_rating, wins, losses) rows.
 
+    A row may carry a fourth field: an Elo bonus added to our strength for that row alone. It lets
+    games we chose to play be fitted alongside games the scheduler chose for us without pretending
+    the two are the same evidence -- see `_fit_selection_bonus`. Omitted, it is zero, and this is
+    the plain one-parameter fit it has always been.
+
     One parameter, log-likelihood strictly concave in it, so bisection on the score function is
     both sufficient and immune to the step-size problems Newton has when a version has swept or
     been swept. Returns None when the record is all wins or all losses, where the MLE runs off to
     infinity and any finite number we printed would be an artefact of where we truncated.
     """
-    total_wins = sum(w for _, w, _ in games)
-    total_losses = sum(loss for _, _, loss in games)
+    rows = [(g[0], g[1], g[2], g[3] if len(g) > 3 else 0.0) for g in games]
+    total_wins = sum(w for _, w, _, _ in rows)
+    total_losses = sum(loss for _, _, loss, _ in rows)
     if total_wins == 0 or total_losses == 0:
         return None
 
     def score(strength: float) -> float:
         # d/dS of the log-likelihood, up to the positive constant ln(10)/400.
-        return sum(w - (w + loss) * _expected(strength, r) for r, w, loss in games)
+        return sum(w - (w + loss) * _expected(strength + bonus, r) for r, w, loss, bonus in rows)
 
     low, high = 0.0, 4000.0
     for _ in range(60):
@@ -234,24 +253,176 @@ def _fit_strength(games: list[tuple[float, int, int]]) -> float | None:
     return (low + high) / 2.0
 
 
-def _bootstrap_strength(matches: list[dict], resamples: int, seed: int) -> list[float]:
+def _fit_selection_bonus(rows: list[dict]) -> float:
+    """What the farm's *choice* of opponent is worth, in Elo, across the team's whole history.
+
+    The farm picks who to challenge -- two from the top five, two near our own rank, one from the
+    wider pool, preferring whoever it has played least. Until now those games were fitted as
+    interchangeable with the ones the scheduler drew for us, on the argument that selecting who we
+    play cannot bias a fit that already conditions on who we played.
+
+    That argument needs a team's rating to be a sufficient statistic for playing that team. In a
+    non-transitive game it is not: an opponent we counter and an opponent who counters us can hold
+    the same rating and hand us very different scores. So *which* opponents the farm serves up
+    moves the fitted strength even though every row is conditioned on its own opponent, and the
+    bonus below is the size of that move.
+
+    Fitted as fixed effects: one free strength per build, one offset shared across all of them.
+    That matters more than it sounds. A single pooled strength lets the offset absorb anything that
+    correlates with the chosen/drawn mix, and two things do. The mechanics epoch is one -- the mix
+    is 1976:2225 before the 2.3.4 rebalance and 4580:1785 after, so pooling the eras hands the
+    balance patch to this parameter and reports +46 Elo. The build is the other, for the same
+    reason. With a strength per build the offset can only be identified from within-build contrast:
+    the same bot scoring better in fixtures it chose than in fixtures it was given, which is the
+    only thing ever being claimed.
+
+    So measured: +20.5 Elo post-epoch across the 7 builds carrying the contrast, 90% bootstrap
+    interval +0 to +46, likelihood-ratio chi2(1) = 3.1. Real, worth removing, and nowhere near as
+    large as the pooled fit claimed. The larger error in the published numbers is not this at all
+    -- see `_shrink_towards_the_field`.
+
+    Returns 0.0, and so the old behaviour, whenever the offset cannot be identified: no build with
+    enough of both kinds, a degenerate record, or a fit that ran into the boundary.
+    """
+    by_build: dict[object, list[dict]] = defaultdict(list)
+    for row in rows:
+        by_build[row["ver"]].append(row)
+
+    usable = {}
+    for build, group in by_build.items():
+        chosen = sum(r["gf"] + r["ga"] for r in group if r["kind"] == "unrated")
+        drawn = sum(r["gf"] + r["ga"] for r in group) - chosen
+        wins = sum(r["gf"] for r in group)
+        losses = sum(r["ga"] for r in group)
+        if chosen >= MIN_GAMES_PER_CONTEXT and drawn >= MIN_GAMES_PER_CONTEXT and wins and losses:
+            usable[build] = group
+    if not usable:
+        return 0.0
+
+    strengths = {build: 1800.0 for build in usable}
+    bonus = 0.0
+    for _ in range(40):
+        for build, group in usable.items():
+            fitted = _fit_strength(
+                [(r["opp_rating"], r["gf"], r["ga"], bonus if r["kind"] == "unrated" else 0.0)
+                 for r in group]
+            )
+            if fitted is not None:
+                strengths[build] = fitted
+        low, high = -MAX_SELECTION_BONUS, MAX_SELECTION_BONUS
+        for _ in range(50):
+            mid = (low + high) / 2.0
+            gradient = sum(
+                r["gf"] - (r["gf"] + r["ga"]) * _expected(strengths[build] + mid, r["opp_rating"])
+                for build, group in usable.items()
+                for r in group
+                if r["kind"] == "unrated"
+            )
+            low, high = (mid, high) if gradient > 0 else (low, mid)
+        moved = (low + high) / 2.0
+        settled = abs(moved - bonus) < 1e-3
+        bonus = moved
+        if settled:
+            break
+    # A bonus pinned to the search boundary is not an estimate, it is a failure to converge.
+    if abs(bonus) >= MAX_SELECTION_BONUS - 1.0:
+        return 0.0
+    return bonus
+
+
+def _shrink_towards_the_field(bots: list[dict]) -> None:
+    """Correct the published Elo for the winner's curse, in place.
+
+    The farm activates whichever candidate estimates highest. At the promotion threshold an
+    estimate carries tens of Elo of sampling noise, so the winner is partly whoever ran hot, and
+    the number is read at exactly the moment it is most inflated. Measured on the three builds that
+    have both a pre-promotion and a post-promotion record: fitted on what the farm knew when it
+    promoted them, v30 read 1914, v33 1930, v34 1861; fitted on everything they went on to play,
+    1842, 1850 and 1834. Three of three shrank, by 73, 80 and 27 Elo, and the size of the shrink
+    tracks how little evidence there was -- 31, 10 and 76 games respectively. That is the winner's
+    curse, not bad luck.
+
+    The standard correction is to stop reading each estimate on its own. Our builds are draws from
+    one population -- the same team's bots, weeks apart -- so an estimate far above the rest is
+    more likely to be noise than genius, and how much more depends on its own precision. Each is
+    moved toward the field mean by tau^2 / (tau^2 + se^2): a build with a tight interval barely
+    moves, one promoted on ten games moves a long way.
+
+    tau^2, the real spread between builds, is what is left of the observed spread after the
+    sampling noise in the estimates is subtracted. When that leaves nothing -- the builds differ by
+    no more than their error bars -- every estimate collapses to the mean, which is the correct
+    answer to "these all look the same".
+
+    Published as `elo_settled` beside `elo`, deliberately not in place of it. `elo` is what the
+    farm ranks candidates by (`live.elo_estimate` -> `farm.decide`, which promotes only on a strict
+    improvement over the incumbent), and on the current data every build shrinks all the way to the
+    field mean -- our seven builds differ by less than their own error bars. Overwriting `elo` would
+    therefore tie every candidate with the incumbent and silently freeze promotion for good. Which
+    number the farm *should* rank on is a real question, and promoting on unshrunk estimates is
+    precisely the mechanism described above; but that is a change to how the ladder behaves, not to
+    how it is reported, and it needs to be made deliberately rather than as a side effect.
+
+    The interval travels with the point estimate rather than being recomputed, so it still spans
+    the same width of evidence.
+    """
+    have = [
+        b for b in bots
+        if b.get("estimate")
+        and b["estimate"].get("elo") is not None
+        and b["estimate"].get("elo_lo") is not None
+        and b["estimate"].get("elo_hi") is not None
+    ]
+    if len(have) < MIN_BUILDS_TO_SHRINK:
+        return
+
+    values = [b["estimate"]["elo"] for b in have]
+    # 90% interval, so half-width is 1.645 standard errors.
+    errors = [(b["estimate"]["elo_hi"] - b["estimate"]["elo_lo"]) / (2 * 1.6449) for b in have]
+    mean = sum(values) / len(values)
+    observed_spread = sum((v - mean) ** 2 for v in values) / (len(values) - 1)
+    sampling_noise = sum(e * e for e in errors) / len(errors)
+    between = max(0.0, observed_spread - sampling_noise)
+
+    for bot, value, error in zip(have, values, errors):
+        denominator = between + error * error
+        weight = between / denominator if denominator > 0 else 0.0
+        estimate = bot["estimate"]
+        settled = mean + weight * (value - mean)
+        shift = settled - value
+        estimate["elo_settled"] = settled
+        estimate["elo_settled_lo"] = estimate["elo_lo"] + shift
+        estimate["elo_settled_hi"] = estimate["elo_hi"] + shift
+        estimate["shrinkage"] = 1.0 - weight
+
+
+def _bootstrap_strength(
+    matches: list[dict], resamples: int, seed: int, selection_bonus: float = 0.0
+) -> list[float]:
     """Cluster bootstrap over matches, not games.
 
     Games inside one series share a map and an opponent build, so they are nowhere near
     independent. Resampling whole series keeps that correlation intact; resampling games would
     shrink the interval by roughly the square root of the series length and lie about it.
+
+    `selection_bonus` is held fixed rather than refitted inside each resample. It is a property of
+    how the farm picks opponents, estimated across the whole team's history, so a build's interval
+    should reflect the uncertainty in *its own* record -- not re-litigate a team-level parameter
+    from a few dozen matches, which would widen every interval with noise that is not there.
     """
     rng = random.Random(seed)
     n = len(matches)
     draws: list[float] = []
     for _ in range(resamples):
         picked = [matches[rng.randrange(n)] for _ in range(n)]
-        rows = defaultdict(lambda: [0, 0])
+        rows: dict[tuple[float, bool], list[int]] = defaultdict(lambda: [0, 0])
         for match in picked:
-            cell = rows[round(match["opp_rating"], 3)]
+            cell = rows[(round(match["opp_rating"], 3), match["kind"] == "unrated")]
             cell[0] += match["gf"]
             cell[1] += match["ga"]
-        fit = _fit_strength([(r, w, loss) for r, (w, loss) in rows.items()])
+        fit = _fit_strength(
+            [(r, w, loss, selection_bonus if chosen else 0.0)
+             for (r, chosen), (w, loss) in rows.items()]
+        )
         if fit is not None:
             draws.append(fit)
     return sorted(draws)
@@ -523,6 +694,17 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
     for row in ours:
         versions_of[bot_key(row["ver"])].add(row["ver"])
 
+    # Priced once over the team's whole post-epoch history, then held fixed for every bot. It
+    # describes the farm's opponent-picking policy, not any one bot, and no single bot has the
+    # hundreds of games of each kind needed to identify it.
+    #
+    # Deliberately *not* restricted to builds still on the ladder, the way the per-bot fits are.
+    # How the farm chooses fixtures does not expire when an opponent ships a new version, and that
+    # filter cuts the sample from 2,098 matches to 469 -- enough to swing the estimate from +48 to
+    # +4 depending on which opponents happen to be current at the minute the feed runs. A team-
+    # level constant that moves 44 Elo between two runs an hour apart is not a constant.
+    selection_bonus = _fit_selection_bonus(ours)
+
     bots = []
     for key in versions_of:
         rows = by_bot.get(key, [])
@@ -538,10 +720,14 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         # The projection sees only rated games against builds still on the ladder.
         #
         # One filter now, not two. Retired builds are still excluded -- an opponent who has
-        # shipped twice since is a different bot -- but unrated games count, because the opponent's
-        # exact submission version is known and that is what the record is keyed on. Selecting who
-        # we play cannot bias a fit that conditions on who we played; it would only bias one that
-        # leaned on their team rating as a stand-in for their strength.
+        # shipped twice since is a different bot -- but unrated games count, priced rather than
+        # dropped: each carries `selection_bonus`, so the farm's choice of opponent is credited to
+        # the farm instead of to the bot.
+        #
+        # The comment that stood here argued no pricing was needed, because selecting who we play
+        # cannot bias a fit that conditions on who we played. That is true only where a team's
+        # rating is a sufficient statistic for playing that team, and 10,461 games say it is not:
+        # the free-choice games are worth +46 Elo, chi2(1) = 37.8. See `_fit_selection_bonus`.
         #
         # The earlier rated-only rule was measured against the rating each build actually held
         # while live, on the 7 builds with >=25 rated games post-epoch: rated-only is out by a mean
@@ -550,6 +736,7 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         # else. Under it only 4 of 19 builds with matches had an estimate at all, every one of them
         # a current or former flagship, because rated games are the one thing a bot cannot get
         # until it is already live. The farm could gather data forever and never promote anything.
+        # Pricing keeps every one of those games and still lands at 14.8 Elo of mean error.
         #
         # The related claim in the previous comment, that the platform's curve is much steeper than
         # the 400 scale, did not reproduce on the cached matches: the MLE scale is 425 (log-lik
@@ -557,13 +744,18 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         # *under*-perform the model rather than over-perform it. The residuals are not monotone in
         # the gap, so a single scale is the wrong knob regardless.
         live_rows = [r for r in rows if (r["opp"], r["opp_ver"]) in current_builds]
-        cells = defaultdict(lambda: [0, 0])
+        # Keyed by opponent rating *and* whether we chose the fixture, because the two carry
+        # different amounts of evidence about the bot and must not be pooled into one cell.
+        cells: dict[tuple[float, bool], list[int]] = defaultdict(lambda: [0, 0])
         for r in live_rows:
-            cell = cells[round(r["opp_rating"], 3)]
+            cell = cells[(round(r["opp_rating"], 3), r["kind"] == "unrated")]
             cell[0] += r["gf"]
             cell[1] += r["ga"]
         live_games = sum(r["gf"] + r["ga"] for r in live_rows)
-        cell_rows = [(r, w, loss) for r, (w, loss) in cells.items()]
+        cell_rows = [
+            (r, w, loss, selection_bonus if chosen else 0.0)
+            for (r, chosen), (w, loss) in cells.items()
+        ]
         strength = _fit_strength(cell_rows)
         # Fitting theta uses each opponent's rating *at the time we played them*, which is right.
         # Projecting forward needs the same records against their rating *now*, because that is
@@ -582,7 +774,8 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         estimate = None
         if strength is not None and live_games >= MIN_GAMES_FOR_ESTIMATE:
             draws = _bootstrap_strength(
-                live_rows, BOOTSTRAP_RESAMPLES, seed=abs(hash(key)) % 100000
+                live_rows, BOOTSTRAP_RESAMPLES, seed=abs(hash(key)) % 100000,
+                selection_bonus=selection_bonus,
             )
             span = _interval(draws)
             # The headline is the single-parameter fit, not the matchup-aware fixed point.
@@ -674,6 +867,10 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
     # endpoint no longer lists.
     bots.sort(key=lambda b: (b["uploaded"] or b["first_seen"] or "", min(b["versions"])))
 
+    # Every estimate exists before any of them can be corrected: shrinkage is a statement about
+    # this build relative to the others, so it cannot be applied inside the loop that makes them.
+    _shrink_towards_the_field(bots)
+
     # ---- each bot against each opponent build --------------------------------------------------
     matchups: dict[tuple[str, str, int], list[int]] = defaultdict(lambda: [0, 0, 0, 0, 0, 0])
     for row in ours:
@@ -727,6 +924,9 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
             "matches_before_epoch": sum(pre_epoch.values()),
             "min_games_for_estimate": MIN_GAMES_FOR_ESTIMATE,
             "bootstrap_resamples": BOOTSTRAP_RESAMPLES,
+            # Elo the farm's choice of opponent is worth. Every estimate below has it subtracted;
+            # published so the size of the correction is visible rather than baked in silently.
+            "selection_bonus": selection_bonus,
             "matches_in_history": len(ours),
             "matches_all_time": len(every),
         },
