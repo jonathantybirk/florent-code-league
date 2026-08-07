@@ -1,11 +1,25 @@
 from fcode import Controller, Direction, EntityType, GameConstants, Position
 
 CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
-SPLITTER_OUTPUTS = 3
+RECEIVER_TYPES = (EntityType.CONVEYOR, EntityType.SPLITTER, EntityType.CORE)
 
 
 def _in_bounds(ct: Controller, pos: Position) -> bool:
     return 0 <= pos.x < ct.get_map_width() and 0 <= pos.y < ct.get_map_height()
+
+
+def _is_receiver(ct: Controller, pos: Position, direction: Direction) -> bool:
+    """Whether the tile in direction from pos is a same-team Conveyor,
+    Splitter, or Core -- something that can actually hold a delivered
+    stack, as opposed to empty ground, a wall, or a building (Barrier,
+    turret, ...) with nowhere to put titanium."""
+    target = pos.add(direction)
+    if not _in_bounds(ct, target):
+        return False
+    bid = ct.get_tile_building_id(target)
+    if bid is None or ct.get_team(bid) != ct.get_team():
+        return False
+    return ct.get_entity_type(bid) in RECEIVER_TYPES
 
 
 def _core_footprint(ct: Controller) -> list[Position]:
@@ -22,11 +36,16 @@ def _feeder_at(ct: Controller, pos: Position, from_dir: Direction) -> tuple[Posi
     dispatch.
 
     A Conveyor has one fixed output, so that probability is 1.0. A Splitter
-    round-robins between 3 outputs and exposes no way to read which one is
-    next, so each of its 3 valid outputs is treated as equally likely: 1/3.
-    Harvesters aren't included: get_stored_resource only supports Conveyors
-    and Splitters, so there's no way to even see whether one is holding
-    titanium to estimate.
+    rotates only among its outputs that currently lead to a receiver (see
+    _is_receiver) and exposes no way to read which one of those is next, so
+    each is treated as equally likely: 1 / (however many it currently has).
+    Verified against the real engine: a Splitter with only one receiving
+    output got 222 of 222 dispatches over an 887-round sample, not the ~74
+    a blind rotation through a fixed 3 would produce -- an output with
+    nothing to receive isn't in the rotation at all. Harvesters aren't
+    included: get_stored_resource only supports Conveyors and Splitters,
+    so there's no way to even see whether one is holding titanium to
+    estimate.
     """
     neighbor = pos.add(from_dir)
     if not _in_bounds(ct, neighbor):
@@ -45,9 +64,13 @@ def _feeder_at(ct: Controller, pos: Position, from_dir: Direction) -> tuple[Posi
     out_dir = from_dir.opposite()  # direction the neighbour must output in to reach pos
     if etype == EntityType.CONVEYOR:
         return (neighbor, etype, 1.0) if facing == out_dir else None
-    if out_dir == facing.opposite():  # the back is input-only, not an output
+    back = facing.opposite()
+    if out_dir == back:  # the back is input-only, not an output
         return None
-    return neighbor, etype, 1 / SPLITTER_OUTPUTS
+    live_outputs = [d for d in CARDINALS if d != back and _is_receiver(ct, neighbor, d)]
+    # pos itself is a receiver reached via out_dir, so live_outputs is
+    # never empty here.
+    return neighbor, etype, 1 / len(live_outputs)
 
 
 def _feeders(ct: Controller, pos: Position, etype: EntityType) -> list[tuple[Position, EntityType, float]]:
