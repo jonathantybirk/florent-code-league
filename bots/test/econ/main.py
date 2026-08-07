@@ -34,6 +34,8 @@ def _feeder_at(ct: Controller, pos: Position, from_dir: Direction) -> tuple[Posi
     bid = ct.get_tile_building_id(neighbor)
     if bid is None:
         return None
+    if ct.get_team(bid) != ct.get_team():
+        return None
 
     etype = ct.get_entity_type(bid)
     if etype not in (EntityType.CONVEYOR, EntityType.SPLITTER):
@@ -82,7 +84,16 @@ def expected_titanium_flow(ct: Controller) -> float:
     """Average titanium expected to flow into the Core per round, over the
     next PASSIVE_TITANIUM_INTERVAL rounds: titanium already in transit
     (weighted by delivery probability) within that window, plus the
-    guaranteed passive trickle, averaged over the window."""
+    guaranteed passive trickle, averaged over the window.
+
+    Must be called on the Core's own turn -- _core_footprint identifies the
+    footprint by matching ct.get_id(), which is this *calling unit's* id.
+    Called from anything else, that match is never found, the footprint
+    comes back empty, and this returns a plausible-looking passive-only
+    number instead of failing loudly.
+    """
+    if ct.get_entity_type() != EntityType.CORE:
+        raise ValueError("expected_titanium_flow must be called from the Core's own turn")
     window = GameConstants.PASSIVE_TITANIUM_INTERVAL
     pending = sum(
         _titanium_via(ct, neighbor, etype, weight, window)
