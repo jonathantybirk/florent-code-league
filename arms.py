@@ -1,10 +1,24 @@
 """Which bot to test next, and how good we currently think each one is.
 
-Candidate bots ("arms") come from the newest finished CI tournament run: anything
-that reaches the top of the internal leaderboard on any of the three metrics we
-trust -- mElo rank, Nash core membership, or Nash-average rank -- is worth
-spending live challenges on. Selection between them is UCB1 over the online game
-win rate, so a promising newcomer gets tried without abandoning the incumbent.
+The candidate set is deliberately small and mutually exclusive, in three tiers:
+
+  1. the whole **Nash core** -- the bots a Nash-averaging ladder actually samples,
+     which is the set that matters if opponents adapt;
+  2. the **top three by mElo** among bots not already in the core;
+  3. the **single highest offline win rate** among bots in neither tier.
+
+At most seven arms. The tiers are exclusive on purpose: a bot in the Nash core
+does not also consume one of the mElo slots, so the set spans three genuinely
+different notions of "good" instead of three views of the same two bots.
+
+Selection between them is NOT a search for the best bot. The internal tournament
+already ranks our builds over thousands of games far more cheaply than live
+matches can, so spending a 5-per-10-minute live budget re-deciding that is waste.
+What live matches uniquely buy is knowledge of how a build performs against the
+*actual ladder*, and that is worth most where it is currently least certain. So
+the arm with the widest confidence interval is tested next: total uncertainty is
+the sum of per-bot variances, and the myopic move that shrinks it fastest is to
+sample the least certain bot.
 
 Bot strength is reported as an Elo estimate rather than a raw win rate, because
 the farm deliberately faces opponents of different strengths and a win rate is
@@ -51,37 +65,50 @@ def newest_ratings_csv() -> Path | None:
 
 
 def leaderboard_candidates(top_n: int = 3) -> list[dict]:
-    """Bots in the top `top_n` of mElo or Nash average, plus the whole Nash core."""
+    """The Nash core, plus the best `top_n` by mElo outside it, plus one on win rate.
+
+    Exclusive tiers, evaluated in order, so a bot is nominated by exactly one
+    reason and the set spans three different definitions of strength rather than
+    listing the same bots three times.
+    """
     path = newest_ratings_csv()
     if path is None:
         return []
     rows = list(csv.DictReader(path.open()))
-    picked: dict[str, dict] = {}
-    for row in rows:
-        melo_rank = int(row["rank"])
-        nash_rank = int(row["nash_rank"])
-        nash_prob = float(row["nash_prob"])
-        reasons = []
-        if melo_rank <= top_n:
-            reasons.append(f"melo#{melo_rank}")
-        if nash_rank <= top_n:
-            reasons.append(f"nash_avg#{nash_rank}")
-        if nash_prob > 0:
-            reasons.append(f"nash_core={nash_prob:.3f}")
-        if not reasons:
-            continue
-        picked[row["bot_id"]] = {
+
+    def entry(row, reason):
+        return {
             "bot_id": row["bot_id"],
             "name": row["name"],
             "commit": row["commit"],
-            "melo_rank": melo_rank,
+            "melo_rank": int(row["rank"]),
             "melo_elo": float(row["melo_r_elo"]),
-            "nash_rank": nash_rank,
-            "nash_prob": nash_prob,
+            "nash_rank": int(row["nash_rank"]),
+            "nash_prob": float(row["nash_prob"]),
             "offline_win_rate": float(row["win_rate"]),
-            "reasons": ",".join(reasons),
+            "reasons": reason,
             "run": path.parent.name,
         }
+
+    picked = {}
+
+    # Tier 1 -- the Nash core, however large it is.
+    for row in rows:
+        if float(row["nash_prob"]) > 0:
+            picked[row["bot_id"]] = entry(row, "nash_core=%.3f" % float(row["nash_prob"]))
+
+    # Tier 2 -- the best by mElo that the core did not already claim.
+    rest = [r for r in rows if r["bot_id"] not in picked]
+    rest.sort(key=lambda r: -float(r["melo_r_elo"]))
+    for row in rest[:top_n]:
+        picked[row["bot_id"]] = entry(row, "melo#%d" % int(row["rank"]))
+
+    # Tier 3 -- one more on raw offline win rate, from whatever is left.
+    rest = [r for r in rows if r["bot_id"] not in picked]
+    if rest:
+        best = max(rest, key=lambda r: float(r["win_rate"]))
+        picked[best["bot_id"]] = entry(best, "win_rate=%.3f" % float(best["win_rate"]))
+
     return list(picked.values())
 
 
@@ -206,4 +233,32 @@ def ucb_select(
                 score,
                 f"ucb={score:.3f} (win_rate={st.win_rate:.3f} + bonus={bonus:.3f}, n={st.n_games})",
             )
+    return best, detail
+
+
+def uncertainty_select(stats, candidates, team_rating=1500.0):
+    """Test the arm we know least about. Returns (bot_id, why).
+
+    Total uncertainty over the candidate set is the sum of per-bot variances, so
+    the myopic choice that shrinks it fastest is the bot with the widest standard
+    error -- uncertainty sampling, and here it is also the honest objective: we
+    are trying to characterise the set, not crown a member of it.
+
+    Untested bots come first because their standard error is unbounded, not merely
+    large. Beyond that this converges naturally on broad coverage: every series
+    narrows one bot's interval, which promotes the next widest, so the budget
+    spreads across the set instead of pouring into the incumbent.
+    """
+    unplayed = [b for b in candidates if stats.get(b) is None or stats[b].n_games == 0]
+    if unplayed:
+        return unplayed[0], "never tested online (unbounded uncertainty)"
+
+    best, best_se, detail = None, -1.0, ""
+    for bot_id in candidates:
+        st = stats[bot_id]
+        est, se = st.elo(team_rating)
+        if se > best_se:
+            best, best_se, detail = (
+                bot_id, se,
+                "widest interval: elo=%.0f +-%.0f over n=%d" % (est, se, st.n_games))
     return best, detail

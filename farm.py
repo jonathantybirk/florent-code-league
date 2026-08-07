@@ -591,7 +591,11 @@ def run_round(dry_run: bool = False) -> None:
     by_id = {c["bot_id"]: c for c in eligible}
     for bot_id in by_id:
         stats.setdefault(bot_id, arms.ArmStats(bot_id))
-    bot_id, why = arms.ucb_select(stats, list(by_id))
+    # Uncertainty sampling, not UCB: the internal tournament already ranks our builds
+    # over thousands of games, so the live budget is spent narrowing what we do NOT
+    # know -- how each build performs against the real ladder -- rather than
+    # re-deciding which is best.
+    bot_id, why = arms.uncertainty_select(stats, list(by_id), team_rating)
 
     queued = take_queued(state) if not dry_run else (state.get("queue") or [{}])[0].get("bot_id")
     if queued:
@@ -660,6 +664,12 @@ def run_round(dry_run: bool = False) -> None:
         filling_coverage=filling_coverage,
         pairing_kernel={int(k): v for k, v in
                         ((feed or {}).get("model", {}).get("pairing_kernel", {}) or {}).items()},
+        # The policy scores opponents by Fisher information, which needs an estimate of
+        # how strong the bot under test actually is -- often nowhere near the team rating
+        # it plays under. The feed has one once the build has enough games; until then the
+        # policy falls back to the team rating on its own.
+        bot_elo=(livefeed.elo_estimate(build) or (None, None))[0] if build else None,
+        bot_se=(livefeed.elo_estimate(build) or (None, None))[1] if build else None,
     )
     opponents = validated_opponents(policy.choose_opponents(ctx), ctx)
 
