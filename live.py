@@ -10,9 +10,16 @@ an hour has ~140 games in the feed against the ~25 the farm fired itself.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
-LIVE_JSON = Path("/home/Ucals/projects/portfolio/public/botrankings/data/live.json")
+# Overridable like arms.RUNS_DIR and fcodecli.BOT_REPO, and for the same reason: the
+# farm has to run on a second machine whose checkouts are not under /home/Ucals. This
+# was the only path in the farm with no escape hatch, and sync.sh deploys with
+# `git reset --hard`, so editing the default in place would be undone on the next push.
+LIVE_JSON = Path(os.environ.get(
+    "LADDERFARM_LIVE_JSON",
+    "/home/Ucals/projects/portfolio/public/botrankings/data/live.json"))
 
 
 def load() -> dict | None:
