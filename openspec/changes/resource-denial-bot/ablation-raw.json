@@ -1,0 +1,215 @@
+[
+ {
+  "variant": "THE CONVEYOR MAZE \u2014 dead at the premise; fallback (enemy spawn-ring obstruction, conveyor vs barrier, ring vs arc) measured and REJECTED",
+  "verdict": "REJECTED",
+  "headline": "Belts do not displace units at all \u2014 measured three ways, own/loaded/enemy-owned, 40-60 idle rounds each, zero movement \u2014 and the fallback obstruction ring lost the mirror on every sub-variant (12-18, 11-19, 11-19) while flipping only losses, never a win.",
+  "what_changed": "FINDING FIRST (the probe the brief asked for): a Conveyor NEVER moves a Builder Bot. Three measurements, all on 2.3.6. (1) `cm_disp` on lab/belt: builder stands on its own conveyor whose output is another conveyor, does nothing for 40 rounds \u2014 tiles=['10,4'], MOVED=False. (2) `cm_disp2`: builder stands inside a closed 4-cycle belt loop fed by a harvester, so a titanium stack is stepping tile-to-tile EVERY round (get_stored_resource confirms TITANIUM held on all four tiles) \u2014 60 rounds, tiles=['6,6'], MOVED=False. (3) `cm_foe_a` vs `cm_foe_b`, two-sided: Team B lays (12,4)->(11,4)->(10,4) all facing WEST; a Team A builder walks onto it and sits \u2014 headpass=1 (enemy conveyor IS passable, as documented), ONFOEBELT r15, then 40 rounds tiles=['11,4'], MOVED=False. Belts move resource stacks only. The conveyor maze is dead at the premise; there is nothing to recirculate.\n\nFALLBACK, as instructed: conveyors/barriers as cheap 3 Ti obstruction sited from the inferred enemy Core. ONE change, +117 lines in builder.py, nothing else touched. A new `_run_enemy_ring(p, ct, enemy_core)` is called in `_rush` between `_build_basic_gunner` and `_harass` \u2014 i.e. only an attack Builder with no Gunner seat left reaches it, and the gunner gets first refusal on the balance. It fills the enemy Core's 12-tile spawn ring (the 4x4 block minus the 2x2 footprint) one 3 Ti tile a round, approach-side first, walls/ore/edge skipped. Every ring tile is on the block's boundary, so filling them can never brick our own builder in. Conveyor facings walk the annulus (never point into their footprint, which would be a delivery rather than an obstruction).\n\nThree sub-variants, two axes: KIND (conveyor = passable to both teams, so it denies the spawn tile without closing our own approach; barrier = blocks both sides) and SHAPE (full ring vs the geometric approach arc, tiles nearer our Core than their Core is).\n\nOne engine fact worth keeping: under RUSH the team balance sits at 0-10 Ti for the whole game (on `heart`, titanium_collected was 0 for BOTH sides across 1000 rounds). A titanium reserve of 25, copied from the home seal, made the code unreachable rather than careful \u2014 it fired zero times while the attacker stood one tile from the ring it wanted. The reserve is therefore 0 and the gating is structural.\n\nWHY IT LOSES: the per-map diff is one-directional. Across all three sub-variants every single flipped map went W->L and not one map flipped L->W. The attacker spends its rounds walking to and bricking ring tiles instead of pressing the attack, and on `heart` it walks toward the ring for 1000 rounds without ever affording a tile. The conveyor version is measurably the least bad (12-18 vs 11-19), which is consistent with the barrier version also blocking our own attacker's approach \u2014 `_move_cardinal_adjacent` excludes p.solids from its goals, so our own ring barriers close the seats we wanted. That is the conveyor-vs-barrier result the brief asked for, and it points the right way; it is just nowhere near enough to make the idea positive.",
+  "results": [
+   {
+    "subvariant": "bots/cand/maze_ring_cnv \u2014 full 12-tile ring, CONVEYORS (passable both teams)",
+    "mirror": "12-18 (LOSS), Ti -3530; flipped antler A, heart A, hive B \u2014 all W->L, zero L->W",
+    "counter_vigil": "7-23, +0 vs base (base is 7-23)",
+    "neutral_delta": "heimdall 14-16 (-1, REGRESSION); odin 16-14 (+0); prospect_rushonly 13-17 (-2, REGRESSION)",
+    "titanium_margin": "mirror -3530; vigil -2250; heimdall +2490; odin +2770; prospect_rushonly -470"
+   },
+   {
+    "subvariant": "bots/cand/maze_ring_bar \u2014 full 12-tile ring, BARRIERS (equal 3 Ti, blocks both sides)",
+    "mirror": "11-19 (LOSS), Ti -3530; flipped antler A, fjordgate A, heart A, hive B \u2014 all W->L, zero L->W",
+    "counter_vigil": "8-22, +1 vs base",
+    "neutral_delta": "heimdall 15-15 (+0); odin 16-14 (+0); prospect_rushonly 13-17 (-2, REGRESSION)",
+    "titanium_margin": "mirror -3530; vigil -2220; heimdall +2620; odin +2310; prospect_rushonly -420"
+   },
+   {
+    "subvariant": "bots/cand/maze_arc_bar \u2014 approach-side ARC only, BARRIERS",
+    "mirror": "11-19 (LOSS), Ti -3530; flipped antler A, fjordgate A, heart A, hive B \u2014 all W->L, zero L->W",
+    "counter_vigil": "8-22, +1 vs base",
+    "neutral_delta": "heimdall 15-15 (+0); odin 15-15 (-1, REGRESSION); prospect_rushonly 13-17 (-2, REGRESSION)",
+    "titanium_margin": "mirror -3530; vigil -2160; heimdall +2710; odin +2290; prospect_rushonly -400"
+   }
+  ],
+  "caveats": "Baseline reference for reading the deltas: uncle_stewart goes 7-23 vs vigil, 15-15 vs heimdall, 16-14 vs odin, 15-15 vs prospect_rushonly on the 15-map pool, both seats.\n\nHonest limits of the negative result. (a) The +1 on vigil for both barrier sub-variants is one game out of 30 and both of those sub-variants regress two neutral opponents; I would not read it as signal. (b) The arc sub-variant is behaviourally near-identical to the ring sub-variant in these games because games end at t65-t400 on most of the pool \u2014 the attacker rarely gets past the approach-side tiles before the game is decided, so \"ring vs arc\" is mostly untested rather than tested-and-equal. The kind axis (conveyor vs barrier) IS genuinely tested and separates by one map. (c) I set the reserve to 0 to give the mechanism any chance to fire; a version with a reserve is strictly more inert, not better, so the negative verdict does not depend on that choice. (d) I did not test displacement of a unit standing on an enemy SPLITTER, only a Conveyor; given three independent nulls on Conveyor I do not think that gap is worth spending on.\n\nFour probe bugs cost most of the wall-clock and are worth recording so nobody repeats them: `ct.get_titanium()` and `ct.get_titanium_collected()` do NOT exist (the accessor is `ct.get_global_resources()`), and calling them inside a resign-message format string silently kills the probe forever, because run()'s except swallows the error before ct.resign() is reached. EVERY entity gets its OWN Player instance \u2014 main.py says so and it is true \u2014 so a Core cannot see any builder state; `ct.get_unit_count()` (which counts the Core, so the threshold is <2 for one builder) is the only way for a Core to know whether its spawn worked. And `is_tile_passable` is False for a tile a Builder Bot stands on even when `is_tile_empty` is True, so a stray extra builder reads exactly like terrain in a diagnostic dump.\n\nRelated prior art I did not duplicate: `bots/probes/gg_ringblock` already established that conveyors, barriers, gunners and launchers CAN be built on an enemy Core's spawn-ring tile (footprint tiles are refused), and `bots/probes/gg_lock` / `bots/probes/ringlock` already tour the enemy ring. My contribution there is the measured ladder consequence of doing it from inside a strong bot, which is negative.",
+  "files": [
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\cm_disp\\main.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\cm_disp2\\main.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\cm_foe_a\\main.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\probes\\cm_foe_b\\main.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\maze_ring_cnv\\builder.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\maze_ring_bar\\builder.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\maze_arc_bar\\builder.py"
+  ]
+ },
+ {
+  "variant": "ORE DENIAL \u2014 occupy enemy-side ore tiles with barriers instead of attacking enemy logistics",
+  "verdict": "REJECTED",
+  "headline": "Pre-emptive barrier denial takes the vigil counter from 7-23 to 14-16 (+7) and odin from 16-14 to 20-10 (+4), but loses the mirror 14-16 and drops one game on prospect_rushonly, so it fails the ship criterion on both clauses; every gated or Harvester-based version throws the counter gain away.",
+  "what_changed": "One mechanism, five placements. `_deny_enemy_ore` was rewritten from an incidental \"if a free ore tile happens to be cardinally adjacent while harassing, barrier it\" into a first-class denial planner, and it was given a second call site on the path builders actually walk. Concretely: (1) `_deniable_ore` selects ore tiles strictly nearer the enemy Core than ours, minus anything in p.solids, p.conveyors, a CLAIM_SLOT, p.task, p.deferred_ores, or a new per-builder rejection ledger p.denial_deferred (12-round expiry, so a Builder beside a tile the engine refuses does not stand there re-asking); (2) `_denial_keeps_us_free` floods the walk graph from the Builder's tile with the plug already placed and refuses any plug leaving a pocket under 12 tiles \u2014 ore is passable, so plugging one really can wall the Builder in; (3) when the Builder is on an errand, `_keeps_route_open` (existing helper) additionally refuses any plug that would close its own route to the enemy Core; (4) `_nearest_enemy_ore` now ranks by real BFS travel from one `_distance_map` flood, Chebyshev-prefiltered to DENY_ORE_MAX_TRAVEL=18, instead of returning the Chebyshev-closest tile and letting the pathfinder discover a wall; (5) `_harass` was reordered so denial outranks shooting conveyors/splitters, sabotage staying only as the fallback once nothing is left to deny; (6) the same plug was added to `_rush`, so the attacker Builder plugs deposits it is already standing beside. `_sense` gained p.enemy_harvesters tracking to feed the reactive gate. Barrier reserve is unchanged (barrier_cost + SEAL_TITANIUM_RESERVE=25) so titanium policy is not a confound. Measured firing rate over 60 instrumented games: the base plugs ore 2 times; ore_deny_preempt plugs 136 times \u2014 the base's denial hook was effectively vestigial.",
+  "results": [
+   {
+    "subvariant": "ore_deny_preempt \u2014 pre-emptive, barrier, plug taken before the ferry (the headline version)",
+    "mirror": "14-16 (LOSS, -1 net map-side vs the 15-15 identity mirror)",
+    "counter_vigil": "14-16, +7 vs base (base 7-23)",
+    "neutral_delta": "heimdall 16-14 (+1), odin 20-10 (+4), prospect_rushonly 14-16 (-1, REGRESSION). Panel total 64/120 vs base 53/120",
+    "titanium_margin": "mirror +1160; vigil +2460 (base -1800); heimdall +5660; odin +7600; prospect +450"
+   },
+   {
+    "subvariant": "ore_deny_arrived \u2014 identical plug, moved to after `_opening_ferry` so it never costs a step of the opening rush",
+    "mirror": "14-16 (LOSS) \u2014 same five flipped maps as preempt (drumlin B W, eider B L, fjordgate A L, meander A L, moonrise A W)",
+    "counter_vigil": "14-16, +7 vs base (identical to preempt)",
+    "neutral_delta": "heimdall 17-13 (+2), odin 20-10 (+4), prospect_rushonly 14-16 (-1, REGRESSION). Panel total 65/120",
+    "titanium_margin": "mirror +810; vigil +2460; heimdall +5580; odin +8440; prospect +270"
+   },
+   {
+    "subvariant": "ore_deny_reactive \u2014 plug only deposits within Chebyshev 3 of a seen enemy Harvester or belt tile",
+    "mirror": "16-14 (WIN \u2014 the only sub-variant that wins the mirror)",
+    "counter_vigil": "9-21, +2 vs base \u2014 most of the gain is gone",
+    "neutral_delta": "heimdall 14-16 (-1, REGRESSION), odin 17-13 (+1), prospect_rushonly 16-14 (+1). Panel total 56/120",
+    "titanium_margin": "mirror +690; vigil +10; heimdall +3450; odin +6930; prospect +880"
+   },
+   {
+    "subvariant": "ore_deny_gated \u2014 pre-emptive, but only once any enemy Harvester or belt has been seen anywhere (weak reactivity)",
+    "mirror": "14-16 (LOSS)",
+    "counter_vigil": "9-21, +2 vs base",
+    "neutral_delta": "heimdall 14-16 (-1, REGRESSION), odin 17-13 (+1), prospect_rushonly 15-15 (+0 \u2014 the gate does remove the prospect regression). Panel total 55/120",
+    "titanium_margin": "mirror +930; vigil -70; heimdall +3770; odin +7020; prospect +450"
+   },
+   {
+    "subvariant": "ore_deny_harvester \u2014 occupy with our own 20 Ti Harvester instead of a 3 Ti Barrier (same 30 HP, plus the tiebreak's live-Harvester rung)",
+    "mirror": "12-18 (LOSS, worst of the five)",
+    "counter_vigil": "9-21, +2 vs base",
+    "neutral_delta": "heimdall 15-15 (+0), odin 16-14 (+0), prospect_rushonly 10-20 (-5, REGRESSION). Panel total 50/120 \u2014 below the base",
+    "titanium_margin": "mirror +70; vigil -820; heimdall +4690; odin +390; prospect +80"
+   }
+  ],
+  "caveats": "Honest reading: no sub-variant ships. The strict criterion is mirror win AND no neutral regression; preempt/arrived fail both by one game each, reactive fails the neutral gate, harvester fails badly. But the panel-wide picture is not a wash \u2014 preempt is 64/120 and arrived 65/120 against the base's 53/120, and the +7 on the counter surface is the largest single move any surface showed. If the mirror is treated as what ablate.py's own docstring calls it (\"the most over-fittable number we have\"), arrived is the version worth a second look; on the stated criterion it is REJECTED and I am reporting it as such.\n\nThree things the measurements settle, independent of the verdict:\n1. Barrier beats Harvester decisively for occupation. Identical 30 HP and identical denial; the Harvester costs 20 Ti against 3 and the extra live-Harvester tiebreak rung never pays, because a Harvester deep in enemy ground has no belt to deliver into. It is the only sub-variant that scores below the base.\n2. Pre-emptive beats reactive on the counter by 5 games (14-16 vs 9-21), and both flavours of reactivity (per-deposit radius, and the weaker seen-economy-anywhere gate) land on the same 9-21. The attacker is ferried to the enemy Core around rounds 5-30 and plugs deposits before it has necessarily seen a belt; any evidence gate delays denial past the window where it decides games.\n3. Placement barely matters. Before-ferry and after-ferry produce the same mirror result and the same flipped-map set, so almost all denial already happens after arrival \u2014 the ferry throws the attacker past the ore rather than through it. The tempo worry that motivated the arrived variant is not what costs the mirror.\n\nTwo harness facts that cost me time and are worth writing down:\n- Bot diagnostics only reach the console via `print(..., file=sys.stderr)`. Plain `print()` from inside a bot handler is swallowed by run_game. This is why `_plan_failed` and `_report_stall` in builder.py \u2014 both plain `print()` \u2014 have been emitting nothing; only core.py's DOCTRINE line, which uses stderr, is visible. Anyone instrumenting a bot will otherwise conclude their code path is dead when it is running fine.\n- `__pycache__` inside a bot directory did NOT change local run_game results in my check (uncle_stewart vs vigil on antler was bit-identical with and without), so the \"stale pycache makes the bot inert\" rule appears to be about the submission path rather than the local harness. I still cleared it before every run.\n\nScope note: the change touches only `_harass`, `_rush`, `_sense`, and the denial helpers. No map names, no coordinates, no opponent tests \u2014 every precondition reads the resulting game state (enemy-side by Core distance, flood the walk graph with the plug placed, BFS the route with the plug placed).",
+  "files": [
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\ore_deny_preempt\\builder.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\ore_deny_preempt\\constants.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\ore_deny_arrived\\builder.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\ore_deny_reactive\\constants.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\ore_deny_gated\\builder.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\ore_deny_gated\\constants.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\ore_deny_harvester\\constants.py",
+   "C:\\Users\\edlun\\AppData\\Local\\Temp\\claude\\c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league\\69495691-95ef-4878-adf9-aeca64f3e3b5\\scratchpad\\ablate_final.txt",
+   "C:\\Users\\edlun\\AppData\\Local\\Temp\\claude\\c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league\\69495691-95ef-4878-adf9-aeca64f3e3b5\\scratchpad\\ablate_arrived.txt",
+   "C:\\Users\\edlun\\AppData\\Local\\Temp\\claude\\c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league\\69495691-95ef-4878-adf9-aeca64f3e3b5\\scratchpad\\ablate_gated.txt",
+   "C:\\Users\\edlun\\AppData\\Local\\Temp\\claude\\c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league\\69495691-95ef-4878-adf9-aeca64f3e3b5\\scratchpad\\probe.txt"
+  ]
+ },
+ {
+  "variant": "DANGER SENSING AND EVASION \u2014 enemy turret coverage priced into the walk (recommend bots/cand/wary_cost, DANGER_STEP_COST=6)",
+  "verdict": "SHIPPABLE",
+  "headline": "Coverage as a route cost wins the mirror 17-13 and moves the counter from 7-23 to 10-20 with no neutral cell below base; the same coverage as a hard block loses the mirror 14-16 and regresses two neutrals, and withdraw-under-fire subtracts from every surface it is added to.",
+  "what_changed": "Each Builder now remembers every enemy GUNNER/SENTINEL it has seen as (tile, type, facing), re-reading the facing on every sighting so a rotation is not remembered wrong. Memory is dropped the instant _sense observes that tile holding a wall, nothing, or anything that is not an enemy turret, so stale coverage cannot permanently forbid good ground. Coverage itself is not hand-rolled from the radius: ct.get_attackable_tiles_from(tile, facing, type) returns the engine's own raw attack pattern, which is exact for all eight bearings a rotation can pick (a diagonal Gunner reaches 2 tiles, not 3 \u2014 a radius-derived ray gets that wrong). A Sentinel's whole ray counts since nothing stops its shot; a Gunner's ray is truncated at the first wall/building/conveyor, so ground behind our own barrier stays free. This matters most where it is invisible: a Sentinel reaches r^2=32 against a Builder's r^2=20 vision, so the lanes that hurt are cast by turrets nobody can currently see.  The coverage set then enters movement in exactly one place. _bfs_step (the only query that decides where feet go \u2014 the hundreds of per-candidate _bfs_path planner calls keep the plain BFS and its CPU profile) passes danger=True, and _search becomes a uniform-cost search where a covered tile costs 1 + DANGER_STEP_COST to enter instead of 1; with no coverage present it is edge-for-edge and tie-for-tie the original BFS. Source and goal tiles are exempt \u2014 a job inside a lane is a job that has to be done from inside it. Three \"never idle in one\" sites also prefer uncovered tiles: the build-adjacent tile in _move_cardinal_adjacent (a build is several rounds of standing still), the wander target in _move_while_stuck, and the explore grid in _explore. DANGER_HARD_BLOCK swaps the pricing for impassability with a fall-through to the ordinary route when no clean one exists (infinite multiplier, not a way to strand the workforce); DANGER_WITHDRAW adds a rule that a Builder whose HP fell this round while standing in computed coverage steps to the adjacent tile out of every lane, ranked below shooting back and below Core defence.",
+  "results": [
+   {
+    "subvariant": "wary_cost2 \u2014 cost multiplier, penalty 2, no withdraw",
+    "mirror": "17-13 WIN (+850 Ti)",
+    "counter_vigil": "10-20 (+3 vs base 7-23), Ti -1160 vs base -1800",
+    "neutral_delta": "heimdall +2 (17-13), odin +1 (17-13), prospect_rushonly +1 (16-14) \u2014 no cell below base",
+    "titanium_margin": "mirror +850; odin margin collapses -3330 vs base +2860 despite the extra win"
+   },
+   {
+    "subvariant": "wary_cost \u2014 cost multiplier, penalty 6, no withdraw (RECOMMENDED)",
+    "mirror": "17-13 WIN (+410 Ti)",
+    "counter_vigil": "10-20 (+3 vs base 7-23), Ti -1380 vs base -1800",
+    "neutral_delta": "heimdall +0 (15-15), odin +2 (18-12), prospect_rushonly +0 (15-15) \u2014 no cell below base",
+    "titanium_margin": "mirror +410; odin margin -3250 vs base +2860"
+   },
+   {
+    "subvariant": "wary_cost12 \u2014 cost multiplier, penalty 12, no withdraw",
+    "mirror": "16-14 WIN (+240 Ti)",
+    "counter_vigil": "11-19 (+4 vs base 7-23), Ti -940 vs base -1800 \u2014 the largest counter movement measured",
+    "neutral_delta": "heimdall +4 (19-11), odin +0 (16-14), prospect_rushonly +0 (15-15) \u2014 no cell below base",
+    "titanium_margin": "mirror +240; odin margin +2390, closest of the three to base +2860"
+   },
+   {
+    "subvariant": "wary_block \u2014 coverage as a hard block, no withdraw (REJECTED)",
+    "mirror": "14-16 LOSS (-70 Ti)",
+    "counter_vigil": "6-24 (-1 vs base) \u2014 moves the wrong way",
+    "neutral_delta": "heimdall +2 (17-13), odin -2 (14-16) REGRESSION, prospect_rushonly -1 (14-16) REGRESSION",
+    "titanium_margin": "mirror -70; heimdall +5620 is the only bright spot and it does not carry"
+   },
+   {
+    "subvariant": "wary_cost_withdraw \u2014 cost multiplier 6 + withdraw-under-fire (REJECTED)",
+    "mirror": "16-14 WIN (+1060 Ti)",
+    "counter_vigil": "9-21 (+2 vs base) \u2014 one game worse than the same bot without withdraw",
+    "neutral_delta": "heimdall +0 (15-15), odin +1 (17-13), prospect_rushonly -1 (14-16) REGRESSION \u2014 fails the gate",
+    "titanium_margin": "mirror +1060, the best mirror margin of any sub-variant, which is exactly the over-fittable number the gate exists to override"
+   },
+   {
+    "subvariant": "wary_block_withdraw \u2014 hard block + withdraw-under-fire (REJECTED)",
+    "mirror": "13-17 LOSS (-20 Ti)",
+    "counter_vigil": "7-23 (+0 vs base) \u2014 no movement at all",
+    "neutral_delta": "heimdall +0 (15-15), odin -2 (14-16) REGRESSION, prospect_rushonly -3 (12-18) REGRESSION",
+    "titanium_margin": "mirror -20; the worst neutral profile of the six"
+   }
+  ],
+  "caveats": "Both refutations are clean and worth more than the win. (1) Forbidding coverage is strictly worse than pricing it, on every surface: hard block loses the mirror where the identical sensing priced as a cost wins it, and it is the only pair where the counter moves backwards (6-24 vs 10-20). The sensing is the same code in both; only the routing treatment differs, so this isolates the treatment. A detour that never crosses fire is a detour the attacker pays for in tempo, and tempo is what the counter surface is actually decided on. (2) Withdraw-under-fire subtracts from whatever it is added to: cost 16-14/vigil 9-21 with it against 17-13/10-20 without, block 13-17 against 14-16. It buys the best mirror titanium margin of the six (+1060) and still fails the gate, which is the ablation working as designed. The likely mechanism is oscillation \u2014 a Sentinel on a 3-round clock damages the Builder, it steps out, the route prices it back in, and the errand never finishes. I did not add a cooling period, because the brief specified the rule literally and a damped version is a different change.  On the recommended pick: penalty 2, 6 and 12 all win the mirror and all clear the gate, and all three move vigil the same way (+3/+3/+4). That robustness across a 6x range is the evidence the mechanism is real rather than a tuned constant. It also means the choice among the three is NOT resolved by this data \u2014 they sit within one or two games of each other on a 30-game surface. 6 is recommended as the middle; 12 has the strongest counter (+4) and the strongest neutral (heimdall +4) and preserves the odin titanium margin (+2390) that 2 and 6 give up (~-3300, a swing of about 6000 Ti against base's +2860) \u2014 if margin is weighted, prefer 12.  Sample and measurement limits: 15 maps x 2 seats = 30 games per cell. The engine is deterministic, so there is no run-to-run noise, but that removes only replication variance, not map-sample variance \u2014 a 17-13 is a 2-map swing. Per-map flips for penalty 2 were antler B, fjordgate A/B, jackpot A/B, moonrise A; for penalty 12, antler A/B, eider B, fjordgate A/B, jackpot A, moonrise A. The overlap (fjordgate, jackpot, moonrise, antler) is the same ground being decided in both.  ablate.py runs with the turn time limit disabled, so it cannot see a TLE. I spot-checked antler and longship against vigil at the real 10 ms limit and the variants played normally; the weighted search is confined to _bfs_step so the many-candidate planners keep the CPU profile the existing code was tuned to, and get_attackable_tiles_from measured at 0 us for 50 calls. Still, that check is local and the ladder runs on Graviton3.  Scope deliberately left alone: coverage is per-Builder memory and is not published through the 16-slot store, so two Builders can disagree about a lane one of them has seen; our own turret and barrier build-site selection still ignores enemy coverage (only walking and idling were changed); the atlas is untouched.",
+  "files": [
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\wary_cost\\builder.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\wary_cost\\constants.py",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\wary_cost",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\wary_cost2",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\wary_cost12",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\wary_block",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\wary_cost_withdraw",
+   "C:\\Users\\edlun\\Desktop\\lucky shots\\Hackathons\\florent-code-league\\bots\\cand\\wary_block_withdraw",
+   "C:\\Users\\edlun\\AppData\\Local\\Temp\\claude\\c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league\\69495691-95ef-4878-adf9-aeca64f3e3b5\\scratchpad\\ablate.log",
+   "C:\\Users\\edlun\\AppData\\Local\\Temp\\claude\\c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league\\69495691-95ef-4878-adf9-aeca64f3e3b5\\scratchpad\\ablate2.log"
+  ]
+ },
+ {
+  "variant": "seize-the-contested-ore-early (bots/cand/frontier_*)",
+  "verdict": "REJECTED",
+  "headline": "Seizing the contested deposit wins the mirror 16-14 and moves every economy opponent (vigil +3, heimdall +2, odin +3, and odin's titanium margin from +2860 to +7320), but it loses 2-3 games to the one opponent that plays no economy at all (prospect_rushonly 13-17), so all five sub-variants fail the neutral gate.",
+  "what_changed": "The ring Builder (index 2, the one whose only job after the throw pad is a displacement screen nobody has measured a win from) gets a new errand between building the pad and resuming the ring. Once the pad is up it clusters every ore tile it can see into 8-connected deposits and, for each, compares OUR minimum walk to THEIRS in Manhattan steps \u2014 Manhattan because movement is one cardinal tile a round, so that is what the race is actually measured in. A deposit strictly nearer to them is dropped (that is a denial target and `_deny_enemy_ore` already answers it with a 3 Ti barrier); a deposit nearer to us by more than a margin scaled off the Core-to-Core span is dropped (the ordinary planner collects it anyway). What is left is the band where the race is real; the biggest deposit in it wins, because one belt serves every tile. Until one is visible the Builder walks to the halfway tile between the Cores, re-reading the deposits that come into vision, and gives up if it arrives with nothing contested in sight. The claim itself is handed to the base's own claim machinery (claim slot, route, prelay/lay/goto), so nothing about how a line gets built changed.\n\nTwo orderings were built and both measured. Belt-first, the order every home claim uses, was the obvious implementation and it is wrong here: instrumented over the pool, ten of fifteen maps committed a forward line and only two ever capped it \u2014 six ran the whole belt and then stood beside their ore for fifteen rounds at single-digit titanium, because the scaled Harvester is 54 Ti and the seizing Builder is last in the queue for it. Harvester-first inverts that so nothing is spent until the tile is actually taken: 9 of 10 staked the tile, 7 of 10 completed the line home. That inversion is worth +2660 titanium on the mirror (-2020 belt-first, +640 harvester-first) at the same 16-14 win count.\n\nA guard was then tried on the one thing all five versions lose to, expressed as a game-state precondition rather than an opponent name: call the errand off whenever SLOT_CORE_DAMAGED is up. It is refuted, and clearly \u2014 the alarm fires in nearly every game after the errand has already spent, so it buys the cancellation without the asset. Mirror 11-19, prospect 10-20 (-5, worse than the unguarded -2).",
+  "results": [
+   {
+    "subvariant": "frontier_stake \u2014 harvester-first, claim-and-leave, walk (best of the set)",
+    "mirror": "16-14 WIN vs unmodified steward",
+    "counter_vigil": "10-20, +3 vs base (base 7-23); Ti margin -1800 -> +1110",
+    "neutral_delta": "heimdall 17-13 (+2), odin 19-11 (+3), prospect_rushonly 13-17 (-2) <- the gate that fails",
+    "titanium_margin": "mirror +640; odin +7320 vs base +2860; heimdall +5190 vs base +3350; prospect -890 vs base +800"
+   },
+   {
+    "subvariant": "frontier_stake_hold \u2014 claim-and-garrison (stays adjacent, heals the Harvester, rebuilds it if killed)",
+    "mirror": "15-15 even, +510 Ti",
+    "counter_vigil": "12-18, +5 vs base \u2014 the largest counter movement of any sub-variant",
+    "neutral_delta": "heimdall 17-13 (+2), odin 20-10 (+4), prospect_rushonly 12-18 (-3) <- worst regression of the walking set",
+    "titanium_margin": "mirror +510; odin +5470; heimdall +2990; prospect -1190"
+   },
+   {
+    "subvariant": "frontier_stake_relay \u2014 harvester-first, claim-and-leave, ferried toward the deposit on the existing Launcher relay instead of walking",
+    "mirror": "15-15 even, +590 Ti",
+    "counter_vigil": "10-20, +3 vs base \u2014 same as walking",
+    "neutral_delta": "heimdall 17-13 (+2), odin 19-11 (+3), prospect_rushonly 14-16 (-1) <- smallest regression, still a regression",
+    "titanium_margin": "mirror +590; odin +7210; heimdall +5060; prospect -3130"
+   },
+   {
+    "subvariant": "frontier_claim \u2014 belt-first ordering control (otherwise identical to frontier_stake)",
+    "mirror": "16-14 WIN but -2020 Ti \u2014 wins on kills while losing the economy it was built for",
+    "counter_vigil": "15-15, +8 vs base \u2014 by far the biggest counter swing, and not reproduced on any other surface",
+    "neutral_delta": "heimdall 15-15 (+0), odin 19-11 (+3), prospect_rushonly 12-18 (-3)",
+    "titanium_margin": "mirror -2020; vigil +3060; heimdall +5680; odin +4420; prospect -2300"
+   },
+   {
+    "subvariant": "frontier_stake_guard \u2014 frontier_stake plus 'abandon the errand whenever the Core alarm is up' (REFUTED)",
+    "mirror": "11-19 LOSS, -2880 Ti",
+    "counter_vigil": "9-21, +2 vs base \u2014 worse than unguarded",
+    "neutral_delta": "heimdall 16-14 (+1), odin 18-12 (+2), prospect_rushonly 10-20 (-5) \u2014 the guard made the exact regression it targeted three games worse",
+    "titanium_margin": "mirror -2880; odin +5080; heimdall +2780; prospect -1910"
+   }
+  ],
+  "files": [
+   "C:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/cand/frontier_stake/builder.py",
+   "C:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/cand/frontier_stake/constants.py",
+   "C:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/cand/frontier_stake_hold/constants.py",
+   "C:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/cand/frontier_stake_relay/constants.py",
+   "C:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/cand/frontier_claim/constants.py",
+   "C:/Users/edlun/Desktop/lucky shots/Hackathons/florent-code-league/bots/cand/frontier_stake_guard/builder.py",
+   "C:/Users/edlun/AppData/Local/Temp/claude/c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league/69495691-95ef-4878-adf9-aeca64f3e3b5/scratchpad/ablate2.txt",
+   "C:/Users/edlun/AppData/Local/Temp/claude/c--Users-edlun-Desktop-lucky-shots-Hackathons-florent-code-league/69495691-95ef-4878-adf9-aeca64f3e3b5/scratchpad/ablate3.txt"
+  ],
+  "caveats": "All numbers are the 15-map pool in both seats, 30 games per cell, engine 2.3.6, base = bots/nash/steward. The engine is deterministic, so every difference is a nameable set of flipped maps (printed by --per-map in the two report files).\n\nRead the result honestly: this is not a neutral idea that happened to miss. It is a real and reproducible effect with a real and reproducible cost, and the two do not cancel. Every one of the five versions moves the same three opponents the same way (vigil +2..+8, heimdall 0..+2, odin +2..+4, with titanium margins on odin and heimdall up 60-150%) and loses to prospect_rushonly every single time (-1, -2, -3, -3, -5). The variance across sub-variants lands almost entirely on that one surface. The mechanism separates cleanly along a line the ablation panel happens to draw: it beats bots that play an economy and loses to the bot that plays none, which is what an economy investment does. Six of the eleven maps frontier_stake flips are flips in both directions on the same map in opposite seats (atoll, eider, saga), so the effect is genuinely seat-sensitive and not a uniform improvement.\n\nThree specific things I would not carry forward without re-measuring:\n1. frontier_claim's vigil 15-15 (+8) is the single largest number in this report and I do not trust it. It comes from the belt-first version whose forward line usually fails to complete, its mirror titanium margin is -2020, and its heimdall delta is 0 \u2014 a change that wins eight games on one opponent while delivering less titanium than the base looks like it is exploiting a habit rather than doing the thing it claims to do. frontier_stake, which actually completes the claim, only moves vigil +3.\n2. The garrison's vigil +5 is the strongest signal that holding the tile is worth something, but it costs the mirror (15-15) and the most on the gate (-3). If anyone revisits this, garrison-with-a-recall-that-actually-mends is the branch to try \u2014 my recall attempt sent the Builder back to ring duty rather than to the Core, which is probably why it failed so badly.\n3. BLITZ maps are untouched by design (no ring Builder exists there), and the mechanism never fires on 5 of 15 maps for lack of a contested deposit within the route bound, so these deltas are carried by roughly two thirds of the pool.\n\nTwo implementation limits worth stating: the belt is capped at 18 tiles (SEIZE_MAX_ROUTE) and the errand is written off after 15 rounds of an unaffordable build (SEIZE_BUILD_PATIENCE); both thresholds were set from the observed hive failure and were not swept, so the sub-variant numbers are conditional on them.\n\nProcess note: my first ablation run was invalidated because I edited the variant sources while it was executing (ablate.py's stdout was block-buffered, so the report gave no visible sign that variant games had started). That run was discarded and everything reported here comes from clean runs \u2014 ablate2.txt for the four sub-variants and ablate3.txt for the guard. I also deleted a __pycache__ under bots/cand/wary_block_withdraw early on with an over-broad find; it is a build artifact and check_bot requires its absence, but it was another agent's directory and I narrowed the command afterwards."
+ }
+]
