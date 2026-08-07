@@ -1,6 +1,8 @@
 """Core opening, doctrine choice, and reinforcement spawning."""
 
+import importlib.util
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import doctrine
@@ -22,6 +24,26 @@ from utils import pack_core, pack_ticket
 if TYPE_CHECKING:
     from main import Player
 
+
+def _load_econ():
+    # Test-only hook (see ECON_LOG_INTERVAL below): imports
+    # bots/test/econ/main.py's expected_titanium_flow so it can be run
+    # against a real, multi-Harvester conveyor network instead of only the
+    # toy chain in bots/test/econ_demo. Loaded under a name distinct from
+    # "main" so it can't collide with this bot's own main.py in whatever
+    # module namespace the engine's subinterpreter uses for it.
+    econ_main = Path(__file__).resolve().parent.parent.parent / "econ" / "main.py"
+    spec = importlib.util.spec_from_file_location("econ_lib", econ_main)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_econ = _load_econ()
+# How often the Core logs expected_titanium_flow. Diagnostic only -- nothing
+# in this bot reads the value or branches on it, so this can't change how
+# vidar plays; it exists purely to watch the estimate against a real belt.
+ECON_LOG_INTERVAL = 20
 
 CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 
@@ -103,6 +125,7 @@ def run(player: "Player", ct: Controller) -> None:
     """Run the opening, then keep spawning attackers from surplus titanium."""
     _watch_income(player, ct)
     _keep_ammunition(ct)
+    _log_econ_flow(ct)
     if not hasattr(player, "repair_alert"):
         player.repair_alert = False
     hp, max_hp = ct.get_hp(ct.get_id()), ct.get_max_hp(ct.get_id())
@@ -389,3 +412,35 @@ def _keep_ammunition(ct) -> None:
             f"action=convert ammunition reason={type(error).__name__}: {error}"
         )
         return
+
+
+def _log_econ_flow(ct: Controller) -> None:
+    """Print expected_titanium_flow against this match's real belt.
+
+    Diagnostic only: the value is never read back or branched on, so this
+    cannot change how vidar plays. It exists to watch bots/test/econ's
+    estimate hold up against a real, multi-Harvester conveyor network --
+    including the fan-in `_route_avoiding` builds when several Harvester
+    lines join one shared trunk, which the toy chain in
+    bots/test/econ_demo never exercises.
+
+    Wrapped the same way as `_keep_ammunition`: a failure here must never
+    take the Core down with it.
+    """
+    round_number = ct.get_current_round()
+    if round_number % ECON_LOG_INTERVAL != 0:
+        return
+    try:
+        flow = _econ.expected_titanium_flow(ct)
+    except Exception as error:  # noqa: BLE001 - never let this kill the Core
+        print(
+            f"ECON_FLOW_FAILED id={ct.get_id()} round={round_number} "
+            f"reason={type(error).__name__}: {error}",
+            file=sys.stderr, flush=True,
+        )
+        return
+    print(
+        f"ECON_FLOW round={round_number} expected_titanium_flow={flow:.4f} "
+        f"actual_resources={ct.get_global_resources()}",
+        file=sys.stderr, flush=True,
+    )
