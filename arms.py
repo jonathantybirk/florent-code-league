@@ -31,6 +31,7 @@ import csv
 import math
 import os
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -43,6 +44,27 @@ BOT_REPO = Path(os.environ.get(
     "LADDERFARM_BOT_REPO", "/home/Ucals/projects/florent-code-league-llm-rl"))
 
 LN10_OVER_400 = math.log(10) / 400.0
+
+# How fast evidence goes stale. Uncertainty that only ever shrinks is wrong here for
+# three separate reasons, and this handles all three:
+#
+#   * OPPONENTS CHANGE. Every team is pushing new builds continuously, so "we beat
+#     team X" is a statement about a bot they may no longer field.
+#   * THE MAP POOL ROTATES. Half of it, weekly. A result from before a rotation was
+#     measured on maps that are no longer played.
+#   * THE ENGINE CHANGES. Handled separately and harder -- see MECHANICS_EPOCH.
+#
+# A 24-hour half-life makes yesterday's game worth half of today's and a week-old
+# game worth 1/128, which decays across a map rotation without needing to know when
+# one happened. Raise it if the ladder ever goes quiet; lower it if it churns faster.
+EVIDENCE_HALF_LIFE_S = 24 * 3600.0
+
+# Games played before the engine last changed are not stale, they are measuring a
+# DIFFERENT GAME, so they get a hard discount rather than a gradual one. The live
+# feed publishes the cut as `model.mechanics_epoch` -- on 2026-08-04 it moved for the
+# 2.3.4 turret patch and invalidated 846 matches at a stroke. Not zero, because a bot
+# that was strong before is weak evidence that it is strong now, but close to it.
+PRE_EPOCH_WEIGHT = 0.05
 
 
 # --------------------------------------------------------------------------
@@ -164,8 +186,23 @@ class ArmStats:
     """Online record of one bot, one entry per *game* played."""
 
     bot_id: str
-    games: list[tuple[float, bool]] = field(default_factory=list)  # (opponent_rating, we_won)
+    # (opponent_rating, we_won, played_at_epoch_seconds or None when unknown)
+    games: list[tuple] = field(default_factory=list)
     series: int = 0
+
+    def weight(self, played_at: float | None, now: float, epoch: float | None) -> float:
+        """How much one past game still counts.
+
+        Unknown timestamps are treated as OLD rather than fresh: the conservative
+        error is to re-verify something we already knew, not to trust something we
+        no longer do.
+        """
+        if played_at is None:
+            return PRE_EPOCH_WEIGHT
+        if epoch is not None and played_at < epoch:
+            return PRE_EPOCH_WEIGHT
+        age = max(0.0, now - played_at)
+        return 0.5 ** (age / EVIDENCE_HALF_LIFE_S)
 
     @property
     def n_games(self) -> int:
@@ -179,23 +216,35 @@ class ArmStats:
     def win_rate(self) -> float:
         return self.wins / self.n_games if self.games else 0.0
 
-    def elo(self, prior_rating: float, prior_weight: float = 2.0) -> tuple[float, float]:
+    def elo(self, prior_rating: float, prior_weight: float = 2.0,
+            now: float | None = None, epoch: float | None = None) -> tuple[float, float]:
         """Maximum-likelihood Elo against the opponents actually faced.
 
-        Returns (estimate, standard error). A weak prior of `prior_weight`
-        pseudo-games split at `prior_rating` keeps the estimate finite when a bot
-        has swept or been swept, which five-game samples do routinely.
+        Every observation is weighted by how much it still counts (see `weight`), so
+        the estimate tracks recent form and -- the part that matters for selection --
+        the standard error GROWS BACK as evidence ages. Without that, uncertainty
+        sampling would test a bot once, watch its interval shrink forever, and never
+        look at it again however stale the result became.
+
+        A weak prior of `prior_weight` pseudo-games split at `prior_rating` keeps the
+        estimate finite when a bot has swept or been swept, which five-game samples do
+        routinely.
         """
-        obs = list(self.games)
-        obs += [(prior_rating, True)] * 1 * int(prior_weight / 2)
-        obs += [(prior_rating, False)] * 1 * int(prior_weight / 2)
-        if not obs:
-            return prior_rating, 400.0
+        now = time.time() if now is None else now
+        obs: list[tuple[float, bool, float]] = []
+        for g in self.games:
+            rating, won = g[0], g[1]
+            played_at = g[2] if len(g) > 2 else None
+            w = self.weight(played_at, now, epoch)
+            if w > 1e-6:
+                obs.append((rating, won, w))
+        half = prior_weight / 2.0
+        obs += [(prior_rating, True, half), (prior_rating, False, half)]
 
         def score(r: float) -> float:
             return sum(
-                (1.0 if won else 0.0) - 1.0 / (1.0 + 10 ** ((opp - r) / 400.0))
-                for opp, won in obs
+                w * ((1.0 if won else 0.0) - 1.0 / (1.0 + 10 ** ((opp - r) / 400.0)))
+                for opp, won, w in obs
             )
 
         lo, hi = prior_rating - 1200.0, prior_rating + 1200.0
@@ -207,10 +256,16 @@ class ArmStats:
                 hi = mid
         est = (lo + hi) / 2
         info = sum(
-            (p := 1.0 / (1.0 + 10 ** ((opp - est) / 400.0))) * (1 - p) for opp, _ in obs
+            w * (p := 1.0 / (1.0 + 10 ** ((opp - est) / 400.0))) * (1 - p)
+            for opp, _, w in obs
         )
         se = (1.0 / LN10_OVER_400) / math.sqrt(max(info, 1e-9))
         return est, se
+
+    def effective_n(self, now: float | None = None, epoch: float | None = None) -> float:
+        """Games weighted by freshness -- what the estimate is really standing on."""
+        now = time.time() if now is None else now
+        return sum(self.weight(g[2] if len(g) > 2 else None, now, epoch) for g in self.games)
 
 
 def ucb_select(
@@ -236,7 +291,7 @@ def ucb_select(
     return best, detail
 
 
-def uncertainty_select(stats, candidates, team_rating=1500.0):
+def uncertainty_select(stats, candidates, team_rating=1500.0, epoch=None):
     """Test the arm we know least about. Returns (bot_id, why).
 
     Total uncertainty over the candidate set is the sum of per-bot variances, so
@@ -249,6 +304,7 @@ def uncertainty_select(stats, candidates, team_rating=1500.0):
     narrows one bot's interval, which promotes the next widest, so the budget
     spreads across the set instead of pouring into the incumbent.
     """
+    now = time.time()
     unplayed = [b for b in candidates if stats.get(b) is None or stats[b].n_games == 0]
     if unplayed:
         return unplayed[0], "never tested online (unbounded uncertainty)"
@@ -256,9 +312,11 @@ def uncertainty_select(stats, candidates, team_rating=1500.0):
     best, best_se, detail = None, -1.0, ""
     for bot_id in candidates:
         st = stats[bot_id]
-        est, se = st.elo(team_rating)
+        est, se = st.elo(team_rating, now=now, epoch=epoch)
+        eff = st.effective_n(now=now, epoch=epoch)
         if se > best_se:
             best, best_se, detail = (
                 bot_id, se,
-                "widest interval: elo=%.0f +-%.0f over n=%d" % (est, se, st.n_games))
+                "widest interval: elo=%.0f +-%.0f over n=%d (%.1f still fresh)"
+                % (est, se, st.n_games, eff))
     return best, detail

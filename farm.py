@@ -148,18 +148,57 @@ def append_csv(path: Path, fields: list[str], rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
+def _iso_to_epoch(value: str | None) -> float | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def series_times() -> dict[str, float]:
+    """match_id -> when it was fired, so games can be aged.
+
+    games.csv carries no timestamp of its own, but every game belongs to a series
+    and series.csv records `fired_at`. Joining on match_id recovers the age of the
+    whole history without a schema change or a backfill.
+    """
+    out: dict[str, float] = {}
+    if not SERIES_CSV.exists():
+        return out
+    for row in csv.DictReader(SERIES_CSV.open()):
+        when = _iso_to_epoch(row.get("fired_at")) or _iso_to_epoch(row.get("collected_at"))
+        if when is not None and row.get("match_id"):
+            out[row["match_id"]] = when
+    return out
+
+
 def read_arm_stats() -> dict[str, arms.ArmStats]:
-    """Rebuild per-bot online records from the harvested game log."""
+    """Rebuild per-bot online records from the harvested game log.
+
+    Each game carries when it was played, because `arms.ArmStats.elo` decays old
+    evidence -- a result from before the last engine patch or map rotation is
+    describing a game we are no longer playing.
+    """
     stats: dict[str, arms.ArmStats] = {}
+    times = series_times()
     if GAMES_CSV.exists():
         for row in csv.DictReader(GAMES_CSV.open()):
             st = stats.setdefault(row["bot_id"], arms.ArmStats(row["bot_id"]))
-            st.games.append((float(row["opponent_rating"]), row["we_won"] == "True"))
+            st.games.append((float(row["opponent_rating"]),
+                             row["we_won"] == "True",
+                             times.get(row.get("match_id"))))
     if SERIES_CSV.exists():
         for row in csv.DictReader(SERIES_CSV.open()):
             st = stats.setdefault(row["bot_id"], arms.ArmStats(row["bot_id"]))
             st.series += 1
     return stats
+
+
+def mechanics_epoch(feed: dict | None) -> float | None:
+    """When the engine last changed under us, per the live feed."""
+    return _iso_to_epoch(((feed or {}).get("model") or {}).get("mechanics_epoch"))
 
 
 # --------------------------------------------------------------------------
@@ -228,6 +267,28 @@ def qualification(bot_id: str, closest: list[dict], state: dict | None = None,
         faced_ids = {t for t, n in per_bot_opponent_counts().get(bot_id, {}).items() if n > 0}
     seen = sum(1 for r in closest if r["teamId"] in faced_ids)
     return seen, seen >= QUALIFY_MIN
+
+
+def per_bot_opponent_recency(half_life_s: float = arms.EVIDENCE_HALF_LIFE_S
+                             ) -> dict[str, dict[str, float]]:
+    """bot_id -> {opponent_team_id: time-decayed series count}.
+
+    The raw count says we have "played" a team; it does not say we still know
+    anything about them. Teams push new builds constantly, so a series from last
+    week is barely evidence that we have met their current bot. Decaying the count
+    on the same half-life as the Elo evidence lets an old opponent become novel
+    again, which is the honest answer to "do we still know this matchup".
+    """
+    out: dict[str, dict[str, float]] = {}
+    if not SERIES_CSV.exists():
+        return out
+    now = time.time()
+    for row in csv.DictReader(SERIES_CSV.open()):
+        when = _iso_to_epoch(row.get("fired_at")) or _iso_to_epoch(row.get("collected_at"))
+        w = 1.0 if when is None else 0.5 ** (max(0.0, now - when) / half_life_s)
+        bot = out.setdefault(row["bot_id"], {})
+        bot[row["opponent_id"]] = bot.get(row["opponent_id"], 0.0) + w
+    return out
 
 
 def per_bot_opponent_counts() -> dict[str, dict[str, int]]:
@@ -595,7 +656,8 @@ def run_round(dry_run: bool = False) -> None:
     # over thousands of games, so the live budget is spent narrowing what we do NOT
     # know -- how each build performs against the real ladder -- rather than
     # re-deciding which is best.
-    bot_id, why = arms.uncertainty_select(stats, list(by_id), team_rating)
+    bot_id, why = arms.uncertainty_select(stats, list(by_id), team_rating,
+                                          epoch=mechanics_epoch(feed))
 
     queued = take_queued(state) if not dry_run else (state.get("queue") or [{}])[0].get("bot_id")
     if queued:
@@ -660,6 +722,7 @@ def run_round(dry_run: bool = False) -> None:
         bot_id=bot_id,
         faced_ids=faced_ids,
         series_by_team=per_bot_opponent_counts().get(bot_id, {}),
+        recent_by_team=per_bot_opponent_recency().get(bot_id, {}),
         global_by_team=state.get("opponent_games", {}),
         filling_coverage=filling_coverage,
         pairing_kernel={int(k): v for k, v in

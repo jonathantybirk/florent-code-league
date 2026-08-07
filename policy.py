@@ -55,6 +55,10 @@ class Context:
     bot_id: str                     # the bot about to be tested
     faced_ids: set[str] = field(default_factory=set)          # teams this bot has met
     series_by_team: dict[str, int] = field(default_factory=dict)  # this bot's series counts
+    recent_by_team: dict[str, float] = field(default_factory=dict)
+    # ^ the same counts decayed on the evidence half-life. A team we played six times
+    #   last week is not a team we currently know anything about: they have shipped new
+    #   builds since. Novelty is scored on this, falling back to the raw count.
     global_by_team: dict[str, int] = field(default_factory=dict)  # all bots' series counts
     filling_coverage: bool = False  # the live bot is under-covered and must re-qualify
     pairing_kernel: dict[int, float] = field(default_factory=dict)
@@ -117,13 +121,16 @@ def information(ctx: Context, row: dict) -> float:
 
     3. **Novelty** -- a rematch still informs, but a first meeting also tells us
        something about matchup spread rather than just level. Decays as
-       1/sqrt(1+n) so coverage is preferred without repeats being banned.
+       1/sqrt(1+n) so coverage is preferred without repeats being banned -- and n
+       is itself time-decayed, so a team we have not met for days counts as fresh
+       ground again, because by then they are fielding a different bot.
     """
     theirs = float(row.get("rating") or 1500.0)
     p = _expected_score(ctx.strength, theirs)
     fisher = p * (1.0 - p)
     kernel = _kernel_weight(ctx, row.get("_rank") or 0)
-    played = ctx.series_by_team.get(row["teamId"], 0)
+    played = ctx.recent_by_team.get(
+        row["teamId"], float(ctx.series_by_team.get(row["teamId"], 0)))
     novelty = 1.0 / math.sqrt(1.0 + played) ** (2 * NOVELTY_DECAY)
     return fisher * kernel * novelty
 
@@ -171,7 +178,7 @@ def explain(ctx: Context, limit: int = 8) -> list[str]:
             f"{r['teamName'][:28]:<28} #{r.get('_rank', '?'):<4} "
             f"r={theirs:7.1f} p(win)={p:.2f} fisher={p * (1 - p):.3f} "
             f"kernel={_kernel_weight(ctx, r.get('_rank') or 0):.3f} "
-            f"played={ctx.series_by_team.get(r['teamId'], 0)} "
+            f"played={ctx.recent_by_team.get(r['teamId'], float(ctx.series_by_team.get(r['teamId'], 0))):.1f} "
             f"-> {information(ctx, r):.5f}"
         )
     return out
