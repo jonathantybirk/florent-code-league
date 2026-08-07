@@ -29,6 +29,7 @@ import sys
 from fcode import Controller, EntityType, GameConstants, GameError
 
 from geometry import COMPASS, RAY_LEN, can_ray_reach, core_footprint
+from placement import ray_tiles
 
 PROBE_SLOT = 15
 SENTINEL_VALUE = 0xABCD
@@ -52,6 +53,7 @@ class Player:
         try:
             if r == 2:
                 self._check_rays(ct)
+                self._check_ray_tiles(ct)
                 self._check_vision(ct)
                 self._check_reach_margin(ct)
                 ct.write_store(PROBE_SLOT, SENTINEL_VALUE)
@@ -106,6 +108,34 @@ class Player:
                     f"missing={sorted(engine - lib)} extra={sorted(lib - engine)}",
                 )
             )
+
+    def _check_ray_tiles(self, ct: Controller) -> None:
+        """placement.ray_tiles must reproduce the engine's pattern per facing.
+
+        Worth its own check because the failure mode is silent: an empty ray
+        list scores every site at zero, so turret siting degrades to "first
+        legal tile" and nothing ever errors. That is exactly what a wrong
+        Direction accessor produced before this check existed.
+        """
+        me = ct.get_position()
+        w, h = ct.get_map_width(), ct.get_map_height()
+        bad = []
+        for kind in RAY_LEN:
+            for d in COMPASS:
+                engine = {
+                    (t.x, t.y) for t in ct.get_attackable_tiles_from(me, d, kind)
+                }
+                lib = {
+                    (t.x, t.y)
+                    for t in ray_tiles(me, d, kind)
+                    if 0 <= t.x < w and 0 <= t.y < h
+                }
+                if engine != lib:
+                    bad.append(f"{kind.name}/{d.name}")
+        self.results.append(
+            _emit(not bad, "placement.ray_tiles matches engine per facing",
+                  f"mismatched: {bad}" if bad else "all 16 facing/type pairs agree")
+        )
 
     def _check_vision(self, ct: Controller) -> None:
         """Core vision must be the UNION of radius discs over the 2x2 footprint.
