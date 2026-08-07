@@ -15,18 +15,30 @@ throttle = 100
 # interpreter startup, so one-job-per-match wastes a third of its cluster time on setup and needs
 # 24 arrays instead of 2. Override per run with `hpc submit --chunk N`; --chunk 1 restores one
 # individually schedulable, individually retryable job per match.
-chunk = 20
+chunk = 10
 
-# Walltime is a HARD KILL, and it must cover a whole element: chunk x worst-case match.
-# Measured over 14,465 real matches: mean 8.8s, median 6.0s, p99 39s, max 64s (most matches run
-# the full 1000 rounds). chunk=20 is therefore ~3 min in the typical case and 21.3 min in the
-# pathological case where all 20 matches in one element are as slow as the slowest ever seen.
-# 22 covers that bound. Deliberately not padded further: a shorter request backfills into
-# scheduler gaps more easily, and queue contention -- not walltime -- is the real bottleneck.
-# Keep `chunk x 66s <= walltime x 60` if you change either.
-# If an element is killed anyway, nothing is lost permanently: its matches simply have no result
-# file, and re-running `hpc submit` picks up exactly those (finished matches are skipped by default).
-walltime = "22"
+# Walltime is a HARD KILL and must cover a whole element. It is now budgeted on the p99 of a real
+# batch, not on chunk x the slowest match ever seen -- the old rule assumed every match in an
+# element could simultaneously be the worst one, which by 2026-08-06 demanded 7 hours for chunk=20
+# and would have forced chunk=1.
+#
+# Re-measured 2026-08-06 over 7,507 real contiguous batches of 10 drawn from 75,086 matches on the
+# 33-map v3 pool, with spar_econ retired:
+#   batch of 10:  median 81s   p95 216s   p99 315s   p99.9 450s   max 502s
+# The budget is the observed MAXIMUM plus 10%: 502s x 1.1 = 553s, rounded up to 10 minutes. Zero
+# of the 7,507 measured batches exceed it. The previous constants (mean 8.8s, max 64s) were
+# measured on a bot population that no longer exists and were wrong by 19x at the tail; that is
+# what killed 108 elements in v3-newmaps-20260806 alone.
+#
+# A margin over the observed max, rather than a percentile, because the tail is what actually
+# costs: a killed element is not just its own work lost, it is a re-queue cycle, and three of
+# those exhaust MAX_RESUBMITS and stall the run for a human to sort out.
+#
+# Nothing is lost permanently when an element is killed anyway: its matches simply have no result
+# file, `hpc submit` re-queues exactly those, resubmit_abandoned_runs() does it automatically, and
+# each retry now escalates the walltime (see RESUBMIT_WALLTIME_FACTOR) so a batch that outgrew
+# this budget gets room rather than dying at the same wall three times.
+walltime = "10"
 memory = "2GB"        # per core; measured max RSS is 193 MB, so this is ample headroom.
 
 # One core, and only one. A match cannot use more: the engine runs both bots in CPython

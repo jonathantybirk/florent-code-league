@@ -328,15 +328,23 @@ def _unplayable_scheduled(run_dir: Path) -> set[str]:
 def outstanding_matches(run_dir: Path) -> set[str]:
     """Rating match ids this run scheduled but has not merged locally.
 
-    Matches involving a bot that cannot be imported are not counted. They will never produce a
-    result no matter how often they are re-run, so counting them leaves the run in flight forever
-    and defers every later bot behind it -- which is exactly what one bot missing a sibling module
-    did to the ladder.
+    Two kinds of scheduled match are not counted, for the same underlying reason: they can never
+    contribute to the published pool, so waiting on them leaves the run in flight forever and
+    defers every later bot behind it.
+
+    Matches involving a bot that cannot be imported will never produce a result however often they
+    are re-run -- one bot missing a sibling module held the ladder open that way.
+
+    Matches involving a *retired* bot would produce a result, but `pooled_matches` discards it on
+    arrival, so running them buys nothing. Retiring spar_econ@aad5f44 on 2026-08-06 left 105 of
+    its matches scheduled-but-unrun in v3-newmaps-20260806; they were also the slow matches whose
+    elements kept hitting the walltime, so the run spent all three re-submit attempts on work that
+    was destined for the bin and then stalled for hours with 10 real matches outstanding.
     """
     schedule_path = run_dir / "schedule.jsonl"
     if not schedule_path.exists():
         return set()
-    broken = _unloadable_in(run_dir)
+    ignored = _unloadable_in(run_dir) | retired_bot_ids()
     scheduled = set()
     for line in schedule_path.read_text().splitlines():
         if not line.strip():
@@ -344,7 +352,7 @@ def outstanding_matches(run_dir: Path) -> set[str]:
         entry = json.loads(line)
         if entry.get("kind") == "compliance":
             continue
-        if broken and (entry["bot_a"] in broken or entry["bot_b"] in broken):
+        if ignored and (entry["bot_a"] in ignored or entry["bot_b"] in ignored):
             continue
         scheduled.add(entry["match_id"])
     merged: set[str] = set()
@@ -408,6 +416,24 @@ def _abandoned(state: dict) -> bool:
     missing = set(re.findall(r"Job array <(\d+)> is not found", bjobs))
     idle = _idle_arrays(bjobs)
     return all(job_id in missing or idle.get(job_id, False) for job_id in job_ids)
+
+
+# Each re-submission doubles the walltime of the one before it. Capped because an unbounded
+# request stops being schedulable: the `hpc` queue holds long jobs behind short ones, so a run
+# that needs more than this is a bot problem, not a budget problem, and MAX_RESUBMITS will hand it
+# to a human with the evidence.
+RESUBMIT_WALLTIME_FACTOR = 2
+MAX_RESUBMIT_WALLTIME_MINUTES = 720
+
+
+def _escalated_walltime(settings: dict, attempt: int) -> dict:
+    """`settings` with the walltime scaled up for re-submission attempt `attempt` (1-based)."""
+    try:
+        base = int(str(settings["walltime"]).split(":")[0])
+    except (KeyError, ValueError):
+        return settings
+    scaled = min(base * RESUBMIT_WALLTIME_FACTOR ** attempt, MAX_RESUBMIT_WALLTIME_MINUTES)
+    return {**settings, "walltime": str(scaled)}
 
 
 def _resubmit_count(run_dir: Path) -> int:
@@ -486,9 +512,17 @@ def resubmit_abandoned_runs(run_names: list[str], *, dry_run: bool = False) -> l
                 f"re-submitted {attempts} time(s); leaving it for a human"
             )
             continue
+        # Give the retry more wall than the attempt that just died. The budget in hpc.toml covers
+        # the largest batch ever measured plus 10%, so an element that still busts it is by
+        # definition slower than anything in that sample -- re-queueing it under the same limit
+        # just kills it again, three times, and then stalls the run for a human. Doubling per
+        # attempt turns "we guessed the budget wrong" into a delay instead of an outage.
+        settings = _escalated_walltime(settings, attempts + 1)
+        # .get, not [...]: a recovery path must not raise on a config that is merely incomplete.
         print(
-            f"  {tid}: {cause} with {unrun} match(es) never run; "
-            f"re-submitting the gaps (attempt {attempts + 1} of {MAX_RESUBMITS})"
+            f"  {tid}: {cause} with {unrun} match(es) never run; re-submitting the gaps "
+            f"(attempt {attempts + 1} of {MAX_RESUBMITS}, "
+            f"walltime {settings.get('walltime', 'as configured')} min)"
         )
         if dry_run:
             requeued.append(tid)
