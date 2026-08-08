@@ -26,7 +26,8 @@ from __future__ import annotations
 
 from fcode import Controller, Environment, EntityType, GameConstants, GameError, Position
 
-from geometry import CARDINALS, building_at, entity_type_of, in_bounds
+from geometry import (CARDINALS, building_at, entity_type_of, enemy_core_guess,
+                      in_bounds, rear_corner)
 
 # A commitment that has not made progress in this many rounds is abandoned.
 # Short, because the cost of re-deciding is one turn and the cost of a Builder
@@ -133,10 +134,27 @@ class Situation:
         price = int(base_cost * (1.0 + self.scale / 100.0))
         return self.titanium >= price + reserve
 
-    def nearest_free_ore(self, pos: Position) -> Position | None:
+    def nearest_free_ore(self, pos: Position, rear: Position | None = None) -> Position | None:
         if not self.free_ore:
             return None
-        return min(self.free_ore, key=lambda t: pos.distance_squared(t))
+        # Rank from the Core's REAR corner, not from the Builder.
+        #
+        # Two separate wins in one key. The cost of a deposit is the conveyor
+        # route home, not the walk out -- the walk is paid once, the route is
+        # paid per tile and again in cost scale. And anchoring on the rear
+        # corner prefers deposits behind the Core, which can be worked without
+        # crossing the middle of the map.
+        #
+        # It also has to be the REAR corner specifically, not get_position():
+        # that returns the 2x2 block's top-left tile for both seats, so under
+        # the pool's 180-degree symmetry one seat reads its rear corner and the
+        # other its front corner, and the same deposit is a tile further for
+        # one of them.
+        anchor = rear if rear is not None else pos
+        return min(
+            self.free_ore,
+            key=lambda t: (anchor.distance_squared(t), pos.distance_squared(t)),
+        )
 
 
 def harvester_is_connected(ct: Controller, harvester: Position) -> bool:

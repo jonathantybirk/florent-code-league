@@ -146,3 +146,31 @@ def touches_footprint(pos: Position, footprint: list[Position]) -> bool:
         if abs(tile.x - pos.x) + abs(tile.y - pos.y) == 1:
             return True
     return False
+
+
+def enemy_core_guess(ct, footprint) -> Position:
+    """Where the enemy Core is, from map dimensions alone, at round 0.
+
+    Every map in the official pool is rotationally symmetric (`fcode maps
+    list` reports all 15 as `rotational`), so the enemy Core is ours mirrored
+    about the map centre. No scouting, no atlas, available on the first turn.
+    """
+    x = min(f.x for f in footprint)
+    y = min(f.y for f in footprint)
+    return Position(ct.get_map_width() - 1 - x, ct.get_map_height() - 1 - y)
+
+
+def rear_corner(footprint, enemy: Position) -> Position:
+    """The footprint tile farthest from the enemy Core.
+
+    Measuring anything from `get_position()` is a seat bug waiting to happen:
+    it returns the 2x2 block's top-left tile for BOTH seats, so under the
+    180-degree symmetry one seat reads its rear corner and the other its front
+    corner. The same deposit is then a tile further away for one of them, and
+    every downstream decision inherits the difference.
+
+    Anchoring on the rear corner is well defined for both seats AND is the
+    strategically better reference: it prefers ground behind the Core, which
+    can be worked without crossing the middle of the map.
+    """
+    return max(footprint, key=lambda f: f.distance_squared(enemy))
