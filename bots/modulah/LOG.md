@@ -99,6 +99,23 @@ threshold, the signal, or the money — it is that the roles are already
 allocated. Any real fix has to change the allocation earlier, and every
 attempt to do that so far has cost more economy than it saved.
 
+### Capping menders: also neutral
+
+Directly attacking the allocation problem above — capping menders at 2 so
+guards can exist under fire, on the reasoning that a mender only slows the
+loss while a turret stops it:
+
+| | shipped | MAX_MENDERS = 2 |
+|---|---|---|
+| wins | **4/45** | 4/45 |
+| collected | **983** | 968 |
+| core hp at end | **31.8** | 25.6 |
+| games survived | **5/45** | 4/45 |
+
+Same wins, slightly worse everywhere else. So the allocation is not
+mis-weighted between mending and guarding either — the Builders genuinely are
+not there to reallocate. Reverted.
+
 ### A seat-asymmetry bug in our own doctrine
 
 The same class of bug found in steward, reproduced here. `is_blitz_map` used a
