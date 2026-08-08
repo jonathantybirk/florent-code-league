@@ -4194,3 +4194,43 @@ this codebase can buy.
 lost by four titanium. Whatever `lofn` and `hlin` are worth live, that margin is
 inside their reach — which is exactly the measurement now sitting in the farm
 queue.
+
+## Iteration 77 — frigg: the priority radius is smaller than the gun
+
+Followed iteration 76's finding. `sentinel.py` already prefers Builders over the
+Core, and its comment states the reason exactly: *"shooting a Core past a mender
+is 10 ammunition a shot spent to lose slowly, and shooting the mender ends it."*
+
+It is gated on `BUILDER_PRIORITY_RADIUS_SQ = 20`. **A Sentinel reaches r²=32**,
+and the siege Sentinel is deliberately emplaced at the far end of that range
+where the Core's defenders cannot answer. So the mender on the Core sits at ~32,
+outside the radius, and the Sentinel shoots past it into the Core — the exact
+behaviour the comment calls paying to lose slowly.
+
+That is what the two untouched-Core Pivot losses look like: 2828 and 4123 damage
+into a 500-HP Core across 1000 rounds, then the tiebreak.
+
+`frigg` = `hlin` with the radius raised to 32.
+
+| vs | combined | |
+|---|---|---|
+| `hlin` (parent) | 78/156 = **0.500 ±0.078** | 0.0 sd |
+| `lofn` | 82/156 = 0.526 | +0.6 sd |
+| `vili` | 33/51 = 0.647 | +2.2 sd |
+| `spar_mender` | 124/153 = 0.810 | `hlin` scores 0.816 |
+
+**Exactly level, and the panel cannot say otherwise.** Siege Sentinels are built
+about **0.2 times a game** internally, so a rule governing what they shoot almost
+never runs. Committed unqueued, like `bil`.
+
+**That is now two builds in the same category** — mechanisms whose live
+magnitude is measured and whose local magnitude is structurally zero:
+
+| | live magnitude | local measurement |
+|---|---|---|
+| `bil` | we build 22.7 Gunners, Pivot 11.6 | 3.3 Gunners a game, level |
+| `frigg` | 2828 damage past a mender, 0 kills | 0.2 siege Sentinels a game, level |
+
+Both are one-constant changes with replay evidence and no local downside. Both
+are waiting on the same thing: `lofn` and `hlin` reaching the front of the farm
+queue so there is a live baseline to compare them against.
