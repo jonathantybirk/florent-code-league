@@ -1974,3 +1974,40 @@ growing it.
 Queued five rounds, per the standing instruction to ship anything that beats the
 current best. Recorded honestly: 0.548 is 0.6 sd, and the last build that beat
 its parent by exactly that margin locally finished below it live.
+
+---
+
+## Iteration 28 — correcting iteration 26: the profile was measuring nothing
+
+Iteration 26 concluded that our miners "spend their lives re-laying belt the
+opponent keeps cutting", from a profile showing `_repair_network` on 299 of 300
+rounds. **That conclusion is wrong.**
+
+Instrumenting the *outcome* rather than the entry:
+
+```
+REP r=75 id=5  {'calls': 74, 'nobroken': 74, 'built': 0}
+REP r=75 id=13 {'calls': 25, 'nobroken': 25, 'built': 0}
+```
+
+`_repair_network` finds no broken tiles on **every single call** and returns
+`False` immediately. It never repairs anything and never consumes a turn. The
+counter in iteration 26 was placed at function entry, so it counted calls
+including instant no-op returns — which is also why `_escape_encirclement` and
+`_leave_the_firing_line` each showed ~30%. Those are guards. The whole profile
+was a list of *how often each guard is consulted*, not where Builder time goes.
+
+The lesson is the same one this log has hit repeatedly, one level deeper:
+**instrumenting a call site tells you nothing unless you instrument the
+outcome.** Counting entries measured the dispatch order. What was needed was
+counting the branch that returns True, or the engine actions actually issued.
+
+Two things follow.
+
+- The `nanna` result now makes sense in a way it did not: dropping
+  `REPAIR_ATTEMPT_LIMIT` 3 → 1 changed nothing because the repair path was never
+  running in the first place. It measured 0.500 for a reason.
+- Where Builder turns actually go is **open again**. The 2.3-Harvester ceiling
+  still stands, nine interventions have failed to move it, and I no longer have
+  a diagnosis of what consumes the turns — only the arithmetic that a deposit
+  costs about a hundred rounds and the median game is ~240.
