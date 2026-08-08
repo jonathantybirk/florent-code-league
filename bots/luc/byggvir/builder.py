@@ -98,6 +98,8 @@ from constants import (BELT_SCORE_CANDIDATES, BELT_TILE_WEIGHT,
     SEAT_B_SKIPS_DUEL,
     SEAT_B_TURRET_STEP,
     PLUG_CUT_IMMEDIATELY,
+    PROACTIVE_GUARD_ROUND,
+    PROACTIVE_HOME_GUNNER,
     PLUG_CUT_LEASH,
     LATE_BUILDERS_MINE,
     HOME_TURRET_MAX,
@@ -352,6 +354,19 @@ def _run(p, ct):
     # next conveyor from. Spending 18 HP a round for a choice that was free is
     # the single most common way this bot loses Builders.
     if _leave_the_firing_line(p, ct):
+        return
+    # byggvir: the boom's missing half. Jython and Pivot stand their first
+    # home Gunners at rounds 14-19 with no damage taken — reactive defence
+    # cannot answer a 47-turn rush kill (measured: 0.311 on the live pool,
+    # 0-6 on eight maps, before this). One Gunner on the enemy-facing
+    # approach, seeded by miner 0 once the opening stands; the alarm-driven
+    # escalation machinery takes over from there.
+    if (PROACTIVE_HOME_GUNNER and p.builder_index == 0
+            and not p.is_attacker and p.economy_builders >= 2
+            and ct.get_current_round() >= PROACTIVE_GUARD_ROUND
+            and p.home_gunners_built == 0
+            and ct.get_global_ammo() >= MIN_AMMO_FOR_GUNNER
+            and _place_proactive_gunner(p, ct)):
         return
     alarm = ct.read_store(SLOT_CORE_DAMAGED) & CORE_ALARM_MASK
     # A light alarm must not pin the only miner before it has connected a
@@ -3120,6 +3135,49 @@ def _core_seal_targets(p, enemy_core):
     # they are actually coming from.
     return [Position(*spot) for spot in
             sorted(shell, key=lambda s: (_distance_sq(s, enemy_core), s))]
+
+
+def _place_proactive_gunner(p, ct):
+    """One Gunner on the enemy approach before anything has fired at us."""
+    enemy, _ = unpack_enemy(ct.read_store(SLOT_ENEMY_CORE))
+    if enemy is None or p.core is None:
+        return False
+    if ct.get_global_resources() < ct.get_gunner_cost() + 20:
+        return False
+    sdx = (enemy[0] > p.core[0]) - (enemy[0] < p.core[0])
+    sdy = (enemy[1] > p.core[1]) - (enemy[1] < p.core[1])
+    by_delta = {d.delta(): d for d in D8}
+    facing = by_delta.get((sdx, sdy))
+    if facing is None:
+        return False
+    me = tuple(ct.get_position())
+    choices = []
+    for dx in range(-3, 4):
+        for dy in range(-3, 4):
+            spot = (p.core[0] + dx, p.core[1] + dy)
+            if (not _inside(p, spot) or spot in p.walls or spot in p.solids
+                    or spot in p.ores or spot in p.foot
+                    or spot in p.conveyors or spot in p.bot_occupied):
+                continue
+            toward = dx * sdx + dy * sdy
+            if toward <= 0:
+                continue
+            choices.append((-toward, _cardinal_distance(me, spot), spot))
+    for _, dist, spot in sorted(choices):
+        if _cardinal_distance(me, spot) != 1:
+            if dist <= 5 and _step(p, ct, Position(*spot), True):
+                return True
+            continue
+        if ct.can_build_gunner(Position(*spot), facing):
+            ct.build_gunner(Position(*spot), facing)
+            _mark_progress(p, ct, "proactive home gunner", spot)
+            p.solids.add(spot)
+            p.home_gunners_built += 1
+            print(f"GUARD round={ct.get_current_round()} spot={spot}",
+                  file=sys.stderr, flush=True)
+            return True
+        return False
+    return False
 
 
 def _run_core_seal(p, ct):
