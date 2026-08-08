@@ -5112,3 +5112,40 @@ they should not have.
 One clear gain (`lofn`), three plausible (`bifrost`, `hoenir`, `vili` — but
 measured only on the tuning pool, where iteration 61 showed differences do not
 generalise), and everything after that inside its error bar.
+
+## Iteration 100 — the most precise number of the session, and it kept shrinking
+
+Followed iteration 99's lesson: generated **84 fresh maps** (`maps/offpool3/`,
+seed 777001) and re-ran the only comparison with a signal.
+
+| `lofn` vs `vili` | cells | |
+|---|---|---|
+| previous maps | 111/198 | 0.561 ±0.069 |
+| **84 fresh maps** | 89/168 | **0.530 ±0.075** |
+| **all 168 maps** | **200/366** | **0.546 ±0.051 (+1.8 sd)** |
+
+| `lofn` vs `hlin` | cells | |
+|---|---|---|
+| all | 164/324 | **0.506 ±0.054** |
+
+**The estimate has fallen every time I added maps: 0.577 → 0.561 → 0.546.**
+That is what an optimistic first measurement looks like as coverage grows, and
+it is the third time tonight a headline number has shrunk under scrutiny. The
+interval is now [0.495, 0.597] — it still touches even.
+
+**Final, defensible statement of the session's one real gain:** `lofn` beats
+`vili` by about **4.6 points ± 5.1**, over 366 distinct map/seat cells on 168
+maps across five sets. Probably real, small, and not distinguishable from
+`hlin`, which is level with it at 0.506.
+
+That is the honest size of a night's work on the bot itself: one change — a
+second opening miner, made possible by raising a two-slot cap — worth a few
+points against the build it started from, which was itself level with the live
+flagship.
+
+Everything else of value tonight was **diagnostic** rather than an improvement:
+the replay-decoding workflow and the composition table for ranks 1 and 7; the
+proof that on-pool rankings do not generalise; the 104-turn median that makes
+economy nearly worthless internally; the three plumbing defects in the farm
+(no margin, unstable estimates, a build it cannot see); and every exit from
+`_pick` instrumented so the next person does not re-derive it.
