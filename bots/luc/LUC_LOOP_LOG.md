@@ -2770,3 +2770,55 @@ extra body is +20% on every later price, and this chassis converts titanium into
 value too slowly to carry that tax. sporks can carry thirteen Builders because
 its economy is large; ours cannot get large because every attempt to grow it
 costs more scale than it returns.
+
+---
+
+## Iteration 47 — `hoenir`: the opening is a race against your own multiplier
+
+I had been assuming every price scales without checking which. Logging
+`get_scale_percent` against every cost:
+
+```
+r0    scale=100  builder=30  harvester=20  conveyor=3  gunner=20  sentinel=30
+r30   scale=243  builder=72  harvester=48  conveyor=7  gunner=48  sentinel=72
+r180  scale=245  unchanged for the rest of the game
+```
+
+Everything scales, and **ours reaches 243 by round 30** and never comes back
+down. A Harvester costs 20 Ti in the opening and **48 from round 30 onward**.
+Each turret is +20 of that multiplier, permanently, on every Harvester and
+conveyor bought afterwards.
+
+That reframes the whole economy ceiling. The opening is a race between buying
+economy at 20 and taxing it to 48 — and this bot buys about **five turrets
+early and two Harvesters all game**, while sporks buys one Gunner after round
+100 and a Harvester every nine rounds. Nine interventions tried to buy *more*
+economy; none tried to stop pricing it out.
+
+`_turret_tax_is_affordable` holds the discretionary turret budget until
+`TURRET_HOLD_ROUNDS = 60` or two connected Harvesters, whichever comes first,
+with an exception for a Core already under fire — damage needs the answer now
+whatever it costs later.
+
+| hoenir vs | | | turrets |
+|---|---|---|---|
+| `mimir` | 30/42 | **0.714** | 3.60 |
+| `spar_sniper` | 30/42 | **0.714** | 3.69 |
+| `steward_hardened_reinforced` | 28/42 | **0.667** | 3.62 |
+| `bifrost` (parent) | 23/42 | **0.548** | 3.38 |
+| `snotra_h` | 22/42 | 0.524 | 5.50 |
+| **mean** | 133/210 | **0.633**, floor **0.524** | |
+
+Best mean and best floor of the session. Turrets fall 5.5 → 3.4–3.7, so the
+mechanism fires.
+
+**Harvesters do not rise** (1.38–1.90), and that is worth being exact about: the
+gain is from *not paying the multiplier*, not from a larger economy. The 2.3
+ceiling stands; what changed is how much everything else costs while we sit at
+it.
+
+CPU 2,830 us, zero over. Deterministic. **Queued six rounds.**
+
+Two builds now in the queue that are both mechanism-level rather than tuning:
+`bifrost` (a message slot never cleared, disabling the ferry) and `hoenir` (the
+cost multiplier bought before the thing it taxes).
