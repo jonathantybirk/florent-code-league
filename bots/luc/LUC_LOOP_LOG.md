@@ -2652,3 +2652,40 @@ The distinguishing question before building is not "does this fire" but "what
 would change if it did", and for the guard's circuit the answer turned out to be
 nothing: the Core already sees r^2=36, and the extra sight the circuit buys is
 sight of ground nothing is coming from.
+
+---
+
+## Iteration 44 — auditing for a second `bifrost`, and finding none
+
+The ferry bug had a shape: a *message* slot written by one unit, read by
+another, and never cleared, so a stale value answered every later read. Worth
+asking whether anything else in the bot has it.
+
+**Store slots.** Every slot but one is a state broadcast rewritten each round —
+`SLOT_CORE_DAMAGED`, `SLOT_OWN_CORE`, `SLOT_ENEMY_CORE`,
+`SLOT_BUILDER_HEARTBEAT`, `SLOT_SYMMETRY_REJECT_START`. "Never zeroed" is
+correct for those; the next write is the clear. `SLOT_CONSTRUCTION_LOCK` and
+`CLAIM_SLOTS` are both explicitly released. The only request/reply pair, where a
+stale value means something, was `LAUNCH_REQUEST_SLOTS` — the one already fixed.
+
+**Sticky flags.** `launch_blocked`, `awaiting_launch`, `lock_required` and
+`launch_origin` are never set true anywhere and are cleared in several places;
+`stall_reported` is set once and cleared twice; `hunt_announced` is set once and
+never cleared but only guards a debug print.
+
+So there is no second defect of that shape. Recorded because a clean audit is
+worth as much as a finding here — it says the remaining gap is not more silent
+breakage of the kind that produced the session's one real gain.
+
+**The rest of the dormant list is now classified without building anything.**
+`_engage_with_turret` is dormant because `max_field_gunners` is **0 under
+RUSH** by doctrine, with the reasoning written out: answering a roaming enemy
+with a building trades a Builder's turn and a permanent +10% for a turret the
+enemy walks around. `_deny_enemy_ore`, `_tap_enemy_harvester` and `_harass` are
+the same wrong-unit design as `_contest_enemy_logistics`, which `loki` priced at
+−20 points. `_repair_network` and `_write_off` are dormant because nothing is
+broken and nobody is stuck — they are alarms that correctly never ring.
+
+That leaves the dormant set fully accounted for: one defect (fixed, +6 points),
+one design (priced, costly to change), one immaterial (`_patrol_core`), and the
+remainder either doctrine or alarms.
