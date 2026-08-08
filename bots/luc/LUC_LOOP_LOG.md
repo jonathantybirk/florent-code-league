@@ -6271,3 +6271,40 @@ checked which of the two tracked the ladder. When I finally did — here, and wi
 Nothing to ship from this. What it changes is which number to believe when
 `lofn` and `mani` report: their on-pool figures, which I have been treating as
 contaminated, may be the better predictor.
+
+## Iteration 130 — on the pool that tracks the ladder, all six builds beat what is live
+
+Iteration 129 found the official 21 maps predicted the live ordering of
+`vili`/`bifrost`/`hoenir` while my generated maps inverted it. If that holds, the
+official pool is the measurement to use — and nothing had been measured against
+`vidarr@bbfaa9c`, which the churn promoted an hour ago.
+
+Official 21 maps, both seats, 42 games a cell:
+
+| build | vs the current live flagship | |
+|---|---|---|
+| **`hlin`** | **0.690 ±0.140** | **+2.7 sd** |
+| `mani` | 0.643 ±0.145 | +1.9 sd |
+| `lofn` | 0.643 ±0.145 | +1.9 sd |
+| `gefn` | 0.619 ±0.147 | +1.6 sd |
+| `vili` | 0.619 ±0.147 | +1.6 sd |
+| `syn` | 0.595 ±0.148 | +1.3 sd |
+
+**Every build we made tonight beats the bot currently on the ladder**, on the
+pool that has twice now agreed with live results. `hlin` leads at +2.7 sd.
+
+**Caveats, because this is the same shape of claim I have had to retract five
+times today.** 42 games a cell is ±14 points — the sample that produced 0.540 and
+0.486 for the same pairing in iterations 101 and 110. `vidarr` is itself a
+noise promotion (0.487 in the pool screen), so beating it is a low bar and says
+more about the churn than about our builds. And iteration 129's evidence that
+the official pool predicts live is one ordering agreement on three builds at 1.2
+sd — thin.
+
+**What is not weak** is that `hlin` and `lofn` are already queued, `mani` behind
+them, and this is the first measurement all session where the ordering, the
+sample and the target all point the same way: the builds queued for live testing
+are the ones that beat what is live, on the pool that has matched live twice.
+
+No new build this iteration — measuring against the actual current flagship was
+the missing piece, and it turns out nobody had done it.
