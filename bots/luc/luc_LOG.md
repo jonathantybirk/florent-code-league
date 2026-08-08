@@ -636,3 +636,17 @@ from round 4) is a separate unaddressed failure mode.
   progress; the live-map instrument (`maps/lv_*`, `tools/extract_maps.py`) is the day's
   most durable artifact, alongside eleven diagnosed-and-fixed mechanisms and both
   agents' converged meta picture.
+
+## Iteration 37 — 2026-08-08 ~21:45 — the Pivot study reframes byggvir
+
+- **Pivot loses 0–5 to Pantheon and 1–4 to sporks yet holds rank 7** — they farm the
+  mid-mass and eat the top-3 losses. Decoded the Pantheon sweep: no hyper-rush — first
+  Core hit at rounds 89–481, victory by sustained grind (2555–4626 damage through
+  Pivot's menders) while blanking Pivot's offense (35–371). The top plays
+  attrition-with-teeth. (Also: Pivot spawned 38 Builders in one game — the
+  replacement-churn pathology is universal, not ours.)
+- **Second instrument bias named**: our internal panel is all rushers, which the live
+  field mostly is not. byggvir's 0.311 vs our own line may coexist with a fine live
+  rating. Queued `byggvir@bf22593:5` — the ladder is the only honest price. (Other
+  agent's hlin/nanna tests ahead in the queue.)
+- Team recovering: rank 16 at 1705.
