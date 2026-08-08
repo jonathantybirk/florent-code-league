@@ -5357,3 +5357,47 @@ begin to be worth a decision.
 Standing recommendation, revised: **`lofn` is the one to watch live** (level
 locally at 2,294 cells, mechanism confirmed), and `nanna` behind it is now
 measured slightly negative rather than level.
+
+## Iteration 106 — the done-mask, at high precision, is worth exactly nothing
+
+`syn` eliminates **every** wasted mining arrival — the instrumented close
+reasons go from 6 built / 13 wasted to 8 built / **0** wasted — and raises
+Harvesters. It measured 0.500 ±0.078 on 156 cells, which I recorded as "level".
+
+On 1,000 maps:
+
+    syn vs lofn: 928/1850 = 0.5016 +-0.0228  (+0.1 sd)
+    harvesters:  syn 2.55, lofn 2.44
+
+**Dead level, at three times the precision.** Not "probably level" — 0.5016 with
+an interval of ±2.3 points.
+
+**The three high-precision results together settle the session:**
+
+| comparison | cells | result |
+|---|---|---|
+| `lofn` vs the live flagship | 2,294 | **0.4952 ±0.0205** |
+| `nanna` (turret ceiling) vs `hlin` | 2,000 | **0.4870 ±0.0219** |
+| `syn` (done-mask) vs `lofn` | 1,850 | **0.5016 ±0.0228** |
+
+**Nothing built tonight improves on what is already live**, and two of the three
+best-motivated mechanisms are measured at or slightly below zero with intervals
+tight enough to mean it.
+
+**And the pattern is now unambiguous.** Every mechanism I fixed does exactly what
+it claims:
+
+- `bifrost`: a ferry reply never cleared, so the opening bailed forever — fixed,
+  instrumented, `request 1 → 6`.
+- `freyja`/`hlin`/`gefn`: claim slots that capped, leaked and never expired —
+  `no_free_slot` 228 → 5, then immortal claims made impossible.
+- `syn`: Builders walking to deposits already worked — 13 wasted arrivals → 0.
+
+Every one is a real defect, really fixed, verified by instrumentation rather
+than by win rate. **And the sum of all of them, measured properly, is zero.**
+
+That is the honest end of the local work. The bot is not limited by the things
+I found and fixed; it is limited by something none of my instrumentation
+reached, and the composition gap to the ladder's top (2.7 Harvesters against
+9.9, 22.8 turrets against 8.5, 24 conveyors against 75) says that something is
+large.
