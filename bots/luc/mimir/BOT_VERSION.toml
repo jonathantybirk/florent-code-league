@@ -1,0 +1,5 @@
+source_commit = "0c51bc1dd"
+source_path = "bots/luc/njord"
+engine = "2.3.6"
+status = "development"
+variant = "njord plus the midpoint ore prior: a miner that knows of no ore walks the line between the Cores instead of grid-sweeping"
