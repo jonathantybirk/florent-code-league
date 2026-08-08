@@ -1769,3 +1769,66 @@ these looked load-bearing in the source and several had measurement notes
 attached. The cheap check — instrument the path and count how often it fires,
 before building anything — has caught all six, and would have saved most of the
 day if applied first rather than after the panel came back flat.
+
+---
+
+## Iteration 24 — copy the rank-1 bot, not the ones beating us
+
+Lucas: take the top three as the model, and separately, a strategy sketch —
+build economy fast, cut enemy belt and barrier the gap, wall in their base, and
+snipe through a deliberate hole with a Sentinel aimed at the hole rather than
+the Core.
+
+Two things about that, both from evidence rather than opinion.
+
+**The cut-and-barrier half already exists.** `_cut_enemy_belt` breaks the enemy
+conveyor nearest their Core and remembers the hole so it can drop our own
+barrier into it the round after — "cutting alone is rented damage … dropping our
+own barrier into the hole is what makes the cut stick".
+
+**The walling half is not what the top bot does.** Decoding `sporks` (rank 1,
+2115) sweeping `not adgato` 5-0:
+
+| game | Sentinels | Gunners | harvesters | conveyors | barriers | their Core end |
+|---|---|---|---|---|---|---|
+| 1 | 1 @**r7** | 1 @r219 | 7 | 68 | **0** | 499 |
+| 2 | 4 @**r36** | 1 @r310 | **25** | **100** | **0** | 500 |
+| 3 | 4 @**r10** | 1 @r101 | 3 | 23 | **0** | 499 |
+| 4 | 3 @**r17** | 1 @r118 | 9 | 55 | **0** | 500 |
+| 5 | 4 @**r6** | 2 @r128 | 13 | 85 | **0** | 500 |
+
+Early Sentinels, almost no Gunners, an enormous economy, **zero barriers and
+zero Launchers in every game**. Their Core finishes at 499-500 every time.
+
+That also **corrects iteration 14 of this log**: "belts are a tax" is wrong. The
+rank-1 bot lays 68-100 conveyors. Belt serving a large economy is right; belt
+serving *two* harvesters was the actual problem, which is why the fix that
+worked was the deposit *ordering* and not the belt price.
+
+### `bots/luc/spork`
+
+Four dials toward that shape: a second miner added rather than reallocated,
+`MIN_AMMO_FOR_SENTINEL` 40 → 12 so one can be seated in the round-6-to-36 window,
+`ECON_MAX_TOTAL_BUILDERS` 6 → 10 from round 120, `NETWORK_CAP_LATE` 8 → 12.
+
+| | snotra_h | **spork** | sporks |
+|---|---|---|---|
+| Sentinels/game | 0.02–0.05 | **0.21–0.55** | 1–4 |
+| harvesters | 1.8 | **2.3** | 3–25 |
+| conveyors | 11 | **17** | 23–100 |
+
+| spork vs | | |
+|---|---|---|
+| `snotra_h` | 22/42 | **0.524** |
+| `spar_sniper` | 23/42 | 0.548 |
+| `mimir` | 24/42 | 0.571 |
+| `steward_hardened_reinforced` | 24/42 | 0.571 |
+| `vidar` | 25/42 | 0.595 |
+| **mean** | 118/210 | 0.562, floor 0.524 |
+
+0.6 sd over its parent is weak, and it is the first build in six to beat it at
+all — and unlike `heid` the mechanism is no longer inert. Still an order of
+magnitude short of sporks on economy, which is the next thing to close.
+
+CPU 2,827 us worst, zero over, better than its parent. Deterministic.
+**Queued five rounds.**
