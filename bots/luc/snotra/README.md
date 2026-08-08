@@ -1,3 +1,23 @@
+# Snotra — rank deposits by the distance you actually walk
+
+> **Corrected after shipping.** This bot was built on the theory that belts are
+> expensive and the win came from valuing them. A weight sweep says otherwise:
+> weights 0, 2, 3, 5 and 8 all score **exactly 26/42 against mimir**. The belt
+> weight does what it says — conveyors fall from 12.00 at weight 0 to 11.00 at
+> weight 3 — but it is not what wins the games.
+>
+> What wins is the *other* half of the change. The original sorted candidates by
+> **Chebyshev straight-line distance** and broke on the first that routed, while
+> `travel` is the real pathfinding distance computed a line later. So it took
+> the deposit that merely looked nearest rather than the one that was nearest to
+> reach — around a wall, those are different deposits. Evaluating four and
+> taking the true minimum is the fix; pricing the belt is a bonus that saves
+> about one conveyor a game.
+>
+> The shipped build keeps weight 3, since cutting a conveyor is free at equal
+> win rate. The sections below are the original reasoning, kept because the
+> measurements in them stand even though the explanation did not.
+
 # Snotra — choose a deposit by what it costs to deliver
 
 `mimir@62df0ec` with one change in `_pick`: deposits are priced by the belt they

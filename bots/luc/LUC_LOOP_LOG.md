@@ -1377,3 +1377,76 @@ Deleted rather than spending a second live slot on a near-duplicate.
 Rank 15 of 111 at 1720, against 15 of 109 at 1748 when this session began. The
 session's rating movement has been dominated by the flagship churn in iteration
 8, not by anything built here.
+
+---
+
+## Iteration 16 — shipping, and correcting snotra's own explanation
+
+### Live
+
+`snotra@34b0ce8`: 10 matches, 45 games, elo 1717, two rounds still queued. Read
+model-free on shared opponents it is **0.51 against mimir's 0.52** — level, not
+better. The local 0.606 has not transferred so far. Team rank 13 of 111 at 1735.
+
+### Why our Core dies — the clearest curve yet
+
+From the Flotte v38 sweep, our Core takes **no damage at all** until round
+70–117 and then dies in 34–75 rounds at a steady rate:
+
+| map | first damage | rate | their Core at end |
+|---|---|---|---|
+| archipelago | r86 | **13.4/round** | 372 |
+| atoll | r113 | **14.3/round** | 497 |
+| hive | r70 | **11.6/round** | 500 |
+| nordkap | r117 | **15.5/round** | 499 |
+| saga | r113 | **14.6/round** | 498 |
+
+Two menders restore 8 a round, so we bleed 4–7 and 500 HP is gone in about
+eighty rounds. Theirs sits at 497–500 and heals back whatever we scratch off.
+
+### `vor` — the all-hands mend, correctly triggered, still worse
+
+Four menders restore 16 and the arithmetic flips, so I rebuilt iteration 11's
+idea with the trigger fixed: a **rate** (≥6 HP/round over 20 rounds) rather than
+"any HP loss", which is what made the first attempt fire constantly.
+
+| vor vs | | |
+|---|---|---|
+| `snotra` | 19/42 | **0.452** |
+| `hodr` | 23/42 | 0.548 |
+| `spar_sniper` | 23/42 | 0.548 |
+| `mimir` | 24/42 | 0.571 |
+| `vidar` | 28/42 | 0.667 |
+
+It beats mimir but **loses to its own parent**. The all-hands mend has now
+failed twice with two different triggers, which is enough: recalling the
+attacker costs more than the mending saves, even when the trigger is right.
+Deleted, and not queued — it would spend live budget on a strictly worse sibling
+of something already on the ladder.
+
+### snotra's explanation was wrong, and the measurement says so
+
+Swept `BELT_TILE_WEIGHT` at 2, 5 and 8 against the shipped 3:
+
+| build | vs mimir | conveyors |
+|---|---|---|
+| snotra (weight 3) | 26/42 | 11.00 |
+| weight 2 | 26/42 | 11.10 |
+| weight 5 | 26/42 | 11.00 |
+| weight 8 | 26/42 | 10.98 |
+| **weight 0** | **26/42** | 12.00 |
+
+Identical at every weight including **zero**. So the win is not from valuing
+belts. The belt weight does exactly what it claims — conveyors 12.00 → 11.00 —
+and does not move a single game.
+
+What wins is the other half of the change I had not noticed I was making. The
+original sorted candidates by **Chebyshev straight-line distance** and broke on
+the first that routed, while `travel`, computed a line later, is the real
+pathfinding distance. It took the deposit that *looked* nearest, not the one
+that was nearest to reach; around a wall those are different deposits.
+Evaluating four and taking the true minimum is the fix.
+
+The shipped build is unchanged — weight 3 saves a conveyor for free — but the
+README now leads with the corrected explanation rather than the one I shipped it
+under.
