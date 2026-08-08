@@ -47,13 +47,43 @@ Each produced plausible behaviour and none was visible in a win rate.
 6. **Ammo never converted**, so turrets were decoration.
 7. **Exploration was "first legal cardinal"** — walk north into a wall, vibrate.
 
-## Measured and rejected
+## Measured and rejected — the full record
 
-- **Counter-battery by walking** — find a Sentinel seat near an enemy turret,
-  walk a Builder to it. Lost on every axis (wins 6→5, collected 2121→1856,
-  cores killed 233→never). The walk crosses the ground the siege covers.
-- **`1/(1+d)` seat weighting** — replaced by betweenness. It cannot tell a
-  corridor from a plaza, which is the whole question.
+All on the 15-map official pool, both seats, vs steward/vidar/odin. The
+harness is deterministic (a repeat run reproduced 823.33 collected exactly),
+so these are real differences, not noise.
+
+| change | collected | hp end | survived | wins |
+|---|---|---|---|---|
+| **baseline (shipped)** | **823** | **47** | **7/45** | **0** |
+| walking counter-battery | 1856* | — | — | 5* |
+| Sentinels in standing ring | — | — | — | worse on every map |
+| BFS navigation | 387 | 8 | 3/45 | 0 |
+| BFS + bearing fallback | 472 | 19 | 4/45 | 0 |
+| home-seat counter-battery | 375 | 12 | 2/45 | 0 |
+| aggressive economic scale | 246 | 3 | 1/45 | 0 |
+| ore chosen by chain cost | 777 | 15 | 4/45 | **1** |
+
+\* measured on the old 6-map panel before it was found to be unrepresentative.
+
+**The pattern.** Six of seven measured worse. Every change that diverts a
+Builder from mining — to counter-battery, to a distant seat, to a longer walk
+— costs more economy than the threat it answers costs us. At this unit count
+Builders are too scarce to spend on reacting, and out-mining plus mending
+beats fighting back badly.
+
+The one that produced a win (ore chosen by distance-to-Core, so chains are
+short) also cut survival 7→4 and core hp 47→15. Reverted: one lucky matchup
+against a bot closer to death everywhere else. It is the most promising
+direction to retry once chains are laid reliably.
+
+**The diagnosis that actually held up.** Replay attribution across four
+losses: enemy GUNNERS deal 94-100% of all damage to our Core (archipelago
+882/938, drumlin 490/504, nordkap 539/546, heart 504/504). Reach 3, so they
+are planted inside our own back yard. And raising Harvester count pushed
+harvesters@100 3.31 -> 4.13 while collected FELL 823 -> 246 — more Harvesters,
+less titanium, because they are stranded. **Chain completion, not harvester
+count, is the binding constraint.**
 
 ## Next, in priority order
 
