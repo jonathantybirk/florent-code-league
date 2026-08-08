@@ -77,6 +77,7 @@ repeat run reproduced 823.33 collected to the decimal).
 | planned route, de-looped walk | **27** | 1/45 | 0 |
 | supply line grown outward | 341 | 2/45 | 1 |
 | deposits capped to 4 tiles | 660 | 4/45 | 0 |
+| chains join nearest friendly sink | 307 | 4/45 | 1 |
 | scouts round-robin sightings | 660 | 5/45 | 0 |
 | scouts, idle Builders only | 691 | 4/45 | 0 |
 | walking counter-battery | — | — | worse |
@@ -158,6 +159,25 @@ faults by construction. It collected 341: the first Harvester slipped round 4
 to 8 and the team finished on 1.6 Harvesters against 4.5, because nothing
 mines until the line is done. Strictly safer, strictly slower.
 
+### What the top of the ladder actually does
+
+Replays of sporks (#1, 2117) vs Pantheon (#2, 2025), per game:
+
+| | conveyors | harvesters | first conveyor | first turret |
+|---|---|---|---|---|
+| sporks | **97** / 41 / 38 | **17** / 7 / 4 | round **1**–6 | sentinel @5–19 |
+| Pantheon | 22 / 13 / 8 | 2–3 | round 5–10 | gunner @36 |
+| **aegis** | **11** | 4.5 | ~8 | gunner @**72** |
+
+**Infrastructure volume is the meta.** The #1 team lays 97 conveyors in a game
+where we lay 11, starts laying on round 1, and has a Sentinel up by round 5.
+Their games end on a Core kill at rounds 117–346, so this is not a
+turtle-and-tiebreak strategy — the economy funds a kill.
+
+This reframes everything below. aegis out-collects *steward* but steward is
+not the standard; the ladder leaders build an order of magnitude more
+logistics than either of us.
+
 ### CORRECTION: the chains are not crooked, they barely exist
 
 An earlier version of this file blamed wasteful, wandering chains. **A replay
@@ -184,9 +204,25 @@ wrong.
 Capping deposits to a route we finish was tried at both 8 tiles (neutral, 821)
 and 4 tiles (worse, 660 — near ore runs out and Builders idle). So refusing
 distant deposits is not the answer either. **The Builder needs to keep laying
-until the route is done rather than being pulled off it**, and finding what
-pulls it off is a debugging job on `_lay` and the Commitment lifecycle, not
-another policy knob.
+until the route is done rather than being pulled off it.** Traced on drumlin:
+only the FIRST chain a Builder lays ever gets built. After that it walks home
+over its own existing conveyors, `can_build_conveyor` fails on every occupied
+tile, and it arrives having built nothing — stranding every Harvester after
+the first.
+
+Routing to the nearest friendly conveyor instead of to the Core fixed that in
+isolation (drumlin vs starter: 0 → 9,510 mined) and still lost on the pool at
+307, with the highest infrastructure yet (14.7 conveyors, 5.3 Harvesters,
+harvesters@300 3.98). The reason is the next layer down: any friendly conveyor
+counts as a sink, so Builders join each other's *unconnected* chains and build
+a web that never reaches the Core.
+
+**The missing primitive is connectivity.** A Builder cannot tell a delivering
+conveyor from a stranded one — but the Core can, because `econ.py` already
+walks the network backward from the footprint every round. Publishing "is this
+tile connected" (or simply the set of connected chain-ends) is the piece that
+makes all of the above work, and it is exactly the kind of thing the comms
+layer exists for.
 
 ### The gap, measured
 
