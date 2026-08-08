@@ -4884,3 +4884,35 @@ mechanism is nil, not merely absent for lack of trying.
 **Both remaining lines are now closed the same way.** Economy: every `_pick`
 exit instrumented, none of them is the cap. Turrets: every regime split, none
 of them shows the ceiling helping. What is left is the ladder.
+
+## Iteration 94 — the live estimates move 67 Elo with no new games
+
+Checked the farm rather than building anything. Three things:
+
+**1. `b61aaac`'s estimate moved 1776 → 1709 raw (1758 shrunk), on the same 300
+games.** No new matches; the feed simply recomputed as its opponents' ratings
+drifted. Sixty-seven Elo of movement from nothing.
+
+That is the third and strongest version of tonight's recurring lesson. In
+iteration 88 I read 1776 and called it our best build; in 89 I corrected the
+margin to under half a standard error; now the number itself has moved further
+than the margin I was arguing about. **The live per-build estimates are not
+stable enough to rank builds by at all**, and the farm promotes on differences
+between them five times an hour.
+
+**2. The flagship has churned again** — v33 → v35 (`366cd1b`) since iteration
+88. Still a steward variant, still swapping on noise.
+
+**3. Another agent is queueing builds.** `byggvir@bf22593` is in the runtime
+queue and is not mine. `CLAUDE.local.md` says to expect exactly this and leave
+it alone, so I have.
+
+**Queue position:** `vidarr` (3), `aegis` (2), then **`bifrost` (6)** — my first
+build of the session is about five rounds out, roughly an hour. Behind it:
+`hoenir`, `vili`, `freyja`, `lofn`, `hlin`, `nanna`, then `b61aaac` and
+`byggvir`.
+
+Nothing to build this iteration. The instrumentation is exhausted on both lines,
+and the one new fact — that the estimates I would use to judge a live result
+move 67 Elo on their own — argues for waiting until several of tonight's builds
+have played, rather than reading the first number that appears.
