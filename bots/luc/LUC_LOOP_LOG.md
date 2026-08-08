@@ -2392,3 +2392,42 @@ peak with both directions falling away. Deleted.
 That is fourteen refutations. It also means the three builds I have queued are
 built on a base the live field is currently scoring below the incumbent, which
 I would not have known from the local panel.
+
+---
+
+## Iteration 38 — a seat asymmetry that is real and not a lever
+
+Measuring seat win rates across fifteen builds and about 1,300 matches, seat B
+beats seat A almost everywhere:
+
+| build | seat A | seat B | gap |
+|---|---|---|---|
+| `snotra_h` | 0.589 | **0.714** | −0.125 |
+| `gefjon` | 0.310 | **0.595** | −0.286 |
+| `steward_hardened_reinforced` | 0.397 | 0.524 | −0.127 |
+| `mimir` | 0.413 | 0.444 | −0.032 |
+
+That is the *opposite* sign to the 15.2pp seat-A advantage the codebase
+documents ("units act in ascending entity id … team A therefore wins every tie
+for the whole match"), and a 12–29pp asymmetry is larger than anything else
+measured today. So it looked like the biggest lever available.
+
+**Two reasons it is not.**
+
+First, the hypothesis I built on it was false. `forseti` was meant to disable the
+four `SEAT_B_*` compensations on the theory that they compensate for a
+disadvantage that no longer exists. They are **already all `False`** in this
+lineage. The patch disabled zero of them, `forseti` is byte-identical to its
+parent, and it duly measured 0.500 against it. I should have read the constants
+before writing the bot.
+
+Second, and more usefully: the effect shows up for **nearly every build in the
+table, opponents included**. The suite fixes `seed=1`, so "seat A" and "seat B"
+are really *which Core position on this map* — and a map-position effect is
+experienced by both bots in a pairing and cancels across the two orders the
+suite plays. It cannot explain why one bot beats another, and there is nothing
+to exploit: we already play both seats equally.
+
+Worth recording anyway, because it means **seat splits in this suite are not
+evidence about a bot** — they are evidence about the map set. Any future reading
+of "our seat B is weak" from these panels is reading terrain.
