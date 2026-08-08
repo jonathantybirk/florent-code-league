@@ -5519,3 +5519,42 @@ expected value of the promotion-margin fix is larger than everything in
 
 `lofn` stays queued. It is level with what is live, its mechanism is confirmed,
 and the ladder's held-out pool is the only place left where it might differ.
+
+## Iteration 110 — the promotable pool screened: one catastrophe, twenty ties
+
+Extracted every build the farm can promote from its own `uploads` (per commit,
+since several share a name) and played each against
+`steward_hardened_reinforced` on 150 generated maps — 21 builds, ~6,200 games.
+
+| build | vs reference | |
+|---|---|---|
+| **`steward@e55aab5`** | **0.273 ±0.050** | **promoted onto the live ladder tonight** |
+| `spork@05ab6a2` | 0.440 ±0.056 | weak |
+| `ostara@584e9ba` | 0.450 ±0.056 | weak |
+| 15 builds incl. every `steward_hardened_reinforced` variant, `snotra_h`, `mimir`, `hodr`, `gefjon`, `fulla`, `freyr`, `njord`, `vali`, `steward_relent` | 0.487 - 0.517 | indistinguishable |
+| `bifrost@a29403f` | 0.540 ±0.056 | best of pool |
+
+**One catastrophe and twenty ties.** `e55aab5` at 0.273 here independently
+reproduces the 0.286 measured on the 1,000-map set — different maps, same
+answer — so the disaster is a property of the build, not of either sample.
+
+**This is the clearest statement of the system's actual problem.** The farm
+chooses among 21 builds of which 20 are within a few points of each other and
+one loses 73% of its games. A promotion rule that ignores its own error bars
+gets the choice wrong in the only way that matters, and did so tonight.
+
+Two useful side-notes:
+
+- **`bifrost` tops the pool at 0.540 ±0.056**, having measured 0.486 ±0.057 on a
+  *different* 147-map set in iteration 101. Two 300-game samples, 5.4 points
+  apart — one more demonstration that 300 games is not enough for these
+  differences, and that my per-build orderings all session were noise.
+- **The three `steward_hardened_reinforced` variants the farm has been churning
+  between all night** — `366cd1b`, `f1f2bda`, `a994296` — measure 0.500, 0.500
+  and 0.503 against their own sibling. The churn has been swapping between
+  builds that are *exactly* tied, which is the best possible illustration of
+  promoting on point estimates.
+
+**The deliverable:** `steward@e55aab5` should not be promotable. It is the only
+build in the pool that would visibly damage the ladder position, and the farm
+selected it once already tonight.
