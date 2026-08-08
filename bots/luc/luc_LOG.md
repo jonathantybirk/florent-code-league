@@ -176,3 +176,34 @@ from round 4) is a separate unaddressed failure mode.
 - Lineage so far: shr → freyr (income watchdog) → vali (shooter beacon) → njord (economy
   ceilings) → mimir (mend-pin exemption). Each step locally ≥ its parent; njord and mimir
   are the two with real local edges.
+
+## Iteration 8 — 2026-08-08 ~08:35
+
+- Live: **mimir's first round 4–1** — best debut of my builds (5 games, no estimate yet).
+  gefjon (other agent) 9–9 over 18. Team rank 12 at 1772.
+- **Vault autopsy** (the map every build loses ~2–6): we out-mine vidar there but lose the
+  turret war — vidar seats 4 Sentinels (range, fire through walls, never take a hit, 3960
+  Core damage) vs our 0 (five Gunners, all dead by round ~70, 1449 damage).
+  `SENTINEL_SIEGE_FIRST = True` turned out to be a label, not a behavior: the code only
+  tries a Sentinel after the Gunner search fails, which on vault it never does.
+- **Built `bots/luc/hodr`** = mimir + Sentinel genuinely first from round 60 (unconditional
+  reorder died to vidar's rush at turn 89 — Gunner tempo still owns the opening), target
+  1 → 2.
+- **Bug caught the hard way**: forgot to import `SENTINEL_SIEGE_FIRST` into builder.py; the
+  attacker crashed every round from round 3 and the engine swallowed it (`BUILDER_CRASH` in
+  stderr). Two "identical deterministic losses" were the crash, not the strategy. The NOTES
+  warning to grep fresh replays for crashes before trusting a run exists for a reason —
+  re-learned. Post-fix: hodr kills mimir at turn 59 on duel; vault seats 1 Sentinel
+  (damage 1449 → 1593), still lost there. Panel running (`hodr_run1`).
+
+## Iteration 9 — 2026-08-08 ~09:00
+
+- **hodr panel: best of the lineage.** 23–19 shr, 25–17 mimir (beats parent), 32–10 vidar
+  (0.762 — the Sentinel bot beaten at its own game), 31–11 odin, total **0.661**. Net-loss
+  maps down to vault alone (3–5). Avg 0.61 Sentinels/game seated — delivery is still shy of
+  target 2, so there's headroom in the seat search if this direction keeps paying.
+- Pushed hodr as `d540e5baf`, queued `hodr@d540e5b:2` (farm queue now 8 entries).
+- **mimir live: 7–3 over 10, estimate 1840** — highest live estimate of anything we field
+  (flagship ~1780–1800). Needs ≥25 games to qualify for auto-promotion; the farm's UCB
+  should feed it more rounds on its own.
+- Team rank 12 at 1772.
