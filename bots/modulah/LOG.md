@@ -1008,3 +1008,36 @@ The ledger says stop adding combat behaviour and fix the supply line.
 `lib/` is canonical; `vendor.py --check` detects drift into the bot dirs.
 `diag` re-verifies the engine facts (8/8) — run it after every fcode bump.
 Read econ with `comms.arrivals_from_now()`, never `unpack_econ()`.
+
+## Ray geometry, attacked from both sides -- both negative
+
+I had been calling ray geometry "the residual ceiling" without testing it, which
+is a prediction, not a result. Two variants, both on the shipped 8-win build.
+
+The suspect: `best_defensive_site` uses doorstep reach as a yes/no FILTER and
+lets approach-betweenness do all the ranking. Two things look wrong with that.
+Traffic ranks tiles by attackers WALKING past, but what kills us is enemy
+Gunners parked at the doorstep shooting; and a Gunner may re-face on cooldown 1,
+so scoring a seat by the single facing it is built on understates it.
+
+    variant                                    wins   collected   end round
+    shipped (per-facing filter, traffic rank)  8/45   1235        411
+    doorstep reach AS the objective            5/45   1396        304
+    union filter (seat ok if any facing        7/45   1083        419
+      reaches), traffic still ranks
+
+Both lose. The first is the more interesting failure: economy went UP (conveyors
+25.6 -> 39.1) while survival collapsed (end round 411 -> 304, survivors 4 -> 2).
+Maximising doorstep coverage seats turrets hugging the Core in open ground and
+abandons the corridor interception that was doing the real work -- so the bot
+farms peacefully and then dies faster. Traffic ranking is load-bearing.
+
+The second says the strictness is load-bearing too. Letting a Gunner be built
+facing the busiest corridor on the promise that it can turn later is worse than
+making it face the doorstep NOW, even though rotation genuinely is available and
+cheap. A turret that has to spend a turn rotating before its first shot is a
+turret that is not shooting during the rounds that decide the fight.
+
+So the shipped policy beats both a stronger objective and a weaker filter. Ray
+geometry is not an untested excuse any more: it is measured, and the current
+answer to it is the best of the three I have.
