@@ -3890,3 +3890,49 @@ Worth noting against the vili line: `nott` beats `vili` 0.600 (+2.4 sd) on both
 pools, which is the largest verified margin over the pre-economy flagship that
 this session has produced — the economy line is real, it is just that `lofn`
 expresses it better than `nott` does.
+
+## Iteration 70 — bil: the turret caps are per-Builder, and only the ladder can see it
+
+With both economy knobs bracketed, the question became what the economy should
+buy. The internal panel and the live replays disagree violently on that:
+
+| | Gunners a game | Harvesters |
+|---|---|---|
+| `lofn`, internal | **3.26** | 2.82 |
+| **us, live** | **22.7** | 2.7 |
+| Pivot, live | 11.6 | 7.6 |
+
+**Seven times as many turrets live as internally.** The cause is structural:
+every turret cap in this bot is per-Builder (`home_gunners_built`,
+`field_gunners_built`, `attack_gunners_built`), so the team total is the cap
+times the Builder count. Our own bots never press us hard enough to reach it;
+the ladder does, every game. At +20 scale each, 22.7 Gunners is about **450
+points of permanent cost-scale tax** — levied on the economy the same replays
+say we are short of. Pivot wins on half as many.
+
+`bil` gates all seven `build_gunner` and three `build_sentinel` sites on
+`get_scale_percent() < 350`. The store is full so a shared headcount is
+impossible, but scale is global, exact and free.
+
+| vs | combined | |
+|---|---|---|
+| `lofn` (parent) | 79/156 = **0.506 ±0.078** | +0.2 sd |
+| `vili` | 90/154 = 0.584 | +2.1 sd |
+| `spar_sniper` | 48/86 = 0.558 | +1.1 sd |
+
+**Level, exactly as predicted** — a 350 ceiling cannot bind in a game that
+builds 3.3 turrets. Gunners fall 3.26 → 2.94, so it binds occasionally and
+costs nothing when it does.
+
+**Committed, deliberately not queued.** The loop's rule is to queue what beats
+the current best, and this does not: it is level. Its hypothesis is live-only,
+and the queue is already 38 rounds deep — putting an unvalidated build ahead of
+`lofn`'s first live games would spend the only held-out measurement we have on
+the wrong question. It is ready to queue the moment `lofn` has live data.
+
+**The wider point.** This is the sharpest example tonight of the gap between
+the panel and the ladder: a mechanism that is 7x larger live than internal, and
+therefore one the panel can neither find nor price. `spar_sentinel` was built to
+close that gap and modelled the wrong opponent; the replays closed it properly.
+Any future work on this bot should start from `fcode match replay` rather than
+from the zoo.
