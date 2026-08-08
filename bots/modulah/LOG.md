@@ -1,30 +1,61 @@
 # modulah log
 
-## Status: NOT beating our own bots
+## Status: 3/45 against our best three — still short, but moving
 
-`aegis` is **1/45** against `steward_hardened_reinforced`, `vidar` and `odin`
-on the full 15-map official pool, both seats. The goal is not met.
+`aegis` on the full 15-map official pool, both seats, vs
+`steward_hardened_reinforced`, `vidar`, `odin`.
+
+| | early session | now |
+|---|---|---|
+| **wins** | 0/45 | **3/45** |
+| titanium collected | 823 | **977** (steward 788) |
+| conveyors built | 11.7 | **25.6** (steward 12.1) |
+| harvesters built | 4.5 | 4.8 |
+| enemy cores killed | never | **round 389** |
+| first harvester | round 4 | round 4 (field: 7) |
 
 **Measure on the full pool, never on a small panel.** The early 6-map panel is
-four old-pool 12x12s and flatters this bot badly — it reported 2184 collected
-and 200 core hp where the real figures were 823 and 47.
-
-| | aegis now | steward |
-|---|---|---|
-| wins vs top three | **1/45** | — |
-| titanium collected | **823–933** | 788 |
-| harvesters @300 | **3.76** | 2.3 |
-| first harvester | round 4 | 7 |
-| launchers built | 1.9 | 1.7 |
-| **first gunner** | **round 72** | **round 25** |
-| games survived | 5/45 | — |
-| core hp at end | 12 | 500 |
-
-**The economy is no longer the gap — it is ahead of steward.** What remains is
-that we are defenceless for the first ~70 rounds and die at 90–105.
+four old-pool 12x12s and inflated this bot badly (reported 2184 collected and
+200 core hp where the real figures were 823 and 47).
 
 **The deployed online bot is untouched** — `v34
-(steward_hardened_reinforced f1f2bda)`, team #12 of 109 at 1772.
+(steward_hardened_reinforced f1f2bda)`, team #12 of 109.
+
+### What unlocked it: publishing connectivity
+
+A Builder sees radius ~4.5 and cannot tell a conveyor that delivers from one
+that is stranded. That single blind spot was underneath every economic failure
+in this log. The Core can tell — `econ.py` already walks the network backward
+every round — so `econ.network_frontier` publishes the connected tile furthest
+out, in the threat word's spare bits (19–27), costing no slot.
+
+**It invalidated four earlier negative results.** "More Harvesters collects
+less titanium" was measured four times on a bot whose chains did not connect,
+where each extra Harvester mined into nothing and bought cost scale for the
+privilege. With connectivity published, both economic levers reverse:
+
+| change | before fix | after fix |
+|---|---|---|
+| ECON_FLOOR 4 → 7 | — | survived 6→8, hp 30→37.6 |
+| SPAWN_INTERVAL 12 → 6 | 246 collected, rejected | **977 collected, 3 wins** |
+
+A negative result is only as good as the build it was measured on.
+
+### The ladder's actual standard
+
+sporks (#1, 2117) and Pantheon (#2) build **41–97 conveyors** a game, first
+conveyor on round 1–6, first Sentinel by round 5–19, and end games on a Core
+kill at rounds 117–346. We are at 25.6 conveyors and a first Gunner around
+round 76. Infrastructure volume is the meta; steward is not the standard.
+
+### Limits found, in order
+
+1. **Ore discovery.** Raising ECON_FLOOR past 7 changes nothing — the team
+   only builds ~4.8 Harvesters. Builders cannot find more ore, so the economy
+   caps well below the leaders' 7–17.
+2. **First turret at ~round 76** against the leaders' round 5–19.
+3. SPAWN_INTERVAL 3 with a smaller bank overshoots: wins 3→1, survived 5→1.
+   Six is the measured optimum.
 
 ## Bugs found, in order of how much they cost
 
