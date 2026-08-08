@@ -1935,3 +1935,42 @@ What would actually move it is a shorter path from Builder to delivered ore —
 fewer belt tiles per Harvester, or deposits chosen for total build cost rather
 than distance. `snotra`'s ordering was the one thing that ever moved the number,
 and it moved it by choosing nearer-to-reach deposits, which is the same lever.
+
+---
+
+## Iteration 27 — `ostara` queued; snotra_h settles below its parent
+
+### Live
+
+`snotra_h` has settled at **66/125 = 0.528**, *below* `snotra` 0.560 and
+`fulla` 0.560. Its 0.640 at fifty games was noise from end to end, and its
+0.548 local head-to-head over `snotra` did not survive either. Worth stating
+because it is the second time today a 0.548 local margin predicted nothing.
+
+### `ostara`
+
+`_pick` truncates its candidate list, so the *ordering* decides what is
+considered at all — and it ordered by distance from the Builder. A deposit one
+tile off our existing belt was never looked at if the Builder stood elsewhere,
+while one near the Builder and fifteen belt-tiles from the Core was priced every
+time. Anchoring the order on the Core and the belt we already own is the
+ordering that minimises Builder-turns per deposit, which the profile says is the
+binding resource.
+
+| ostara vs | | |
+|---|---|---|
+| `mimir` | 25/42 | 0.595 |
+| `steward_hardened_reinforced` | 25/42 | 0.595 |
+| `spar_sniper` | 24/42 | 0.571 |
+| `spork` (parent) | 23/42 | **0.548** |
+| `snotra_h` | 21/42 | 0.500 |
+| **mean** | 118/210 | 0.562, floor 0.500 |
+
+Harvesters **2.29–2.33** and belt-per-Harvester **7.0** — unchanged. Eighth
+intervention against that ceiling, eighth failure to move it. It wins slightly
+anyway, presumably by spending fewer turns for the same economy rather than by
+growing it.
+
+Queued five rounds, per the standing instruction to ship anything that beats the
+current best. Recorded honestly: 0.548 is 0.6 sd, and the last build that beat
+its parent by exactly that margin locally finished below it live.
