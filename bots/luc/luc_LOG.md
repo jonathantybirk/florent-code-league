@@ -605,3 +605,18 @@ from round 4) is a separate unaddressed failure mode.
   punishes that (Pivot booms and survives, so a defensive complement may be needed:
   early home Gunners from income). Panel on the 15 live maps vs shr/vor/mimir running
   (`byggvir_run1`).
+
+## Iteration 35 — 2026-08-08 ~20:45
+
+- **byggvir panel: 0.311 (9–21, 10–20, 9–21) — the naked boom is slaughtered, 0–6 on
+  eight live maps. But the economy doubled: 4.1 Harvesters/game vs the lineage's ~2.**
+  The Pivot boom works on our chassis; the defence half is simply absent.
+- Scoped the mend-pin exemption to sole-miner architectures (with three miners, builder
+  0 guarding is affordable) — inert against a 47-turn rush kill, committed anyway as
+  correct.
+- **The precisely-specified next build**: proactive home defence, Jython-style — their
+  first Gunners stand at rounds 14–19 *before any damage*; reactive-on-alarm can never
+  answer a 47-turn kill. Spec: once the second Harvester connects (or round ≥ 12),
+  miner 0 places one Gunner on the enemy-facing approach to our Core, returns to
+  mining, escalates via the existing HOME_TURRET machinery on alarm. That plus
+  byggvir's boom is the full Pivot profile.
