@@ -58,6 +58,7 @@ class CoreBrain:
         self._footprint = None
         self._last_spawn = -99
         self._enemy_core_hp = None
+        self._watch = econ.NetworkWatch()
 
     def run(self, ct: Controller) -> None:
         round_no = ct.get_current_round()
@@ -82,13 +83,28 @@ class CoreBrain:
                 self.monitor.hp, self.monitor.dhp(), burst, round_no,
                 # Only the Core can tell a delivering conveyor from a stranded
                 # one; it already walks the network for the arrival schedule.
-                join=econ.network_frontier(ct, self._footprint, ct.get_position()),
+                # A break in the line outranks the frontier: Builders route
+                # to whatever is published here, so naming the hole makes the
+                # ordinary chain-laying plug it. No new field, and no Builder
+                # has to guess -- only the Core can tell a severed conveyor
+                # from one that is merely the end of a chain being built.
+                join=self._repair_target(ct),
             ),
         )
         anchor = ct.get_position()
         recs = threat.turret_records(ct, self._footprint, anchor, limit=4)
         ct.write_store(comms.SLOT_CORE_TURRET0, comms.pack_turrets(recs[:2], round_no))
         ct.write_store(comms.SLOT_CORE_TURRET1, comms.pack_turrets(recs[2:4], round_no))
+
+    def _repair_target(self, ct: Controller):
+        """Offset of a break to mend, else the connected frontier to extend."""
+        anchor = ct.get_position()
+        hole = self._watch.hole(ct, self._footprint)
+        if hole is not None:
+            dx, dy = hole.x - anchor.x, hole.y - anchor.y
+            if -8 <= dx <= 7 and -8 <= dy <= 7:
+                return dx, dy
+        return econ.network_frontier(ct, self._footprint, anchor)
 
     def _enemy_hp(self, ct: Controller) -> int | None:
         """Enemy Core hp if it is in sight, remembered once seen.

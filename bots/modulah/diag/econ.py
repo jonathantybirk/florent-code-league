@@ -208,6 +208,41 @@ def titanium_over(schedule, rounds: int) -> int:
     return stacks * GameConstants.STACK_SIZE + int(passive_per_round() * rounds)
 
 
+class NetworkWatch:
+    """Remembers the connected network so a genuine BREAK can be told apart
+    from a chain still being built.
+
+    This is the distinction every earlier repair attempt got wrong. A chain
+    under construction is disconnected too, so "a conveyor pointing at empty
+    ground" flags live construction as damage and the repair fights its own
+    builders (drumlin: 11,880 titanium mined -> 2,470).
+
+    A break has a signature construction cannot fake: a tile that WAS part of
+    the connected set and is now EMPTY. Building only ever adds tiles, so a
+    tile leaving the set means something destroyed it.
+
+    Held by the Core, which is the only unit that can see the connected set at
+    all -- it already computes it every round for the arrival schedule.
+    """
+
+    __slots__ = ("_seen",)
+
+    def __init__(self):
+        self._seen: set = set()
+
+    def hole(self, ct, footprint):
+        """A tile that was delivering last round and is empty now, or None."""
+        now = _connected(ct, footprint)
+        gone = None
+        for tile in self._seen - now:
+            p = Position(*tile)
+            if in_bounds(ct, p) and building_at(ct, p) is None:
+                gone = p
+                break
+        self._seen = now
+        return gone
+
+
 def network_frontier(ct, footprint, anchor):
     """The far end of the supply network that is genuinely CONNECTED.
 
