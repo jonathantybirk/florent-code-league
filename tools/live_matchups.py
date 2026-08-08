@@ -126,14 +126,23 @@ def print_compare(feed: dict, names: list[str]) -> None:
     of an opponent is a different bot.
     """
     builds = our_builds(feed)
-    keys = {}
+    keys, labels = {}, {}
     for name in names:
-        matched = {k for k, canon in builds.items()
-                   if canon == name or canon.startswith(name + "@")}
+        exact = {k for k, canon in builds.items() if canon == name}
+        if exact:
+            matched, label = exact, name
+        else:
+            matched = {k for k, canon in builds.items()
+                       if canon.startswith(name + "@")}
+            commits = sorted({builds[k].split("@", 1)[1] for k in matched})
+            # A bare name can cover several commits, which are different bots.
+            # Pool them only when asked for a lineage, and say so.
+            label = name if len(commits) <= 1 else f"{name} ({len(commits)} commits pooled)"
         if not matched:
             print(f"  {name}: not in the feed yet")
             continue
         keys[name] = matched
+        labels[name] = label
 
     per = {}
     for name, ks in keys.items():
@@ -165,7 +174,7 @@ def print_compare(feed: dict, names: list[str]) -> None:
         n = sum(agg[o][1] for o in shared)
         rate = w / n if n else float("nan")
         half = 1.96 * math.sqrt(rate * (1 - rate) / n) if n else float("nan")
-        print(f"  {name:34s} {w:7d}/{n:<8d} {rate:6.3f} +-{half:.3f}")
+        print(f"  {labels[name]:34s} {w:7d}/{n:<8d} {rate:6.3f} +-{half:.3f}")
     print("\nNo model, no shrinkage: each build's win rate over the games it")
     print("actually played against opponents all of them have faced.")
 
