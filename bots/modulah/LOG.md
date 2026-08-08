@@ -138,6 +138,25 @@ victory against steward — outlast and out-mine, not out-fight — and repair i
 what let a line survive long enough to do it. Worth rebuilding properly on top
 of the 6-win base rather than in place of it.
 
+### Mending doctrine: steward's biggest win does not reproduce here
+
+Steward's README calls "the guard mends on any damage" its single largest
+measured change (+11.0pp mean, +16.6pp floor), and its constants explain the
+economics: healing costs a **flat 1 Ti regardless of cost scale**, where a
+turret costs 20–30 against a scale that only rises. Its loss ledger is blunt —
+*"this bot dies holding turrets rather than short of them"*.
+
+aegis already mends on any damage. The untested half was steward's escalation:
+below `CRITICAL_HP` it pulls the **economy** Builder onto the mending detail,
+overriding its own economy floor. Adopting that: **6 wins → 6**, collected
+1291 → 1246, everything else unchanged. Reverted as unused complexity.
+
+Why it does not reproduce is worth noting rather than assuming the number was
+wrong: aegis's mender count is already sized off measured `dhp`, so it reaches
+two menders on its own whenever two are warranted. Steward's +11pp was
+measured against a bot that waited for a 50-HP `repair_alert` before mending
+at all — a starting point aegis never had.
+
 ### Writing off stuck Builders
 
 Steward's `WRITE_OFF_STUCK_BUILDERS`, and the reasoning is the part that
