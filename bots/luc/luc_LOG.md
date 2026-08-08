@@ -454,3 +454,24 @@ from round 4) is a separate unaddressed failure mode.
 - The other agent bumped snotra_h to a bigger sample too (`snotra_h@a494b78:6`).
 - Team 1698, rank 17, incumbent shr@f1f2bda active. Test queue: fulla:4, snotra_h:6,
   vor:5.
+
+## Iteration 26 — 2026-08-08 ~17:15 — Lucas's sabotage doctrine
+
+- **Direction from Lucas**: the meta is fast econ + maximal enemy-econ sabotage — break
+  conveyors and wall the cuts, ring the enemy base with barriers minus one door, and cover
+  the door with a Sentinel that never touches their Core, so Core-damage-keyed defences
+  (ours included) never flag it while it snipes Builders crossing the one tile their
+  economy must use. Also: benchmark against the top three (sporks/Pantheon/Erebus), not
+  our own bracket. Notable: nobody in the top three plays encirclement — sporks builds
+  zero barriers, Pantheon only lane-soaks — so this is a novel angle, not a copy.
+- **Built `bots/luc/loki`** = vor + the doctrine: (1) belt-cut walling — a tile seen as
+  enemy conveyor that turns empty is remembered and walled for the same 3 Ti they'd
+  re-lay it for; (2) `_wall_in_enemy` — barrier ring at radius 3 around their Core minus
+  one door (door = ring tile nearest known ore), mirroring our own seal walker;
+  (3) `_gap_sentinel` — seat search that requires the ray to cover the door and *never*
+  reach their Core within Sentinel range.
+- First instrumented run: encouraging and instructive — on jackpot the ring is only ~7
+  tiles (terrain seals the rest free), bank is fine, but **progress stalls at ~1 barrier:
+  builders can't reach contested ring tiles**, and each builder walks its own copy of the
+  ring. Delivery into defended ground is the recurring boss fight of this codebase.
+  Panel running (`loki_run1`) to price v1 as-is.
