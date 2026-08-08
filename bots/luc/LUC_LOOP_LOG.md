@@ -4350,3 +4350,48 @@ live baseline.
 **Queue as it stands:** `lofn@86287ec:8`, `hlin@a72a7dc:8`, `nanna@9a11215:8`.
 Three builds, one hypothesis each: two miners with room to hold them, claims
 that come back, and turret discipline.
+
+## Iteration 81 — the farm cannot promote a winner, quantified
+
+Everything queued tonight is waiting on the farm to measure it. So: can the farm
+tell a better build from a worse one? Read `best_challenger` on the live host
+and the promotion history in `state.json`.
+
+**The rule.** The comparison is `best_est <= incumbent_elo` — no margin at all,
+so one Elo point promotes. `half`, the confidence half-width, is computed,
+returned by the function, and never used in the decision.
+
+**The consequence, measured.** 131 promotions recorded. The last six, one hour
+of wall clock:
+
+| time | promoted | its Elo | incumbent | margin | **its own se** |
+|---|---|---|---|---|---|
+| 15:52 | `a994296` (v33) | 1809.0 | 1801.4 | 7.6 | **43.2** |
+| 16:02 | `steward@e55aab5` (v38) | 1810.1 | 1796.1 | 14.0 | **80.1** |
+| 16:12 | `f1f2bda` (v34) | 1807.3 | 1784.3 | 23.0 | **46.2** |
+| 16:32 | `a994296` (v33) | 1806.3 | 1804.5 | **1.8** | **46.4** |
+| 16:42 | `f1f2bda` (v34) | 1798.9 | 1792.4 | 6.5 | **49.2** |
+| 16:52 | `a994296` (v33) | 1804.3 | 1789.9 | 14.4 | **49.3** |
+
+**Every margin is a small fraction of its own standard error.** 1.8 to 23 Elo
+against standard errors of 43 to 80. Five flagship swaps an hour, between two or
+three builds that are statistically identical — and the same build's estimate
+swings 1801 → 1784 → 1804 → 1789 between rounds while its code does not change.
+
+**What this means for tonight's work.** `lofn`, `hlin` and `nanna` are queued
+behind ~30 rounds. When they arrive, each gets an estimate with a standard error
+near 45, and the rule will promote or demote them on differences of a few Elo.
+A build that is genuinely 20 Elo better — which would be a large real gain — is
+indistinguishable from noise at that sample size, so it will be promoted by
+chance and demoted by chance within the hour. **The live measurement I have
+spent the session waiting for is being consumed by churn before it can
+accumulate.**
+
+The fix is two lines and I cannot apply it: require `best_est - best_half >
+incumbent_elo` (the half-width is already computed and sitting unused), and
+count *matches* rather than games in `min_games`. Both were offered to Lucas
+earlier and are blocked pending his call; this iteration is the quantified case
+for them, which I did not have before.
+
+Not a bot problem. The strongest build of the night cannot be recognised as one
+by the system that is supposed to measure it.
