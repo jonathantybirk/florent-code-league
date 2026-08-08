@@ -2212,3 +2212,51 @@ counts, and copying counts onto a different chassis makes things worse.
 Eleventh refutation, and the most informative one: it rules out the entire
 "imitate the leader's build order" family, which is where the last three
 iterations were heading.
+
+---
+
+## Iteration 34 — it is the *seat*, not the composition
+
+Iteration 33 ruled out copying sporks' turret counts. So the question became
+*where* it puts them. Extracting Sentinel seats from the same 5-0 sweep, as
+Chebyshev distance to each Core:
+
+```
+game 2: d(enemy Core) = 4, 5, 2, 12     game 3: 3, 4, 3, 4
+game 4: 6, 3, 5                         game 5: 6, 8, 3, 7
+```
+
+**Two to six tiles from the enemy Core**, seated between rounds 6 and 36. That
+is a forward siege battery, not home defence — and a Sentinel is the only thing
+that can hold such a seat, because its line is never blocked and it reaches
+r^2=32 where a Gunner reaches 13.
+
+Ours never appears there. `_build_basic_gunner` searches for a Gunner site, then
+a Launcher-breaker, and only reaches `_build_siege_sentinel` when no Gunner site
+survives — hence 0.02 Sentinels a game.
+
+### `bots/luc/vidarr`
+
+Try the siege Sentinel first, fall back to the old body.
+
+| vidarr vs | | | Sentinels |
+|---|---|---|---|
+| `ostara` | 25/42 | **0.595** | 0.38 |
+| `spork` | 25/42 | **0.595** | 0.36 |
+| `mimir` | 25/42 | **0.595** | 0.31 |
+| `steward_hardened_reinforced` | 22/42 | 0.524 | 0.26 |
+| `snotra_h` | 20/42 | 0.476 | 0.38 |
+| **mean** | 117/210 | **0.557**, floor 0.476 | |
+
+0.595 against the currently queued build is about 1.2 sd — the largest local
+margin measured today, though the loss to `snotra_h` makes the ordering
+non-transitive in the usual way. **Queued five rounds.** CPU 2,815 us, zero over.
+
+Sentinels a game go from 0.02 to 0.26–0.38, so the ordering was not the whole
+gate — the seat is still affordability-limited. There is more here if the
+Sentinel can be afforded at the moment the attacker arrives.
+
+The pair of results is the useful part: reproducing sporks' *counts* (`alfr`,
+0.00 Gunners, 3 Sentinels) measured **0.476** and was worse, while moving one
+Sentinel to sporks' *seat* measured 0.557 and was better. The composition is not
+transferable; the position is.
