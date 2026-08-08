@@ -2260,3 +2260,36 @@ The pair of results is the useful part: reproducing sporks' *counts* (`alfr`,
 0.00 Gunners, 3 Sentinels) measured **0.476** and was worse, while moving one
 Sentinel to sporks' *seat* measured 0.557 and was better. The composition is not
 transferable; the position is.
+
+---
+
+## Iteration 35 — the forward seat is delivery-limited, not affordability-limited
+
+`vidarr` lifted forward Sentinels from 0.02 to 0.26–0.38 a game by trying them
+first, and the seat still looked starved. The obvious cause was money: the
+ammunition override pins the bank at 10 all game, and a Sentinel costs about 30
+before scale. `skadi2` pairs `vidarr`'s ordering with the fix `bragi` tried in
+isolation.
+
+| skadi2 vs | | | Sentinels |
+|---|---|---|---|
+| `ostara` | 25/42 | 0.595 | 0.38 |
+| `mimir` | 23/42 | 0.548 | 0.29 |
+| `vidarr` (parent) | 22/42 | 0.524 | 0.40 |
+| `steward_hardened_reinforced` | 21/42 | 0.500 | 0.29 |
+| `snotra_h` | 20/42 | 0.476 | 0.36 |
+| **mean** | 111/210 | **0.529**, floor 0.476 | |
+
+Mean **below** `vidarr`'s 0.557, head-to-head 0.524 which is 0.3 sd, and
+Sentinels essentially unchanged at 0.29–0.40. **Money was not the gate.**
+
+With `SIEGE_SENTINEL_TARGET = 1`, 0.3 Sentinels a game means the attacker
+reaches a forward seat in about **three games in ten** — the rest of the time it
+dies on the way, or finds no legal aligned seat when it arrives. That is
+`constants.py`'s own "the ceiling is delivery, not permission", confirmed from
+the other direction: ordering was worth something (0.02 → 0.3), permission and
+money are worth nothing on top, and the remaining 70% is arrival.
+
+sporks seats **three to four** of these per game by round 36. The gap between
+0.3 and 3.5 is not a constant anywhere in this file — it is whether an attacker
+can cross the map and live. Deleted; `vidarr` remains the queued candidate.
