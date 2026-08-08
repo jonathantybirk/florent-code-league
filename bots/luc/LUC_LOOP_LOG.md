@@ -2011,3 +2011,37 @@ Two things follow.
   still stands, nine interventions have failed to move it, and I no longer have
   a diagnosis of what consumes the turns — only the arithmetic that a deposit
   costs about a hundred rounds and the median game is ~240.
+
+---
+
+## Iteration 29 — the real action profile
+
+Counting engine actions actually issued (each `ct.move` / `ct.build_*` /
+`ct.heal` call site wrapped), first 80 rounds on quarry against mimir:
+
+| Builder | actions in 80 rounds | breakdown |
+|---|---|---|
+| id=5, miner | 74 | **move 60**, build_conveyor 14 |
+| id=3, miner | 75 | move 34, **heal 33**, conveyor 6, harvester 2 |
+| id=12, ring | 75 | **heal 46**, move 28 |
+| id=9, attacker | **40** | move 37, gunner 2, launcher 1 |
+
+This is the profile iteration 26 should have produced. Three facts, all new:
+
+**1. A miner spends about 80% of its turns walking.** Sixty moves for fourteen
+conveyors is **4.3 moves per tile laid**. Laying a contiguous line should cost
+roughly one move per tile — the Builder walks the line, lays, steps on. Whatever
+the other 3.3 are, they are not progress, and they are the concrete form of the
+"a deposit costs a hundred rounds" arithmetic.
+
+**2. Mending is enormous and early.** 33 and 46 heals inside the first eighty
+rounds, from two different Builders. That is 1 Ti each and does not scale, so it
+is cheap in titanium — but it is turns, and turns are what the economy is short
+of.
+
+**3. The attacker is idle half the time.** Forty actions in eighty rounds.
+
+The first is the biggest and the most tractable: it is a *ratio* that should be
+near one and is 4.3, in the one loop the whole economy runs through. That is the
+next thing to look at — where the extra moves go between laying one tile and
+the next.
