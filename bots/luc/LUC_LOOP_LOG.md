@@ -2998,3 +2998,65 @@ to raise it made the bot worse. Refutation count now 20.
 
 `vili` remains the best build at 0.657/0.548, queued and still behind seven
 locally-refuted builds in the farm queue.
+
+## Iteration 52 — a broken instrument, and a retraction
+
+**Retract from iteration 50: "a delegating proxy was never called — `Player.run`
+is apparently not the only entry the engine uses."** That is wrong, and so is
+every "this code never runs" conclusion I drew from a silent probe today.
+
+`print()` from a bot unit does not reach captured output at all. The control
+test — an unconditional `print` at the top of `builder.run` — produced **zero**
+lines in a full game. The `HUNT` lines I had been treating as proof that
+printing worked are written with `file=sys.stderr`, like the crash handler.
+Bot **stdout is swallowed; stderr is not.**
+
+Three silent probes today, all meaningless:
+
+- the Controller proxy (iteration 50);
+- `_turret_kind` "is never called once in three games";
+- `_mending_is_losing` "never fires".
+
+The same probe rewritten with `file=sys.stderr, flush=True` immediately
+returned **377 mend-path calls in three games, 17 of them diverting**. The code
+was live the whole time.
+
+What survives from iteration 50 is everything that came from suite *metrics*
+rather than from a probe: the scale ledger, and barriers at 0.00. Those stand.
+
+**Lesson, and it is the second version of the same one this session.**
+Iteration 28 retracted a conclusion because I instrumented a call site instead
+of an outcome. This retracts three because I never checked that the instrument
+could report at all. A probe that prints nothing is not evidence of silence
+until a control proves the channel works.
+
+## Iteration 53 — eir: mend only while mending is winning
+
+The idea. Mending is 4 HP per flat 1 Ti; a 2.3.4 Sentinel deals 6 a round. One
+emplaced enemy Sentinel therefore costs more titanium to out-heal than a
+two-Harvester economy earns, and two out-pace it outright — which is the live
+meta (`project_sentinel_meta_2026_08_08`: the ladder runs economy-funded
+Sentinel mass) and matches the live losses: Pivot 0.25, O(1) 0.31, 0033 0.37,
+I Stone 0.41.
+
+The guard answers Core damage by mending, unconditionally, forever. The test
+that should govern it is not "is the Core hurt" but "is mending *winning*" — a
+Builder standing on the Core reads its HP directly, so if HP keeps falling
+while we repair, repair is losing the race and the answer is the thing that
+shortens it. `_mending_is_losing` counts consecutive rounds of net HP loss and
+diverts to `_defend_core` after four, resetting the streak so a guard that
+finds no firing site goes straight back to repairing.
+
+**A false start worth recording.** The first version patched the *second
+mender* (the recalled economy Builder, `builder.py:406`) and measured 0.681
+mean — which I nearly shipped as the best build of the session. Two things were
+wrong with that. The structural metrics were flat (sentinels 0.14 both ways,
+barriers 0.00, gunners 3.37 against 3.40, Core HP end 229 against 228, damage
+dealt *lower*), so the claimed mechanism plainly had not happened; and the
++5.9pp shared-opponent gap is 1.2 sd, the same size as the known
+`get_cpu_time_elapsed` nondeterminism that flips 11 of 210 matches on identical
+code. The real guard is the one behind `GUARD_HEALS_ON_ANY_DAMAGE` at
+`builder.py:443`. The bot is now patched there, verified firing, and
+re-measuring.
+
+Nothing shipped on the 0.681 number.
