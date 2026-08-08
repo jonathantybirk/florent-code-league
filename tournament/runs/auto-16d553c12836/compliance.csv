@@ -1,0 +1,4 @@
+bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
+bil@6b5d86e,bil,6b5d86e,pass,33,33,33,5836,26,53,541,1220,6797,0,0,9000,10000
+byggvir@6b5d86e,byggvir,6b5d86e,pass,33,33,33,4864,26,58,917,1858,7291,0,0,9000,10000
+hlin@6b5d86e,hlin,6b5d86e,pass,33,33,33,5836,14,54,438,1252,6812,0,0,9000,10000
