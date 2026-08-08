@@ -234,12 +234,47 @@ class BuilderBrain:
 
     def _act(self, ct, sit, intel, role, r) -> int:
         if role == roles.ROLE_MENDER:
+            screened = self._screen(ct, sit, intel, r)
+            if screened is not None:
+                return screened
             return self._mend(ct, sit, r)
         if role == roles.ROLE_GUARD:
             return self._guard(ct, sit, r)
         if role == roles.ROLE_SIEGE:
             return self._siege(ct, sit, r)
         return self._mine(ct, sit, r)
+
+    def _screen(self, ct: Controller, sit, intel, r: int) -> int | None:
+        """Drop a 3 Ti Barrier into an enemy Gunner's lane, if one is adjacent.
+
+        The cheapest thing on the board that reduces incoming damage, and the
+        only defensive act measured so far that does not require a Builder to
+        stop what it is doing and walk somewhere. 30 hp against a Gunner's 7
+        soaks five shots -- 20 Ti of their ammo -- for 3 Ti of ours.
+        """
+        if not intel.get("turrets"):
+            return None
+        if not sit.afford(GameConstants.BARRIER_BASE_COST, 0):
+            return None
+        foot = self._footprint(ct, sit)
+        if not foot:
+            return None
+
+        def legal(spot):
+            try:
+                return ct.can_build_barrier(spot)
+            except GameError:
+                return False
+
+        spot = placement.screen_tile(ct, intel["turrets"], foot,
+                                     ct.get_position(), legal)
+        if spot is None:
+            return None
+        try:
+            ct.build_barrier(spot)
+            return comms.ACT_NONE
+        except GameError:
+            return None
 
     def _mend(self, ct: Controller, sit, r: int) -> int:
         core = sit.core_tile or self._find_core(ct)

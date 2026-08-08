@@ -45,7 +45,7 @@ from collections import deque
 
 from fcode import EntityType, GameError, Position
 
-from geometry import RAY_LEN, COMPASS, building_at, in_bounds
+from geometry import RAY_LEN, CARDINALS, COMPASS, building_at, in_bounds
 
 # How far out an approach is modelled. A Sentinel reaches 5 tiles along a
 # cardinal, so ground beyond this cannot be covered from home at all and only
@@ -363,3 +363,57 @@ def siege_seat(ct, target_core, kind: EntityType, legal, from_pos, limit: int = 
                     best = (spot, facing, cost)
                 break
     return best
+
+
+def screen_tile(ct, turrets, footprint, from_pos, legal):
+    """An adjacent tile that would block an enemy turret's shot at our Core.
+
+    Buildings block firing lines, and a Barrier is 3 Ti against a Gunner's 20.
+    A Barrier has 30 hp and a Gunner does 7, so it soaks five shots -- 20 Ti of
+    THEIR ammo -- and five rounds of Core damage, for the price of one seventh
+    of a turret. It is the cheapest defensive act available and the only one
+    measured so far that does not need a Builder to leave home.
+
+    Aimed squarely at what actually kills us: replay attribution across four
+    full-pool losses puts 94-100% of all damage to our Core on enemy GUNNERS,
+    whose reach is 3, so their lanes terminate within three tiles of the
+    footprint -- exactly where a mender is already standing.
+
+    `turrets` is the Core's published map: (position, kind, facing) triples.
+    """
+    wanted = set()
+    for tpos, kind, facing in turrets:
+        try:
+            covered = turret_cover(ct, tpos, facing, kind)
+        except GameError:
+            continue
+        if not any((f.x, f.y) in covered for f in footprint):
+            continue  # not actually aimed at the Core
+        dx, dy = facing.delta()
+        tile = (tpos.x + dx, tpos.y + dy)
+        # Walk the lane outward from the turret; every tile before the Core is
+        # a legal place to interrupt it.
+        for _ in range(6):
+            if any(f.x == tile[0] and f.y == tile[1] for f in footprint):
+                break
+            wanted.add(tile)
+            tile = (tile[0] + dx, tile[1] + dy)
+
+    if not wanted:
+        return None
+    best = None
+    for d in CARDINALS:
+        spot = from_pos.add(d)
+        key = (spot.x, spot.y)
+        if key not in wanted or not in_bounds(ct, spot):
+            continue
+        if building_at(ct, spot) is not None:
+            continue
+        if not legal(spot):
+            continue
+        # Block as near the Core as possible: a screen that dies still
+        # bought the rounds, and one nearer home is easier to replace.
+        cost = min(f.distance_squared(spot) for f in footprint)
+        if best is None or cost < best[1]:
+            best = (spot, cost)
+    return best[0] if best else None
