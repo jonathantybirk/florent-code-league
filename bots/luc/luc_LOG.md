@@ -152,3 +152,27 @@ from round 4) is a separate unaddressed failure mode.
 - Pushed njord as `0c51bc1dd`; queued `njord@0c51bc1:2` on the farm.
 - Farm queue observation: vali's 2nd round still pending behind other entries; queue is now 5
   deep. Live results are the bottleneck — next builds should keep coming while they trickle.
+
+## Iteration 6 — 2026-08-08 ~08:00
+
+- Live: **rank 12 at 1771** — flagship on a 6-game rated win streak. Test builds at 10 games
+  each: freyr 6–4 (1733), njord 4–6 (1668), vali 3–7 (1608). Samples too small to act on;
+  note the farm's test panel is deliberately harder than rated draws, so these read low.
+- **Dissected the sweden seat-A deterministic 0-mined loss.** Chain of three findings:
+  1. My first theory (no ore knowledge) was wrong — builders know 16 ore tiles by round 25.
+     Built a midpoint-ore-prior anyway (likely inert; kept, it's harmless and correct).
+  2. **The real killer: the Core-damage alarm pins the sole miner as a mender.** Chip damage
+     holds alarm=1 permanently; the miner healed 4 HP/round for 240 rounds with its Harvester
+     finished but unbelted. Fix in `mimir`: alarm 1 no longer pins a miner with
+     `network_load == 0` (zero connected Harvesters); alarm 2 (critical) still does.
+     Result: sweden goes 317 → 653 rounds… 
+  3. …but still 0 mined: the miner cycles claim → prelay → abandon → re-claim; route
+     planning fails repeatedly on sweden's terrain. Deeper pathing project, deferred.
+- `mimir` = njord + mend-pin exemption + midpoint prior. Panel vs shr/njord/vidar/odin
+  running (`mimir_run1`).
+- **mimir panel: 23–19 njord (beats its parent), 23–19 shr, 29–13 vidar/odin, total 0.619.**
+  CPU clean. Pushed as `62df0ec39`, queued `mimir@62df0ec:2` (after another agent's
+  `gefjon@f66a427:3` — the farm queue is now 7 entries).
+- Lineage so far: shr → freyr (income watchdog) → vali (shooter beacon) → njord (economy
+  ceilings) → mimir (mend-pin exemption). Each step locally ≥ its parent; njord and mimir
+  are the two with real local edges.
