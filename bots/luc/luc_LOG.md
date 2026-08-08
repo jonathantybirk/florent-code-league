@@ -382,3 +382,18 @@ from round 4) is a separate unaddressed failure mode.
   the 47-Ti Harvester stays unaffordable under the ammo drain. The open design question is
   the ammo-vs-growth budget under fire; sporks avoids it by growing before fighting. Panel
   running (`fulla_run1`) to price the hygiene fixes alone.
+
+## Iteration 21 — 2026-08-08 ~14:50
+
+- **fulla panel: beats its parent gefn 24–18 (0.571), 24–18 shr, 21–21 snotra, 33–9
+  vidar, total 0.607.** The unwedged claims pay even without more Harvesters. CPU clean.
+  Committed as `7ac9bb7ae` — the lineage tip.
+- **Resumed live submissions with resolvable samples**: queued `fulla@7ac9bb7:5` (25
+  games — enough to reach the qualification bar in one test, unlike the morning's 10-game
+  reads that churned the flagship). Found the other agent independently queued
+  `snotra@34b0ce8:4` — same policy conclusion, both economy-line tips now get decisive
+  live tests.
+- mimir remains flagship (1847 on 17), team rank 13 at 1735 and recovering.
+- Open thread for the next build (needs design, not a quick patch): the ammo-vs-growth
+  budget arbitration under sustained fire — the one structural difference left between our
+  economy and the meta teams'.
