@@ -1,0 +1,5 @@
+source_commit = "d540e5baf"
+source_path = "bots/luc/magni"
+engine = "2.3.6"
+status = "development"
+variant = "magni with a four-Builder economy-first opening: two miners from round 0 — the pre-2.3.4 'three builders, one miner' measurement re-run on today's field"
