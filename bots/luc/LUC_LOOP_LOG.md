@@ -5401,3 +5401,41 @@ I found and fixed; it is limited by something none of my instrumentation
 reached, and the composition gap to the ladder's top (2.7 Harvesters against
 9.9, 22.8 turrets against 8.5, 24 conveyors against 75) says that something is
 large.
+
+## Iteration 107 — first live games of the session's work, and I am not reading them
+
+**`bifrost` is playing.** Uploaded, 3 of its 6 rounds fired, ~75 games in. First
+shared-opponent numbers, over Besvikomat, I Stone, O(1), arsonist duck, gsxWins:
+
+| build | shared record | rate |
+|---|---|---|
+| `snotra_h@6951e03` | 43/70 | 0.614 ±0.114 |
+| **`bifrost`** | **15/25** | **0.600 ±0.192** |
+| `steward_hardened_reinforced` (6 commits) | 158/325 | 0.486 ±0.054 |
+
+**Twenty-five games. The interval is ±19 points.** That is exactly the reading
+that burned this session three times — `snotra_h` at 0.640 on 50 games (it
+regressed to 0.552), `b61aaac` at 1776 (now 1709), the 0.681 that turned out to
+be a build whose mechanism had not fired. My own rule from iteration 94 was to
+wait until several builds have played and compare them together, and 0.600 ±0.192
+against a local measurement of 0.486 ±0.057 over 294 cells is not a reason to
+break it.
+
+I record it because it is the first live evidence of the night's work, and I
+record the refusal because the temptation to call it vindication is the whole
+failure mode.
+
+**And the promotion that fired minutes ago is the churn, verbatim:**
+
+    PROMOTING steward@e55aab5 (v38): elo 1805 +-83 beats incumbent 1776
+
+A **29-point margin against an 83-point half-width**. The rule compares the
+point estimates and ignores the interval it just computed — the defect quantified
+in iteration 81, still firing, still swapping the flagship on differences a third
+the size of their own uncertainty.
+
+**What to do when `bifrost` finishes its six rounds** (150 games, ±8 points) and
+`hoenir`, `vili`, `freyja`, `lofn` follow: run
+`tools/live_matchups.py --compare` across all of them at once. That comparison
+needs no model, does not move when opponents drift, and is the only live
+measurement this project has that behaves.
