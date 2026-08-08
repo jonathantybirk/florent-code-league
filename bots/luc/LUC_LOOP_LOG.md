@@ -4851,3 +4851,36 @@ rank 1's composition, says the difference between us and the top of this ladder
 is the *rest* of the bot, not its economy code.
 
 That is the end of what I can learn here without live games.
+
+## Iteration 93 — the turret ceiling has no local support either, in any regime
+
+The ceiling (`bil`, `nanna`) has been unmeasurable because we build 3.3 Gunners
+internally against 22.7 live. The obvious reason is game length — 22 turrets
+needs a long game — so the test is the long-game subset, which I already have.
+
+Every game a ceiling build played against a non-ceiling sibling, split:
+
+| | | | their Gunners |
+|---|---|---|---|
+| short (<250 turns) | 500/939 | **0.532 ±0.032** | 2.84 |
+| long (≥250 turns) | 96/195 | **0.492 ±0.070** | 3.78 |
+
+**No benefit in long games — slightly worse.** And the reason is visible in the
+last column: even in our longest internal games we build **3.78 Gunners**,
+nowhere near where a 350-scale ceiling binds. The live 22.7-Gunner game is not
+a longer version of our internal games; it is a different situation entirely,
+presumably sustained pressure with repeated Builder replacement across a
+thousand rounds.
+
+So the ceiling now has: **replay support** (rank 1 fields 8.5 turrets to our
+22.8, and spends the 286 points of saved cost scale on 75 conveyors) and **no
+local support in any regime I can construct**. That is exactly where `frigg`
+sits too.
+
+`nanna` stays queued — it is level with `hlin` everywhere and the live question
+is real — but I am recording plainly that the local evidence for its distinctive
+mechanism is nil, not merely absent for lack of trying.
+
+**Both remaining lines are now closed the same way.** Economy: every `_pick`
+exit instrumented, none of them is the cap. Turrets: every regime split, none
+of them shows the ceiling helping. What is left is the ladder.
