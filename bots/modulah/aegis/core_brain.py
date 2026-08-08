@@ -88,7 +88,11 @@ class CoreBrain:
                 appetite += GameConstants.GUNNER_AMMO_COST
             elif kind == EntityType.SENTINEL:
                 appetite += GameConstants.SENTINEL_AMMO_COST // 2  # fires every other round
-        if appetite == 0:
+        # Keep a floor once anything is shooting at us, even with no turret
+        # standing yet: a Gunner built into an empty ammo pool is 20 Ti that
+        # cannot fire for the rounds it takes the Core to notice. Traced at
+        # ammo=0 for an entire game while the Core died.
+        if appetite == 0 and not burst:
             return
 
         want = max(AMMO_FLOOR, appetite * AMMO_ROUNDS)

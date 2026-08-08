@@ -27,6 +27,10 @@ quiet.
 
 from __future__ import annotations
 
+from fcode import GameConstants
+
+HEAL_AMOUNT = GameConstants.HEAL_AMOUNT
+
 ROLE_MINER = 0
 ROLE_MENDER = 1
 ROLE_GUARD = 2
@@ -53,7 +57,14 @@ PANIC_ROUNDS = 8
 GUARDS_WHEN_QUIET = 1
 
 
-def desired_mix(n_builders: int, hp: int, max_hp: int, burst: int, dhp: float) -> dict:
+def desired_mix(
+    n_builders: int,
+    hp: int,
+    max_hp: int,
+    burst: int,
+    dhp: float,
+    friendly_turrets: int = 0,
+) -> dict:
     """Split `n_builders` across roles.
 
     `burst` is the worst-case one-round damage from threat.max_burst -- an
@@ -64,30 +75,51 @@ def desired_mix(n_builders: int, hp: int, max_hp: int, burst: int, dhp: float) -
     if n_builders <= 0:
         return {ROLE_MINER: 0, ROLE_MENDER: 0, ROLE_GUARD: 0}
 
-    survival = (hp / burst) if burst > 0 else float("inf")
+    # Measured loss rate, not the worst case. `burst` is an upper bound that
+    # ignores enemy ammo and cooldowns, so sizing the mender count off it
+    # panics at turrets that are merely pointed at us. dhp is what is actually
+    # happening.
+    incoming = max(0.0, -dhp)
 
-    if survival <= PANIC_ROUNDS:
-        menders = max(1, n_builders - 1)
-    else:
+    # A mender restores HEAL_AMOUNT per round. So mending is worth a Builder's
+    # turn only while enough menders could actually stem the loss -- past that
+    # they are standing on the Core watching it die at almost the same rate.
+    #
+    # This is the correction that mattered: against a 21-burst rush with two
+    # Builders, the old policy put BOTH on mending (4 hp/round each) and never
+    # built a turret, because guards required n_builders >= 2 after menders
+    # were taken. Core went 500 -> 42 by round 56 with 400 titanium unspent.
+    can_out_heal = incoming <= n_builders * HEAL_AMOUNT
+
+    if incoming <= 0:
         menders = 0
-        if MEND_ON_ANY_DAMAGE and (hp < max_hp or dhp < 0):
-            menders = 1
-        if survival <= SECOND_MENDER_ROUNDS and n_builders >= 3:
-            menders = 2
+    elif can_out_heal:
+        # Enough to cover the bleed, and no more.
+        menders = min(n_builders, int((incoming + HEAL_AMOUNT - 1) // HEAL_AMOUNT))
+    else:
+        # Cannot keep up. One Builder buys time; the rest must remove the
+        # source, because a turret keeps working after its builder dies.
+        menders = 1 if n_builders > 1 else 0
 
-    menders = min(menders, n_builders)
     remaining = n_builders - menders
 
+    # The FIRST turret is the highest-value build on the board when something
+    # is shooting us and we have none -- it is the only thing that makes the
+    # damage stop rather than slowing it down. It is not gated on Builder
+    # count, because a lone Builder mending into a rush loses the Core.
     guards = 0
-    if remaining > 0 and n_builders >= 2:
-        # Under real pressure a second guard pays: turrets outlast the Builder
-        # that placed them, which a mender does not.
-        guards = min(remaining, 2 if survival <= SECOND_MENDER_ROUNDS else GUARDS_WHEN_QUIET)
+    if remaining > 0:
+        if incoming > 0 and friendly_turrets == 0:
+            guards = 1
+        elif incoming > 0:
+            guards = min(remaining, 2)
+        else:
+            guards = min(remaining, GUARDS_WHEN_QUIET)
 
     return {
         ROLE_MENDER: menders,
         ROLE_GUARD: guards,
-        ROLE_MINER: remaining - guards,
+        ROLE_MINER: max(0, remaining - guards),
     }
 
 
