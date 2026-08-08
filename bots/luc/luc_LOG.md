@@ -144,3 +144,11 @@ from round 4) is a separate unaddressed failure mode.
   sweden vs shr (known symmetry-guess failure map).
 - Live: freyr 6–4 (est 1732), vali still 5 games (2nd round pending), flagship shr@f1f2bda
   active, team 1751 rank 14.
+- **njord panel: best of the day — positive against everything.** 23–19 shr, 24–18 vali,
+  29–13 vidar, 29–13 odin, total 0.625 (vali was 0.565 on the same panel). First build today
+  to beat its parent locally. Long-game harvester medians unchanged (2) — the gain likely
+  comes from ECON_BUILDER_ROUND 120 buying income in mid-length games, not from the raised
+  caps; worth decomposing later if njord's live numbers disappoint. CPU clean.
+- Pushed njord as `0c51bc1dd`; queued `njord@0c51bc1:2` on the farm.
+- Farm queue observation: vali's 2nd round still pending behind other entries; queue is now 5
+  deep. Live results are the bottleneck — next builds should keep coming while they trickle.
