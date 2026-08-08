@@ -91,8 +91,8 @@ CORNER_MARGIN = 0
 # because it is the right place for a role change to live if a later one earns
 # its way in, not because this one varies.
 _ROLES = {
-    RUSH: (1, 1),
-    FORTIFY: (1, 1),
+    RUSH: (2, 1),
+    FORTIFY: (2, 1),
     # Nobody mines, but somebody guards and somebody mines: one of each.
     #
     # This was three attackers, no miner and -- through _LAUNCHER_BUILDERS
@@ -175,6 +175,15 @@ def core_distance(ct) -> int:
 
 def economy_builders(doctrine: int) -> int:
     return _ROLES.get(doctrine, _ROLES[RUSH])[0]
+
+
+def launcher_builder_index(doctrine: int) -> int:
+    """Where the ring Builder sits, derived from the doctrine's own counts."""
+    return economy_builders(doctrine) + attack_builders(doctrine)
+
+
+def max_opening_builders(doctrine: int) -> int:
+    return launcher_builder_index(doctrine) + launcher_builders(doctrine)
 
 
 def launcher_builders(doctrine: int) -> int:

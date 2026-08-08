@@ -141,6 +141,7 @@ def run(player: "Player", ct: Controller) -> None:
         ct.write_store(SLOT_ENEMY_CORE, pack_enemy(player.atlas.enemy_core, True))
 
     economy_builders = doctrine.economy_builders(player.doctrine)
+    opening_builders = doctrine.max_opening_builders(player.doctrine)
     role = player.builders_spawned
     resources = ct.get_global_resources()
     builder_cost = ct.get_builder_bot_cost()
@@ -181,7 +182,7 @@ def run(player: "Player", ct: Controller) -> None:
         and ct.get_current_round() >= player.last_spawn_round
         + ECON_WATCHDOG_ROUNDS
     )
-    if (role >= MAX_OPENING_BUILDERS and has_live_builder and not expanding
+    if (role >= opening_builders and has_live_builder and not expanding
             and not reviving):
         # ...unless the bank says the workforce is too small to spend it.
         #
@@ -218,7 +219,7 @@ def run(player: "Player", ct: Controller) -> None:
     else:
         mining_role = role if role < economy_builders else -1
     ore_count = len(player.opening_ore_targets)
-    if role >= MAX_OPENING_BUILDERS and ore_count:
+    if role >= opening_builders and ore_count:
         # Expansion Builders are miners (builder.py forces the role), so they
         # want the ore side of the spawn ring. Left to the arithmetic above they
         # take `mining_role = -1` and spawn facing the enemy Core -- the whole
@@ -228,7 +229,7 @@ def run(player: "Player", ct: Controller) -> None:
         # They cycle past the opening's own deposits: those are already claimed
         # and belted, and a second body on a saturated trunk is the one thing
         # the round-1000 tiebreak does not pay for.
-        mining_role = (economy_builders + role - MAX_OPENING_BUILDERS) % ore_count
+        mining_role = (economy_builders + role - opening_builders) % ore_count
         mines = True
     else:
         mines = 0 <= mining_role < min(economy_builders, ore_count)
