@@ -87,6 +87,7 @@ def desired_mix(
     harvesters: int = 0,
     titanium: int = 0,
     round_no: int = 0,
+    blitz: bool = False,
 ) -> dict:
     """Split `n_builders` across roles.
 
@@ -144,7 +145,10 @@ def desired_mix(
     # Suspended only when the Core is genuinely about to die, where there is
     # no later economy to protect.
     survival = (hp / burst) if burst > 0 else float("inf")
-    floor = 0 if survival <= PANIC_ROUNDS else min(
+    # On a blitz map the economy floor is suspended outright. With the enemy
+    # Core six tiles away the game is over before a supply line pays for
+    # itself, and holding Builders on the economy just hands over the tempo.
+    floor = 0 if (survival <= PANIC_ROUNDS or blitz) else min(
         n_builders, max(0, ECON_FLOOR_HARVESTERS - harvesters)
     )
     if floor:
@@ -176,7 +180,10 @@ def desired_mix(
 
     siege = 0
     left = max(0, remaining - guards)
-    if (round_no >= SIEGE_FROM_ROUND
+    if blitz and left > 1 and incoming <= 0:
+        # Everything spare goes forward immediately.
+        siege = left - 1
+    elif (round_no >= SIEGE_FROM_ROUND
             and harvesters >= SIEGE_MIN_HARVESTERS
             and incoming <= 0
             and left > 1):

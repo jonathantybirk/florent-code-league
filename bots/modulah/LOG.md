@@ -179,7 +179,8 @@ repeat run reproduced 823.33 collected to the decimal).
 | **+ consume the published turret map** | 933 | 5/45 | 0 |
 | **+ Barrier screening** | 823 | 5/45 | **1** |
 | — removing it, to check | 979 | 3/45 | 2 |
-| **+ connectivity broadcast (kept)** | 568 | **6/45** | **2** |
+| **+ connectivity broadcast** | 568 | 6/45 | 2 |
+| **+ blitz doctrine (kept)** | **983** | 5/45 | **4** |
 | siege role (kept, off by default) | 809 | 7/45 | 1 |
 | turret map, all 8 facings (bug) | 256 | 1/45 | 0 |
 | BFS navigation (all movement) | 387 | 3/45 | 0 |

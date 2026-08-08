@@ -173,3 +173,27 @@ def rear_corner(footprint, enemy: Position) -> Position:
     can be worked without crossing the middle of the map.
     """
     return max(footprint, key=lambda f: f.distance_squared(enemy))
+
+
+# Chebyshev Core-to-Core distance at or below which economy is dead weight.
+# Steward measured 6 over 138,785 tournament matches: on a map where the enemy
+# Core is six tiles away the game is decided before the first stack is
+# delivered. Of the 15 official maps only fjordgate (5) qualifies; the rest
+# run 8-20. So this branch is narrow by design -- it exists because that one
+# map is otherwise played with an opening that cannot possibly pay off.
+BLITZ_MAX_DISTANCE = 6
+
+
+def core_distance(ct, footprint) -> int:
+    """Chebyshev distance from our Core to the enemy's, known at round 0.
+
+    Uses enemy_core_guess, so it needs no scouting: every official map is
+    rotationally symmetric.
+    """
+    enemy = enemy_core_guess(ct, footprint)
+    near = min(footprint, key=lambda f: f.distance_squared(enemy))
+    return max(abs(enemy.x - near.x), abs(enemy.y - near.y))
+
+
+def is_blitz_map(ct, footprint) -> bool:
+    return core_distance(ct, footprint) <= BLITZ_MAX_DISTANCE

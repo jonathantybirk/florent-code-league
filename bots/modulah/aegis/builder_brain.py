@@ -22,7 +22,7 @@ import placement
 import roles
 import situation
 from geometry import (CARDINALS, COMPASS, building_at, entity_type_of,
-                      enemy_core_guess, in_bounds, rear_corner)
+                      enemy_core_guess, in_bounds, is_blitz_map, rear_corner)
 
 # Keep this much banked so a cut route can be repaired. Turrets are worth
 # more than a fourth Harvester, but neither is worth being unable to rebuild.
@@ -49,6 +49,7 @@ class BuilderBrain:
         self._danger = set()
         self._opened = False
         self._laid = set()
+        self._blitz_flag = None
         self._intel_join = None
 
     def run(self, ct: Controller) -> None:
@@ -166,6 +167,7 @@ class BuilderBrain:
             harvesters=len(sit.my_harvesters),
             titanium=sit.titanium,
             round_no=r,
+            blitz=self._blitz(ct, sit),
         )
         role = roles.assign(rank, mix)
 
@@ -587,6 +589,16 @@ class BuilderBrain:
         return comms.ACT_BLOCKED
 
     # --- helpers -------------------------------------------------------------
+
+    def _blitz(self, ct: Controller, sit) -> bool:
+        """Is the enemy Core close enough that economy is dead weight?
+
+        Computed once: it depends only on map dimensions and our own Core.
+        """
+        if self._blitz_flag is None:
+            foot = self._footprint(ct, sit)
+            self._blitz_flag = bool(foot) and is_blitz_map(ct, foot)
+        return self._blitz_flag
 
     def _rear(self, ct: Controller, sit) -> Position | None:
         """Cached rear footprint corner -- the rotation-safe anchor."""
