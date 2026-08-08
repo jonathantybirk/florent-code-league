@@ -592,3 +592,16 @@ from round 4) is a separate unaddressed failure mode.
   MAX_OPENING_BUILDERS=3; sif only tested 4). Next build spec (`byggvir`): vor chassis,
   ~6-Builder opening weighted to miners, Launchers off, Gunners bought from income —
   measured on `lv_*` maps against shr/vor and the other agent's spar fixtures.
+
+## Iteration 34 — 2026-08-08 ~20:15
+
+- **Built `bots/luc/byggvir`** = vor with the Pivot architecture: `_ROLES` (3,1) — three
+  opening miners — `LAUNCHER_BUILDERS` 0 in both constants and the doctrine table (the
+  doctrine table was separate; missing it crashed the ring code with a zero-step slice,
+  now also guarded), `RELAY_STOP_DISTANCE` 999 to kill the whole ferry apparatus, njord's
+  economy ceilings carried forward.
+- Smokes on live maps: dies to vor's rush at 47/67 on eider/antler, kills at 107 on
+  saga — the boom is rush-naked as expected; the question is whether the live mix
+  punishes that (Pivot booms and survives, so a defensive complement may be needed:
+  early home Gunners from income). Panel on the 15 live maps vs shr/vor/mimir running
+  (`byggvir_run1`).
