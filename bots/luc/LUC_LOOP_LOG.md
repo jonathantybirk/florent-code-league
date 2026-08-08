@@ -1832,3 +1832,50 @@ magnitude short of sporks on economy, which is the next thing to close.
 
 CPU 2,827 us worst, zero over, better than its parent. Deterministic.
 **Queued five rounds.**
+
+---
+
+## Iteration 25 — `gna` refuted, and the economy ceiling calibrated
+
+### `gna` — shared belt network, second attempt
+
+`sindri` made every friendly conveyor joinable and lost to trunk
+oversaturation, because `network_load` is per-Builder. `spork` since raised
+`NETWORK_CAP_LATE` to 12 and runs two miners, so the pairing was worth one test.
+
+| gna vs | | | harvesters |
+|---|---|---|---|
+| `spork` (parent) | 20/42 | **0.476** | 2.45 |
+| `snotra_h` | 21/42 | 0.500 | 2.19 |
+| `mimir` | 22/42 | 0.524 | 2.38 |
+| `steward_hardened_reinforced` | 23/42 | 0.548 | 2.38 |
+| **mean** | 108/210 | 0.514, floor 0.476 | |
+
+Worse than its parent, and harvesters moved 2.3 → 2.45 — nothing. The shared
+network is not the economy constraint. Deleted; that is the second time this
+idea has been tested and refuted.
+
+### How much economy is even available
+
+From the published `map_catalog`, ore tiles per map:
+
+```
+duel 6   fjordgate 6   sprint 6   atoll 8   moonrise 8   bridge 10 ...
+heart 28   drumlin 30   eider 32   snowflake 32   saga 36   archipelago 38
+median 12 across 33 maps
+```
+
+Ore is shared between both sides, so a median map offers roughly **six**
+deposits a side. That recalibrates the sporks comparison: its 25-harvester game
+was on one of the ore-rich maps, and 25 is not a general target. The realistic
+target on a median map is about six.
+
+We build **2.3**. So the gap is real but it is "2.3 of a possible 6", not "2.3
+of a possible 25" — and closing it is worth roughly a doubling of income, not an
+order of magnitude.
+
+That also means the four things tried against this gap so far — a second miner,
+raised caps, shared belts twice, and better deposit ordering — have moved 1.8 →
+2.3 against a ceiling of about 6, and none of the structural ones moved it at
+all. Whatever holds us at 2.3 is not permission, not the network, and not the
+ordering.
