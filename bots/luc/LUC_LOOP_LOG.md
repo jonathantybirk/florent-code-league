@@ -5065,3 +5065,50 @@ completed.** What the farm will check out is what I measured.
 That is the whole of what I can usefully do while the queue drains. Both
 investigation lines are closed, the instrument for reading the results is built
 and commit-exact, and the builds are verified deliverable.
+
+## Iteration 99 — you cannot buy precision by repeating a map
+
+Tried to tighten the session's headline number — `lofn` beats `vili` 0.577
+±0.078 — by running it again across all four map sets.
+
+**The rerun added almost nothing, and taught me why.** Of 168 games, only 42
+were map/seat cells that had never been played; the other 126 repeated cells
+from the earlier run, and this engine is near-deterministic, so a repeated cell
+returns the same winner. Repetition inflates the count without adding
+information. Precision here comes from **more maps**, not more games — the only
+noise that repetition can average out is the `get_cpu_time_elapsed`
+nondeterminism, which flips about 5% of matches.
+
+De-duplicated by (map, seats):
+
+| run | new cells | rate |
+|---|---|---|
+| `t74` | 156 | 0.577 |
+| `t92` | 42 (the `offpool2` maps) | **0.500** |
+| **combined** | **198** | **0.561 ±0.069 (+1.7 sd)** |
+
+**So the headline is 0.561, not 0.577.** The 42 fresh cells came in at even, and
+pulled it down 1.6 points. Still positive, still under 2 sd, and now measured
+over 84 distinct maps across four sets rather than 63.
+
+Two corrections in one iteration: my first combination pulled `t71`/`t72`, which
+were `freyja` runs, not `lofn` — it silently reported the new run alone as the
+"combined" figure. Caught because both lines printed identical numbers, which
+they should not have.
+
+**Standing summary of what tonight actually produced, at final precision:**
+
+| build | vs its parent | over |
+|---|---|---|
+| `bifrost` (ferry slot bug) | 0.610 mean | 21 maps |
+| `hoenir` (turret hold) | 0.633 mean | 21 maps |
+| `vili` (ring hold) | 0.657 mean | 21 maps |
+| `freyja` (4 claim slots) | 0.510 ±0.070 | 4 map sets |
+| **`lofn` (second miner)** | **0.561 ±0.069** | **84 maps** |
+| `hlin` (claim leak) | 0.526 ±0.078 | 3 map sets |
+| `nanna` (turret ceiling) | 0.506 ±0.078 | 3 map sets |
+| `syn`, `gefn`, `bil`, `frigg` | 0.500-0.506 | 3-4 map sets |
+
+One clear gain (`lofn`), three plausible (`bifrost`, `hoenir`, `vili` — but
+measured only on the tuning pool, where iteration 61 showed differences do not
+generalise), and everything after that inside its error bar.
