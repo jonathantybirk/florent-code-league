@@ -887,3 +887,120 @@ The mechanism is certain — it is two lines of code and four observed swaps. Th
 moves on its own, so 1772 → 1745 is consistent with churn but not proof of it.
 What can be said without qualification is that builds are going live on five
 matches of evidence.
+
+---
+
+## Iteration 9 — I had the wrong nemesis for eight iterations
+
+Rank **11 of 111 at 1784**, flagship back to
+`steward_hardened_reinforced@04300bf`.
+
+### The correction
+
+Every per-opponent number in this log — including the table that opens
+iteration 1 and the memory note built on it — pools over **every version the
+opponent has ever run**. Opponents re-upload constantly. Splitting `matchups`
+by `opponent_version` and keeping only `opponent_build_current`:
+
+| opponent | rank | vs their CURRENT build | pooled, all versions |
+|---|---|---|---|
+| **O(1)** | 12 | **0.28** (25/90) | 0.42 over 395 |
+| **Pivot** | 6 | **0.32** (21/65) | 0.42 over 740 |
+| I Stone | 17 | 0.33 (13/40) | 0.60 over 80 |
+| **Besvikomat** | 21 | **0.53** (24/45) | 0.29 over 455 |
+
+**Besvikomat is not the problem and has not been for some time.** Its 0.17–0.22
+came from versions 16 and 25, both retired; against its current v26 we sit at
+0.53 over 45 games. Breaking one opponent's history out by version:
+
+```
+their v8   0.60    their v16  0.22
+their v14  0.47    their v25  0.17
+their v15  0.43    their v26  0.53  <-- current
+```
+
+The live targets are **O(1) v11 and Pivot**. Memory note corrected.
+
+This is the repo's own "stale constants" warning in a new costume, and the
+loop's "check which build actually played" caution pointed at the opponent
+instead of at us. Eight iterations of framing rested on a number that was a
+history of opponents that no longer exist.
+
+### The disease is the same, though
+
+Decoding the most recent O(1) v11 loss (`match 0f17b7f2`, 1–4):
+
+| map | our damage dealt | we killed? | their Core at end | ours |
+|---|---|---|---|---|
+| archipelago | **1484** | no | **500** | 0 |
+| drumlin | 582 | no | **500** | 0 |
+| nordkap | 392 | no | **500** | 0 |
+| hive | 63 | no | **500** | 0 |
+
+Their Core finishes at **full in every game**. We out-damage them on
+archipelago and still lose. So the mend-and-outlast shape survives the
+correction — it is simply a different opponent doing it.
+
+The asymmetry is turret count at the point of attack: O(1) seats **13 Gunners on
+drumlin to our 5**, and its first hit lands at round 49 against our 19. We chip
+early with few turrets; they mass and then break through the mending. That is
+exactly the ceiling `constants.py` names — "the attacker does not survive long
+enough, or stay solvent enough, to seat a second one … the ceiling is delivery,
+not permission."
+
+### Local panels are saturated
+
+`mimir` over 21 maps × both seats against five stylistically different
+opponents: floor **0.476 vs hodr**, 0.500 vs gefjon, 0.643 vidar, 0.690
+spar_mender, 0.762 pantheon_replica_day3, mean 0.614. Its worst matchup is a
+sibling — the same ceiling the flagship README describes. The local field cannot
+tell me what to fix any more; only the live one can.
+
+### Built: `bots/luc/ullr`
+
+`mimir` with `_ROLES (1,1) → (1,2)` and `LAUNCHER_BUILDER_INDEX 2 → 3`, giving
+`0=miner, 1=attacker, 2=attacker, 3=ring` — an attacker **added**, with the
+miner and the mender both kept. The attack-side analogue of gefjon's second
+miner, aimed directly at the measured delivery ceiling.
+
+Every doctrine has run exactly one attacker since the table was written, and the
+one nearby measurement — BLITZ with three attackers scoring 0.350 against 0.600
+— removed the miner and the ring Builder at the same time, so it does not settle
+whether a second attacker alongside them pays.
+
+### Measured: decisively worse, and it explains the tax
+
+21 maps × both seats:
+
+| ullr vs | | | turrets built | Core damage |
+|---|---|---|---|---|
+| `mimir` | 13/42 | **0.310** | 3.60 | 761 |
+| `hodr` | 14/42 | 0.333 | 4.10 | 775 |
+| `gefjon` | 16/42 | 0.381 | 4.69 | 714 |
+| `vidar` | 23/42 | 0.548 | 6.50 | 1091 |
+| **mean** | 66/168 | **0.393** | | |
+
+About 2.5 sd below even against `mimir` — not noise. **A second attacker is a
+clear loss.**
+
+The mechanism is in the same table and it inverts the premise. The extra
+attacker did not buy more turrets; the build averages **3.60** of them. Each
+Builder levies a permanent **+20% on every price the team pays afterwards**, so
+a fourth body makes Gunners and Sentinels *less* affordable and the siege seats
+**fewer**, not more. "More attackers → more siege" is false in this engine.
+
+That retro-explains gefjon too: the same +20% is why a second miner only paid
+where it rescued an economy that was otherwise going to zero, and why it added
+nothing on top of mimir's mend-pin fix. **The cost scale, not the headcount, is
+what governs this bot's composition** — and it is why `SIEGE_SENTINEL_TARGET`
+2/3/4 measured worse years of iterations ago for what is probably the same
+reason.
+
+`ullr` deleted. CPU was fine (4,606 us worst, zero over); it is simply worse.
+
+### Where that leaves the siege
+
+The delivery ceiling is real and is **not** reachable by adding bodies. Whatever
+breaks a mended Core has to come from turrets that are cheaper, better placed,
+or better protected — not from more Builders carrying them. `hodr`'s
+Sentinel-first work is the live thread on that, and it belongs to another agent.
