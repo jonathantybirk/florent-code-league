@@ -3121,3 +3121,52 @@ Gunner answer, so most of what was tested was invisible to it either way.
 the matchup that is costing us the ladder it is +26pp, and +40pp on the bot
 currently live. It is ninth in the farm queue behind seven builds already
 refuted locally, which is now a much more expensive place for it to be.
+
+## Iteration 55 — three builds on the meta-aware panel: one refutation, one null, one void
+
+**`eir` re-test (refutation stands).** The panel that refuted it could not see
+Sentinels, so its premise deserved a re-test on `spar_sentinel`. It measures
+**0.571** there against `vili`'s **0.667** — worse on the matchup it was
+designed for. Diverting the guard off mending costs more than the turret gains
+even when the opponent is the one the argument was about. Deleted again.
+
+**`nanna` (refutation 22).** The stderr probe finally answered why we build 0.14
+Sentinels a game: `_turret_kind` *is* called, ammo is **57-80** against a
+threshold of 40, and the fallback is forced by **titanium — 2-42 banked against
+a Sentinel costing 73-79**. So the bot never holds what the seat it wants costs.
+`nanna` waits and saves instead of settling for the Gunner. It measures
+**0.667** against Sentinel mass — *identical to `vili`, 0.0 sd* — and Sentinels
+fall to 0.11, because the save gate needs 44 Ti and the bank tops out near 42.
+The gate almost never opens. Deleted.
+
+The wider question it was asking is already answered, by the fixture: 
+`spar_sentinel` **is** "`vili` that buys Sentinels", and `vili` beats it 0.667.
+Our Gunner answer beats a Sentinel answer. The turret-type axis is closed;
+`vili`'s edge is the economy ordering, not the turret.
+
+**`hlin` (void — the patch never ran).** Built to spawn the miner before the
+attacker, on the reasoning that the opening order is pad, attacker, miner. It
+measured 0.667 against Sentinel mass and **205 of 210 cells byte-identical to
+`nanna`** — two structurally different patches cannot agree that closely, so I
+checked instead of reporting.
+
+`PAD_FIRST_ORDER` is **False**. I patched the `if PAD_FIRST_ORDER:` branch,
+which never executes. The live branch is the `else`, and it already assigns
+idx 0 = miner, idx 1 = attacker, idx 2 = ring/mender — confirmed by printing the
+roles from both bots:
+
+    ROLE vili idx=0 attacker=False ring=False
+    ROLE hlin idx=0 attacker=False ring=False    (identical at every index)
+
+**The earner already spawns first.** The premise was false, so there was nothing
+to test. Deleted.
+
+**Lesson, third version of it today.** `forseti` was built on four constants
+that were already `False`; `sif` flipped a flag whose comment argued for it;
+`hlin` patched a branch guarded by a `False` constant. *Read the value, and
+confirm the branch executes, before writing the patch that depends on it.* The
+stderr probe does this in about a minute and has now caught it once — it should
+run before the build, not after the measurement.
+
+`vili` remains the best build: 0.657 on the zoo, **0.667 against the live meta**,
+where the currently-live flagship scores 0.262.
