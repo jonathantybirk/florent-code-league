@@ -138,6 +138,26 @@ victory against steward — outlast and out-mine, not out-fight — and repair i
 what let a line survive long enough to do it. Worth rebuilding properly on top
 of the 6-win base rather than in place of it.
 
+### Network repair, all three variants measured
+
+| variant | wins | collected | steward | why it fails |
+|---|---|---|---|---|
+| **shipped: no repair** | **6** | **1208** | 0/30 | — |
+| every Builder repairs | 3 | 127 | 0/30 | whole team chases gaps |
+| one owner, any distance | 4 | 500 | **1/30** | owner abandons its own chain |
+| one owner, underfoot only | 6 | 831 | 0/30 | neutral on wins, costs economy |
+
+Constraining it until it stops hurting also constrains it until it stops
+helping. The mechanic is real — it produced the only win aegis has ever taken
+from steward — but every version that keeps the economy intact also repairs
+too little to matter.
+
+What would plausibly work, and is not tried: repair driven by the Core rather
+than by a Builder's local view. The Core already walks the connected network
+each round for the arrival schedule, so it knows exactly which tiles are
+delivering and which are orphaned — it could name the one gap worth fixing,
+instead of every Builder guessing from a conveyor pointing at empty ground.
+
 ### Network repair: right idea, wrong execution (mine)
 
 Steward's note is compelling — *"every Harvester upstream of a gap mines into
