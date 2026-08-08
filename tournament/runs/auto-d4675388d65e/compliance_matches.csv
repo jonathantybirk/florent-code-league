@@ -1,5 +1,10 @@
 match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
 d9f990dfeaee60ee,auto-d4675388d65e,spar_sniper@aa24129,spar_sniper,aa24129,antler,1,12,pass,ok,,27,195,32,51,96,1187,5742,26,0,0,0,9000,10000,n-62-28-34,29052444,2026-08-08T11:41:54+0200
+818b214c7466f1c6,auto-d4675388d65e,spar_sniper@aa24129,spar_sniper,aa24129,archipelago,1,12,pass,ok,,27,118,48,99,978,2042,6709,13,0,0,0,9000,10000,n-62-28-34,29052444,2026-08-08T11:41:55+0200
+6ea223a95e7e0967,auto-d4675388d65e,spar_sniper@aa24129,spar_sniper,aa24129,atoll,1,12,pass,ok,,27,187,33,55,119,1610,4599,3,0,0,0,9000,10000,n-62-28-34,29052444,2026-08-08T11:41:57+0200
+51f676bd23970a2f,auto-d4675388d65e,spar_sniper@aa24129,spar_sniper,aa24129,aurora,1,12,pass,ok,,27,147,47,100,386,2008,6967,3,0,0,0,9000,10000,n-62-28-34,29052444,2026-08-08T11:41:59+0200
+bc8688f34bb8a49b,auto-d4675388d65e,spar_sniper@aa24129,spar_sniper,aa24129,bridge,1,12,pass,ok,,27,159,38,100,152,1045,2439,3,0,0,0,9000,10000,n-62-28-34,29052444,2026-08-08T11:42:01+0200
+ea227fd6f3c738bc,auto-d4675388d65e,spar_sniper@aa24129,spar_sniper,aa24129,crossfire,1,12,pass,ok,,27,219,32,51,109,665,3874,3,0,0,0,9000,10000,n-62-28-34,29052444,2026-08-08T11:42:03+0200
 e9f13ad4f4cd5be0,auto-d4675388d65e,spar_sniper@aa24129,spar_sniper,aa24129,drumlin,1,12,pass,ok,,27,132,35,59,906,2159,6942,26,0,0,0,9000,10000,n-62-31-16,29052444,2026-08-08T11:41:33+0200
 29fb34684cd9521c,auto-d4675388d65e,spar_sniper@aa24129,spar_sniper,aa24129,duel,1,12,pass,ok,,27,173,32,44,143,1085,3704,26,0,0,0,9000,10000,n-62-31-16,29052444,2026-08-08T11:41:35+0200
 3ab71df4f8fb932d,auto-d4675388d65e,spar_sniper@aa24129,spar_sniper,aa24129,eider,1,12,pass,ok,,27,175,32,47,133,1759,5621,19,0,0,0,9000,10000,n-62-31-16,29052444,2026-08-08T11:41:37+0200
