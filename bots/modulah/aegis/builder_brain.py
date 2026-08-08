@@ -100,6 +100,29 @@ class BuilderBrain:
         )
         return roles.assign(rank, mix)
 
+    def _visible_enemies(self, ct: Controller) -> list[int]:
+        me = ct.get_team()
+        out = []
+        for eid in ct.get_nearby_entities():
+            try:
+                if ct.get_team(eid) != me:
+                    out.append(eid)
+            except GameError:
+                continue
+        return out
+
+    def _visible_enemy_turret_ids(self, ct: Controller) -> list[int]:
+        me = ct.get_team()
+        out = []
+        for bid in ct.get_nearby_buildings():
+            try:
+                if ct.get_team(bid) != me and ct.get_entity_type(bid) in (
+                        EntityType.GUNNER, EntityType.SENTINEL):
+                    out.append(bid)
+            except GameError:
+                continue
+        return out
+
     def _friendly_turrets(self, ct: Controller) -> int:
         me = ct.get_team()
         n = 0
@@ -151,12 +174,67 @@ class BuilderBrain:
         rejected every good site and silently fell through to mining -- the bot
         banked 400 titanium while its Core died with no turret on the board.
         """
+        # Gunners by default, and Sentinels only against a confirmed firing
+        # solution. A Sentinel's facing is PERMANENT -- can_rotate is
+        # Gunner-only -- so one sited at a corridor the enemy does not use is
+        # dead weight for the rest of the game. Measured: four Sentinels, 60
+        # ammo, 8-11 visible targets, and zero shots fired in an entire match,
+        # because betweenness aimed them at ground nobody walked.
         kind = EntityType.GUNNER
         base = GameConstants.GUNNER_BASE_COST
-        if sit.enemy_turrets and sit.afford(GameConstants.SENTINEL_BASE_COST, BUILD_RESERVE):
-            kind, base = EntityType.SENTINEL, GameConstants.SENTINEL_BASE_COST
         if not sit.afford(base, BUILD_RESERVE):
             return self._mine(ct, sit, r)
+
+        # Counter-battery first. A Gunner reaches 3 tiles; a Sentinel reaches
+        # 5. An enemy sieging with Sentinels sits at range 5 and shells the
+        # Core from outside anything a Gunner can answer -- which is why our
+        # Gunners saw 8-11 targets and fired 8 shots in a whole match.
+        #
+        # A Sentinel is the right answer to an enemy turret specifically
+        # because the target is a BUILDING and cannot move: its permanent
+        # facing, which makes it dead weight against Builders, costs nothing
+        # against something that will still be there in fifty rounds.
+        if sit.enemy_turrets and sit.afford(GameConstants.SENTINEL_BASE_COST, BUILD_RESERVE):
+            turret_ids = self._visible_enemy_turret_ids(ct)
+            if turret_ids:
+                def sentinel_ok(spot, facing):
+                    try:
+                        return ct.can_build_sentinel(spot, facing)
+                    except GameError:
+                        return False
+                seat = placement.best_firing_seat(
+                    ct, turret_ids, EntityType.SENTINEL, sentinel_ok, ct.get_position()
+                )
+                if seat is not None:
+                    spot, facing, _ = seat
+                    try:
+                        ct.build_sentinel(spot, facing)
+                        self.commit = None
+                        return comms.ACT_BUILD_SENTINEL
+                    except GameError:
+                        pass
+
+        # With enemies in sight, site against a real target the way steward
+        # does. Betweenness is the answer to 'where before anyone arrives',
+        # not to 'where now that they are here'.
+        enemies = self._visible_enemies(ct)
+        if enemies:
+            def placeable_now(spot, facing):
+                try:
+                    return ct.can_build_gunner(spot, facing)
+                except GameError:
+                    return False
+            seat = placement.best_firing_seat(
+                ct, enemies, kind, placeable_now, ct.get_position()
+            )
+            if seat is not None:
+                spot, facing, _ = seat
+                try:
+                    ct.build_gunner(spot, facing)
+                    self.commit = None
+                    return comms.ACT_BUILD_GUNNER
+                except GameError:
+                    pass
 
         foot = self._footprint(ct, sit)
         if not foot:
@@ -193,16 +271,10 @@ class BuilderBrain:
             return self._mine(ct, sit, r)
 
         try:
-            build = (ct.can_build_sentinel if kind == EntityType.SENTINEL
-                     else ct.can_build_gunner)
-            if build(spot, facing):
-                if kind == EntityType.SENTINEL:
-                    ct.build_sentinel(spot, facing)
-                else:
-                    ct.build_gunner(spot, facing)
+            if ct.can_build_gunner(spot, facing):
+                ct.build_gunner(spot, facing)
                 self.commit = None
-                return (comms.ACT_BUILD_SENTINEL if kind == EntityType.SENTINEL
-                        else comms.ACT_BUILD_GUNNER)
+                return comms.ACT_BUILD_GUNNER
         except GameError:
             pass
 

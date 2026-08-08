@@ -70,24 +70,33 @@ def run(ct: Controller) -> None:
         except GameError:
             continue
 
-    # Nothing in the current lane. Turning is expensive, so only do it for a
-    # target we could actually hit from here once turned.
+    # Nothing in the current lane. Only Gunners can turn at all -- a
+    # Sentinel's facing is fixed at build time -- and turning costs 10 Ti and
+    # a round, so it is worth doing only for a target we could actually hit
+    # once turned.
     if kind != EntityType.GUNNER:
         return
     try:
         pos = ct.get_position()
     except GameError:
         return
+
+    # Scan every facing rather than trusting direction_to, which returns the
+    # nearest 45-degree approximation: for any target not exactly on a ray
+    # that is a bearing the turret cannot actually shoot along, so the rotate
+    # was being skipped for targets a different facing covers. Highest-value
+    # target first, so the turn is spent on the thing most worth killing.
     for _prio, _d, eid in targets:
         try:
             target = ct.get_position(eid)
-            facing = pos.direction_to(target)
-            if facing not in COMPASS:
-                continue
-            if not ct.can_fire_from(pos, facing, kind, target):
-                continue
-            if ct.can_rotate(facing):
-                ct.rotate(facing)
-                return
         except GameError:
             continue
+        for facing in COMPASS:
+            try:
+                if not ct.can_fire_from(pos, facing, kind, target):
+                    continue
+                if ct.can_rotate(facing):
+                    ct.rotate(facing)
+                    return
+            except GameError:
+                continue
