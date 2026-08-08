@@ -283,3 +283,20 @@ def best_firing_seat(ct, enemies, kind: EntityType, buildable, near: Position):
             if best is None or d2 < best[2]:
                 best = (spot, facing, d2)
     return best
+
+
+# MEASURED AND REJECTED: counter_battery_seat -- a Sentinel seat found near an
+# enemy turret, walked to by a Builder. The reasoning was sound (an enemy
+# turret is a building, so the seat is still there when you arrive) and it
+# measured worse on every axis over the 6-map panel:
+#
+#     wins                 6 -> 5
+#     titanium collected   2121 -> 1856
+#     core hp at end        200 -> 161
+#     enemy cores killed   mean round 233 -> never
+#
+# The walk is the problem, not the seat. A Builder sent five tiles out to
+# answer a siege is neither mining nor mending, and it crosses exactly the
+# ground the siege covers to get there. best_firing_seat, which only seats
+# from tiles already adjacent to the Builder, keeps the counter-battery that
+# works and drops the part that does not.
