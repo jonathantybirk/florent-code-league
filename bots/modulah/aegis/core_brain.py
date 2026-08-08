@@ -32,7 +32,15 @@ from geometry import core_footprint
 # threat rather than a flat number: a Sentinel costs 10 a shot and fires every
 # other round, so a real siege drains a fixed reserve almost immediately.
 AMMO_ROUNDS = 6
-AMMO_FLOOR = GameConstants.SENTINEL_AMMO_COST * 2
+
+# Steward runs AMMO_TARGET 120 with a COMBAT_AMMO_FLOOR of 80, and refilling
+# that floor explicitly OUTRANKS its construction reserve -- its own note says
+# the pool otherwise "sat pinned at 0-1 for whole matches". aegis was targeting
+# ~72 and flooring at 20. Turret firing was never blocked outright (measured:
+# zero dry turns), but a deeper pool is what lets several turrets fire in the
+# same round rather than taking turns.
+AMMO_FLOOR = 80
+AMMO_TARGET = 120
 
 # Titanium held back from spawning so a lost Harvester or conveyor can be
 # replaced without waiting. steward moved its equivalent from 110 to 260 for
@@ -120,13 +128,17 @@ class CoreBrain:
         if appetite == 0 and not burst:
             return
 
-        want = max(AMMO_FLOOR, appetite * AMMO_ROUNDS)
+        want = min(AMMO_TARGET, max(AMMO_FLOOR, appetite * AMMO_ROUNDS))
         have = ct.get_global_ammo()
         if have >= want:
             return
         # Under fire the ammo matters more than the bank -- a Core that dies
         # with a full treasury still loses.
-        spare = ct.get_global_resources() - (0 if burst else REPLACEMENT_BANK)
+        # Restoring the combat floor outranks the construction reserve; only
+        # a token emergency reserve is held back below it.
+        below_floor = have < AMMO_FLOOR
+        reserve = 10 if (below_floor or burst) else REPLACEMENT_BANK
+        spare = ct.get_global_resources() - reserve
         amount = min(want - have, max(0, spare))
         if amount <= 0:
             return

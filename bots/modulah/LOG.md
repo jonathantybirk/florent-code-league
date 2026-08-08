@@ -99,6 +99,29 @@ threshold, the signal, or the money — it is that the roles are already
 allocated. Any real fix has to change the allocation earlier, and every
 attempt to do that so far has cost more economy than it saved.
 
+### Reading steward's code beats inferring from its metrics
+
+Its `core.py` carries the reasoning, not just the constants:
+
+  * **`AMMO_TARGET = 120`, `COMBAT_AMMO_FLOOR = 80`**, and refilling that floor
+    **outranks the construction reserve** — its own note says the pool
+    otherwise "sat pinned at 0-1 for whole matches". aegis targeted ~72 and
+    floored at 20.
+  * **Surplus titanium never becomes extra Builders.** Each adds +20% to every
+    future build cost: "it drained the opening 380 Ti to 18 by round 7 and
+    tripled the price of the defence it was meant to build."
+  * Spawning is **demand-driven, not timed**: replace a dead Builder, or spawn
+    when the BANK is large — because a large bank is itself the signal that
+    the workforce is too small to spend income, and a live headcount cannot be
+    published through a one-round-latent store.
+  * "Two menders out-heal a Gunner's 10 dmg/round and fully cancel a
+    Sentinel's 6 — **defence is titanium-positive**."
+
+Adopting the ammo policy alone: **5 wins → 6**, collected 1197 → 1208,
+vidar 1/30 → 2/29. Firing was never blocked outright (zero dry turns measured)
+— a deeper pool is what lets several turrets fire in the *same* round instead
+of taking turns.
+
 ### Turrets that could never fire
 
 The single most productive diagnostic of the session. Counting shots rather
@@ -372,7 +395,8 @@ repeat run reproduced 823.33 collected to the decimal).
 | — removing it, to check | 979 | 3/45 | 2 |
 | **+ connectivity broadcast** | 568 | 6/45 | 2 |
 | **+ blitz doctrine** | 983 | 5/45 | 4 |
-| **+ doorstep coverage (kept)** | **1197** | **6/45** | **5** |
+| **+ doorstep coverage** | 1197 | 6/45 | 5 |
+| **+ steward's ammo policy (kept)** | **1208** | 5/45 | **6** |
 | blitz threshold widened to 9 | 665 | 3/45 | 3 |
 | siege role (kept, off by default) | 809 | 7/45 | 1 |
 | turret map, all 8 facings (bug) | 256 | 1/45 | 0 |
