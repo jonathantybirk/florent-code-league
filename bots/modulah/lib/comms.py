@@ -124,12 +124,30 @@ FIRST_ECON_HOP = 2  # bucket 0 is hop 2, i.e. write_round + 2
 ECON_ARRIVALS = tuple(Field(3 * i, 3) for i in range(ECON_HORIZON))
 ECON_HEARTBEAT = Field(HEARTBEAT_OFFSET, HEARTBEAT_BITS)
 
+# Enemy Core intel rides in this word's spare bits (15..27) rather than taking
+# a slot of its own: slots are the scarce resource here (one writer each,
+# forced by the engine) and bits inside an already-spent word are free.
+# hp in 8-hp bins covers CORE_MAX_HP 500 in 6 bits, which is ample for the
+# only question it answers -- are we close enough to finishing them.
+ECON_ENEMY_SEEN = Field(15, 1)
+ECON_ENEMY_HP = Field(16, 6, scale=8)
 
-def pack_econ(arrivals, round_no: int) -> int:
+
+def pack_econ(arrivals, round_no: int, enemy_hp: int | None = None) -> int:
     word = 0
     for field, stacks in zip(ECON_ARRIVALS, arrivals):
         word = field.pack(word, stacks)
+    if enemy_hp is not None:
+        word = ECON_ENEMY_SEEN.pack(word, 1)
+        word = ECON_ENEMY_HP.pack(word, enemy_hp)
     return ECON_HEARTBEAT.pack(word, round_no & HEARTBEAT_MASK)
+
+
+def unpack_enemy_core(word: int) -> int | None:
+    """Enemy Core hp if anyone has seen it, else None."""
+    if not ECON_ENEMY_SEEN.unpack(word):
+        return None
+    return ECON_ENEMY_HP.unpack(word)
 
 
 def unpack_econ(word: int) -> list[int]:

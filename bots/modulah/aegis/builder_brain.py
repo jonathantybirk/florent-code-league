@@ -21,12 +21,20 @@ import navigation
 import placement
 import roles
 import situation
-from geometry import (CARDINALS, building_at, entity_type_of, enemy_core_guess,
-                      in_bounds, rear_corner)
+from geometry import (CARDINALS, COMPASS, building_at, entity_type_of,
+                      enemy_core_guess, in_bounds, rear_corner)
 
 # Keep this much banked so a cut route can be repaired. Turrets are worth
 # more than a fourth Harvester, but neither is worth being unable to rebuild.
 BUILD_RESERVE = 40
+
+# Round from which a guard will put up the team's one Launcher.
+LAUNCHER_FROM_ROUND = 25
+
+# The opening Gunner: planted from where a Builder already stands, within
+# these rounds, and only while enough is banked to keep the supply line going.
+OPENING_TURRET_BY = 45
+OPENING_TURRET_RESERVE = 120
 
 
 class BuilderBrain:
@@ -37,6 +45,9 @@ class BuilderBrain:
         self.trail: Position | None = None
         self._heading = None
         self._rear_corner = None
+        self._core_anchor = None
+        self._danger = set()
+        self._opened = False
 
     def run(self, ct: Controller) -> None:
         r = ct.get_current_round()
@@ -44,7 +55,10 @@ class BuilderBrain:
             self.slot = comms.claim_builder_slot(ct, r)
 
         sit = situation.Situation(ct)
+        if self._core_anchor is None:
+            self._core_anchor = sit.core_tile or self._find_core(ct)
         intel = self._intel(ct, r)
+        self._danger = self._reported_danger(ct, intel)
         role = self._role(ct, r, intel, sit)
 
         if self.commit is not None:
@@ -65,13 +79,60 @@ class BuilderBrain:
     # --- team picture --------------------------------------------------------
 
     def _intel(self, ct: Controller, r: int) -> dict:
+        """Everything the Core published, not just the threat word.
+
+        The turret map and the arrival schedule were being written and read by
+        nobody. The Core is the only unit that can see them -- max Sentinel
+        reach is dist_sq 32 against CORE_VISION_RADIUS_SQ 36, while a Builder
+        sees radius ~4.5 -- so a Builder that ignores them is walking blind
+        through ground the Core can describe exactly.
+        """
         word = ct.read_store(comms.SLOT_CORE_THREAT)
         info = {"fresh": False, "hp": GameConstants.CORE_MAX_HP,
-                "dhp": 0, "burst": 0}
+                "dhp": 0, "burst": 0, "income": 0, "enemy_hp": None,
+                "turrets": []}
         if comms.is_fresh(word, r):
             info.update(comms.unpack_threat(word))
             info["fresh"] = True
+
+        econ_word = ct.read_store(comms.SLOT_CORE_ECON)
+        if comms.is_fresh(econ_word, r):
+            arriving = comms.arrivals_from_now(econ_word, r)
+            info["income"] = sum(arriving.values()) * GameConstants.STACK_SIZE
+            info["enemy_hp"] = comms.unpack_enemy_core(econ_word)
+
+        anchor = self._core_anchor
+        for slot in (comms.SLOT_CORE_TURRET0, comms.SLOT_CORE_TURRET1):
+            w = ct.read_store(slot)
+            if not comms.is_fresh(w, r) or anchor is None:
+                continue
+            for rec in comms.unpack_turrets(w):
+                idx = rec["facing"] % len(COMPASS)
+                info["turrets"].append((
+                    Position(anchor.x + rec["dx"], anchor.y + rec["dy"]),
+                    EntityType.SENTINEL if rec["is_sentinel"] else EntityType.GUNNER,
+                    COMPASS[idx],
+                ))
         return info
+
+    def _reported_danger(self, ct: Controller, intel: dict) -> set:
+        """Tiles the Core says are covered, from turrets we cannot see ourselves.
+
+        Uses the REPORTED facing, not all eight. Marking every facing paints a
+        turret's whole neighbourhood lethal -- up to 36 tiles instead of 5 --
+        and with several turrets that is most of the ground between us and the
+        ore. Measured: titanium collected fell to 256 and only 1 game in 45
+        survived, because Builders had nowhere they were willing to stand.
+        Publishing the facing is the entire reason it is in the schema.
+        """
+        out = set()
+        for tpos, kind, facing in intel.get("turrets", ()):
+            try:
+                for t in ct.get_attackable_tiles_from(tpos, facing, kind):
+                    out.add((t.x, t.y))
+            except GameError:
+                continue
+        return out
 
     def _role(self, ct: Controller, r: int, intel: dict, sit) -> int:
         """Rank among live Builders decides which slice of the mix we take.
@@ -145,6 +206,17 @@ class BuilderBrain:
             except GameError:
                 continue
         return out
+
+    def _friendly_launchers(self, ct: Controller) -> int:
+        me = ct.get_team()
+        n = 0
+        for bid in ct.get_nearby_buildings():
+            try:
+                if ct.get_team(bid) == me and ct.get_entity_type(bid) == EntityType.LAUNCHER:
+                    n += 1
+            except GameError:
+                continue
+        return n
 
     def _friendly_turrets(self, ct: Controller) -> int:
         me = ct.get_team()
@@ -260,6 +332,27 @@ class BuilderBrain:
                     return comms.ACT_BUILD_GUNNER
                 except GameError:
                     pass
+
+        # One Launcher first, from where we stand. It is the only thing on the
+        # board that moves a Builder faster than walking -- dist_sq 26 in a
+        # single round, over anything in between -- so unlike a turret it pays
+        # back into the economy rather than only out of it. steward runs 1.7
+        # of them; we ran none.
+        if (self._friendly_launchers(ct) == 0
+                and r >= LAUNCHER_FROM_ROUND
+                and len(sit.my_harvesters) >= 1
+                and sit.afford(GameConstants.LAUNCHER_BASE_COST, BUILD_RESERVE)):
+            pos = ct.get_position()
+            for d in CARDINALS:
+                spot = pos.add(d)
+                if not in_bounds(ct, spot) or building_at(ct, spot) is not None:
+                    continue
+                try:
+                    if ct.can_build_launcher(spot):
+                        ct.build_launcher(spot)
+                        return comms.ACT_NONE
+                except GameError:
+                    continue
 
         foot = self._footprint(ct, sit)
         if not foot:
@@ -504,6 +597,8 @@ class BuilderBrain:
             unsafe = placement.enemy_covered_tiles(ct)
         except GameError:
             unsafe = set()
+        # Plus the rays the Core reported for turrets this Builder cannot see.
+        unsafe = unsafe | self._danger
 
         order = pref + [d for d in CARDINALS if d not in pref]
         if unsafe:

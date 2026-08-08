@@ -49,6 +49,7 @@ class CoreBrain:
         self.monitor = threat.CoreMonitor()
         self._footprint = None
         self._last_spawn = -99
+        self._enemy_core_hp = None
 
     def run(self, ct: Controller) -> None:
         round_no = ct.get_current_round()
@@ -63,7 +64,10 @@ class CoreBrain:
 
     def _publish(self, ct: Controller, round_no: int, burst: int) -> None:
         schedule = econ.published_schedule(ct, self._footprint)
-        ct.write_store(comms.SLOT_CORE_ECON, comms.pack_econ(schedule, round_no))
+        ct.write_store(
+            comms.SLOT_CORE_ECON,
+            comms.pack_econ(schedule, round_no, enemy_hp=self._enemy_hp(ct)),
+        )
         ct.write_store(
             comms.SLOT_CORE_THREAT,
             comms.pack_threat(self.monitor.hp, self.monitor.dhp(), burst, round_no),
@@ -72,6 +76,22 @@ class CoreBrain:
         recs = threat.turret_records(ct, self._footprint, anchor, limit=4)
         ct.write_store(comms.SLOT_CORE_TURRET0, comms.pack_turrets(recs[:2], round_no))
         ct.write_store(comms.SLOT_CORE_TURRET1, comms.pack_turrets(recs[2:4], round_no))
+
+    def _enemy_hp(self, ct: Controller) -> int | None:
+        """Enemy Core hp if it is in sight, remembered once seen.
+
+        Sticky, because a number that vanishes when the Core walks out of
+        vision is worse than a slightly stale one: it would read as "never
+        seen" and switch every consumer back to its default.
+        """
+        me = ct.get_team()
+        for bid in ct.get_nearby_buildings():
+            try:
+                if ct.get_team(bid) != me and ct.get_entity_type(bid) == EntityType.CORE:
+                    self._enemy_core_hp = ct.get_hp(bid)
+            except GameError:
+                continue
+        return self._enemy_core_hp
 
     def _feed_turrets(self, ct: Controller, burst: int) -> None:
         """Top the shared ammo pool up to what our turrets could actually spend."""
