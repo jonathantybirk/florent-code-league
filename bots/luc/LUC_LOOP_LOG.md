@@ -5807,3 +5807,40 @@ see is not something to spend live rounds on when `lofn` and `hlin` are already
 queued to test the same lineage. The finding that matters is not `mani` — it is
 that the threshold in our lineage is unreachable, and that our best live build is
 the one that fixed it.
+
+## Iteration 118 — on a length-matched panel, lofn beats the flagship after all
+
+Built the panel iteration 117 said was missing: selected the 153 maps (of 1,000)
+whose median game ran **≥250 turns**, measured over ~5,000 recorded games. The
+selected set has a median of **391 turns**; the unselected set has **110**; the
+live ladder runs **270**.
+
+| | length-matched (391) | short-game panel (110) |
+|---|---|---|
+| **`lofn` vs `steward_hardened_reinforced`** | **0.5625 ±0.0558 (+2.2 sd)** | 0.4952 ±0.0205 |
+| `lofn` vs `mani` | 0.5592 ±0.0558 | 0.5860 |
+
+**`lofn` is better than the flagship in the game the ladder actually plays**, by
+6.3 points, and exactly level in the game my instrument was playing. Iteration
+104's "no measurable improvement over what is live" was an artefact of measuring
+in 110-turn games.
+
+`mani` improves too — from 0.414 to 0.441 against `lofn` — consistent with
+iteration 117's length split, though still behind.
+
+**The caveat, which is real and which I will not bury.** I selected the maps
+using game lengths recorded in runs involving these same builds. That is not
+independent of what I am now measuring: maps where `lofn`'s games ran long may
+be maps `lofn` was winning slowly. A sound version selects on a build-independent
+property — map area, Core distance — and I would trust +2.2 sd from that much
+more than +2.2 sd from this.
+
+What is not circular is the **mechanism**: iteration 117 measured `mani`'s
+advantage rising monotonically with game length across four buckets *within a
+single run*, which no selection effect explains, and iteration 115 showed the
+best live build is one my short panel rates worst.
+
+**Net position after the retraction and this correction:** tonight's economy line
+is probably a real improvement on the ladder, worth something like the +2 to +6
+points these panels bracket — and I could not see it for twenty hours because
+every map set I built played a shorter game than the ladder does.
