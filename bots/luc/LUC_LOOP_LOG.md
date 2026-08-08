@@ -1591,3 +1591,39 @@ worth promoting on.
 - **Turret siting.** `_aligned_turret_site` ranks seats by
   `distance_squared` to the target, and for a *seat* that is the correct
   quantity — it is about reach, not walking. No sibling defect there.
+
+---
+
+## Iteration 20 — switched to a 1-minute cron; `modi` refuted
+
+Lucas asked for a 5-second loop. Cron's floor is one minute, so job `d853cc16`
+runs `*/1 * * * *`. Recorded plainly: that cadence is far faster than anything
+observable moves — the farm fires one round per ~11 minutes and the feed
+regenerates every few minutes — so most firings will find no new data.
+
+### `modi` — alarm-aware rotation reserve, refuted
+
+`ROTATE_TITANIUM_RESERVE = 40` stops a Gunner turning unless the team holds 40
+Ti, and rotation costs 10. In the games we lose we are broke by the time the
+attack lands: from the Flotte v38 sweep our Core takes no damage until round
+70–117 and then dies at 11–15 a round, long after our Gunners were seated at
+rounds 12–50 facing elsewhere. A Gunner fires one fixed ray, so a turret that
+cannot afford to turn is a turret that watches. Dropping the reserve to the
+price of the rotation while the alarm is up looked obviously right.
+
+| modi vs | | |
+|---|---|---|
+| `snotra_h` (parent) | 19/42 | **0.452** |
+| `steward_hardened_reinforced` | 24/42 | 0.571 |
+| `spar_sniper` | 26/42 | 0.619 |
+| `mimir` | 27/42 | 0.643 |
+| **mean** | 96/168 | 0.571, floor 0.452 |
+
+Better than its parent against the grind fixture (0.619 against 0.595) and
+**worse overall**. The 40 Ti floor is doing real work: turning eagerly while
+broke spends titanium that buys more elsewhere. Deleted.
+
+That is the fourth defensive idea to die this way — third mender twice, Sentinel-
+only counter, and now rotation. The pattern across all of them: our defensive
+budget is already spent about as well as it can be, and the losses are decided
+by what we did before the attack arrived, not by what we do once it does.
