@@ -4956,3 +4956,52 @@ hand each time.
 
 When `bifrost`, `hoenir`, `vili`, `freyja`, `lofn`, `hlin` and `nanna` have
 played, `--compare` on that list is the measurement to read, not the estimates.
+
+## Iteration 96 — the b61aaac finding is fully reversed, and the metrics disagree
+
+**The estimate table, six hours after iteration 88:**
+
+| build | games | raw | then |
+|---|---|---|---|
+| `steward_hardened_reinforced@366cd1b` | 165 | **1788** | (current flagship, v35) |
+| `f1f2bda` | 260 | 1779 | 1759 |
+| `f61245f` | 190 | 1754 | 1760 |
+| `snotra_h@6951e03` | 120 | 1752 | 1746 |
+| **`b61aaac`** | 300 | **1709** | **1776** |
+
+**`b61aaac` has gone from the highest large-sample estimate to the lowest**, on
+no new games. My iteration-88 finding — "our best live build cannot be
+promoted" — is now fully reversed by the same feed that produced it. The
+correction arc in full: claimed a +17 Elo gain (88), corrected the margin to
+under half a standard error (89), showed the estimate moves 67 Elo unprompted
+(94), and now the ranking itself has inverted (96).
+
+The queued entry stays: a build the promotion logic cannot see is still a defect,
+whatever its current estimate. But nothing about it was a gain.
+
+**And the farm's churn looks better than I said.** The flagship it has landed on,
+`366cd1b`, is the *highest*-estimate build in the table. Five swaps an hour on
+noise-sized margins is still not a sound rule — but it is not currently holding a
+bad build.
+
+**The two metrics disagree, and neither resolves it.** On shared opponents:
+
+| build | shared record | rate |
+|---|---|---|
+| `snotra_h` | 18/30 | 0.600 ±0.175 |
+| `steward_hardened_reinforced` (all commits pooled) | 50/90 | 0.556 ±0.103 |
+| `freyr` | 4/10 | 0.400 |
+| `vidarr` | 3/10 | 0.300 |
+| `steward@e55aab5` | 3/20 | 0.150 |
+
+Only **two** opponents are shared across that set, so the intervals overlap and
+nothing is decided. By estimate the steward line leads; by shared opponents
+`snotra_h` does; by either, the difference is inside the error.
+
+Caveat found in my own tool: a bare name prefix pools every commit of that
+build. Useful as a lineage aggregate, wrong for ranking individual commits —
+pass full `name@commit` keys when that matters.
+
+**So there is no live signal today that any build we own is better than any
+other.** That is the honest state, and it is why the queued builds need games
+rather than another candidate.
