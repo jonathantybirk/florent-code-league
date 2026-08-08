@@ -1,0 +1,12 @@
+{
+  "challengers": [
+    "forseti@37dc858"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "f9434e8de89b0acbc2df196d102ebcc2d54c3749",
+    "x/jon": "6a2af02a9d07ed943bf730e686b34e71c633b3c5",
+    "x/luc": "37dc85820fbad4cec95b57a4991f8c1ee1fae518"
+  },
+  "submitted_at": "2026-08-08T07:17:49+00:00"
+}
