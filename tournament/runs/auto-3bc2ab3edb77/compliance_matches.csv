@@ -1,4 +1,8 @@
 match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
+820501e1638540c2,auto-3bc2ab3edb77,snotra@34b0ce8,snotra,34b0ce8,antler,1,12,pass,ok,,27,195,27,48,86,1149,5617,26,0,0,0,9000,10000,n-62-29-31,29052584,2026-08-08T13:26:58+0200
+3e60b86d903bf73e,auto-3bc2ab3edb77,snotra@34b0ce8,snotra,34b0ce8,archipelago,1,12,pass,ok,,27,118,45,91,952,2102,6622,13,0,0,0,9000,10000,n-62-29-31,29052584,2026-08-08T13:27:00+0200
+320f0a177a54329f,auto-3bc2ab3edb77,snotra@34b0ce8,snotra,34b0ce8,atoll,1,12,pass,ok,,27,187,30,52,114,1661,4661,6,0,0,0,9000,10000,n-62-29-31,29052584,2026-08-08T13:27:02+0200
+6c2c73daff2a812e,auto-3bc2ab3edb77,snotra@34b0ce8,snotra,34b0ce8,aurora,1,12,pass,ok,,27,147,48,101,401,2136,6951,3,0,0,0,9000,10000,n-62-29-31,29052584,2026-08-08T13:27:03+0200
 de41cb5fd3482c79,auto-3bc2ab3edb77,snotra@34b0ce8,snotra,34b0ce8,bridge,1,12,pass,ok,,27,159,38,104,132,1106,2472,3,0,0,0,9000,10000,n-62-29-9,29052584,2026-08-08T13:26:34+0200
 a65bdaf025e956d9,auto-3bc2ab3edb77,snotra@34b0ce8,snotra,34b0ce8,crossfire,1,12,pass,ok,,27,219,28,48,98,587,3868,3,0,0,0,9000,10000,n-62-29-9,29052584,2026-08-08T13:26:36+0200
 0555d4b28c682207,auto-3bc2ab3edb77,snotra@34b0ce8,snotra,34b0ce8,drumlin,1,12,pass,ok,,27,136,34,56,724,1944,6610,26,0,0,0,9000,10000,n-62-29-9,29052584,2026-08-08T13:26:38+0200
