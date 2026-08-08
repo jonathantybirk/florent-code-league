@@ -5319,3 +5319,41 @@ the line is productive.
 confirmed mechanism that does not pay, three plumbing defects in the farm, and
 a measurement methodology — off-pool maps, model-free comparison, cells not
 games — that turned a claimed +19 points into a measured zero.
+
+## Iteration 105 — the turret ceiling was measurable after all, and it is negative
+
+I called the turret ceiling structurally unmeasurable three times (iterations 70,
+77, 93) because our own bots build 3.3 Gunners against 22.7 live, so a 350-scale
+ceiling almost never binds. That was true about the *mechanism* and wrong about
+the *measurement*: a mechanism that fires rarely still shows up given enough
+cells, and 1,000 maps buys ±2.2 points where 21 maps bought ±7.8.
+
+`nanna` isolates the ceiling exactly — it is `hlin` plus that one change:
+
+| | | |
+|---|---|---|
+| earlier, 156 cells | 79/156 | 0.506 ±0.078 |
+| **1,000 maps, 2,000 cells** | **974/2000** | **0.4870 ±0.0219 (-1.2 sd)** |
+
+Gunners 3.10 → 2.90, so it does bind. And the point estimate has moved from
++0.6 to **-1.3 points** at three times the precision.
+
+**This changes a decision I made in iteration 80.** I queued `nanna` on the
+argument that the replay evidence justified a live experiment even though the
+local result was null. The local result is no longer null: it is mildly
+negative, at a precision that makes the earlier "level" reading obsolete. The
+replay evidence still stands — rank 1 fields 8.5 turrets a game to our 22.8 —
+but the version of that idea I actually built does not pay locally, and I should
+not have described a ±7.8-point null as evidence of anything.
+
+**The general point, which is the session's real methodological lesson stated
+one last time:** every claim I made tonight that survived contact with more
+maps was a *mechanism* claim ("this code never runs", "these slots jam", "68% of
+arrivals are wasted"), and every claim that did not survive was a *win-rate*
+claim. Mechanisms are cheap to verify and stay verified. Win rates on 21 maps
+are worth nothing, on 147 maps are worth a direction, and only at 1,000+ maps
+begin to be worth a decision.
+
+Standing recommendation, revised: **`lofn` is the one to watch live** (level
+locally at 2,294 cells, mechanism confirmed), and `nanna` behind it is now
+measured slightly negative rather than level.
