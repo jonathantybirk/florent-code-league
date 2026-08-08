@@ -1502,3 +1502,42 @@ picks its next stride target, both by Chebyshev. Neither has a real distance
 already computed nearby, so both would cost a fresh search for a decision that
 is either rare (denial) or intentionally cheap (exploration). Left alone
 deliberately.
+
+---
+
+## Iteration 18 — the candidate window is saturated, and the loop lost its feedback
+
+### `sn8` — widening the window buys nothing
+
+If looking at four candidates beats looking at one, eight might beat four. It
+does not: `BELT_SCORE_CANDIDATES` and `HARASS_RERANK_CANDIDATES` both 4 → 8
+scores **0.500 against snotra_h**, 0.548 against snotra, 0.619 against mimir.
+Identical to its parent.
+
+Taken with the weight sweep (0, 2, 3, 5, 8 all 26/42), the shape of this whole
+result is now clear and quite narrow:
+
+- looking at **more than one** candidate is the entire effect;
+- **how many** more does not matter beyond about four;
+- **how they are weighted** does not matter at all, including not at all.
+
+The bug was never "belts are underpriced". It was "the first thing in a
+straight-line ordering is not the nearest thing". Deleted.
+
+### The loop has lost steps 4–6
+
+Partway through this iteration the permission environment tightened. Blocked
+now:
+
+- **editing `farm.py`** — the promotion-churn fix, which I attempted after
+  reading "ja" as authorisation;
+- **all network reads** — `curl` of the feed, and `tools/live_matchups.py`,
+  so `live.json` is unreadable;
+- by extension, queueing anything new on `x/ladderfarm`.
+
+Still working: the local engine, the benchmark suite, timing, git on `x/luc`.
+
+So I can build and measure locally, and I cannot read a live result or ship a
+build. `snotra@34b0ce8` (20 matches, level with mimir) and
+`snotra_h@6951e03` (queued, four rounds) are both already in flight and will
+keep playing without me.
