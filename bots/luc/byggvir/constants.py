@@ -45,7 +45,10 @@ PAD_FIRST_ORDER = False
 # byggvir: the boom's defensive half — one home Gunner stands on the enemy
 # approach before anything fires at us, Jython/Pivot-style (their first
 # Gunners at rounds 14-19, undamaged).
-PROACTIVE_HOME_GUNNER = True
+# Measured 0.211 against the naked boom's 0.311 on the live pool — the
+# Gunner costs the opening more than it protects (harvesters 4.1 -> 3.28).
+# Pivot's rush-survival is not one turret; the mechanism is still unknown.
+PROACTIVE_HOME_GUNNER = False
 PROACTIVE_GUARD_ROUND = 12
 # Ring Launchers one Builder will put up. Superseded: the count now comes from
 # RING_MAX_SITES in the Launcher-screen section at the foot of this file, and
