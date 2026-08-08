@@ -5558,3 +5558,40 @@ Two useful side-notes:
 **The deliverable:** `steward@e55aab5` should not be promotable. It is the only
 build in the pool that would visibly damage the ladder position, and the farm
 selected it once already tonight.
+
+## Iteration 111 — the screen completed, and a self-inflicted gap in it
+
+The final screen reported **960 errored games**, which I nearly wrote off. They
+were all `OSError: failed to load map .../maps/scr_r22*.map26` — **I deleted the
+map copies while the suite was still running**, in a cleanup line at the end of
+an earlier command. Three builds (`vor`, `vidarr`, `vidar_r3`) went unmeasured
+because of it, and the error text said so plainly.
+
+Re-run with the maps in place, zero errors:
+
+| build | vs reference | |
+|---|---|---|
+| `vidar_r3@c8b850e` | 0.453 ±0.056 | weak |
+| `vidarr@bbfaa9c` | 0.487 ±0.057 | tied |
+| `vor@59941c6` | 0.497 ±0.057 | tied |
+
+**No further disasters.** The complete promotable pool — 24 builds, ~7,100
+games against `steward_hardened_reinforced` on 150 generated maps:
+
+- **one catastrophe:** `steward@e55aab5`, **0.273 ±0.050**
+- **four weak:** `spork` 0.440, `ostara` 0.450, `vidar_r3` 0.453
+- **nineteen tied:** 0.487 to 0.540, every `steward_hardened_reinforced`
+  variant, both `snotra_h` commits, `mimir`, `hodr`, `gefjon`, `fulla`, `freyr`,
+  `njord`, `vali`, `vor`, `vidarr`, `steward_relent`, `snotra`, and `bifrost`
+  (0.540, top of pool)
+
+**That is the map of the decision the farm makes every eleven minutes.** It
+picks from nineteen builds it cannot tell apart, four that are mildly worse, and
+one that loses 73% of its games — using a rule that compares point estimates and
+discards the intervals. Tonight it picked the last one.
+
+A note on the cleanup bug, because it is the same class of error as the rest of
+the night: I removed a dependency out from under a running job and then read the
+result as if it were data. The suite told me exactly what happened in the error
+string, and I only looked because 960 was too large to ignore. The habit that
+caught it — read the errors, not just the successes — is the one worth keeping.
