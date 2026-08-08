@@ -364,3 +364,21 @@ from round 4) is a separate unaddressed failure mode.
   eating rounds).
 - Farm: flagship is shr@f1f2bda again; churn over. Team ~1703, rank 17. My builds' volume
   rounds still queued.
+
+## Iteration 20 — 2026-08-08 ~14:20
+
+- Live recovered: rank 13 at 1735; **mimir re-promoted (1847 on 17 games) and won its
+  latest rated 5–0.** hodr 1766/15, freyr 1778/11.
+- **Traced the post-second-trunk stall.** Two mechanisms caught live on jackpot:
+  (1) a miner wedged in `prelay` for 160 rounds holding one of the two claim slots —
+  `_build_failure` waits *forever* on `resources`/`cooldown`, and under sustained fire the
+  ammo emergency pins the bank at 10 Ti, so construction is permanently unaffordable
+  (priority inversion: ammo starves the economy that pays for ammo);
+  (2) the second miner in `scout` for 200 rounds pricing only unroutable candidates.
+- **Built `bots/luc/fulla`** = gefn + resource-wait timeout (40 rounds, then release the
+  claim — safe now that belts are joinable, the half-built line becomes a shortcut) + the
+  post-120 ammo emergency leaves two conveyors' money in the bank.
+- Sobering check: same seed still ends with 2 Harvesters — the timeout releases claims but
+  the 47-Ti Harvester stays unaffordable under the ammo drain. The open design question is
+  the ammo-vs-growth budget under fire; sporks avoids it by growing before fighting. Panel
+  running (`fulla_run1`) to price the hygiene fixes alone.
