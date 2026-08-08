@@ -225,3 +225,121 @@ is. Not touched: the harness is another agent's.
 
 Push to `x/luc`, queue on `x/ladderfarm`, read `live.json` after ~2 rounds.
 Expect little from 15 matches; the Besvikomat matchup is the thing to watch.
+
+---
+
+## Iteration 2 — the miner that was conscripted and never released
+
+### Online, so far
+
+- `steward@e55aab5` finished converging: **1876 → 1827 → 1808 → 1789 → 1715**,
+  and the farm demoted it. The inflated estimate is fully settled and the
+  question is closed. Cost: a few rounds of farm budget, and it corrected a
+  number that would otherwise have kept looking like a better flagship.
+- `steward_relent@7ed1acc`: first round in, **5 matches, elo 1842**. Above the
+  flagship line (~1780) but a long way below the 25-game bar — five-game series
+  swing hard and this is one of them. One more round queued.
+- Team: rank 13-15 of 109, rating ~1744.
+
+### A claim I made and had to withdraw
+
+I found that the atlas (`atlas.py`) is a published-map oracle keyed on
+dimensions plus Core position, covering the **old** pool — atoll, aurora,
+bridge … vault — and that **nordkap, eider, antler and lighthouse are not in
+it** (only jackpot is). The v3 pool replaced 15 maps on 2026-08-06 and the
+atlas was never updated, so on most current ladder maps it misses and the ore
+list falls back to "whatever the Core can see at round 0".
+
+That part is true. The conclusion I drew from it was not: I claimed it
+explained the economy gap, then measured atlas-hit pool maps and got **2.25
+harvesters mean** — no better. The economy is small everywhere, so the atlas is
+not the driver. Recorded because the atlas gap is real and worth someone's time
+on its own (it also costs us the enemy-Core position), just not this.
+
+### The actual mechanism
+
+Generated maps are the useful instrument here — they are guaranteed atlas
+misses *and* they produce long games, which is the ladder condition. Flagship
+vs vidar on 8 of them: **0-3 Harvesters**, including **zero across a 321-round
+game and zero across a 981-round game**.
+
+`builder.py`'s `_pick` already documents the phenomenon and says the caps are
+not the cause: "live Harvesters ran 1.80 at round 50 down to 1.42 at round 500
+in games this bot won, and 1.69 down to 0.24 in games it lost … NETWORK_CAP_EARLY
+6 was measured inert because permission was never the binding constraint."
+Permission allows eight Harvesters. This bot builds two.
+
+The cause is two lines in two different files:
+
+- `core.py`: `repair_alert` latches True at 50 HP lost and clears **only** at
+  `hp == max_hp`.
+- `builder.py:348`: `if p.builder_index == 0 and alarm:` → mend or defend,
+  return. Builder 0 is the *only* economy Builder in every doctrine
+  (`_ROLES` is `(1, 1)` for RUSH, FORTIFY and BLITZ alike).
+
+So one scratch that the menders never quite top up — 4 HP a round against a
+Core that keeps getting chipped — takes our sole miner off ore **for the rest
+of the game**. That is precisely "an economy that never grows and, when losing,
+collapses to nothing", and it explains the ladder replays: our last Harvester
+on nordkap is round 64 of 624, on eider round 90 of 445, on antler round 92 of
+320, while Besvikomat keeps laying them to round 575, 431 and 256.
+
+### Built: `bots/luc/njord`
+
+`steward_relent` plus one change in `core.py`. "Under attack" becomes a Core
+that is *losing* HP rather than a Core merely below full: the Core tracks
+whether its HP fell this round, and releases the alarm after
+`ALARM_RELEASE_ROUNDS = 40` calm rounds — but only while `hp > CRITICAL_HP`, so
+a Core that is genuinely one push from dying keeps its mender.
+
+The eager trigger is untouched, because triggering on damage rather than on a
+death projection is the mechanic holding this build's floor (+11.0pp mean,
++16.6pp worst matchup). Only the way *out* changes.
+
+### Numbers — and the hypothesis is refuted
+
+Economy-over-time, each build vs vidar over 12 generated maps × both seats (24
+games each):
+
+| build | wins | mean rounds | Harvesters built | conveyors | alive @150 / @300 / @500 |
+|---|---|---|---|---|---|
+| flagship | 5 | 374 | 1.33 | 9.3 | 1.00 / **0.88** / 1.14 |
+| `steward_relent` | 5 | 372 | 1.33 | 9.4 | 1.00 / **1.11** / 1.14 |
+| `njord` | 6 | 372 | 1.33 | 9.4 | 1.00 / **1.11** / 1.14 |
+
+`njord` is identical to `relent` on every economy metric. Instrumenting the
+release confirms why: over three long games it fired **zero times**. The state
+I predicted does not arise —
+
+- on r04 the alarm raised at round 40 and cleared by the *original* rule at
+  round 94, because the menders did restore the Core to full;
+- on r05 the Core was chipped continuously from round 13, oscillating around
+  300, so `calm_rounds` never reached 40 and `hp > CRITICAL_HP` was usually
+  false. The miner was conscripted because the Core genuinely was under attack.
+
+So the latch is real in the code and does not bind in play. **`njord` deleted
+rather than pushed** — the same call as the economy-cap change in iteration 1,
+and for the same reason: an unmeasurable no-op costs a ladder cycle and muddies
+attribution.
+
+One thing did come out of it: at round 300 `relent` holds **1.11 Harvesters to
+the flagship's 0.88**. Small, and 24 games is not much, but it is in exactly the
+direction the cost-scale argument predicts — retiring stalled turrets makes
+Harvesters affordable again. That is a second, independent hint that the
+iteration-1 change does something.
+
+### Fixture revision
+
+`spar_mender` now mends with *every* home Builder rather than only the ring
+Builder (one mender at 4 HP a round could never hold a Core), leash 10 → 14, and
+its attacker restored — with `(2, 0)` and no attacker it was simply overrun
+before mending mattered. It now beats the flagship on aurora and jackpot but
+still dies to a rush on quarry, vault, twins and hive. Still a partial asset.
+
+### Next
+
+`steward_relent`'s second online round is the live experiment; nothing else
+should be pushed until it reports. Then: the economy is small because *known
+ore* is small — `p.ores` only grows from tiles a Builder physically walks past,
+and the economy Builder parks on its opening deposits. That is the constraint
+the evidence keeps pointing at, and it is untouched.

@@ -348,7 +348,7 @@ SECOND_MENDER_ON_ANY_DAMAGE = True
 # Chebyshev tiles. This is a leash, not a recall radius: a miner summoned from
 # across the map arrives after the decision has been made, and the tempo it
 # gives up costs more games than the healing saves.
-MENDER_LEASH = 10
+MENDER_LEASH = 14  # fixture: a wider mending pool
 
 # --- Sentinel target order ----------------------------------------------------
 # Let a Sentinel shoot the enemy supply line. `get_nearby_entities` returns
