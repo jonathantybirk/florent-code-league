@@ -5707,3 +5707,52 @@ correct outcome in all five cases.
 
 That is the end of what I can do from here. The measurement is complete, the
 diagnosis is complete, the patch is written, and applying it needs Lucas.
+
+## Iteration 115 — I was wrong about the "catastrophe", and about my own instrument
+
+**Retraction.** Iterations 108-114 called `steward@e55aab5` a disaster on the
+strength of 0.286 ±0.028 against its sibling over 1,000 generated maps, said the
+farm "put a 28% bot on the ladder", and built an argument for the promotion
+patch on top of it. The live record:
+
+| build | live games | live win rate | my generated-map figure |
+|---|---|---|---|
+| **`steward@e55aab5`** | **1,425** | **0.581 — the best of any build we own** | **0.286** |
+| `steward_hardened_reinforced@f1f2bda` | 1,930 | 0.560 | reference |
+| `snotra_h@6951e03` | 260 | 0.554 | 0.517 |
+| `steward_hardened_reinforced@366cd1b` | 1,300 | 0.549 | 0.500 |
+| `bifrost@a29403f` | 150 | 0.533 | 0.512 |
+
+**The build I called a catastrophe has the highest live win rate we own**, over
+1,425 games against 30 opponents with a median rank of 19 — including 0.42
+against rank-1 `sporks`, 0.44 against `Pantheon`, 0.40 against `Pivot`. The farm
+was right to promote it. Twice.
+
+I also claimed, one iteration ago, that its estimate came from a weak-opponent
+draw. That was an artifact of my own tool's 20-game display filter hiding
+everything else. Wrong on the same page as the thing it was explaining.
+
+**What this does to the session's methodology.** Iteration 61 established that
+the 21 official maps do not generalise, and I replaced them with generated maps
+and treated that as ground truth for forty iterations. This is a build where the
+generated-map answer is **29 points away from the live answer**, in the direction
+that would have thrown away our best bot. So:
+
+**Neither the tuning pool nor my generated maps predict the ladder.** Off-pool
+maps fixed one bias and introduced another. The only measurement that has ever
+tracked live results is live games, which is what the farm exists to collect and
+what I spent the session arguing was too slow.
+
+**What survives of the promotion argument.** The churn is still real and still
+undesirable — the farm swapped flagships five times in ninety minutes between
+builds whose live rates are 0.581, 0.560, 0.554 and 0.549, differences no
+25-game estimate can resolve. A margin test would still reduce pointless
+swapping. But the headline case I built it on — "it promotes a 28% bot" — is
+false, and I should not have made it without checking the live record of the
+build I was condemning. The live data was one command away the whole time.
+
+`steward@e55aab5` should not be excluded from anything. If anything it is the
+best evidence we have of what a good build looks like on this ladder, and the
+next thing worth doing is reading what it does differently — it is
+`steward` with "replace Builders the team has lost", a mechanic none of tonight's
+economy work touched.
