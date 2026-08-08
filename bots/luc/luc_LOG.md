@@ -56,3 +56,18 @@ steward@e55aab5 ladder results — if it really measures ~70 Elo above shr live,
 *why* is the next hypothesis. Untouched idea bank: ferry economy Builders to distant ore
 (Pantheon does it, flagged twice in notes); the lighthouse-style early-rush loss (core damage
 from round 4) is a separate unaddressed failure mode.
+
+## Iteration 2 — 2026-08-08 ~05:50
+
+- Pushed freyr to x/luc as `c2c0d3d8b`; queued `freyr@c2c0d3d:2` (10 live matches) on
+  x/ladderfarm (`801f7b5f9`), appended after the steward re-test entry.
+- steward@e55aab5 re-test, first fresh round: 3–2, estimate 1876 → **1827 [1756–1907]** —
+  regressing toward the shr range (1731–1804) as the stale-field theory predicts. Two rounds
+  left; hold judgment.
+- vault/fjord: freyr split 1–1 with shr on both, losses are to vidar/odin in games that end
+  before round 150 — too short for the watchdog to arm. Inherited variance, not a watchdog
+  regression.
+- Watchdog false-positive check: 789-round jackpot win vs vidar, zero WATCHDOG fires — the
+  bank kept growing, so a healthy economy never triggers it. True-positive test is the live
+  field (needs an opponent that actually kills our economy).
+- Waiting on: internal run with freyr; freyr's 10 unrated matches (~25 min).
