@@ -122,6 +122,31 @@ vidar 1/30 → 2/29. Firing was never blocked outright (zero dry turns measured)
 — a deeper pool is what lets several turrets fire in the *same* round instead
 of taking turns.
 
+### Network repair: right idea, wrong execution (mine)
+
+Steward's note is compelling — *"every Harvester upstream of a gap mines into
+a dead end, so one 3 Ti tile restores the whole line's income"* — and it
+should matter MORE here, since aegis lays 25.6 conveyors a game against
+steward's 12.1.
+
+Two bugs of my own, and it still lost:
+
+1. A conveyor at a chain's growing end points at the tile its **Builder is
+   standing on**. A Builder is not a BUILDING, so `building_at` reads empty
+   and every chain under construction looked like a hole — the repair fought
+   its own construction. drumlin: 11,880 titanium mined → 2,470.
+2. Excluding occupied tiles via `get_nearby_units(dist_sq=2)` searched near
+   the *Builder*, not near the target tile.
+
+With both fixed it still measured **6 wins → 3, collected 1208 → 127**,
+because `_repair` ran for every Builder before role dispatch, so the whole
+team chased apparent gaps instead of mining.
+
+The mechanic is worth having and needs a dedicated owner (one Builder, not
+all) plus a gap test that cannot fire on a chain still being built —
+comparing against the Core's published connected set would do it. Reverted
+rather than shipped half-working.
+
 ### What did NOT transfer from steward, and a trap in our own error handling
 
 **Demand-driven spawning** — spawn only to replace a dead Builder, or when the
