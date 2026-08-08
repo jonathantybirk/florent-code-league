@@ -550,3 +550,66 @@ cluster-level observation from the sweep — our Harvesters **peak early and
 collapse** (eider 7→2, antler 1→0) while theirs **scale late** (jackpot 2→9
 after round 300) — which is two different problems and gefjon only addresses
 the first.
+
+---
+
+## Iteration 5 — the online test cannot measure what we are testing
+
+### gefjon at 18 games
+
+**1772 [1700, 1840]**, down from 1850 at five games — the same collapse
+`steward_relent` showed (1842 → 1699). Flagship `f1f2bda` reads 1844. On the
+estimate, gefjon loses.
+
+### …except that comparison is an artifact
+
+Pooling `matchups` per opponent and comparing **raw game win rates on the same
+opponents** — which needs no model at all:
+
+| | games | win rate |
+|---|---|---|
+| `gefjon@f66a427` | 90 | **0.49** |
+| flagship line, same 16 opponents | 5,595 | **0.51** |
+
+Level. Not 72 Elo worse. Worth noting inside that: gefjon went **5/5 against
+Besvikomat**, the matchup this whole session is about and where the flagship
+line sits at 0.25 — one series, so it is a hint and nothing more — and **0/5 vs
+The Flotte Experience** and 4/15 vs Lorem Ipsum, which is its largest single
+deficit.
+
+### Why every challenger reads low
+
+The estimate shrinks toward the team rating (1774), weighted by game count:
+
+| build | games | shrinkage | elo |
+|---|---|---|---|
+| flagship `f1f2bda` | 333 | **0.114** | 1844 |
+| `gefjon` | 18 | **0.373** | 1772 |
+| `relent`, `freyr`, `vali`, `njord` | 10 | 0.48–0.63 | 1602–1755 |
+
+Inverting `elo = (1-s)·raw + s·mean`: at 18 games a challenger needs a **raw**
+strength near **1885** to tie the incumbent's 1844. A build genuinely 30 Elo
+better than the flagship would estimate about 1837 — still below it, so
+`maybe_promote` never fires.
+
+**This is structural, and it explains the whole session's online results.** It
+is not that relent, gefjon, freyr, vali and njord are all bad; it is that a 1–3
+round test cannot distinguish them from the mean, and three agents testing in
+parallel at that budget will all read below the incumbent whatever they built.
+
+### What follows
+
+1. **Stop reading the challenger estimate at low game counts.** Compare raw
+   same-opponent win rates instead, as above. It is model-free and it disagreed
+   with the estimator by 72 Elo here.
+2. **Do not spend more farm budget on gefjon.** Resolving a build this close to
+   the flagship needs on the order of 100+ games — about 20 rounds — and it is
+   level on the honest comparison, so the information is not worth the budget
+   while two other agents are queuing.
+3. **Chase large structural changes, validated locally**, where 168-game panels
+   cost minutes. The farm is a sanity check, not the instrument. This also
+   follows from the goal: we are 12th and incremental gains cannot reach rank 1
+   anyway.
+
+Recorded in memory as `project-farm-cannot-resolve-small-gains`, since it
+changes how anyone should use the farm.
