@@ -55,6 +55,10 @@ PANIC_ROUNDS = 8
 # when the Builder that placed them dies.
 GUARDS_WHEN_QUIET = 1
 
+# Builders held on the economy until this many Harvesters are working, no
+# matter what is happening -- see the floor in desired_mix.
+ECON_FLOOR_HARVESTERS = 2
+
 
 def desired_mix(
     n_builders: int,
@@ -63,6 +67,7 @@ def desired_mix(
     burst: int,
     dhp: float,
     friendly_turrets: int = 0,
+    harvesters: int = 0,
 ) -> dict:
     """Split `n_builders` across roles.
 
@@ -93,12 +98,38 @@ def desired_mix(
     if incoming <= 0:
         menders = 0
     elif can_out_heal:
-        # Enough to cover the bleed, and no more.
-        menders = min(n_builders, int((incoming + HEAL_AMOUNT - 1) // HEAL_AMOUNT))
+        # Enough to cover the bleed, and no more -- but never the whole team.
+        # Matching the bleed exactly with every Builder is a stalemate that
+        # builds nothing while the enemy keeps adding turrets; someone has to
+        # be removing the source. Traced: 4 Builders against a 16/round rush
+        # all read MENDER and no turret was ever placed.
+        menders = min(
+            n_builders - 1 if n_builders > 1 else n_builders,
+            int((incoming + HEAL_AMOUNT - 1) // HEAL_AMOUNT),
+        )
     else:
         # Cannot keep up. One Builder buys time; the rest must remove the
         # source, because a turret keeps working after its builder dies.
         menders = 1 if n_builders > 1 else 0
+
+    # Economy floor. Income is the precondition for defence, not a competitor
+    # with it: turrets, ammo and replacement Builders are all bought with
+    # titanium, so a team with no Harvester cannot defend itself either.
+    #
+    # Without this, early harassment (dhp < 0 from round ~10) turned both
+    # opening Builders into a mender and a guard and left nobody mining. First
+    # Harvester slipped to round 30 against the field's 6.5, harvesters-at-100
+    # fell 2.29 -> 0.92, and titanium collected more than halved -- while the
+    # defensive numbers improved. It bought the wrong thing.
+    #
+    # Suspended only when the Core is genuinely about to die, where there is
+    # no later economy to protect.
+    survival = (hp / burst) if burst > 0 else float("inf")
+    floor = 0 if survival <= PANIC_ROUNDS else min(
+        n_builders, max(0, ECON_FLOOR_HARVESTERS - harvesters)
+    )
+    if floor:
+        menders = min(menders, max(0, n_builders - floor))
 
     remaining = n_builders - menders
 
@@ -114,6 +145,9 @@ def desired_mix(
             guards = min(remaining, 2)
         else:
             guards = min(remaining, GUARDS_WHEN_QUIET)
+
+    if floor:
+        guards = min(guards, max(0, remaining - floor))
 
     return {
         ROLE_MENDER: menders,
