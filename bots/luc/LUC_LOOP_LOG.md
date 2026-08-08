@@ -4916,3 +4916,43 @@ Nothing to build this iteration. The instrumentation is exhausted on both lines,
 and the one new fact — that the estimates I would use to judge a live result
 move 67 Elo on their own — argues for waiting until several of tonight's builds
 have played, rather than reading the first number that appears.
+
+## Iteration 95 — the right metric, made permanent, and snotra_h leads
+
+`bifrost` is a few rounds from its first live games, and iteration 94 showed the
+per-build Elo estimates move **67 Elo on no new games**. Reading the first number
+that appears would repeat the mistake I have already made twice tonight. So this
+iteration built the instrument instead of another bot.
+
+`tools/live_matchups.py --compare a,b,c` intersects the opponents several of our
+builds have *all* actually played — current opponent builds only, since a
+retired version is a different bot — and prints each build's raw win rate over
+that shared set. No model, no shrinkage, nothing that drifts when someone
+else's rating changes.
+
+Two bugs found while writing it, both mine: the feed's `key` is a code hash and
+the name lives in `canonical`, and `math` was not imported.
+
+**And it answers the loop's own standing question — "check queued builds
+(snotra_h)" — properly for the first time:**
+
+| build | shared record | rate |
+|---|---|---|
+| **`snotra_h`** | 55/85 | **0.647 ±0.102** |
+| `vor` | 26/45 | 0.578 ±0.144 |
+| `ostara` | 22/40 | 0.550 ±0.154 |
+| `fulla` | 19/35 | 0.543 ±0.165 |
+| `spork` | 25/50 | 0.500 ±0.139 |
+
+Six shared opponents: Banminary, Besvikomat, I Stone, O(1), arsonist duck,
+gsxWins. `snotra_h` leads, and its interval excludes 0.5 — the only build with
+live games of which that is true today.
+
+Worth noting against my own earlier reporting: `snotra_h` read **0.552** on a
+shared-opponent comparison earlier in this project's history and reads 0.647
+here. The opponent sets differ, so these are not the same statistic — which is
+itself the reason to fix the comparison in a tool rather than recompute it by
+hand each time.
+
+When `bifrost`, `hoenir`, `vili`, `freyja`, `lofn`, `hlin` and `nanna` have
+played, `--compare` on that list is the measurement to read, not the estimates.
