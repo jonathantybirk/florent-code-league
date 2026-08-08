@@ -2510,3 +2510,53 @@ used. Whether that is `FERRY_ON_INFERENCE = False`, a pad-siting failure, or the
 request protocol never completing is the next question — but it is a *bug hunt*
 in the ferry, not a tuning exercise, and the ferry is the one mechanism that
 could plausibly put a Builder next to their Core alive.
+
+---
+
+## Iteration 41 — `bifrost`: the ferry ran once a game because nobody cleared the reply
+
+Following iteration 40's finding that the relay never launches, instrumenting
+`_opening_ferry`'s six branches on quarry and longship:
+
+```
+calls 58   request 1   build_pad 1   blocked 56
+```
+
+One request per game, then blocked for the rest of it.
+
+`_consume_launch_rejection` reads the pad's answer out of the request slot and
+**never clears it**. The reply sits in the slot for the remainder of the game,
+the function returns True on every later round, and `_opening_ferry` bails on
+its first line every time. The `LAUNCH_RETRY_COOLDOWN` immediately above it —
+written deliberately, with a comment explaining that an earlier version of the
+cooldown never fired — *still* cannot take effect, because the stale reply
+short-circuits ahead of the gate that reads it.
+
+(`launch_blocked` is a red herring: initialised `False` and never set `True`
+anywhere in the file. I said "one refusal permanently disables the ferry" while
+reading, blamed that flag, and had to correct it — the flag is dead code and the
+stale slot is the cause.)
+
+The fix is one line: `ct.write_store(slot, 0)` after consuming a reply addressed
+to us. Requests go **1 → 6** a game, blocked **56 → 5**.
+
+| bifrost vs | | | Core damage | first turret at their Core |
+|---|---|---|---|---|
+| `mimir` | 28/42 | **0.667** | 941 | r15.7 |
+| `spar_sniper` | 28/42 | **0.667** | 949 | r15.7 |
+| `steward_hardened_reinforced` | 27/42 | **0.643** | 1,193 | r15.5 |
+| `snotra` | 23/42 | 0.548 | 1,040 | r18.3 |
+| `snotra_h` (parent) | 22/42 | **0.524** | 1,052 | r18.3 |
+| **mean** | 128/210 | **0.610**, floor **0.524** | | |
+
+Best mean and best floor of anything in this line, and the mechanism is visible
+rather than inferred: the first turret beside the enemy Core lands 2.6 rounds
+earlier and Core damage rises.
+
+CPU 2,798 us worst, zero over. Deterministic. **Queued six rounds.**
+
+Worth stating plainly after forty iterations: this is the first change all
+session that is a *defect* rather than a preference — a slot that is written and
+never cleared, disabling a mechanism the code goes to some trouble to
+implement. Every constant I tuned was already at or near its local optimum;
+the thing that moved was a piece of the bot that was silently not running.
