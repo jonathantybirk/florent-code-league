@@ -86,6 +86,14 @@ The precise rule is visible in `desired_mix`. There are two threat inputs:
   permanently. Only the economy floor's `PANIC` suspension hangs off this, and
   that is the one constant that reversed.
 
+There is a second raw-burst consumer, in `builder_brain`'s chain-completion
+override — and making it read the same floored threat **costs a win** (8 → 7).
+Under the collision `burst > 0` was always true, so one branch was dead; with
+the fix it fires whenever nothing is visibly shooting, which turns out to be a
+better rule in its own right ("finish your chain unless something is actually
+attacking"). Consistency is not automatically correct: the accidental
+behaviour encoded a real distinction and was left in place deliberately.
+
 So exactly one decision in the policy was reading the corrupted field, and
 exactly one measurement reversed. That is a much better predictor of what to
 re-test after fixing a defect than any intuition about which constants "feel"
