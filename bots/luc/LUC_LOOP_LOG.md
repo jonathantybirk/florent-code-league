@@ -1004,3 +1004,65 @@ The delivery ceiling is real and is **not** reachable by adding bodies. Whatever
 breaks a mended Core has to come from turrets that are cheaper, better placed,
 or better protected — not from more Builders carrying them. `hodr`'s
 Sentinel-first work is the live thread on that, and it belongs to another agent.
+
+---
+
+## Iteration 10 — the cost-scale table, measured, and the wall I keep hitting
+
+### The scale table, measured rather than assumed
+
+`get_scale_percent()` exists, so a small probe bot builds one of each thing and
+reads the scale either side. From base 100:
+
+| built | scale after | delta |
+|---|---|---|
+| Builder Bot | 120 | **+20** |
+| conveyor | 121 | **+1** |
+| barrier | 122 | **+1** |
+| Gunner | 142 | **+20** |
+
+`constants.py` documents +20 for Builders and turrets, +10 for Launchers and +1
+for barriers, but says nothing about conveyors. **A conveyor is +1**, so the 29
+belts we laid on drumlin cost about a Builder and a half of permanent tax —
+real, and much smaller than the +20 items.
+
+### Which kills the allocation hypothesis I was about to test
+
+Recomputing drumlin with the measured table:
+
+| | Builders | turrets | conveyors | approx scale |
+|---|---|---|---|---|
+| us | 6 (+120) | 5 (+100) | 29 (+29) | ~349 |
+| O(1) v11 | 6 (+120) | **13 (+260)** | 10 (+10) | ~490 |
+
+**O(1) ran at higher scale than us and still seated 13 turrets.** So scale is not
+what stops them, and "our belts are taxing our army" — the thing I set out to
+test — is wrong. The difference is allocation: we convert income into economy,
+they convert it into army, and in that game army won.
+
+### And which I could not test
+
+The obvious check was the existing ablations. It does not work: `mimir` beats
+`vidar_noecon` 0.786, `vidar_nogun` 0.810 and `vidar_siege` 0.881, and those
+bots already build **6.5–7.4 turrets** against mimir's 3.6–4.7. More army,
+still losing — because they are old, weak bots, not because army loses.
+
+**The local field cannot represent the live meta.** That is the same wall as
+iteration 6's fixture attempt, and after ten iterations it is clearly the
+binding constraint on this whole line of work: every hypothesis I can generate
+from live replays has to be validated against opponents that do not exist
+locally, and the internal panel is saturated at "our bots tie each other".
+
+What would unblock it is the thing `spar_mender` was reaching for and did not
+achieve: a sparring bot that actually plays like the current live counter —
+massed cheap turrets, a Core mended to full, content to win long. Not a turtle
+that dies to a rush. That is a real piece of work and it is the highest-value
+thing left on my side of this problem.
+
+### Churn, continuing
+
+`mimir` was demoted at 13 matches (elo 1777) and **re-promoted at 16 with elo
+1731** — a *lower* estimate than the one it was demoted on, because the
+incumbent's estimate wandered too. Team rating 1784 → 1744 over the same window.
+The mechanism is iteration 8's; still not changed unilaterally, since the farm
+is shared and two other agents are testing against it.
