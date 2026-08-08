@@ -4645,3 +4645,46 @@ have just spent an iteration failing to manufacture some.
 **Honest expected value of tonight's queued work: a few points of win rate over
 `vili`, which was itself level with the live flagship.** That is worth having and
 it is not a route to rank 1 on its own.
+
+## Iteration 88 — our best live build is invisible to the promotion logic
+
+Stopped generating candidates and mined the live data that already exists.
+`tools/live_matchups.py --shrinkage` gives a per-build estimate over every match
+each build has played:
+
+| build | games | raw Elo |
+|---|---|---|
+| **`steward_hardened_reinforced@b61aaac`** | **300** | **1776** |
+| `steward@e55aab5` | 100 | 1772 |
+| `steward_hardened_reinforced@f61245f` | 215 | 1760 |
+| `steward_hardened_reinforced@f1f2bda` | 305 | 1759 |
+| `snotra_h@6951e03` | 135 | 1746 |
+| `ostara@584e9ba` | 115 | 1727 |
+| `spork@05ab6a2` | 105 | 1724 |
+
+**`b61aaac` has the highest estimate of any large-sample build we own** — 300
+games, 1776 — and the farm's uploads are v28, v30, v31, v33, v34, v35, v38, v40:
+**it is not among them.** `best_challenger` iterates `state["uploads"]`, so a
+build the farm never uploaded cannot be promoted no matter how good its live
+record is.
+
+Meanwhile the active bot is `a994296` (v33), which has too few live games to
+appear in the feed at all, and the farm has spent the night oscillating between
+it and `f1f2bda` (1759) — both worse than a build it already has 300 games of
+evidence for.
+
+Queued it: `steward_hardened_reinforced@b61aaac:2`, placed first in
+`config.json`.
+
+**And a correction to my own action.** Putting it first in `config.json` does
+*not* put it first in the farm's runtime queue: `run_round` appends new config
+entries to `state["queue"]`, so it lands behind `nanna` — about 48 rounds, six
+hours. The finding is real and the fix is queued, but it arrives slowly, which
+is one more argument for the queue reorder I cannot perform.
+
+**What this changes about the night's story.** I have been treating the ladder
+position as waiting on my new builds. It is also waiting on a build from two
+days ago that is already measured, already better than what is live, and
+structurally unable to be chosen. That is not a bot problem or a measurement
+problem — it is a plumbing problem, and it is the second one tonight (the first
+being promotion margins).
