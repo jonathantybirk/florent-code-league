@@ -650,3 +650,16 @@ from round 4) is a separate unaddressed failure mode.
   rating. Queued `byggvir@bf22593:5` — the ladder is the only honest price. (Other
   agent's hlin/nanna tests ahead in the queue.)
 - Team recovering: rank 16 at 1705.
+
+## Iterations 38–39 — 2026-08-08 ~22:15–23:20 — overnight cadence
+
+- The farm's test queue is **29 entries** — the other agent queued ~10 builds (spork,
+  ostara, vidarr, bifrost, hoenir, vili, freyja, lofn, hlin, nanna) at 5–8 rounds each
+  ahead of byggvir. Their v56 is testing now (4–1, 4–1, 3–2 — going well for them).
+  byggvir's verdict is ~4–8 hours out; queue-jumping the shared budget isn't my call.
+- Team ~1676–1679, rank 21; the farm rotates old-line flagships (steward@e55aab5,
+  shr@366cd1b) whose rated games bleed to kladde/I Stone/Coreflood — the churn cost
+  continues into the night. All diagnostics for it are already logged; the fix is the
+  farm's promotion bar, owner's call.
+- Loop settles to hourly checks overnight; byggvir's verdict is tomorrow's first
+  decision point.
