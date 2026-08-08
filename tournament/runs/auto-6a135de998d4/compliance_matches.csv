@@ -1,4 +1,6 @@
 match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
+2f2a1b6fea27b0e1,auto-6a135de998d4,sif@3fc5cd8,sif,3fc5cd8,antler,1,12,pass,ok,,27,182,33,54,711,1583,6050,26,0,0,0,9000,10000,n-62-31-20,29052331,2026-08-08T10:24:33+0200
+24edc5c68eaaa073,auto-6a135de998d4,sif@3fc5cd8,sif,3fc5cd8,archipelago,1,12,pass,ok,,27,139,48,125,1544,2224,7031,14,0,0,0,9000,10000,n-62-31-20,29052331,2026-08-08T10:24:35+0200
 b7b4cd8cc01fccbe,auto-6a135de998d4,sif@3fc5cd8,sif,3fc5cd8,atoll,1,12,pass,ok,,27,194,34,63,361,1506,4537,4,0,0,0,9000,10000,n-62-29-27,29052331,2026-08-08T10:23:19+0200
 4c34fea50c38d01e,auto-6a135de998d4,sif@3fc5cd8,sif,3fc5cd8,aurora,1,12,pass,ok,,27,168,46,115,820,2117,7066,4,0,0,0,9000,10000,n-62-29-27,29052331,2026-08-08T10:23:21+0200
 1c4c805dc03e5303,auto-6a135de998d4,sif@3fc5cd8,sif,3fc5cd8,bridge,1,12,pass,ok,,27,183,36,104,589,1790,5762,23,0,0,0,9000,10000,n-62-29-27,29052331,2026-08-08T10:23:23+0200
