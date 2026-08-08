@@ -3502,3 +3502,56 @@ on maps it has not seen.
 improvement on the official pool alone. The off-pool set is 42 maps in
 `maps/offpool/` and `maps/offpool2/`, and a build has to move *both* before it
 is worth queueing.
+
+## Iteration 62 — testing my own off-pool result, and the geometry that survives
+
+Two things this iteration: an attempt to break iteration 61's conclusion, and
+the one exogenous signal found so far.
+
+**The map geometry.** Every correlation that has fooled me tonight was a metric
+produced *during* the game, so winning caused it. Map geometry is fixed before
+the first turn, so it cannot be. Across 42 off-pool maps, field win rate against
+Sentinel mass correlates:
+
+    core-to-core distance  +0.348      horizontal separation  +0.336
+    map width              +0.216      vertical separation    -0.116
+    height/width ratio     -0.249      area                   +0.033
+
+    core axis HORIZONTAL   0.534  (n=21)
+    core axis VERTICAL     0.421  (n=21)      difference +0.114, 1.7 sd
+
+So the lineage does better the further apart the Cores are, and worse when they
+are separated vertically. 1.7 sd is suggestive, not established, and I checked
+seven quantities to find it — but it is the first correlate all night that
+backwards causation cannot explain.
+
+**Then the objection to my own iteration-61 result.** The official pool is
+**13 of 21 square** (18x18, 24x24, 26x26 ...) and nothing more oblong than
+28x20. My generated maps are almost never square — 9x27, 17x30, 30x11. So
+"off-pool the lineage is one bot" might have measured nothing but *these maps
+are strangely shaped*, which would be an artefact of my instrument rather than a
+fact about the bots.
+
+Built a shape-matched set to check: generated 90 maps, kept the 21 with aspect
+ratio ≤ 1.4 and dimensions inside the official pool's range (mean ratio 1.16
+against the official pool's own mixture).
+
+| vs spar_sentinel | shape-matched | oblong off-pool | on-pool |
+|---|---|---|---|
+| `vili` | **0.524** ±0.151 | 0.488 | 0.667 |
+| `hoenir` | **0.524** ±0.151 | 0.488 | 0.405 |
+| `mimir` | 0.500 ±0.151 | 0.500 | 0.262 |
+| `steward_hardened_reinforced` | 0.452 ±0.151 | 0.452 | 0.262 |
+
+**The objection does not hold.** Matching the shape distribution does not
+restore the on-pool ordering: the four bots still sit inside one interval, and
+`vili`'s margin over the live flagship is +0.072 (well within noise) against
++0.405 on-pool. Iteration 61 stands, and it now stands against the best attempt
+I could make to break it.
+
+The small consolation for `vili`: on both off-pool sets it is at the top of the
+level group rather than the bottom. That is the strongest honest statement
+available — *at worst level, plausibly slightly ahead, nowhere near +40pp*.
+
+Map sets kept: `maps/offpool/` and `maps/offpool2/` (oblong mixture, seeds 8081
+and 20260809), `maps/offpool_square/` (shape-matched, seed 424242).
