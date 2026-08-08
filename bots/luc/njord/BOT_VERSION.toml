@@ -1,0 +1,5 @@
+source_commit = "d123262c6"
+source_path = "bots/luc/vali"
+engine = "2.3.6"
+status = "development"
+variant = "vali with the economy ceiling raised toward sporks' scale: earlier income Builders, more trunks, more Harvesters"
