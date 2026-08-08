@@ -128,6 +128,24 @@ Best build recorded here, and it improves every measure at once — the first
 change to do that. It also explains why so many defensive experiments read as
 no-ops: the turrets they were arguing about could not shoot.
 
+### The economy floor starves defence on some maps — but lowering it costs wins
+
+Follow-up diagnostic to the doorstep fix. On saga the GUARD role is assigned
+**zero times in the entire game**: we build 51 buildings, all economy, finish
+with **0 titanium banked**, no turrets, and die at round 99. With
+`ECON_FLOOR_HARVESTERS = 7` and harvesters stuck near 5, the floor consumes
+every Builder and a guard never exists.
+
+| floor | wins | collected | core hp end | survived |
+|---|---|---|---|---|
+| **7** | **5** | **1197** | 39.4 | 6/45 |
+| 4 | 4 | 1065 | **48.8** | **7/45** |
+
+Lowering it produces the best survival and core-hp figures recorded here and
+loses a win. Kept at 7 because wins is the objective, but the saga failure
+mode is real and unfixed: a per-map floor, or one that yields once titanium
+stops accumulating, would get both.
+
 ### Spawn rate re-tuned on the current build: 6 still wins
 
 Retested because SPAWN_INTERVAL was tuned before both the seat fix and the
