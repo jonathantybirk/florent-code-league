@@ -344,5 +344,10 @@ def claim_builder_slot(ct, round_no: int) -> int | None:
             live.append(slot)
     free = [s for s in BUILDER_SLOTS if s not in live]
     if free:
-        return free[mine % len(free)]
+        # Lowest free slot, not a hash of the unit id. Dense, contiguous slots
+        # keep the role rank dense, which is what lets a two-role mix reach
+        # every Builder. Spawns are paced to roughly one per dozen rounds, so
+        # two Builders racing for the same slot is rare, and the loser simply
+        # re-claims next round when the winner's heartbeat appears.
+        return free[0]
     return BUILDER_SLOTS[mine % len(BUILDER_SLOTS)]

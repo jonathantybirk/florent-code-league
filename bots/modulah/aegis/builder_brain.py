@@ -81,18 +81,35 @@ class BuilderBrain:
         live = [s for s in comms.BUILDER_SLOTS if comms.is_fresh(ct.read_store(s), r)]
         if self.slot not in live:
             live.append(self.slot)
-        # Rank is the slot's FIXED index, not its position among live slots.
-        # Ranking within the live set makes every Builder's role shift each
-        # time another one spawns or dies: traced at r=2..r=6 a Builder went
-        # miner -> guard -> miner, abandoning a half-laid conveyor chain both
-        # times. With a fixed rank a role only changes when the threat
-        # picture changes, which is the only reason it should.
-        rank = comms.BUILDER_SLOTS.index(self.slot)
+        # Dense rank: position among live slots, so ranks run 0..n-1 and the
+        # mix actually reaches everybody. The fixed BUILDER_SLOTS index looks
+        # more stable but is wrong -- slots are claimed scattered, so a
+        # Builder holding slot 9 ranked 5 and never fell inside a two-role
+        # mix. Traced: every Builder read MINER at dhp=-16 with no turret on
+        # the board.
+        #
+        # This is what thrashed before; the cause was the population growing
+        # five Builders in five rounds, which spawn pacing has since fixed.
+        live.sort()
+        rank = live.index(self.slot)
         mix = roles.desired_mix(
             len(live), intel["hp"], GameConstants.CORE_MAX_HP,
             intel["burst"], intel["dhp"],
+            friendly_turrets=self._friendly_turrets(ct),
         )
         return roles.assign(rank, mix)
+
+    def _friendly_turrets(self, ct: Controller) -> int:
+        me = ct.get_team()
+        n = 0
+        for bid in ct.get_nearby_buildings():
+            try:
+                if ct.get_team(bid) == me and ct.get_entity_type(bid) in (
+                        EntityType.GUNNER, EntityType.SENTINEL):
+                    n += 1
+            except GameError:
+                continue
+        return n
 
     # --- acting --------------------------------------------------------------
 
@@ -125,42 +142,72 @@ class BuilderBrain:
         return comms.ACT_NONE
 
     def _guard(self, ct: Controller, sit, r: int) -> int:
-        """Site a home turret on the approach that carries the most traffic."""
+        """Site a home turret on the approach carrying the most attacker traffic.
+
+        Split into "where should a turret stand" and "can I build it from here",
+        because can_build_gunner bundles both and the Builder is almost never
+        already standing next to the best seat. Asking the bundled question
+        rejected every good site and silently fell through to mining -- the bot
+        banked 400 titanium while its Core died with no turret on the board.
+        """
         kind = EntityType.GUNNER
         base = GameConstants.GUNNER_BASE_COST
-        if sit.afford(GameConstants.SENTINEL_BASE_COST, BUILD_RESERVE) and sit.enemy_turrets:
+        if sit.enemy_turrets and sit.afford(GameConstants.SENTINEL_BASE_COST, BUILD_RESERVE):
             kind, base = EntityType.SENTINEL, GameConstants.SENTINEL_BASE_COST
         if not sit.afford(base, BUILD_RESERVE):
             return self._mine(ct, sit, r)
 
         foot = self._footprint(ct, sit)
         if not foot:
+            core = self._find_core(ct)
+            if core is not None:
+                self._step(ct, core, r)
+                return comms.ACT_NONE
             return self._mine(ct, sit, r)
 
-        def buildable(spot, facing):
+        # Tile-level legality only: empty, in bounds, not a wall. Builder
+        # adjacency is checked at build time, once we have walked there.
+        def placeable(spot, facing):
             try:
-                return (ct.can_build_sentinel(spot, facing)
-                        if kind == EntityType.SENTINEL
-                        else ct.can_build_gunner(spot, facing))
+                if building_at(ct, spot) is not None:
+                    return False
+                return ct.get_tile_env(spot).name != "WALL"
             except GameError:
                 return False
 
-        site = placement.best_defensive_site(ct, foot, kind, buildable)
-        if site is None:
+        # Hold the chosen seat across turns; re-scoring every round makes the
+        # Builder chase a moving target and never arrive.
+        if not (self.commit and self.commit.kind == "turret" and self.commit.target
+                and building_at(ct, self.commit.target) is None):
+            site = placement.best_defensive_site(ct, foot, kind, placeable)
+            if site is None:
+                return self._mine(ct, sit, r)
+            self.commit = situation.Commitment("turret", site[0], r)
+            self._facing = site[1]
+
+        spot = self.commit.target
+        facing = getattr(self, "_facing", None)
+        if facing is None:
+            self.commit = None
             return self._mine(ct, sit, r)
-        spot, facing, _score = site
+
         try:
-            if kind == EntityType.SENTINEL:
-                ct.build_sentinel(spot, facing)
-            else:
-                ct.build_gunner(spot, facing)
-            if self.commit:
-                self.commit.progressed(r)
-            return (comms.ACT_BUILD_SENTINEL if kind == EntityType.SENTINEL
-                    else comms.ACT_BUILD_GUNNER)
+            build = (ct.can_build_sentinel if kind == EntityType.SENTINEL
+                     else ct.can_build_gunner)
+            if build(spot, facing):
+                if kind == EntityType.SENTINEL:
+                    ct.build_sentinel(spot, facing)
+                else:
+                    ct.build_gunner(spot, facing)
+                self.commit = None
+                return (comms.ACT_BUILD_SENTINEL if kind == EntityType.SENTINEL
+                        else comms.ACT_BUILD_GUNNER)
         except GameError:
-            self._step(ct, spot, r)
-            return comms.ACT_NONE
+            pass
+
+        if not self._step(ct, spot, r):
+            self.commit = None
+        return comms.ACT_NONE
 
     def _mine(self, ct: Controller, sit, r: int) -> int:
         if self.harvester is not None and not situation.harvester_is_connected(ct, self.harvester):
