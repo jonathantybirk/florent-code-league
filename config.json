@@ -32,7 +32,8 @@
     "freyja@6a8a5f7:6",
     "lofn@86287ec:8",
     "hlin@a72a7dc:8",
-    "nanna@9a11215:8"
+    "nanna@9a11215:8",
+    "byggvir@bf22593:5"
   ],
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally."
 }
