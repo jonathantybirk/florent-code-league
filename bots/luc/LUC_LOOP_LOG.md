@@ -6077,3 +6077,44 @@ retired opponent versions made Besvikomat look like our worst matchup at 0.24
 when against its current build we were at 0.53. So **`bifrost` and `hoenir` are
 0.471 and 0.477 against live opposition, not 0.53 and 0.51**, and iteration 122's
 verdict ("not improvements") holds more strongly than I stated it.
+
+## Iteration 125 — the economy fixes do not transfer to the best live base
+
+`steward@e55aab5` has the best live record we own (0.581 over 1,425 games,
+median opponent rank 10) and tonight's economy work was developed on a different
+base. `dellingr` puts the economy fixes on it — four claim slots, a second
+opening miner, roles verified by printing them (idx 0,1 miners, 2 attacker,
+3 ring).
+
+| comparison | result |
+|---|---|
+| `dellingr` vs its own base `e55aab5` | **0.4840 ±0.0310 (-1.0 sd)** |
+| `dellingr` vs `lofn` | **0.3313 ±0.0296 (-11.2 sd)** |
+
+Harvesters 2.82, so the mechanism fires as it does everywhere else.
+
+**Two things, and the second is the interesting one.**
+
+The economy fixes **do not transfer**. On `vili` they were worth a few points; on
+`steward_hardened_reinforced` (`bragi`) they were worth nothing; on `e55aab5`
+they are worth -1.6. Three bases, three answers, none of them positive except
+the one they were developed on. That is the signature of tuning to a base rather
+than finding a mechanism, and it undercuts the `freyja`/`lofn` interaction I have
+been treating as the session's one solid result.
+
+**And my panel rates the `e55aab5` lineage 2:1 below the `lofn` lineage** —
+0.331 — while the ladder rates `e55aab5` above everything we own and rates
+`bifrost` and `hoenir`, the `lofn` line's ancestors, at 0.471 and 0.477. The two
+instruments do not merely disagree on magnitude; **they order these two families
+in opposite directions**, and the disagreement is 17 points wide on the live side
+and 34 points wide on mine.
+
+I have now measured this divergence three ways — the single build (0.286 vs
+0.581), the mechanic (`mani`'s dose-response against `steward`'s live record),
+and now the whole lineage. It is the largest and most reproducible effect in the
+session, and every attempt to explain it (game length, map shape, opponent mix)
+has either failed or been confounded.
+
+`dellingr` deleted: worse than its own base locally, and I will not queue a build
+on a hypothesis my instrument cannot test when the queue is nine deep with
+builds that were.
