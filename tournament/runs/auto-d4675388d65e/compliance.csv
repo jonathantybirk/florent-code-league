@@ -1,2 +1,2 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-spar_sniper@aa24129,spar_sniper,aa24129,pending,33,28,28,4752,16,44,125,1263,7173,0,0,9000,10000
+spar_sniper@aa24129,spar_sniper,aa24129,pass,33,33,33,5582,16,47,126,1285,7173,0,0,9000,10000
