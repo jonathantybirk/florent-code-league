@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import math
 import json
 import urllib.request
 
@@ -110,6 +111,65 @@ def print_versions(feed: dict, keys: set[str] | None, opponent: str) -> None:
         print(f"   their v{version:<5} {won:4d}/{total:<5d} {won / total:.2f}{mark}")
 
 
+def print_compare(feed: dict, names: list[str]) -> None:
+    """Model-free comparison of several of our builds on shared opponents.
+
+    The per-build Elo estimates in this feed are not stable enough to rank
+    builds by: `steward_hardened_reinforced@b61aaac` read 1776 raw on
+    2026-08-09 and 1709 a few hours later on the *same 300 games*, because the
+    fit moves when opponents' ratings drift. A win rate over the opponents two
+    builds have both actually played needs no model and does not move on its
+    own.
+
+    Only opponents every named build has faced are counted, and only against
+    their current build (`opponent_build_current`), because a retired version
+    of an opponent is a different bot.
+    """
+    builds = our_builds(feed)
+    keys = {}
+    for name in names:
+        matched = {k for k, canon in builds.items()
+                   if canon == name or canon.startswith(name + "@")}
+        if not matched:
+            print(f"  {name}: not in the feed yet")
+            continue
+        keys[name] = matched
+
+    per = {}
+    for name, ks in keys.items():
+        agg = collections.defaultdict(lambda: [0, 0])
+        for row in feed["matchups"]:
+            if row["key"] not in ks or not row.get("opponent_build_current"):
+                continue
+            slot = agg[row["opponent"]]
+            slot[0] += row["games_for"]
+            slot[1] += row["games_for"] + row["games_against"]
+        per[name] = agg
+
+    if len(per) < 2:
+        print("  need at least two builds with live games to compare")
+        return
+
+    shared = set.intersection(*(set(a) for a in per.values()))
+    shared = {o for o in shared if all(per[n][o][1] >= 4 for n in per)}
+    if not shared:
+        print("  no opponent has been faced by every build yet")
+        return
+
+    print(f"shared opponents ({len(shared)}): {', '.join(sorted(shared))}\n")
+    print(f"  {'build':34s} {'shared record':>16s} {'rate':>7s}")
+    for name, agg in sorted(per.items(),
+                            key=lambda kv: -sum(kv[1][o][0] for o in shared)
+                            / max(1, sum(kv[1][o][1] for o in shared))):
+        w = sum(agg[o][0] for o in shared)
+        n = sum(agg[o][1] for o in shared)
+        rate = w / n if n else float("nan")
+        half = 1.96 * math.sqrt(rate * (1 - rate) / n) if n else float("nan")
+        print(f"  {name:34s} {w:7d}/{n:<8d} {rate:6.3f} +-{half:.3f}")
+    print("\nNo model, no shrinkage: each build's win rate over the games it")
+    print("actually played against opponents all of them have faced.")
+
+
 def print_shrinkage(feed: dict) -> None:
     """Why a challenger's estimate is not comparable to the incumbent's."""
     team = feed["team"]["rating"]
@@ -144,6 +204,8 @@ def main() -> None:
                         help="also show the pooled all-versions rate, for contrast")
     parser.add_argument("--versions", default=None, metavar="OPPONENT",
                         help="break one opponent out by their build version")
+    parser.add_argument("--compare", default=None, metavar="A,B,C",
+                        help="model-free shared-opponent comparison of our builds")
     parser.add_argument("--shrinkage", action="store_true",
                         help="show why challenger estimates are not comparable")
     args = parser.parse_args()
@@ -159,6 +221,9 @@ def main() -> None:
 
     if args.versions:
         print_versions(feed, keys, args.versions)
+        return
+    if args.compare:
+        print_compare(feed, [n.strip() for n in args.compare.split(",") if n.strip()])
         return
     if args.shrinkage:
         print_shrinkage(feed)
