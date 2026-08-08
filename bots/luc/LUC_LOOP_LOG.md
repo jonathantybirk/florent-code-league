@@ -5235,3 +5235,42 @@ unseen maps.
 build to promote. It is the only one above the live flagship by more than half a
 standard deviation, and the later stack should not displace it. `hlin` and
 `nanna` are queued behind it and are not upgrades on this measurement.
+
+## Iteration 103 — the inference from 102 was wrong, and the ranking is non-transitive
+
+Iteration 102 said `lofn` (0.527 vs the live flagship) carries two good changes
+on a bad chain — `vili` measures 0.476 — so lifting the two changes onto the
+flagship directly should be strictly better. `bragi` did exactly that: the live
+flagship plus four claim slots plus a second opening miner, roles verified by
+printing them (idx 0,1 miners, idx 2 attacker, idx 3 ring/mender).
+
+**It is not better. It is worse.**
+
+| | |
+|---|---|
+| `lofn` vs flagship | 0.527 ±0.057 |
+| **`bragi` vs flagship** | **0.483 ±0.057** |
+| **`bragi` vs `lofn`** | **0.497 ±0.057** |
+
+Harvesters 2.57, conveyors 17.7 — the mechanism transferred fine; the win rate
+did not.
+
+**And those three numbers do not cohere.** If `lofn` is 5 points above the
+flagship and `bragi` is 2 below it, `lofn` should beat `bragi` by roughly 7
+points. It does not — they are level at 0.497 over 294 cells. That is
+non-transitivity across three matchups measured on the same 147 maps with the
+same 294 cells each, which is what reading noise looks like when the intervals
+are ±5.7 points and the differences are 2 to 5.
+
+**So iteration 102's recommendation needs qualifying, and I would rather do it
+now than have it stand.** "`lofn` is the build to promote" rests on a +0.9 sd
+result that its own follow-up cannot reproduce transitively. The honest version:
+**`lofn`, `bragi`, and the live flagship are statistically indistinguishable
+from each other**, and the ordering I published an hour ago is inside the error
+of the measurement that produced it.
+
+What survives from 102 is narrower and still useful: `freyja` alone (0.480) is
+worse than `freyja` plus a second miner (0.527), which is a real interaction
+measured twice, on different opponents. Everything else in that table — the
+ordering of `hlin`, `syn`, `gefn`, `nanna`, and the claim that the early chain
+is a liability — is within noise and I over-read it.
