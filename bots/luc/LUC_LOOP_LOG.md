@@ -4234,3 +4234,47 @@ magnitude is measured and whose local magnitude is structurally zero:
 Both are one-constant changes with replay evidence and no local downside. Both
 are waiting on the same thing: `lofn` and `hlin` reaching the front of the farm
 queue so there is a live baseline to compare them against.
+
+## Iteration 78 — the siege mechanism cannot be measured here at all
+
+`frigg` could not be priced because siege Sentinels are built 0.2 times a game.
+The fix for that is not another whole-bot comparison but an isolation: force
+siege on **both** arms and vary only the targeting radius.
+
+Built `siege20` and `siege32` — `hlin` with `SIEGE_SENTINEL_TARGET` raised 1 → 3,
+differing only in `BUILDER_PRIORITY_RADIUS_SQ` (20 against 32).
+
+**The isolation failed, and the failure is the finding.**
+
+| | Sentinels per game |
+|---|---|
+| `siege20` (target 3) | 0.31 |
+| `siege32` (target 3) | 0.26 |
+| `hlin` (target 1) | 0.03 |
+
+Tripling the permission moved the count from 0.03 to about 0.3 — still one siege
+Sentinel every three games. And so:
+
+    siege32 vs siege20   57/114 = 0.500 +-0.092   (0.0 sd)
+
+Exactly even, because in neither arm does the mechanism run often enough to
+matter.
+
+This confirms `SIEGE_SENTINEL_TARGET`'s own note — *"the ceiling is delivery,
+not permission"* — and settles something larger: **the siege path cannot be
+evaluated on this panel by any means available to me.** Not by whole-bot
+comparison, not by raising the cap, not against the mender fixture. Whatever
+`frigg` is worth, the only instrument that can read it is the ladder.
+
+**Three mechanisms are now in that category**, all with replay evidence and all
+structurally unmeasurable locally:
+
+| | live magnitude | why the panel is blind |
+|---|---|---|
+| `bil` | 22.7 Gunners live vs Pivot's 11.6 | our bots build 3.3 — the ceiling never binds |
+| `frigg` | 2828 damage past a mender, 0 kills | 0.2 siege Sentinels a game |
+| (siege count) | their Cores mend through us all game | 0.3 even with the cap tripled |
+
+That is the honest boundary of local iteration on this bot. The remaining work
+is not more candidates — it is live games for `lofn` and `hlin`, then `bil` and
+`frigg` behind them.
