@@ -475,3 +475,20 @@ from round 4) is a separate unaddressed failure mode.
   builders can't reach contested ring tiles**, and each builder walks its own copy of the
   ring. Delivery into defended ground is the recurring boss fight of this codebase.
   Panel running (`loki_run1`) to price v1 as-is.
+
+## Iteration 27 — 2026-08-08 ~17:00
+
+- **loki v1 verdict: 24–18 vor, 24–18 shr, 31–11 vidar, total 0.627 — but 0 barriers
+  built in 126 games.** Both sabotage mechanisms are inert: `_move_cardinal_adjacent`
+  cannot path into contested ground, the walker consumes the round anyway, and the
+  attacker paces outside the enemy base from round 90 on. The 24–18 vs vor is noise or an
+  accidental repositioning effect — not the doctrine. Even the instrumented "done" tiles
+  were their buildings on the ring, not our barriers.
+- **v2 plan (next iteration)**: threat-aware approach with a give-up timeout per ring
+  tile (~25 rounds, mark done and move on), tiles ordered by reachability from our side
+  (far arc first), arm the door Sentinel on any partial wall when the ring is mostly
+  natural terrain, and let the *harasser* (already deep in enemy ground with safe-seat
+  logic) own the near-arc tiles instead of the attacker.
+- Live: fulla drifted 1806 → 1775 [1709,1841] at 25m (extra 20 games still queued);
+  snotra_h 9–11/1706 (underperforms snotra); vor's test still queued. Team 1685, rank 18,
+  incumbent shr@b61aaac active at 1818.
