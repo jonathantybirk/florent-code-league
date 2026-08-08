@@ -3816,3 +3816,43 @@ best build of the session.
 
 Five refuted ideas were refuted by a blocker upstream of them, not on their
 merits. That is the lesson worth keeping from tonight.
+
+## Iteration 68 — sigyn: three miners is too many (refutation 27)
+
+The economy line had produced two straight gains, so the obvious next step was
+a third opening miner, `_ROLES` (2,1) → (3,1). The teams above us run 8.6-13.6
+Builders against our 4.5, so there was room in principle.
+
+**It collapses.**
+
+| vs | on-pool | off-pool | combined | |
+|---|---|---|---|---|
+| `lofn` (parent) | 0.278 | 0.321 | **47/156 = 0.301 ±0.072** | **-5.4 sd** |
+| `vili` | 0.268 | 0.417 | 54/155 = 0.348 | -4.0 sd |
+| `steward_hardened_reinforced` | 0.396 | 0.409 | 28/70 = 0.400 | -1.7 sd |
+
+And it does so while building **more** of everything the replays said we lacked:
+Harvesters 2.73 → **3.16**, conveyors 17.37 → **23.72**, Builders 4.46 → 5.51.
+Gunners fall to **2.89**. The third miner does not fail to mine — it mines, and
+the team dies before the belt pays for itself.
+
+So the line has an interior optimum and `lofn` is sitting on it:
+
+| miners | build | Harvesters | vs `lofn` |
+|---|---|---|---|
+| 1 | `vili` | 1.50 | 0.423 (from lofn's +0.577) |
+| **2** | **`lofn`** | **2.73** | — |
+| 3 | `sigyn` | 3.16 | **0.301** |
+
+Measured on both pools, and the verdict agrees on both, which is the first time
+a refutation this session has been able to say that.
+
+**What it means for the replay evidence.** Pivot's 7.6 Harvesters on 10 Builders
+is not reachable by adding miners to this architecture — the third one already
+costs more than it earns. Their advantage is not "more miners"; it is whatever
+lets ten Builders coexist with a defence, and we do not have it. `lofn` closes
+the part of the gap that was a two-slot cap; the rest is structural and is not
+one constant.
+
+`lofn` remains the best build: 0.577 against `vili`, stronger off-pool than on,
+queued as `lofn@86287ec:8`.
