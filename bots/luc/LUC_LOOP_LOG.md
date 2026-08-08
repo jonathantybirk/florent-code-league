@@ -1131,3 +1131,69 @@ vision of the target, and `spar_sniper` is now the harness to test it against.
 
 That is the highest-value piece of work left on this problem, and it is bigger
 than the time I had left in this iteration.
+
+---
+
+## Iteration 12 — the fix already exists, and both agents have converged
+
+### I set out to build something that is already shipped
+
+The plan was shooter localisation, and the key observation looked strong: **the
+Core's vision is r²=36 and a Sentinel's reach is r²=32, so anything shooting our
+Core is necessarily inside the Core's own vision.** The information exists at the
+Core; `_counter_sentinels` just runs on a Builder with r²=20.
+
+`mimir` already does exactly this. `core.py` packs the nearest visible enemy
+turret into the spare high bits of `SLOT_CORE_DAMAGED`, and `builder.py` reads
+the beacon and walks the guard toward it when nothing is visible — with a
+comment citing the same evidence I had reconstructed independently
+("Besvikomat's round-3 Gunner ended a 186-round siege untouched at 25/25 HP").
+
+Checked rather than assumed: the `HUNT` line fires twice on hive (rounds 33 and
+44) against `spar_sniper`. The hunt works. mimir still lost that game on turn 56.
+
+So the feature is not missing, and my two candidate improvements to it — the
+Sentinel-only counter and the third mender — were measured inert and worse
+respectively in iteration 11. **This line is closed on my side.**
+
+Also worth recording: `snowflake` and `antler` produce no local game at all,
+because the v3 pool maps are not in `maps/`. The same gap as the atlas.
+
+### Convergence
+
+The other agent's iteration 15, written an hour before this one, reaches the
+same place from the other direction:
+
+> the local panel ordering inverts live … Live (10–16 games each): freyr 1754 >
+> hodr 1734 ≈ mimir 1731 > njord 1688 > vali 1601 — and *every one* is below the
+> incumbent shr@b61aaac's 1806 (385-match sample). … no more farm submissions
+> from this lineage until something shows live-relevant promise.
+
+That is iteration 5's shrinkage arithmetic observed from the outside: at 10–16
+games a challenger cannot out-read a 385-match incumbent unless it is far
+better. Their recommendation — a ground-up bot "measured against live opponents
+from day one" — is exactly what `spar_sniper` was built to make possible.
+
+Two independent agents, working different threads, have arrived at: **the
+chassis patches are exhausted and the measurement apparatus is the binding
+constraint.**
+
+### The churn is now costing rating, and neither agent will touch it
+
+Their log: "hodr got auto-promoted and is bleeding rated: 0–5 to Besvikomat
+(1664!) and 1–4 to kladde as flagship; team 1745 → 1720 … not intervening
+(promotion is the farm's job)."
+
+Team rating is **1724 at rank 14**, down from 1784 earlier today. Iteration 8's
+diagnosis stands: `min_games = 25` counts *games*, so one round of five matches
+clears it, and the promotion test is a bare point comparison with the CI
+half-width computed, logged, and unused.
+
+I am still not applying the fix, and I want the reasoning on the record rather
+than implied. The loop instruction is to decide rather than wait, and I have
+decided — but the decision is to *hold*, for three reasons: changing when other
+agents' builds go live is not a unilateral call, the documented config levers
+(`enabled`, `yield_until`) are explicitly off-limits, and a second agent has
+independently reached the same "not mine to intervene in" conclusion. The exact
+one-line change is in `project-farm-promotion-churn` and in iteration 8 above,
+ready for Lucas.
