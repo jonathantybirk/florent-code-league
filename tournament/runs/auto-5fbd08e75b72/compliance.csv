@@ -1,2 +1,2 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-lofn@c8d0165,lofn,c8d0165,pending,33,0,0,0,,,,,,0,0,9000,10000
+lofn@c8d0165,lofn,c8d0165,pass,33,33,33,5836,24,62,605,1345,7119,0,0,9000,10000
