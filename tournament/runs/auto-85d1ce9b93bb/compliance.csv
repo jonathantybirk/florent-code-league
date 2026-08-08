@@ -1,2 +1,2 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-forseti@37dc858,forseti,37dc858,pending,33,31,31,5248,14,44,116,1261,6961,0,0,9000,10000
+forseti@37dc858,forseti,37dc858,pass,33,33,33,5582,14,46,120,1306,7105,0,0,9000,10000
