@@ -426,3 +426,18 @@ from round 4) is a separate unaddressed failure mode.
   kept shr@b61aaac/f1f2bda active all day. The promotion logic is farm code, which I
   don't touch by agreement — flagging with data instead.
 - Team rank 18 at 1693; incumbent restored as active.
+
+## Iteration 24 — 2026-08-08 ~16:20 (analysis while fulla's volume queues)
+
+- Decoded fulla's top-team losses (Jython 1–4, Flotte 1–4). Two conclusions:
+  1. **The economy fixes landed**: fulla matches Jython's Harvester count every game
+     (8v7, 3v4, 7v5) with 22–33 conveyors — the day's belt work turned the economy gap
+     into parity against a rank-4 team.
+  2. **We lose on weapons conversion now**: Jython spends everything on Gunners (8–15,
+     zero Launchers); our Launcher retire→rebuild cycle eats the weapons budget — game 3:
+     6 Launchers built, 1 Gunner, 90 total damage. Each rebuild is +10% scale for a pad
+     that mostly idles at Jython's tempo.
+- Probe running: `fulla_lq` (scratch, not committed) = fulla with Launcher retirement
+  off — retirement is what triggers rebuilds, so never-retire should end the cycle
+  cheaply. 126-game panel vs fulla/shr/vidar (`fulla_lq_run`).
+- fulla's 20 extra live games still queued behind snotra_h.
