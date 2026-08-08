@@ -4559,3 +4559,46 @@ build ahead of them would spend live rounds on the wrong question.
 was wrong. It was one slot's worth of ingenuity, and I declared it impossible
 without probing the word width first — the same mistake as assuming
 `ct.attack` existed, in the other direction.
+
+## Iteration 86 — why the panel cannot price economy, and why I cannot fix it
+
+The measurement that explains the whole session:
+
+| | median turns | reaching 999+ |
+|---|---|---|
+| **internal panel** (624 games) | **104** | **4.2%** |
+| live, decoded (20 games) | 270 | Pivot: 2 of 5 |
+
+**Our bots kill each other in 104 turns.** The first Harvester lands around
+round 7 and a belt costs 3 Ti a tile; a game that ends on turn 104 is over
+before economy returns its cost. That is why five separate builds raised
+Harvesters and none moved the win rate — the panel is not blind to economy by
+accident, it plays a game in which economy is nearly worthless.
+
+Live is 2.6x longer, and against Pivot 40% of games run the full thousand
+rounds and are decided on titanium — where they finish on 10,045 to our 20.
+
+**The attempted fix, and its failure.** `spar_turtle`: `hlin` with no attacker,
+more field Gunners, six home turrets, siege off — a bot built to survive rather
+than win, so games would run long enough for economy to matter.
+
+    median length 133 (against the panel's 104), 7% reaching 999
+
+Barely moved. Taking the attacker away made it *easier* to kill, so our builds
+finish it sooner rather than later. A regime where both sides survive needs both
+sides passive, which destroys the comparison being made. Deleted.
+
+What it did show, incidentally: against the turtle, Harvesters rise to 4.47
+(`hlin`), 3.72 (`syn`) and 2.49 (`vili`) from 2.75, 2.97 and 1.50 on the normal
+panel. **Harvester count tracks game length**, which is the backwards-causation
+finding from iteration 51 arriving one more time, now with the mechanism visible:
+longer games build more of everything.
+
+Win rates against it were 0.639 / 0.625 / 0.611 — all inside each other's
+intervals, so it does not discriminate either.
+
+**Conclusion.** The panel cannot price the economy work because it plays
+104-turn games; I cannot manufacture 1000-turn games without making the fixture
+unable to lose, which is not a test. The value of `lofn`, `hlin`, `nanna` and
+`syn` is a live question, and the ladder is the only instrument that plays games
+long enough to answer it.
