@@ -5005,3 +5005,40 @@ pass full `name@commit` keys when that matters.
 **So there is no live signal today that any build we own is better than any
 other.** That is the honest state, and it is why the queued builds need games
 rather than another candidate.
+
+## Iteration 97 — a third promotion gate, and the tool made commit-exact
+
+**Tool.** `--compare` matched a bare name against every commit of that build,
+silently averaging different bots. Now an exact `name@commit` matches only
+itself, a bare name still works as a lineage aggregate, and the label says so.
+With commit-exact keys the shared-opponent set widens from two to **eight**:
+
+| build | shared record | rate |
+|---|---|---|
+| `snotra_h@6951e03` | 66/110 | 0.600 ±0.092 |
+| `ostara@584e9ba` | 29/50 | 0.580 ±0.137 |
+| `steward_hardened_reinforced` (6 commits pooled) | 319/555 | 0.575 ±0.041 |
+| `spork@05ab6a2` | 34/65 | 0.523 ±0.121 |
+
+`snotra_h` leads the steward lineage by 2.5 points, inside both intervals.
+Still nothing separates our builds live.
+
+**The farm is healthy** — state written two minutes before I looked, round 342
+firing, ~11 minutes a round. `bifrost` is about five rounds out.
+
+**And there is a third promotion gate I had not accounted for:**
+
+    steward_hardened_reinforced@04300bf not qualified:
+    faced 6/10 of the closest 10 (need 7)
+
+`QUALIFY_MIN = 7` of `CLOSEST_K = 10`. A build must have *faced* seven of the
+ten closest-rated opponents before it can be promoted at all, counted over every
+match it has played. `04300bf` has 40 games and covers six of ten.
+
+So the real bar for tonight's builds is three gates, not one: 25 games,
+7-of-10 coverage, and an estimate above the incumbent's. My allocations —
+six rounds for `bifrost`/`hoenir`/`vili`/`freyja` (30 matches, 150 games) and
+eight for `lofn`/`hlin`/`nanna` (40 matches, 200 games) — clear the first two
+comfortably, since the farm's policy picks opponents near our own rank
+(this round: #13, #14, #16, #21, #23). That was luck rather than design; I chose
+those round counts for sample size, not coverage.
