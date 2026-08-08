@@ -1722,3 +1722,50 @@ Sixth idea refuted. The tally is worth keeping straight: what has ever moved
 this lineage is `snotra`'s deposit ordering and `snotra_h`'s harass ordering,
 both worth about one game per forty-two, and neither has separated from the
 pack live at a hundred games.
+
+---
+
+## Iteration 23 — `heid`, and the pattern behind six refutations
+
+Rank 18 of 112 at 1688.
+
+`spar_sniper` — my own fixture — takes 0.405 off `snotra_h`, which is close to
+level, and its configuration is the economy-Sentinel shape the meta intel says
+dominates. So `heid` shipped that configuration as a competitor rather than a
+dummy: `MIN_AMMO_FOR_SENTINEL` 40 → 10 so the first siege Sentinel is seated in
+the round-36-40 window the ladder's Sentinel bots use, and
+`SIEGE_SENTINEL_TARGET` 1 → 3, since one Sentinel is 9 damage a round against
+two menders restoring 8 and three are 18.
+
+| heid vs | | | sentinels built |
+|---|---|---|---|
+| `snotra_h` | 21/42 | **0.500** | **0.05** |
+| `steward_hardened_reinforced` | 24/42 | 0.571 | 0.02 |
+| `spar_sniper` | 25/42 | 0.595 | 0.02 |
+| `mimir` | 26/42 | 0.619 | 0.02 |
+| `vidar` | 29/42 | 0.690 | 1.17 |
+| **mean** | 125/210 | 0.595, floor 0.500 | |
+
+Level with its parent, and the last column says why: against our own lineage it
+builds **0.02 siege Sentinels a game**. The path barely executes, so neither
+constant was ever the binding thing. Deleted.
+
+### The pattern worth naming
+
+That is the sixth time this session a constant has turned out to be inert
+because its code path does not run:
+
+| constant | why it did nothing |
+|---|---|
+| `LONGGAME_MAX_TOTAL_BUILDERS` | the cap of 6 never bound; ~5 spawn |
+| `GUNNER_SIEGE_STALL_ROUNDS` | `siege_stalled` peaks at 3-7 against a threshold of 20 |
+| `COUNTER_SENTINEL_WITH_SENTINEL` | `_counter_sentinels` almost never fires |
+| `BELT_TILE_WEIGHT` | identical at 0, 2, 3, 5, 8 |
+| `BELT_SCORE_CANDIDATES` | identical at 4 and 8 |
+| `SIEGE_SENTINEL_TARGET`, `MIN_AMMO_FOR_SENTINEL` | 0.02 Sentinels a game |
+
+**Reading a constant tells you nothing about whether it binds.** Every one of
+these looked load-bearing in the source and several had measurement notes
+attached. The cheap check — instrument the path and count how often it fires,
+before building anything — has caught all six, and would have saved most of the
+day if applied first rather than after the panel came back flat.
