@@ -66,7 +66,7 @@ ECON_FLOOR_HARVESTERS = 4
 # the round from which it is worth starting. We out-collect steward and still
 # lose every game, because it wins ~90% of its matches on a Core kill and we
 # have never attacked anything -- surviving a Core-killer is the harder half.
-SIEGE_BUILDERS = 1
+SIEGE_BUILDERS = 0
 SIEGE_FROM_ROUND = 60
 SIEGE_MIN_HARVESTERS = 2
 

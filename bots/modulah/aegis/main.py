@@ -19,6 +19,7 @@ from fcode import Controller, EntityType
 
 import builder_brain
 import core_brain
+import launcher_brain
 import turret_brain
 
 
@@ -40,5 +41,7 @@ class Player:
                 self._builder.run(ct)
             elif kind in (EntityType.GUNNER, EntityType.SENTINEL):
                 turret_brain.run(ct)
+            elif kind == EntityType.LAUNCHER:
+                launcher_brain.run(ct)
         except Exception:
             pass
