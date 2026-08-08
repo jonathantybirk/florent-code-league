@@ -1,0 +1,5 @@
+source_commit = "d540e5baf"
+source_path = "bots/luc/hodr"
+engine = "2.3.6"
+status = "development"
+variant = "hodr plus ullr's late attack wave: surplus buys extra attackers, and under Sentinel-first each one seats a Sentinel battery — the kladde/sporks blueprint on our chassis"
