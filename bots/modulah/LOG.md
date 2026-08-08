@@ -71,6 +71,11 @@ out-collects us in exactly those long games — so the tiebreak still goes to
 them. Four is the optimum, and the shape says the remaining wins are not
 hiding behind survival.
 
+`SPAWN_INTERVAL` was re-swept on the corrected build too and did **not**
+reverse: 4 collapses to 3/45 (odin 1/30), against 8/45 at 6. So the confound
+did not invalidate everything indiscriminately — spawn pacing was measured
+correctly the first time, the economy floor was not.
+
 That is the third result in this log to reverse once the build underneath it
 was corrected (after "more Harvesters collects less" and the spawn rate). The
 pattern is now thoroughly evidenced: **a negative result is only as good as
