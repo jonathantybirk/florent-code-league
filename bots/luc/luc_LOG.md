@@ -96,3 +96,10 @@ from round 4) is a separate unaddressed failure mode.
   target up, then the existing answers engage.
 - Smoke: compiles, HUNT fires on showdown/sprint/duel vs vidar (3 of 4 wins). 168-game panel
   vs shr/freyr/vidar/odin running (`vali_run1`).
+- **Panel results**: 20–22 shr, 20–22 freyr, 27–15 vidar, 28–14 odin — neutral at home like
+  freyr, which is the expected profile for a live-only failure-mode fix. CPU 0 over 10 ms.
+- Pushed vali as `d123262c6`; queued `vali@d123262:2` on x/ladderfarm (`bb0f348e9`), behind
+  another agent's `steward_relent@7ed1acc:2`. freyr's second live round still pending (feed
+  timestamps are UTC).
+- Queue depth note: 4 test entries are now stacked on the farm (~11 min per round), so vali's
+  first live round is ~30–45 min out.
