@@ -4138,3 +4138,59 @@ gains, one real bug fix, four dead ends, and Harvesters at 2.79 against the
 4.4-7.6 the ladder's top runs.
 
 Queued: `lofn@86287ec:8`, `hlin@a72a7dc:8`. Unqueued but ready: `bil`.
+
+## Iteration 76 — what actually beats us, measured from the replays
+
+No candidate this iteration. The economy line is closed locally and the useful
+thing left was to ask the replays how we actually lose, rather than guess.
+
+Decoded 20 live games against the four teams above us, tracking Core HP by
+entity id (Cores are not in `placeEntity` — they exist from turn 0, and team A's
+is id 1, team B's id 2).
+
+**Two of the five Pivot games we lost with our Core untouched.**
+
+| Pivot game | damage we took | damage we dealt | turns |
+|---|---|---|---|
+| 1 | **0** | 2828 | 1000 |
+| 2 | **0** | 4123 | 1000 |
+
+A Core has 500 HP. Dealing 2828 without killing it means they simply mend
+through everything we can put out, and the game runs the full thousand rounds.
+Then the tiebreak decides it:
+
+| full-length game | our titanium | theirs |
+|---|---|---|
+| Pivot | **20** | **10,045** |
+| Pivot | **14** | **6,986** |
+| Big O | 116 | 112 |
+
+**Five hundred times the titanium.** Not fifty per cent, not double — they
+finish with more banked than they could spend, and we finish on twenty, which is
+the same 2-42 bank that prices out our Sentinels, our denial barriers and our
+Gunner rotations all game.
+
+Game lengths differ by opponent, so this is not the whole story:
+
+| opponent | games | full-length | median turns |
+|---|---|---|---|
+| Pivot | 5 | 2 | 298 |
+| Big O | 5 | 1 | 108 |
+| I Stone | 5 | 0 | 244 |
+| Besvikomat | 5 | 0 | 464 |
+
+Against `I Stone` and `Besvikomat` we die to Core damage (1418 and 651 taken on
+average) rather than to the tiebreak. Against `Pivot` the long games are pure
+economy and we are not in the same competition.
+
+**What this settles.** The economy axis was the right one — this is the
+quantified version of the 2.7-vs-7.6 Harvester gap, and it is worth 500x at the
+end of a long game. It also says the gap is not reachable by the levers
+available: seven candidates moved Harvesters 1.50 → 2.79 and the difference that
+decides these games is an order of magnitude larger than anything a constant in
+this codebase can buy.
+
+**And the Big O game at 116-112 is the useful one.** That is a full-length game
+lost by four titanium. Whatever `lofn` and `hlin` are worth live, that margin is
+inside their reach — which is exactly the measurement now sitting in the farm
+queue.
