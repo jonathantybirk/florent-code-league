@@ -72,6 +72,8 @@ repeat run reproduced 823.33 collected to the decimal).
 | opening turret, zero walk | 305 | 4/45 | 0 |
 | opening turret + Launcher economy | 213 | 2/45 | 0 |
 | workforce capped at 4 builders | 763 | 6/45 | 0 |
+| opening spawn burst (3 fast) | 522 | 2/45 | 0 |
+| chain-length cap (neutral) | 821 | 5/45 | 1 |
 | scouts round-robin sightings | 660 | 5/45 | 0 |
 | scouts, idle Builders only | 691 | 4/45 | 0 |
 | walking counter-battery | — | — | worse |
@@ -106,6 +108,29 @@ to move a Builder faster than walking) and a Barrier screen (3 Ti soaking five
 Gunner shots). **What never worked was scheduling defence earlier**: five
 separate routes, every one paying 300–700 titanium for ~15–28 rounds of turret
 timing.
+
+### The one result that reproduces every time
+
+**Raising the Harvester count always LOWERS titanium collected.** Four
+independent routes:
+
+| change | harvesters@300 | collected |
+|---|---|---|
+| baseline | 3.76 | **823** |
+| workforce capped at 4 | — | 763 |
+| aggressive economic scale | — | 246 |
+| opening spawn burst | **3.93** (highest ever) | 522 |
+
+More Harvesters, less titanium, every time. The Harvesters are not the
+problem — the routes behind them never connect. A Builder laying one conveyor
+per step across a 26x26 map abandons more chains than it finishes.
+
+Capping deposits to a route we can finish (8 tiles) measured **neutral**
+(821), which places the fault in the LAYING, not in the distance: the
+short-route deposits were already being picked by the rear-corner ranking.
+The remaining fix is a Builder that plans a route and lays it in one
+uninterrupted trip, which has been tried once badly (112 collected) and
+deserves a proper attempt.
 
 ### The gap, measured
 
