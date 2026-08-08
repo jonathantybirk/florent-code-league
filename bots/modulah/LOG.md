@@ -325,6 +325,26 @@ it converts any coding error into a silent, plausible-looking loss. Surfacing
 the traceback took one line and found it immediately — do that FIRST whenever
 a change produces an implausibly total collapse.
 
+### Rotation is not the bottleneck — ray geometry is
+
+Instrumented every stage of the firing decision against steward:
+
+| map | fires | rotation solutions found | rotated | rotation refused |
+|---|---|---|---|---|
+| drumlin | 12 | **0** | 0 | 0 |
+| eider | 23 | 4 | 4 | **0** |
+| saga | 0 | 0 | 0 | 0 |
+
+Every rotation the bot wanted, it got — cost and cooldown never blocked one.
+The failure is earlier: when a target is not already on a turret's ray,
+**no facing reaches it**. Enemy Gunners sit at offsets like (1,2), which is
+neither axial nor diagonal, so all eight facings miss.
+
+This closes the loop on turret effectiveness. The only counter is siting a
+turret where the enemy already lies on a ray — target-driven seats — and that
+was measured at 375 collected / 2 wins. Ray geometry, not aim, is the ceiling
+on what home defence can do here.
+
 ### Turrets that could never fire
 
 The single most productive diagnostic of the session. Counting shots rather
