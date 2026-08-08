@@ -5193,3 +5193,45 @@ builds that are probably worse than what it already runs.
 else is diagnostic — which, given that the diagnostics include "on-pool
 measurement does not generalise" and "the farm promotes on noise", may be the
 more useful half.
+
+## Iteration 102 — the whole session, ranked against what is live
+
+Same 147 generated maps, 294 map/seat cells each, every build of the night
+against `steward_hardened_reinforced`:
+
+| build | vs live flagship | |
+|---|---|---|
+| **`lofn`** | **0.527 ±0.057** | **+0.9 sd** |
+| `hlin` | 0.514 ±0.057 | +0.5 sd |
+| `nanna` | 0.510 ±0.057 | +0.4 sd |
+| `syn` | 0.510 ±0.057 | +0.4 sd |
+| `gefn` | 0.507 ±0.057 | +0.2 sd |
+| `bifrost` | 0.486 ±0.057 | -0.5 sd |
+| `hoenir` | 0.483 ±0.057 | -0.6 sd |
+| `freyja` | 0.480 ±0.057 | -0.7 sd |
+| `vili` | 0.476 ±0.057 | -0.8 sd |
+
+**`lofn` is the peak, and everything I stacked on top of it costs a little.**
+`hlin` (claim leak fixed) 0.514, `syn` (done-mask) 0.510, `gefn` (claims expire)
+0.507 — a monotone decline as each further "fix" went in. Every step is inside
+the noise, so this is not proof that they hurt; but there is no version of this
+table where they help, and three of them were shipped or committed on the
+strength of mechanisms that measurably do what they claim.
+
+That is the sharpest lesson of the night restated: **a mechanism working is not
+the same as a bot winning.** `hlin` removes 173 of 178 slot jams. `syn`
+eliminates every wasted arrival. `gefn` makes immortal claims impossible. All
+three do exactly what their READMEs say, and none of them beats the build
+before it.
+
+**And `freyja` at 0.480 places the credit precisely.** Four claim slots alone
+are *worse* than the flagship; four slots *plus a second miner* (`lofn`) is the
+best build of the night. The slots were necessary and not sufficient — they only
+pay when there is a second miner to use them, which is exactly the interaction
+iteration 67 identified and is now confirmed against a different opponent on
+unseen maps.
+
+**Recommendation, on the strongest evidence available:** `lofn@86287ec` is the
+build to promote. It is the only one above the live flagship by more than half a
+standard deviation, and the later stack should not displace it. `hlin` and
+`nanna` are queued behind it and are not upgrades on this measurement.
