@@ -74,6 +74,7 @@ repeat run reproduced 823.33 collected to the decimal).
 | workforce capped at 4 builders | 763 | 6/45 | 0 |
 | opening spawn burst (3 fast) | 522 | 2/45 | 0 |
 | chain-length cap (neutral) | 821 | 5/45 | 1 |
+| planned route, de-looped walk | **27** | 1/45 | 0 |
 | scouts round-robin sightings | 660 | 5/45 | 0 |
 | scouts, idle Builders only | 691 | 4/45 | 0 |
 | walking counter-battery | — | — | worse |
@@ -129,8 +130,30 @@ Capping deposits to a route we can finish (8 tiles) measured **neutral**
 (821), which places the fault in the LAYING, not in the distance: the
 short-route deposits were already being picked by the rear-corner ranking.
 The remaining fix is a Builder that plans a route and lays it in one
-uninterrupted trip, which has been tried once badly (112 collected) and
-deserves a proper attempt.
+uninterrupted trip. **That has now been attempted properly and it also
+fails.**
+
+The plan was to record the walk out, remove the excursions (a unit-tested
+de-looper: `A B C D C B E F` -> `A B E F`), then walk the simplified route
+home laying each tile at its true successor's bearing -- which fixes bends,
+where laying-as-you-walk must choose a facing a turn before it knows where the
+route goes.
+
+The de-looper is correct and the mechanism half-works: one archipelago match
+mined 990 and won on the tiebreak. Across the pool it collected **27**. It
+also shipped with a bug worth recording -- the loop exited on the last route
+tile without ever laying it INTO the Core, so every chain stopped one tile
+short: 12 conveyors a game and literally zero titanium delivered. Fixing that
+took the pool from 0 to 27, which is the measure of how far off the rest of it
+still is.
+
+Why it fails is now the interesting question, and it is not the plan: it is
+that a Builder cannot FOLLOW a frozen route. It gets blocked, shoved, or
+shot off the path, and every deviation invalidates the plan it is carrying.
+A route that must be walked exactly is the wrong abstraction for a unit that
+does not control where it can stand. Anything further here should let the
+route be repaired locally rather than abandoned, or lay it from the Core
+outward where the ground is already held.
 
 ### The gap, measured
 
