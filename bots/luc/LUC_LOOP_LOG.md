@@ -5756,3 +5756,54 @@ best evidence we have of what a good build looks like on this ladder, and the
 next thing worth doing is reading what it does differently — it is
 `steward` with "replace Builders the team has lost", a mechanic none of tonight's
 economy work touched.
+
+## Iteration 117 — why my instrument was 29 points wrong, and what it means
+
+Followed the retraction to its cause. `steward@e55aab5`'s distinguishing change
+is `REPLACEMENT_BANK_THRESHOLD` 260 → **110**: replace a Builder the team has
+lost once the bank shows the workforce cannot keep up.
+
+**Our lineage never does this.** Instrumented at the check itself over four
+games: bank median **175**, max **226**, and **0 of 30 checks reached 260**.
+`steward`'s 110 passes **23 of 30**. Every build I made tonight inherits a
+threshold its own bank cannot reach.
+
+Ported onto `lofn` as `mani`: **0.4140 ±0.0305 (-5.5 sd)** — clearly worse, with
+Builders 5.67 against 4.76 so the mechanism plainly fires. But this is the same
+mechanic whose parent build my maps got wrong by 29 points, so I split the result
+by game length:
+
+| game length | `mani` vs `lofn` | |
+|---|---|---|
+| **<150 turns** | **0.370 ±0.037** | **-6.8 sd** |
+| 150-299 | 0.467 ±0.070 | -0.9 sd |
+| 300-599 | 0.511 ±0.104 | +0.2 sd |
+| **≥600** | **0.541 ±0.114** | +0.7 sd |
+
+**Monotone in game length, crossing even at about 300 turns.** My generated maps
+have a median of **114** turns. The live ladder runs **270**, and against `Pivot`
+40% of games go the full 1,000.
+
+**That is the explanation for iteration 115's 29-point error.** My instrument is
+not merely noisy about this mechanic — it is *systematically biased against it*,
+because it plays a game that ends before a replacement Builder can repay its
+cost. `e55aab5` looks like a 0.286 disaster on my maps and is a 0.581 build on
+the ladder for exactly this reason.
+
+**And it retroactively explains iteration 86**, which found the internal median
+is 104 turns against a live 270 and could not manufacture longer games. I noted
+it as a curiosity about economy. It is much worse than that: **every measurement
+I made tonight was taken in a game shorter than the games we actually play**, and
+any mechanic that pays off late is under-measured by my whole apparatus.
+
+**What follows for tonight's builds.** The economy work — more miners, more claim
+slots, done-masks — all pays late too, and all of it measured level. It may be
+under-measured for the same reason, in the same direction. I cannot fix that
+locally: iteration 86 showed a turtle fixture does not lengthen games, because
+our bots kill each other faster when the opponent is passive.
+
+`mani` is committed but **not queued**: -6.8 sd in the games my instrument can
+see is not something to spend live rounds on when `lofn` and `hlin` are already
+queued to test the same lineage. The finding that matters is not `mani` — it is
+that the threshold in our lineage is unreachable, and that our best live build is
+the one that fixed it.
