@@ -1,2 +1,2 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-vidarr@c9193be,vidarr,c9193be,pending,33,0,0,0,,,,,,0,0,9000,10000
+vidarr@c9193be,vidarr,c9193be,pass,33,33,33,5701,16,71,696,1773,7309,0,0,9000,10000
