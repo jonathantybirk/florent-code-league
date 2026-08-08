@@ -1,6 +1,8 @@
 match_id,tournament_id,bot_id,bot_name,bot_commit,map,seed,guard_tle_ms,result,match_status,error,turns,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,max_round,timeouts,bot_exceptions,terminal_starts,close_threshold_us,limit_us,host,lsf_job,finished_at
 bf8478a49a258603,auto-85d1ce9b93bb,forseti@37dc858,forseti,37dc858,antler,1,12,pass,ok,,27,195,35,54,104,1202,5845,26,0,0,0,9000,10000,n-62-28-34,29052245,2026-08-08T09:23:43+0200
 cbc1fc9cb63cf512,auto-85d1ce9b93bb,forseti@37dc858,forseti,37dc858,archipelago,1,12,pass,ok,,27,118,47,100,985,2129,6961,13,0,0,0,9000,10000,n-62-28-34,29052245,2026-08-08T09:23:45+0200
+c6cf3a47582c2dbd,auto-85d1ce9b93bb,forseti@37dc858,forseti,37dc858,atoll,1,12,pass,ok,,27,187,33,56,123,1583,4582,3,0,0,0,9000,10000,n-62-28-34,29052245,2026-08-08T09:23:47+0200
+7fdc30880eafdcce,auto-85d1ce9b93bb,forseti@37dc858,forseti,37dc858,aurora,1,12,pass,ok,,27,147,49,103,392,1954,7105,3,0,0,0,9000,10000,n-62-28-34,29052245,2026-08-08T09:23:49+0200
 ba8df51dc35fc425,auto-85d1ce9b93bb,forseti@37dc858,forseti,37dc858,bridge,1,12,pass,ok,,27,159,18,61,94,795,2001,3,0,0,0,9000,10000,n-62-11-62,29052245,2026-08-08T09:23:16+0200
 eed462943c18aa77,auto-85d1ce9b93bb,forseti@37dc858,forseti,37dc858,crossfire,1,12,pass,ok,,27,219,14,28,65,428,3142,3,0,0,0,9000,10000,n-62-11-62,29052245,2026-08-08T09:23:18+0200
 8e443ce7cc486c6a,auto-85d1ce9b93bb,forseti@37dc858,forseti,37dc858,drumlin,1,12,pass,ok,,27,132,18,41,504,1612,5781,26,0,0,0,9000,10000,n-62-11-62,29052245,2026-08-08T09:23:19+0200
