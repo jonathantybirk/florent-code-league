@@ -63,6 +63,28 @@ round 76. Infrastructure volume is the meta; steward is not the standard.
    deposit is worth. Exact coordinates would need 12 bits against 8 spare, so
    a second slot; whether that pays is untested.
 2. **First turret at ~round 76** against the leaders' round 5–19.
+
+   Retested on the repaired economy (a standing Gunner as soon as one
+   Harvester works, no threat required — the same change rejected five times
+   on the broken build). It is now **close to worth it**:
+
+   | | shipped | early defence |
+   |---|---|---|
+   | wins | **3/45** | 2/45 |
+   | collected | 977 | **1098** |
+   | core hp at end | 23.8 | **38.4** |
+   | games survived | 5/45 | **6/45** |
+   | first gunner | 76 | **63** |
+
+   Better on every proxy, one fewer win. Not shipped, because wins is the
+   objective and proxies do not get to overrule it — but this is the closest
+   any defensive change has come, and it should be the first thing retried
+   after the next economic gain.
+
+3. **Builders are not dying** (0–1 deaths a game, mean life 81–93 rounds) and
+   the economy is now at parity with steward: 5 Harvesters and 29–46 conveyors
+   against its 3–4 and 34–38. Every game still ends `core_destroyed` at round
+   ~100. The remaining gap is defensive, not economic, and not attrition.
 3. SPAWN_INTERVAL 3 with a smaller bank overshoots: wins 3→1, survived 5→1.
    Six is the measured optimum.
 
