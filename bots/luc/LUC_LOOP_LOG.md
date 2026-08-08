@@ -3375,3 +3375,75 @@ both directions. This is what a well-tuned local optimum looks like from the
 inside, and the remaining leverage is not in local search — it is in getting
 `vili` live, where it scores 0.667 against the style that has the live flagship
 at 0.262.
+
+## Iteration 60 — hnoss, and then the result that undoes the headline
+
+**`hnoss` (null).** Eleven candidates in, and the one part of the bot nobody had
+touched was the units that actually deal the damage — every previous build
+edited `builder.py`, `core.py` or constants. Probed: Gunners fire on **376 of
+655 turns (57%)**, and `_rotate_towards` is refused for titanium on **246 of
+279 calls** — a 40-Ti reserve guarding a 10-Ti action, against a 2-42 bank. The
+fourth mechanic priced out by the same empty bank, and the only one that buys
+damage rather than economy.
+
+Dropping the reserve to 15: **0.643** against Sentinel mass to `vili`'s 0.667,
+-0.2 sd, core damage dealt slightly *lower*. Level. Not shipped.
+
+### Then: the on-pool ladder does not generalise
+
+Everything I have told Lucas rests on one 42-game number, and this session has
+already been burned once by a small sample (`snotra_h`, 0.640 at 50 games →
+0.552 at 250). The 21 official maps are also the maps this whole lineage was
+tuned on, and the live ladder's pool is **held out**. So I generated fresh maps
+and re-ran the same ladder.
+
+21 generated maps, 42 games a cell — the ordering **reversed**:
+
+| vs spar_sentinel | off-pool (21) | on-pool |
+|---|---|---|
+| `vili` | **0.429** | 0.667 |
+| `steward_hardened_reinforced` | 0.524 | 0.262 |
+| `bifrost` | 0.571 | 0.381 |
+| `hoenir` | 0.571 | 0.405 |
+
+Widened to 42 generated maps, 84 games a cell:
+
+| vs spar_sentinel | off-pool (42) | on-pool (21) |
+|---|---|---|
+| `steward_hardened_reinforced` | 0.452 ±0.106 | 0.262 |
+| `hoenir` | 0.488 ±0.107 | 0.405 |
+| `vili` | 0.488 ±0.107 | 0.667 |
+
+**`vili` - `steward` is +0.036 off-pool (0.5 sd) against +0.405 on-pool.**
+
+The first run's reversal was partly noise — `vili` is not *worse* — but the
+robust part survives doubling the sample: **off-pool, the entire lineage is
+indistinguishable against Sentinel mass.** The 0.262 → 0.381 → 0.405 → 0.667
+ladder I have reported three times, and used to argue the farm queue should be
+reordered, is a property of the 21 maps these bots were tuned on.
+
+**What I now think is true, stated carefully:**
+
+- `vili` is not a regression; on-pool it is clearly better and off-pool it is
+  level. Queuing it was right.
+- The **size** of the claim was wrong. "+26pp on the matchup that decides rank"
+  and "+40pp over the live bot" are on-pool figures I should have labelled as
+  such, and the urgency I attached to the queue reorder was overstated.
+- `spar_sentinel` reproducing the live flagship's live win rate (0.262 against
+  a live 0.25-0.41) is weaker evidence than it looked: off-pool the same
+  flagship scores 0.452 against the same fixture. The agreement may be
+  coincidence of the map set.
+- The generated maps are not the live pool either. They are evidence that these
+  differences are map-set-dependent, not evidence about the ladder.
+
+**The general lesson, and it is the biggest one of the session.** Every internal
+number this loop has produced comes from the 21 maps the bots were tuned on, and
+differences that look like 40 points there are worth 3 points on maps they have
+never seen. That applies retroactively to the whole refutation list: the
+mechanisms I refuted were refuted *on-pool*. It does not make them right — but
+it means "worse by 1 sd on 21 maps" was never as strong as I wrote it.
+
+Off-pool maps live in `maps/offpool/` and `maps/offpool2/` (generated, seeds
+8081 and 20260809). The suite resolves map names against `maps/` root only, so
+running them means copying them in; I removed the copies afterwards, since
+globbing `maps/` is itself a known bug.
