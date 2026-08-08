@@ -1679,3 +1679,46 @@ That is now five defensive/economic ideas refuted the same way. Everything that
 survives contact is upstream: `snotra`'s deposit ordering and `snotra_h`'s
 harass ordering, both of which changed *which target we walk to*, not how we
 spend once we get there.
+
+---
+
+## Iteration 22 — snotra_h regressed; persistence adds damage, not wins
+
+### Correction: snotra_h was not the best build of the day
+
+At 55 games it read 34/55 = 0.618 and I called it the best live number of the
+day. At 75 games it is **41/75 = 0.547** — the extra twenty went 7/20. It is
+level with `snotra` 0.560, `fulla` 0.560 and `mimir` 0.550, not ahead.
+
+The 0.640 at fifty games was small-sample noise. I have spent this session
+warning about exactly that and then read my own build's first fifty games as a
+result. The model-free comparison is the right tool and it still needs the
+sample.
+
+### `sigyn` — never abandon a Sentinel siege
+
+`SIEGE_STALL_ROUNDS` exists because "a Core whose HP has stopped falling is
+being held, not killed". True of a Gunner — 7 a round against two menders
+restoring 8 never converges. **False of a Sentinel**: 18 every two rounds is 9
+against 8, a net 1 a round for the attacker, and 500 HP at 1 a round is 500
+rounds. Long, but the ladder plays games that long and the arithmetic never
+reverses. I Stone v22's sweep is precisely this and nothing else.
+
+| sigyn vs | | |
+|---|---|---|
+| `snotra_h` (parent) | 21/42 | **0.500** |
+| `steward_hardened_reinforced` | 24/42 | 0.571 |
+| `spar_sniper` | 25/42 | 0.595 |
+| `mimir` | 26/42 | 0.619 |
+| `spar_mender` | 33/42 | 0.786 |
+| **mean** | 129/210 | 0.614, floor 0.500 |
+
+The mechanism does what it says — Core damage dealt rises to 1,128 from about
+780, and games run 343 turns instead of ~240 — and it converts into **exactly
+zero** net wins against its parent. Deleted, since it does not beat the current
+best.
+
+Sixth idea refuted. The tally is worth keeping straight: what has ever moved
+this lineage is `snotra`'s deposit ordering and `snotra_h`'s harass ordering,
+both worth about one game per forty-two, and neither has separated from the
+pack live at a hundred games.
