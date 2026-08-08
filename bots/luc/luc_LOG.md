@@ -520,3 +520,14 @@ from round 4) is a separate unaddressed failure mode.
   unconditionally at round 90 — keeps vor's siege tempo on maps where the door is dead
   weight.
 - Still waiting on vor's live test (queue) and fulla's extra games.
+
+## Iteration 30 — 2026-08-08 ~18:00
+
+- vor's first 10 live games: **4–6, est 1690 [1626,1767]** — mediocre start, 15 games
+  queued. fulla decayed further without games (1717). Every build of the day lands in the
+  1690–1810 live band regardless of local panel edge — the panel's resolution on the live
+  field is now formally suspect (self-play correlation).
+- A third agent is active: the current live submission is v52 "aegis@8ef5814 (modulah)",
+  not in the feed's bot index yet. Left alone.
+- Team rank 18 at 1700. No build this iteration; vor's full 25-game verdict picks the
+  next move (vor vs loki vs traffic-gated synthesis).
