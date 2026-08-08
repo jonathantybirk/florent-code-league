@@ -4813,3 +4813,41 @@ That is the fourth distinct thing this session has proved is *not* the ceiling
 (slots, leak, miners, survival, time, threat routing) and the first precise
 statement of what is. It is a rewrite, not a constant, and I am not starting one
 at the end of a session.
+
+## Iteration 92 — the last exit instrumented, and the economy question closed
+
+`syn` spends 328 miner turns in `scout` and grants ~10 tasks. None of the
+instrumented exits fired — no `CAPPED`, no `NOROUTE` — which left exactly one
+uninstrumented path, and it was the same one twice before:
+
+    NOSLOT 178, holding [306, 174, 438, 364] every single time
+
+`hlin`'s recycling releases a claim only when a Builder can *see* a finished
+Harvester on it. Nobody looks again → the claim is immortal. The jam that
+`freyja` and `hlin` each partly fixed, one level deeper.
+
+`gefn` packs a round-stamp into the claim (`round << 12`; the word is 32-bit and
+`pack_pos` uses ten) and expires anything older than 60 rounds, so no
+observation is needed. **NOSLOT 178 → 7.**
+
+| gefn vs | combined | |
+|---|---|---|
+| `syn` (parent) | 78/156 = **0.500** | 0.0 sd |
+| `hlin` | 78/156 = 0.500 | 0.0 sd |
+| `nanna` | 79/156 = 0.506 | +0.2 sd |
+| `vili` | 81/156 = 0.519 | +0.5 sd |
+
+Harvesters 2.97 → 2.99. **The freed turns had nowhere better to go.**
+
+**Every exit from `_pick` is now instrumented, and the economy question is
+closed:** it is not the slot count (`freyja`), not the leak (`hlin`), not
+observation (`gefn`), not the network cap, not routing (`vor`), not the
+candidate window, not time per deposit (median **8 turns**), not miner survival
+(**0 of 9** died, one lived 404 rounds), and not claim contention (`sjofn`).
+
+Three Harvesters is what this bot does with a map. The cap is not in the mining
+loop at all — which, combined with `saga` losing 19 points trying to imitate
+rank 1's composition, says the difference between us and the top of this ladder
+is the *rest* of the bot, not its economy code.
+
+That is the end of what I can learn here without live games.
