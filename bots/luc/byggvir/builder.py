@@ -361,8 +361,13 @@ def _run(p, ct):
     # mined 0 all game — while the winning seat's 750 mined would have paid
     # for every heal many times over. Income first, then mending; a critical
     # Core (alarm 2) still outranks everything.
+    # byggvir: the mend-pin exemption was written for a SOLE miner whose
+    # pinning killed the whole economy. With three miners, builder 0 standing
+    # guard costs a third of the income and buys the defence the naked boom
+    # died without (0.311 on the live maps, 0-6 on eight of them).
     if (p.builder_index == 0 and alarm == 1
-            and p.network_load == 0 and not p.is_attacker):
+            and p.network_load == 0 and not p.is_attacker
+            and p.economy_builders <= 1):
         pass
     elif p.builder_index == 0 and alarm:
         # A Core this far gone gets a second mender rather than another turret.
