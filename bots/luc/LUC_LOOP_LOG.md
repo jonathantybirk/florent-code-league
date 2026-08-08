@@ -3597,3 +3597,55 @@ a build.
 Also worth recording: on these 36 maps the three bots read 0.417, 0.491 and
 0.583, which is the same picture as iterations 61 and 62 — the spread between
 our bots is smaller than the spread between map sets.
+
+## Iteration 64 — the real ladder meta, from real replays. My fixture was wrong.
+
+Stopped guessing at the opponents and downloaded them. `fcode match list --mine
+--json` gives 100 recent matches; 41 are against the cluster that beats us. Our
+worst is **0-5 to Pivot (rank 7)**. `fcode match replay <full-uuid>` pulls all
+five games, and `tools/pantheon_analysis/decode.py` already decodes
+`.replay26` in full.
+
+Composition, mean per game over the five games of that match:
+
+| | us (SmartFridge) | **Pivot** |
+|---|---|---|
+| Builders | 3.6 | **10.0** |
+| **Harvesters** | **2.4** | **7.6** |
+| conveyors | 21.0 | **39.8** |
+| **Gunners** | **11.6** | **11.6** |
+| Sentinels | 0.2 | 1.4 |
+| Launchers | **2.2** | **0.0** |
+| barriers | 2.6 | 2.4 |
+
+**Pivot fields exactly as many turrets as we do — 11.6 Gunners each — and three
+times the economy.** It is not a turret bot at all. It builds 2.8x our Builders,
+**3.2x our Harvesters**, twice our belt, and **zero Launchers**. By round 7 of
+game 1 it has five Builders and its first Harvester standing; we have three
+Builders and, in that game, **never build a Harvester at all**.
+
+**So `spar_sentinel` models the wrong opponent.** I built it from
+`project_sentinel_meta_2026_08_08` ("the ladder runs economy-funded Sentinel
+mass") and it does reproduce our live *loss rate* — but for the wrong reason,
+which is exactly how a fixture misleads. The top of this ladder is
+economy-funded **Gunners**, and the economy is the whole difference.
+
+**This overturns iterations 51-59.** Every "more economy loses" result — `saga`,
+`syn`, `gna`, `ran`, and the summary table in 58 — was measured against *our own
+bots* and *my invented fixture*, on the pool we tuned on. Against the actual
+rank-7 team, economy is precisely what we lack. The 2.3-Harvester ceiling I
+declared "an equilibrium the bot chose, correctly" in iteration 51 is 2.4 here
+against Pivot's 7.6, and it is the single largest gap in the table.
+
+I was measuring a closed system against itself and concluding the system was
+optimal. It is optimal *against itself*.
+
+**What this does not yet say.** `saga` reached 2.33 Harvesters and lost
+internally; Pivot runs 7.6, which is not a tweak of our opening but a different
+architecture (ten Builders against our three, `MAX_OPENING_BUILDERS = 3`). The
+honest next step is to rebuild the fixture from the replay profile and re-run
+the economy experiments against *that*, rather than to assume the reversal.
+
+Replays kept in the scratchpad; the decode path is
+`tools/pantheon_analysis/decode.py` + `entity_kind`, and `placeEntity` carries
+`entity.team`, so composition per team is a ten-line tally.
