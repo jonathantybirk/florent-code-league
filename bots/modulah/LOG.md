@@ -79,6 +79,26 @@ All three added maps lose outright and the economy damage costs an odin
 tiebreak on top. Six is right for this bot too — at eight or nine tiles an
 attacker arrives with nothing behind it, exactly as steward's own note said.
 
+### The wealth-vs-defence dead end
+
+The steward replays show the sharpest version of the remaining problem: on
+fjordgate we banked **1150 titanium against their 150** and out-built them 11
+buildings to 7, and still lost by `core_destroyed`. On meander, 850 against 0
+and 54 buildings to 4 — also lost. **A treasury is not a defence.**
+
+Scaling the guard count with banked titanium under fire was the obvious answer
+and is a **no-op**: numbers byte-identical to the shipped build. The branch
+requires `friendly_turrets > 0` *and* `incoming > 0`, and by the time both
+hold, menders have taken most Builders and `remaining` is too small for wealth
+to change the count.
+
+That is the third no-op gate in a row (see the counter-battery table). The
+pattern across all of them: **by the time our policy notices we are in
+trouble, there are no Builders free to act on it.** The bottleneck is not the
+threshold, the signal, or the money — it is that the roles are already
+allocated. Any real fix has to change the allocation earlier, and every
+attempt to do that so far has cost more economy than it saved.
+
 ### A seat-asymmetry bug in our own doctrine
 
 The same class of bug found in steward, reproduced here. `is_blitz_map` used a
