@@ -99,7 +99,25 @@ class BuilderBrain:
             harvesters=len(sit.my_harvesters),
             titanium=sit.titanium,
         )
-        return roles.assign(rank, mix)
+        role = roles.assign(rank, mix)
+
+        # A Builder part-way through a supply route finishes it. Reassigning
+        # mid-chain strands the Harvester it already paid for and wastes every
+        # conveyor laid so far, and on a 26x26 map the walk home is long
+        # enough that this happened constantly: replay of a full-pool loss
+        # showed 3 Harvesters and 10 conveyors against the opponent's 3 and
+        # 31, i.e. chains started and abandoned rather than never begun.
+        #
+        # Overridden only when the Core is about to die, where there is no
+        # later economy to protect.
+        if (role != roles.ROLE_MINER
+                and self.harvester is not None
+                and intel["burst"] > 0
+                and intel["hp"] / max(1, intel["burst"]) > roles.PANIC_ROUNDS):
+            return roles.ROLE_MINER
+        if role != roles.ROLE_MINER and self.harvester is not None and not intel["burst"]:
+            return roles.ROLE_MINER
+        return role
 
     def _visible_enemies(self, ct: Controller) -> list[int]:
         me = ct.get_team()
