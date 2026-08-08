@@ -5595,3 +5595,38 @@ the night: I removed a dependency out from under a running job and then read the
 result as if it were data. The suite told me exactly what happened in the error
 string, and I only looked because 960 was too large to ignore. The habit that
 caught it — read the errors, not just the successes — is the one worth keeping.
+
+## Iteration 112 — bifrost settled, and the 300-game readings bracketed the truth
+
+`bifrost` is playing live and topped the pool screen, having measured *below*
+the flagship a few iterations earlier. Settled on 1,000 maps:
+
+| maps | `bifrost` vs `steward_hardened_reinforced` |
+|---|---|
+| 147 (iteration 101) | 0.486 ±0.057 |
+| 150 (pool screen, iteration 110) | 0.540 ±0.056 |
+| **1,000 (this iteration)** | **0.5120 ±0.0219 (+1.1 sd)** |
+
+The two 300-game samples sit ±3 points either side of the 2,000-game answer.
+Both were "significant-looking" relative to their own intervals and both were
+wrong about the direction of the difference from each other. This is the
+cleanest demonstration in the whole log that **300 games cannot resolve these
+builds**, and it retires two of my own claims — "the early chain is below the
+flagship" (101) and "bifrost tops the pool" (110).
+
+**The high-precision table, all 2,000-game measurements, is now:**
+
+| comparison | result |
+|---|---|
+| `bifrost` vs `steward_hardened_reinforced` | 0.5120 ±0.0219 |
+| `lofn` vs `snotra_h` (live) | 0.4985 ±0.0219 |
+| `lofn` vs `steward_hardened_reinforced` | 0.4952 ±0.0205 |
+| `syn` vs `lofn` | 0.5016 ±0.0228 |
+| `nanna` vs `hlin` | 0.4870 ±0.0219 |
+| `steward@e55aab5` vs `steward_hardened_reinforced` | **0.2860 ±0.0280** |
+
+Every build we own is within ±1.5 points of every other, except one that is
+21 points below all of them. **That is the entire competitive picture**, and no
+further local measurement will change it: the differences I have been chasing
+are smaller than the precision it takes 2,000 games to reach, and the only
+difference that is large is the one the promotion rule cannot see.
