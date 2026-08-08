@@ -3060,3 +3060,26 @@ code. The real guard is the one behind `GUARD_HEALS_ON_ANY_DAMAGE` at
 re-measuring.
 
 Nothing shipped on the 0.681 number.
+
+**Result.** The guard-site version, verified firing, measures **0.595** mean,
+floor **0.476**, shared-opponent **0.625** against `vili`'s **0.667** — a
+-0.8 sd difference, so at best level and probably worse. Sentinels rose only
+0.14 → 0.18: even when the guard does divert, `_defend_core` usually finds no
+legal firing site, so the bot gives up a mend turn and buys nothing.
+
+Mending wins that trade. 4 HP per flat Ti, unaffected by cost scale, beats a
+turret seat that mostly cannot be placed. Refutation 21, and it also settles
+that the 0.681 was noise: the version that actually does the thing is worse
+than the version that did not.
+
+Deleted. `vili` still stands at 0.657/0.548.
+
+**Where this leaves the loop.** `vili` beats every bot in the local zoo, and the
+last four candidates measured level or worse. Local iteration is saturated: the
+panel no longer discriminates, and every honest comparison now lands inside
+1 sd. The binding constraint is live games, and those are queued behind seven
+locally-refuted builds at ~11 min a round.
+
+The next build should therefore be a *fixture*, not a candidate — an opponent
+that plays the live meta (economy-funded Sentinel mass) so the internal panel
+can see the thing the ladder is actually beating us with.
