@@ -1257,3 +1257,82 @@ and 9 have been eating.
   text says so plainly rather than asserting a regime that has already moved
   once today — iteration 5's arithmetic was right about *that* feed, and the
   per-opponent table needs no model at all.
+
+---
+
+## Iteration 14 — `snotra`, and the first build that beats the current best
+
+### The target list churned a third time
+
+Within thirty minutes Flotte and Besvikomat both dropped off the current-build
+table (new versions, under the 20-game floor), leaving I Stone 0.40 and 0033
+0.44. **Opponents re-upload faster than a per-build record can accumulate a
+readable sample.** Chasing "the current worst matchup" is not a strategy; the
+mechanisms those losses reveal are.
+
+### One Flotte v38 sweep, and a mechanism worth having
+
+Games of 133–172 rounds, all five lost:
+
+| map | our belts | theirs | our Core damage | theirs |
+|---|---|---|---|---|
+| atoll | **47** | 8 | 203 | 657 |
+| archipelago | **40** | 9 | 452 | 1,006 |
+| hive | **36** | 17 | **0** | 733 |
+| saga | 37 | 17 | 238 | 861 |
+
+We lay three to five times their belt. On hive: 36 conveyors, one Gunner at
+round 114, zero damage dealt, dead on 133.
+
+### The defect
+
+`_pick` sorts candidates by travel distance and `break`s on the first routable
+one, so `len(route)` — the belt — is computed and **never compared**. Its own
+comment concedes it: "route length breaks ties … for later score tuning". A
+deposit three tiles away behind a wall needing fifteen conveyors beats one five
+tiles away needing four.
+
+With the measured scale table (conveyor +1, 3 Ti each), forty belts is about
+120 Ti and a +40% tax on everything after — affordable over 600 rounds, ruinous
+over 150.
+
+### `bots/luc/snotra`
+
+Price at most four deposits (the list is nearest-first, so those are the ones
+worth pricing) and take the one minimising
+`len(route) * BELT_TILE_WEIGHT + travel`, weight 3. Bounded by work.
+
+| vs | | |
+|---|---|---|
+| **`mimir`** (current best) | 26/42 | **0.619** |
+| `hodr` | 25/42 | 0.595 |
+| `gefjon` | 22/42 | 0.524 |
+| `vidar` | 29/42 | 0.690 |
+| **mean** | 102/168 | **0.607**, floor 0.524 |
+
+Independent second sample on 12 generated maps: **14/24 = 0.583**. Pooled
+against mimir, **40/66 = 0.606** — about 1.7 sd.
+
+Head to head the mechanism appears where it should: conveyors 11.00 against
+12.62, harvesters and turrets unchanged, Core damage +50.
+
+**The caveat I want on the record:** on generated maps the belt counts are
+nearly equal (7.42 vs 7.58) and it still wins 0.583, so the conveyor saving is
+not the whole story there — the change also alters *which* deposit is taken. The
+mechanism is confirmed on the pool; the generated-map win is real and
+unexplained, and a 1.6-conveyor delta is a slimmer cause than a 12-point
+win-rate edge really wants.
+
+CPU 5,478 us worst, zero over. Deterministic across three runs. My first
+constants patch missed its anchor and the bot failed to import — caught
+immediately by the load check, which is why it is on the checklist.
+
+### Committed, not queued
+
+Both agents paused farm submissions pending live-relevant promise. Beating the
+current best on two independent local panels is the strongest local result of
+this session — and this session also established, twice, that an edge this size
+cannot be resolved in the 5–15 matches a queue slot buys, while the promotion
+rule will put a build on the *rated* ladder on one favourable five-game series.
+So `snotra` is on the branch and discoverable, and spending live budget on it is
+Lucas's call.
