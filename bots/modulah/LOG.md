@@ -99,6 +99,35 @@ threshold, the signal, or the money — it is that the roles are already
 allocated. Any real fix has to change the allocation earlier, and every
 attempt to do that so far has cost more economy than it saved.
 
+### Turrets that could never fire
+
+The single most productive diagnostic of the session. Counting shots rather
+than turrets, against steward:
+
+    drumlin       62 turret-turns   12 fires
+    saga           0 turret-turns    0 fires   (no turrets built at all)
+    archipelago  145 turret-turns    0 fires
+
+145 turret-turns and not one shot. The Gunner had ammo (24) and a visible
+enemy — at `dist_sq 5`, an offset of (1,2), which is **on no ray at any
+facing**. It could never fire, at anything, all game.
+
+Betweenness sites turrets where attackers WALK. What kills us is static enemy
+Gunners parked beside the Core. So `best_defensive_site` now requires the ray
+to reach the Core's doorstep — the tiles orthogonally touching the footprint,
+where an attacker has to stand to hit it.
+
+| | before | doorstep |
+|---|---|---|
+| wins | 4 | **5** (odin 3→4/30) |
+| collected | 983 | **1197** |
+| core hp at end | 31.8 | **39.4** |
+| games survived | 5/45 | **6/45** |
+
+Best build recorded here, and it improves every measure at once — the first
+change to do that. It also explains why so many defensive experiments read as
+no-ops: the turrets they were arguing about could not shoot.
+
 ### Spawn rate re-tuned on the current build: 6 still wins
 
 Retested because SPAWN_INTERVAL was tuned before both the seat fix and the
@@ -280,7 +309,8 @@ repeat run reproduced 823.33 collected to the decimal).
 | **+ Barrier screening** | 823 | 5/45 | **1** |
 | — removing it, to check | 979 | 3/45 | 2 |
 | **+ connectivity broadcast** | 568 | 6/45 | 2 |
-| **+ blitz doctrine (kept)** | **983** | 5/45 | **4** |
+| **+ blitz doctrine** | 983 | 5/45 | 4 |
+| **+ doorstep coverage (kept)** | **1197** | **6/45** | **5** |
 | blitz threshold widened to 9 | 665 | 3/45 | 3 |
 | siege role (kept, off by default) | 809 | 7/45 | 1 |
 | turret map, all 8 facings (bug) | 256 | 1/45 | 0 |
