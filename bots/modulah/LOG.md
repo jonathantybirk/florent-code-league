@@ -99,6 +99,22 @@ threshold, the signal, or the money — it is that the roles are already
 allocated. Any real fix has to change the allocation earlier, and every
 attempt to do that so far has cost more economy than it saved.
 
+### Spawn rate re-tuned on the current build: 6 still wins
+
+Retested because SPAWN_INTERVAL was tuned before both the seat fix and the
+blitz doctrine, and two earlier constants had already reversed once the build
+changed underneath them.
+
+| interval | wins | collected | survived |
+|---|---|---|---|
+| **6** | **4/45** | 983 | **5/45** |
+| 4 | 2/45 | **1008** | 2/45 |
+
+Faster spawning buys the best economy this bot has recorded and loses half the
+wins — more Builders, more chains, and a Core that dies anyway. Consistent
+with everything else here: past a point, economy is not the binding
+constraint and spending tempo on it is negative.
+
 ### Capping menders: also neutral
 
 Directly attacking the allocation problem above — capping menders at 2 so
