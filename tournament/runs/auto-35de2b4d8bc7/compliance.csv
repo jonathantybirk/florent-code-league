@@ -1,2 +1,2 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-gefn@46ac5e6,gefn,46ac5e6,pending,33,0,0,0,,,,,,0,0,9000,10000
+gefn@46ac5e6,gefn,46ac5e6,pass,33,33,33,5560,23,48,133,1514,7410,0,0,9000,10000
