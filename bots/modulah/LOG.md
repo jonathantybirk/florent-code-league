@@ -79,8 +79,24 @@ positioned), so the two are genuinely a trade, not a tuning error.
 
 That is the shape of the "advanced conditional logic" the top teams show: the
 right answer differs by opponent, and a single fixed policy leaves wins on the
-table either way. Distinguishing "opponent that sieges" from "opponent that
-races economy" is the lever neither branch of this test had.
+table either way.
+
+**Three gates were tried to get both, and none worked:**
+
+| gate | fires when | result |
+|---|---|---|
+| `burst > 0` | a turret is merely POSITIONED | always true — trades odin for vidar |
+| `dhp <= -2` | sustained hp loss | never coincides with holding GUARD (menders are assigned first) — no-op |
+| `hp < 400` | accumulated damage | fires too late to place a Sentinel — no-op |
+
+The two "no-op" gates produced numbers byte-identical to the ungated build,
+which is how you can tell they never fired at all.
+
+The reason none work is timing, not signal quality. Counter-battery is only
+worth 30 Ti if the Sentinel is standing *before* the damage lands, and every
+signal that distinguishes a real siege from posturing is by definition only
+available *after* it starts. Adapting to the opponent needs a predictor
+available early — their opening shape, not their damage output.
 
 ### The ladder's actual standard
 
