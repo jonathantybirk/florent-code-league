@@ -397,3 +397,16 @@ from round 4) is a separate unaddressed failure mode.
 - Open thread for the next build (needs design, not a quick patch): the ammo-vs-growth
   budget arbitration under sustained fire — the one structural difference left between our
   economy and the meta teams'.
+
+## Iteration 22 — 2026-08-08 ~15:10
+
+- **fulla's first 10 live games: 6–4, est 1870 (team's highest), games 33–18.** Beat
+  Besvikomat 4–1 and Clankers (1806) 5–0 — the economy-attrition matchups the day
+  targeted; all four losses close (three 2–3s and a 1–4); kladde narrowed 1–4 → 2–3.
+  15 more games queued reach the qualification bar. Treating 1870 as an upper bound per
+  the regression pattern — but the matchup profile is the right shape, which the morning
+  builds never showed.
+- snotra live: 12–8 over 20, est 1758. mimir slid to 1785 on 20 (three close rated
+  losses). freyr re-promoted (1867 on 12) and beat I Stone 4–1 rated. Team 1726, rank 15.
+- No build this iteration: fulla's 25-game verdict shapes whether the next work is
+  scaling this line (ammo-vs-growth arbitration) or something else.
