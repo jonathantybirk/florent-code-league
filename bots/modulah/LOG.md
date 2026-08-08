@@ -2,31 +2,29 @@
 
 ## Status: NOT beating our own bots
 
-`aegis` is **0/45** against `steward_hardened_reinforced`, `vidar` and `odin`
+`aegis` is **1/45** against `steward_hardened_reinforced`, `vidar` and `odin`
 on the full 15-map official pool, both seats. The goal is not met.
 
-**Measure on the full pool, never on a small panel.** The 6-map panel used
-early on (duel, atoll, hive, jackpot, eider, saga) is four old-pool 12x12s and
-flatters this bot badly — it reported 2184 collected and 200 core hp where the
-real figures are 823 and 47. Every number in this file is full-pool.
+**Measure on the full pool, never on a small panel.** The early 6-map panel is
+four old-pool 12x12s and flatters this bot badly — it reported 2184 collected
+and 200 core hp where the real figures were 823 and 47.
 
-| | full pool |
-|---|---|
-| wins vs top three | **0/45** |
-| games survived | 7/45 |
-| titanium collected | 823 (steward 788, vidar 4003, odin 2109) |
-| harvesters @300 | 3.29 |
-| first harvester | round 4 (field: 7) |
-| core hp at end | 47 |
+| | aegis now | steward |
+|---|---|---|
+| wins vs top three | **1/45** | — |
+| titanium collected | **823–933** | 788 |
+| harvesters @300 | **3.76** | 2.3 |
+| first harvester | round 4 | 7 |
+| launchers built | 1.9 | 1.7 |
+| **first gunner** | **round 72** | **round 25** |
+| games survived | 5/45 | — |
+| core hp at end | 12 | 500 |
 
-The opening is genuinely good — first Harvester at round 4 against the field's
-7 — and the economy is level with steward. vidar out-collects us five to one.
-The top three kill our Core around round 90-105 in every single game.
+**The economy is no longer the gap — it is ahead of steward.** What remains is
+that we are defenceless for the first ~70 rounds and die at 90–105.
 
 **The deployed online bot is untouched** — `v34
-(steward_hardened_reinforced f1f2bda)`, team #12 of 109 at 1772. Nothing from
-this branch has been submitted, and nothing should be until it beats the
-flagship on this pool.
+(steward_hardened_reinforced f1f2bda)`, team #12 of 109 at 1772.
 
 ## Bugs found, in order of how much they cost
 
@@ -49,32 +47,39 @@ Each produced plausible behaviour and none was visible in a win rate.
 6. **Ammo never converted**, so turrets were decoration.
 7. **Exploration was "first legal cardinal"** — walk north into a wall, vibrate.
 
-## Measured and rejected — full ledger
+## Measured ledger — 20 changes, 5 helped
 
-15-map official pool, both seats, vs steward/vidar/odin. Harness is
-deterministic (a repeat run reproduced 823.33 collected to the decimal).
+Full pool, both seats, vs steward/vidar/odin. Harness is deterministic (a
+repeat run reproduced 823.33 collected to the decimal).
 
-| change | collected | hp end | survived | wins |
-|---|---|---|---|---|
-| baseline | 823 | 47 | 7/45 | 0 |
-| **+ rear-corner ore ranking** | **878** | 19 | 6/45 | **1** |
-| + siege role (kept, neutral) | 809 | 21 | **7/45** | 1 |
-| BFS navigation (all movement) | 387 | 8 | 3/45 | 0 |
-| BFS + bearing fallback | 472 | 19 | 4/45 | 0 |
-| BFS for the guard's walk only | 596 | 22 | 6/45 | 1 |
-| home-seat counter-battery | 375 | 12 | 2/45 | 0 |
-| aggressive economic scale | 246 | 3 | 1/45 | 0 |
-| planned route from recorded walk | 112 | 0 | 0/45 | 0 |
-| unconditional early guard | 491 | 25 | 5/45 | 0 |
-| guards from top ranks | 261 | 19 | 3/45 | 0 |
-| opening turret, zero walk | 305 | 16 | 4/45 | 0 |
-| workforce capped at 4 builders | 763 | 14 | 6/45 | 0 |
-| walking counter-battery | — | — | — | worse |
-| Sentinels in standing ring | — | — | — | worse |
+| change | collected | survived | wins |
+|---|---|---|---|
+| baseline | 823 | 7/45 | 0 |
+| **+ rear-corner ore ranking** | 878 | 6/45 | **1** |
+| **+ Launcher (ferry Builders)** | **933** | 4/45 | 0 |
+| **+ consume the published turret map** | 933 | 5/45 | 0 |
+| **+ Barrier screening (kept)** | 823 | 5/45 | **1** |
+| siege role (kept, off by default) | 809 | 7/45 | 1 |
+| turret map, all 8 facings (bug) | 256 | 1/45 | 0 |
+| BFS navigation (all movement) | 387 | 3/45 | 0 |
+| BFS + bearing fallback | 472 | 4/45 | 0 |
+| BFS for the guard's walk only | 596 | 6/45 | 1 |
+| home-seat counter-battery | 375 | 2/45 | 0 |
+| aggressive economic scale | 246 | 1/45 | 0 |
+| planned route from recorded walk | 112 | 0/45 | 0 |
+| unconditional early guard | 491 | 5/45 | 0 |
+| guards from top ranks | 261 | 3/45 | 0 |
+| opening turret, zero walk | 305 | 4/45 | 0 |
+| opening turret + Launcher economy | 213 | 2/45 | 0 |
+| workforce capped at 4 builders | 763 | 6/45 | 0 |
+| walking counter-battery | — | — | worse |
+| Sentinels in standing ring | — | — | worse |
 
-**Two of fifteen helped.** The pattern is unchanged and now very well
-evidenced: anything that diverts a Builder from mining costs more economy than
-the threat it answers costs us.
+**What worked were the two structural additions** — a Launcher (the only way
+to move a Builder faster than walking) and a Barrier screen (3 Ti soaking five
+Gunner shots). **What never worked was scheduling defence earlier**: five
+separate routes, every one paying 300–700 titanium for ~15–28 rounds of turret
+timing.
 
 ### The gap, measured
 
