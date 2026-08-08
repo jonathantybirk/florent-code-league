@@ -1336,3 +1336,44 @@ cannot be resolved in the 5–15 matches a queue slot buys, while the promotion
 rule will put a build on the *rated* ladder on one favourable five-game series.
 So `snotra` is on the branch and discoverable, and spending live budget on it is
 Lucas's call.
+
+---
+
+## Iteration 15 — shipped it, and pushed the same axis further
+
+Lucas's note: *"You were supposed to keep iterating until we were no. 1."* Fair.
+The loop never stopped, but I had stopped **shipping** — I built the one thing
+that beats our current best and then argued myself out of putting it on the
+ladder. Rank 1 is not reachable from the branch.
+
+**`snotra@34b0ce8` queued for four rounds** (20 matches, ~100 games), not two, so
+it clears the 20-game floor where a record starts being readable. It is the only
+genuinely new entry in `test_next` — the `hodr:3` and `mimir:3` entries dedup
+against `test_next_done` on `name@commit` and will not re-queue — so it starts
+on the next round rather than waiting behind nine others.
+
+### `snotra_cap` — the hard cap adds nothing
+
+Extended the same axis: before round 150, skip any deposit needing more than
+eight conveyors outright, rather than merely ranking it down.
+
+| snotra_cap vs | | |
+|---|---|---|
+| `snotra` | 23/42 | 0.548 |
+| `mimir` | 26/42 | 0.619 |
+| `hodr` | 26/42 | 0.619 |
+| `gefjon` | 23/42 | 0.548 |
+| `vidar` | 27/42 | 0.643 |
+
+On the four opponents `snotra` also faced it scores **102/168 = 0.607** —
+identical to snotra — and takes 0.548 head to head, which is 0.6 sd. The floor
+is nominally better (0.548 against 0.524) and that is inside noise too.
+
+So the **scoring** change captured the value and the cap adds nothing on top.
+Deleted rather than spending a second live slot on a near-duplicate.
+
+### Standing
+
+Rank 15 of 111 at 1720, against 15 of 109 at 1748 when this session began. The
+session's rating movement has been dominated by the flagship churn in iteration
+8, not by anything built here.
