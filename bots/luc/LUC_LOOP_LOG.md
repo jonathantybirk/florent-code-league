@@ -3715,3 +3715,50 @@ gap to Pivot closes by construction rather than by constant-twiddling.
 `spar_macro` deleted rather than committed — a fixture that does not reproduce
 the profile is worse than none, which is the mistake `spar_sentinel` already
 made once tonight.
+
+## Iteration 66 — freyja: the ceiling was two store slots
+
+Found the blocker specified at the end of iteration 65. `_pick` commits a
+Builder to a deposit by taking a slot from `CLAIM_SLOTS`; when all slots are
+taken it falls out of the loop having set **no task**, and the Builder re-picks
+next round, forever. That is the 44 calls.
+
+    CLAIM_SLOTS = (1, 8)
+
+**Two.** At most two deposits under construction at any moment, whatever the
+Builder count. Three earlier builds failed against this without seeing it:
+`sif` forced late Builders to mine (Harvesters unmoved), `saga` added an opening
+miner (2.33), `spar_macro` doubled the Builders (1.61). One cause.
+
+All 16 store slots were allocated, so `freyja` buys two claim slots from
+`LAUNCH_REQUEST_SLOTS` (2..7 → 2..5) — the ferry protocol, the one mechanic on
+the replay table that **no team above us builds at all**.
+
+**Result: the mechanism works, the win rate does not move.**
+
+Harvesters **1.50 → 2.02**, conveyors 6.10 → 9.36. Head to head against `vili`
+over **198 games across four map sets**:
+
+| | | |
+|---|---|---|
+| official (21) + offpool (21) | 59/114 | 0.518 |
+| offpool2 (21) + shape-matched (21) | 42/84 | 0.500 |
+| **total** | **101/198** | **0.510 ±0.070**, 0.3 sd |
+
+Shipped and queued anyway — `freyja@6a8a5f7:6` — and the README says plainly it
+is on mechanism rather than margin: it removes a structural cap the replays
+identify as the largest gap to the top, it is non-negative on every map set, and
+the ladder is the only held-out measurement this project has.
+
+**It does not finish the job.** 2.02 against the 4.4-7.6 those teams run means
+four slots are probably binding in turn, and the remaining Builders still have
+nowhere to commit. The next step on this line is to stop paying for claims out
+of a 16-slot store at all — the claim exists to stop two Builders racing the
+same deposit, and there are cheaper ways to agree on that than one slot per
+concurrent deposit.
+
+**A note on the arc.** Iteration 51 called this ceiling "an equilibrium the bot
+chose, deliberately and correctly", after `saga` broke it and lost. That was
+wrong, and it was wrong because every measurement behind it came from our own
+bots on our own maps. It took decoding four opponents' replays to see that the
+number is not a choice but a cap, and the cap is two slots in a comms store.
