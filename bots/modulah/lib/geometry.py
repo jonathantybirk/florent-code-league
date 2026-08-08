@@ -185,15 +185,44 @@ BLITZ_MAX_DISTANCE = 6
 
 
 def core_distance(ct, footprint) -> int:
-    """Chebyshev distance from our Core to the enemy's, known at round 0.
+    """Chebyshev distance from our Core to the enemy's, as best we can tell.
 
-    Uses enemy_core_guess, so it needs no scouting: every official map is
-    rotationally symmetric.
+    NOT reliable for a threshold decision -- see is_blitz_map. Kept because it
+    is still the right estimate once the enemy Core has actually been seen.
     """
     enemy = enemy_core_guess(ct, footprint)
     near = min(footprint, key=lambda f: f.distance_squared(enemy))
     return max(abs(enemy.x - near.x), abs(enemy.y - near.y))
 
 
-def is_blitz_map(ct, footprint) -> bool:
-    return core_distance(ct, footprint) <= BLITZ_MAX_DISTANCE
+# Longest map side at or below which the two Cores are necessarily close.
+# Used INSTEAD of a mirrored Core position -- see is_blitz_map.
+BLITZ_MAX_SIDE = 12
+
+
+def is_blitz_map(ct, footprint=None) -> bool:
+    """Is this a map small enough that economy is dead weight?
+
+    Decided from map DIMENSIONS, not from a mirrored Core position, because
+    the mirror is not seat-symmetric and that is not a rounding detail:
+
+        meander, seat A: footprint (11,3)-(12,4), guess (13,11), distance 7
+        meander, seat B: footprint (11,10)-(12,11), guess (13,4), distance 6
+
+    The same map, straddling a threshold of 6, so one seat blitzed and the
+    other did not. The blitzing seat built Gunners from round 1, never mined,
+    and finished the game with ZERO buildings and zero titanium.
+
+    Two separate faults produce that. enemy_core_guess mirrors our footprint's
+    top-left corner, but under 180 degrees our top-left maps to the enemy's
+    BOTTOM-right, so the guess is off by a tile on each axis. And meander's
+    Cores are not exact rotational images of each other anyway (ours span
+    x 11-12, theirs span x 11-12, where a true 180 image would span 12-13),
+    so no corner convention would fix it.
+
+    Map dimensions are identical from both seats by construction, which is
+    exactly the property a doctrine switch needs. Across the official pool
+    only fjordgate (10x10) qualifies -- the same single map the distance rule
+    selected when it was working, and the one this bot demonstrably wins on.
+    """
+    return max(ct.get_map_width(), ct.get_map_height()) <= BLITZ_MAX_SIDE

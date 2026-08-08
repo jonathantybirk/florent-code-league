@@ -79,6 +79,32 @@ All three added maps lose outright and the economy damage costs an odin
 tiebreak on top. Six is right for this bot too — at eight or nine tiles an
 attacker arrives with nothing behind it, exactly as steward's own note said.
 
+### A seat-asymmetry bug in our own doctrine
+
+The same class of bug found in steward, reproduced here. `is_blitz_map` used a
+mirrored enemy-Core position, and it is not seat-symmetric:
+
+    meander seat A: footprint (11,3)-(12,4),   guess (13,11), distance 7
+    meander seat B: footprint (11,10)-(12,11), guess (13,4),  distance 6
+
+Same map, straddling a threshold of 6. Seat B blitzed, built Gunners from
+round 1, never mined, and **finished the game with zero buildings and zero
+titanium**. Seat A played normally.
+
+Two faults combine. `enemy_core_guess` mirrors our footprint's TOP-LEFT, but
+under 180 degrees that maps to the enemy's BOTTOM-right, so it is off by a
+tile on each axis. And meander's Cores are not exact rotational images anyway
+— ours span x 11–12 and so do theirs, where a true image would span 12–13 —
+so no corner convention fixes it.
+
+Fixed by deciding the doctrine from **map dimensions**, which are identical
+from both seats by construction. Only fjordgate (10×10) qualifies: the same
+single map the distance rule picked when it happened to work.
+
+Aggregate is unchanged (4/45, 983 collected) because meander seat B lost
+either way — but it now loses having built 36 buildings and mined 320 rather
+than nothing at all, and the "bot does literally nothing" state is gone.
+
 ### Where the wins actually come from
 
 Per-opponent, 30 games each (15 maps, both seats):
