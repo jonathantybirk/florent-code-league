@@ -5844,3 +5844,45 @@ best live build is one my short panel rates worst.
 is probably a real improvement on the ladder, worth something like the +2 to +6
 points these panels bracket — and I could not see it for twenty hours because
 every map set I built played a shorter game than the ladder does.
+
+## Iteration 119 — the circularity cannot be removed: length is not a map property
+
+Iteration 118's length-matched panel selected maps by the game lengths they had
+produced in runs involving the builds being compared — circular, as I flagged.
+The fix would be to select on a build-independent property, so I regenerated the
+metadata for all 1,000 maps and correlated:
+
+    corr(median game length, area)     +0.124
+    corr(median game length, height)   +0.111
+    corr(median game length, width)    +0.060
+    corr(median game length, distance) +0.039
+
+    area >= 600  ->  112 maps, median game 119   (against 110 for all maps)
+    dist >= 20   ->  127 maps, median game 120
+
+**Map geometry does not control how long a game lasts.** A map twice the area
+produces a game nine turns longer. Length is a property of the *matchup* — of who
+closes and when — not of the board.
+
+**So iteration 118's result cannot be cleaned up.** Any panel selected to
+produce long games is selecting on an outcome of the games being measured, and
+the same objection applies to iteration 117's within-run length split: games that
+ran long are games in which *neither side closed early*, which is not
+independent of how the builds played them. Both are suggestive; neither is
+causal, and I cannot make them so with the tools here.
+
+**What survives without confound:**
+
+- `steward@e55aab5` wins **0.581 over 1,425 live games** and **0.286 over 1,000
+  of my generated maps**. Two direct measurements, no conditioning, 29 points
+  apart. My instrument is wrong about that build, and that is a fact regardless
+  of why.
+- Our lineage's replacement threshold is **unreachable** — 0 of 30 checks reach
+  260, bank median 175 — while the best live build uses 110 and passes 23 of 30.
+  A mechanism measurement, not a win-rate one.
+
+**What is now genuinely uncertain**, and I would rather say so than pick the
+flattering reading: whether `lofn` is better than the live flagship. The
+unselected 1,000-map answer is 0.4952 ±0.0205. The length-selected answer is
+0.5625 ±0.0558 and is confounded. The live ladder is the only unconfounded
+instrument, `lofn` is queued for it, and that was true twenty hours ago.
