@@ -233,3 +233,41 @@ from round 4) is a separate unaddressed failure mode.
   top-6 level. Rated scheduler seems quiet since 07:04 UTC; watching.
 - Pacing note: farm queue is long and mimir needs rated volume — shifting to longer
   observation windows, building only on live-evidence targets.
+
+## Iteration 12 — 2026-08-08 ~10:00
+
+- Live: rank 13 at 1752 (noise-level move). mimir 8–5, est 1824, still active. Old shr
+  builds still catch many rated slots between farm test swaps.
+- **Dissected mimir's 1–4 rated loss to kladde chatte tville (1729)**: another
+  Sentinel-mass bot — 7–10 Sentinels on 12–17 Harvesters per game, vs our 0 Sentinels (the
+  v44 mimir predates hodr's Sentinel-first). Same blueprint as sporks (#1) and I Stone
+  (1637). **The live meta at every rating level is economy → Sentinel battery.** Our
+  Sentinel-first line seats ≤2 per attacker; the gap is bodies.
+- **Built `bots/luc/magni`** = hodr + ullr's late attack wave (clean 4-file patch port).
+  ullr's wave failed because its attackers built nothing; hodr changed what attackers
+  build, so wave bodies now each seat up to 2 Sentinels. Smoke: wave fires (round 317/557
+  on jackpot — later than in ullr, the njord economy expansion competes for the same
+  bank), tiebreak win vs vidar. Panel running (`magni_run1`).
+- **magni verdict: flat** — 23–19 hodr (noise), 0.643 total, avg Sentinels still 0.60 (max
+  11 in one long game — the wave *can* mass them, rarely does; bodies still build Gunners
+  en route). Committed as record, no farm slot. The live sentinel-meta test rides on hodr.
+- **Built `bots/luc/sif`** = 4-Builder economy-first opening (2 miners), the pre-2.3.4
+  "never add a fourth" measurement re-run on today's chassis. Smoke: dies to rushes at
+  turns 83/96 — the old result reproducing. Full panel running for the definitive number
+  (`sif_run1`).
+
+## Iteration 13 — 2026-08-08 ~10:40
+
+- **sif panel: the old law is dead but the trade is real.** 21–21 vs hodr (the smokes lied),
+  **36–6 over odin** (best ever vs it), but 24–18 vs vidar where hodr holds 32–10 — the
+  second miner is paid out of the Sentinel-matchup defence. Net 0.613 < hodr's 0.661; hodr
+  keeps the tip. Committed as record.
+- **Live sobering check**: the farm swapped the flagship *back* to shr@04300bf — 1824 on a
+  105-match sample beats mimir, whose estimate slid 1844 → 1770 as games came in (same
+  regression pattern as the stale-steward episode, milder). hodr 1774 on 10. Local edges
+  have not shown up live; volume is the bottleneck. Queued `hodr@d540e5b:3` and
+  `mimir@62df0ec:3` for more rounds toward the 25-game bar.
+- Team rank 12 at 1773 (start of day: rank 14 at 1756).
+- Plan: long observation window; next build only on live evidence. Candidate on the shelf:
+  vidar-matchup repair for sif's economy opening (defensive Sentinel earlier?), pending
+  hodr/mimir live verdicts.
