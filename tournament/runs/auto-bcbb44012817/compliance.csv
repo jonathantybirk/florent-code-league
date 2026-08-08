@@ -1,4 +1,4 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-byggvir@55df097,byggvir,55df097,pending,33,16,16,2337,15,59,799,1815,7349,0,0,9000,10000
-frigg@55df097,frigg,55df097,pending,33,7,7,1256,21,54,426,1101,5516,0,0,9000,10000
-nanna@55df097,nanna,55df097,pending,33,1,1,131,29,517,714,1731,6254,0,0,9000,10000
+byggvir@55df097,byggvir,55df097,pass,33,33,33,4864,14,58,779,1788,7349,0,0,9000,10000
+frigg@55df097,frigg,55df097,pass,33,33,33,5836,20,50,433,1080,6280,0,0,9000,10000
+nanna@55df097,nanna,55df097,pass,33,33,33,5836,23,55,510,1190,7145,0,0,9000,10000
