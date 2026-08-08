@@ -67,10 +67,11 @@ deterministic (a repeat run reproduced 823.33 collected to the decimal).
 | planned route from recorded walk | 112 | 0 | 0/45 | 0 |
 | unconditional early guard | 491 | 25 | 5/45 | 0 |
 | guards from top ranks | 261 | 19 | 3/45 | 0 |
+| opening turret, zero walk | 305 | 16 | 4/45 | 0 |
 | walking counter-battery | — | — | — | worse |
 | Sentinels in standing ring | — | — | — | worse |
 
-**Two of thirteen helped.** The pattern is unchanged and now very well
+**Two of fourteen helped.** The pattern is unchanged and now very well
 evidenced: anything that diverts a Builder from mining costs more economy than
 the threat it answers costs us.
 
@@ -89,10 +90,29 @@ The difference is entirely military timing:
 
 Traced on archipelago: a guard takes the role at round 26 and **never places
 anything** — picks a seat, walks, stalls after 8 rounds, re-picks. The first
-turret arrives at 73, from a different Builder. Three separate attempts to fix
-this (earlier assignment, top-rank guards, BFS routing to the seat) each moved
-first-gunner by ~15 rounds and cost 300–600 titanium. The role assignment is
-not the bottleneck and neither is the walk.
+turret arrives at 73, from a different Builder.
+
+**Four independent routes to an earlier turret were tried and all cost more
+than they returned**, in order of how directly they attacked the problem:
+
+| route | first gunner | collected |
+|---|---|---|
+| baseline | 77 | 878 |
+| earlier guard assignment | 62 | 491 |
+| guards from top ranks | 54 | 261 |
+| BFS routing to the seat | 74 | 596 |
+| opening turret, zero walk, no roles | **49** | **305** |
+
+The last one has no walk, no seat search across the map, no commitment to
+stall, and spends the opening bank while it is still full — and it still costs
+500 titanium. `can_build_gunner` is also False on every tile around the Core,
+verified, so a Builder is required and the Core cannot do it itself.
+
+The conclusion is not about scheduling. **aegis cannot afford an early turret
+and steward can**, because steward's opening is more efficient overall: it
+reaches the same board position on 2.3 Harvesters and 3.7 Builders where we
+need 4.4 and 5.6. Buying defence earlier is not the fix; needing fewer
+Builders to hold the same economy is.
 
 ## Next, in priority order
 
