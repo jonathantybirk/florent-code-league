@@ -58,6 +58,30 @@ feature is dead until you have checked the metric exists AND resolves the
 entity, and the fastest way to test whether code matters is to delete it and
 measure.
 
+### Where the wins actually come from
+
+Per-opponent, 30 games each (15 maps, both seats):
+
+| build | odin | vidar | steward |
+|---|---|---|---|
+| **shipped** | **3/30** | 0/30 | **0/30** |
+| home counter-battery | 1/30 | **2/30** | 0/30 |
+
+**All our wins are against odin, and we are 0/30 against steward.** Two of the
+three are round-1000 tiebreaks — when we survive, we win. So survival against
+steward and vidar is the whole remaining problem.
+
+Counter-battery *moves* wins rather than adding them: it bought the first
+victories ever recorded against vidar and lost two odin tiebreaks, because 30
+Ti a Sentinel cut collected 977 → 842. Gating it on actually taking damage
+changed nothing (`max_burst` is already non-zero whenever a turret is
+positioned), so the two are genuinely a trade, not a tuning error.
+
+That is the shape of the "advanced conditional logic" the top teams show: the
+right answer differs by opponent, and a single fixed policy leaves wins on the
+table either way. Distinguishing "opponent that sieges" from "opponent that
+races economy" is the lever neither branch of this test had.
+
 ### The ladder's actual standard
 
 sporks (#1, 2117) and Pantheon (#2) build **41–97 conveyors** a game, first
