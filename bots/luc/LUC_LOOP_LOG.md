@@ -3218,3 +3218,60 @@ existing value is load-bearing — this codebase has been tuned by people who
 measured, and three of my last five "obvious defects" were the tuning working.
 
 `vili` still stands: 0.657 zoo, 0.667 against the live meta.
+
+## Iteration 57 — the engine API, and why the wall strategy cannot run
+
+**First, a correction.** Last iteration's harass probe replaced `ct.attack(`,
+which does not exist in this API — so it patched nothing and counted its own
+helper. Its silence meant nothing. That is twice a bad probe has fooled me;
+from here the verb gets checked against the real API before it is instrumented.
+
+**The real API**, dumped from inside a live game:
+
+    build build_barrier build_conveyor build_gunner build_harvester
+    build_launcher build_sentinel build_splitter convert_ammo destroy
+    draw_indicator_dot draw_indicator_line fire heal launch move resign rotate
+    self_destruct spawn_builder  (+ the get_/can_/is_/read_/write_ family)
+
+`ct.destroy` is used by **zero** bots in our lineage and by several other teams'
+bots in this repo. Reading one of theirs settles the semantics: `destroy` clears
+*your own* structure, and an enemy structure is attacked with `fire`. So the
+sabotage half of the plan is `fire`, and we do have it — `_harass` fires at
+enemy logistics.
+
+**What the harasser actually does**, over three games against Sentinel mass:
+**168 harasser turns, 10 shots.** It spends 94% of its turns walking. On 143 of
+those turns it knows three targets and fires at none of them.
+
+**`gna` (refutation 24).** `_deny_enemy_ore` puts a 3 Ti barrier on a free ore
+tile on the enemy's half, and the code's own note says the victim then collected
+**zero for the match** — cheaper and more permanent than shooting a belt they
+rebuild for 3 Ti. But it only checks the four tiles adjacent to where the
+harasser already stands, and the harasser walks toward belts, so it fires only
+by coincidence. `gna` made it walk to the ore it means to deny.
+
+Worse: **0.500** against Sentinel mass to `vili`'s 0.667 (-1.6 sd), mean 0.510,
+and the enemy's own Harvesters *rose* to 1.51 from 1.40.
+
+**And barriers stayed at 0.00.** The probe says why, and it is unambiguous:
+
+    DENY blocked=titanium   143 of 143 calls
+
+Every single call fails the first gate — `barrier cost + SEAL_TITANIUM_RESERVE`
+(25) against a bank that runs 2-42 Ti. It never reaches the adjacency test at
+all. Walking to the ore changed nothing because the barrier was never
+affordable to begin with.
+
+**So the wall-and-deny strategy is not missing from this bot; it is unaffordable
+by it.** That is the same wall the Sentinel answer hit — 73 Ti against a bank of
+2-42 — and it is now the third mechanic priced out of reach by the same fact:
+this bot is broke. Its whole income is 1.5 Harvesters.
+
+The obvious inference is "so fix the income", and that is exactly what `saga`
+did: it raised Harvesters to 2.33 and scored 0.567 against `vili`'s 0.657. The
+income is low because the bot spends its turns and titanium on things that win
+games faster than a third Harvester would. Refutations 20 and 24 are the same
+finding approached from opposite ends.
+
+`vili` still stands. Eight consecutive candidates have now failed to beat it,
+and the two that came closest were nulls.
