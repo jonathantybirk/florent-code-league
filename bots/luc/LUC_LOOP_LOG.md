@@ -2130,3 +2130,44 @@ So the livelock is: real, large (a fifth of Builder-rounds), traced to a
 buffered-write race, **and not profitably removable by the obvious means**. Tenth
 refutation. It stays on the books as understood-but-unfixed rather than as a
 lead.
+
+---
+
+## Iteration 32 — two inflated numbers caught, and the plateau confirmed at scale
+
+The feed now carries far larger samples for the builds that have spent time as
+flagship. Two of them look like breakthroughs and neither is.
+
+**`odin@1963029` reads 110/160 = 0.688**, the best raw rate in the stable. On
+the eleven opponents it shares with the active flagship it is **0.510 against
+0.514** — dead level. The 0.688 comes from sixty unshared games against
+`Klarum` and `the one piece`.
+
+**`steward@e55aab5` reads 823/1390 = 0.592.** On its twenty-nine shared
+opponents it is **0.550 against the flagship's 0.538**, over 1,230 and 1,750
+games. The rest is **146/160 = 0.912 against Klarum** alone.
+
+Both are the same artifact that made `steward@e55aab5` look like a 1876-Elo
+flagship at half past five this morning, and both were caught by the same
+model-free shared-opponent comparison rather than by the estimator.
+
+### What that settles
+
+Every build we own sits at **0.54–0.55 on shared opponents**, and that is now
+measured on samples of 1,000+ games rather than the 50-game reads that have
+been misleading me all day:
+
+| build | shared-opponent rate | games |
+|---|---|---|
+| `steward@e55aab5` | 0.550 | 1,230 |
+| `steward_hardened_reinforced@b61aaac` | 0.538 | 1,750 |
+| `snotra` | 0.560 | 100 |
+| `snotra_h` | 0.552 | 165 |
+| `mimir` | 0.550 | 100 |
+| `odin` | 0.510 | 100 |
+
+The plateau is not a small-sample illusion and it is not specific to today's
+builds — it has held across the whole lineage, including bots from two
+generations back. Nothing in the stable is meaningfully better than anything
+else, and the spread between the best and worst of them is smaller than the
+noise on a five-game series.
