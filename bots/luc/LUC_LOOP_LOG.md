@@ -2344,3 +2344,51 @@ four ways now tried.
 
 `vidarr` remains the queued candidate, and I would not now bet on its 0.595
 surviving contact either.
+
+---
+
+## Iteration 37 — the two-miner chassis is measurably worse live
+
+### Live, shared-opponent
+
+| build | shared rate | vs flagship | games |
+|---|---|---|---|
+| `snotra@34b0ce8` | **0.560** | 0.534 | 100 |
+| `snotra_h@6951e03` | **0.560** | 0.547 | 200 |
+| `gefjon@f66a427` | **0.458** | 0.520 | 120 |
+
+`gefjon` is the two-miner build, and it is about 1.4 sd *below* the flagship on
+120 games. That is the live counterpart of the 19% Builder-round oscillation
+measured in iteration 30 — two miners racing for the same deposit through a
+buffered claim.
+
+**And `spork`, `ostara` and `vidarr` all inherit that second miner.** All three
+are queued. Their local numbers (0.562, 0.562, 0.557) were measured against each
+other on a chassis that the live field says is worse than the one they came
+from.
+
+### `heimdall3` — the good ordering on the good chassis
+
+So: put `vidarr`'s Sentinel-first ordering on `snotra_h`, which is the
+single-miner build that actually measures well live.
+
+| heimdall3 vs | | | Sentinels |
+|---|---|---|---|
+| `snotra_h` (parent) | 17/42 | **0.405** | 0.71 |
+| `ostara` | 18/42 | 0.429 | 0.71 |
+| `vidarr` | 20/42 | 0.476 | 0.74 |
+| `mimir` | 21/42 | 0.500 | 0.76 |
+| **mean** | 98/210 | **0.467**, floor 0.405 | |
+
+Worse than its parent. And the reason is the same non-monotonicity iteration 36
+found: on this chassis the identical ordering yields **0.71–0.76** Sentinels
+rather than `vidarr`'s 0.26–0.38, and more forward Sentinels is precisely what
+`skirnir` showed to be harmful.
+
+So `vidarr`'s gain was not "the ordering is good" — it was "the ordering
+produced about 0.3 Sentinels on that particular chassis", and 0.3 is near a
+peak with both directions falling away. Deleted.
+
+That is fourteen refutations. It also means the three builds I have queued are
+built on a base the live field is currently scoring below the incumbent, which
+I would not have known from the local panel.
