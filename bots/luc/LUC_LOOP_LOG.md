@@ -4436,3 +4436,37 @@ survives the session:
 The session's honest summary: the bot is better than it was — `nanna` beats
 `vili` 0.634 on both pools, and `vili` was already the flagship's equal — but
 none of it has reached the ladder, and the reason is not the bots.
+
+## Iteration 83 — eir: the recheck window was not the leak either
+
+The one measurable thread left. `_pick` grants ~11 tasks a game and produces
+2.75 Harvesters, with one `_abandon_task` in three games — the rest close on
+arrival at deposits already worked. `HARVESTER_RECHECK_ROUNDS = 90` means a
+miner forgets a finished deposit three times in a 300-round game, so re-walking
+its own ground was the obvious suspect. I had set it aside as
+"measured and deliberately chosen", which is exactly the reasoning that was
+wrong three times tonight (`LATE_BUILDERS_MINE`, `CLAIM_SLOTS`,
+`BUILDER_PRIORITY_RADIUS_SQ`).
+
+`eir` = `hlin` with the window at 250 — most of a median game (live median 270),
+still re-checking in long ones where a destroyed Harvester has time to matter.
+
+| eir vs | on-pool | off-pool | combined | |
+|---|---|---|---|---|
+| `hlin` (parent) | 0.500 | 0.500 | **78/156 = 0.500 ±0.078** | 0.0 sd |
+| `nanna` | 0.500 | 0.488 | 77/156 = 0.494 | -0.2 sd |
+| `vili` | 0.583 | 0.725 | 64/100 = 0.640 | +2.9 sd |
+
+Harvesters **2.76** against 2.75. Exactly null on every cut. This time the
+constant was right and my suspicion was not — worth recording as plainly as the
+three that went the other way.
+
+So the conversion loss is not the recheck window, not claim contention
+(`sjofn`), not abandonment (one per three games) and not slot supply (`njorun`).
+Whatever discards eleven of twelve granted tasks survives four separate attempts
+to name it.
+
+**Local iteration is done.** 32 candidates tonight: three real gains (`bifrost`,
+`hoenir`, `vili`), two more on the economy line (`freyja`, `lofn`), one real bug
+fix (`hlin`), and the rest level or refuted. Everything now depends on live
+games for `lofn`, `hlin` and `nanna`.
