@@ -552,3 +552,22 @@ from round 4) is a separate unaddressed failure mode.
   live estimate decays within hours. Rank 1 here is a red-queen race — the loop's real
   product is diagnosis speed, and the farm's promotion logic (small-sample churn) is
   still the team's biggest self-inflicted cost.
+
+## Iteration 32 — 2026-08-08 ~19:30 — THE find: we tested on the wrong maps all day
+
+- First: vor vs the ferry-rush proxies (tempest_jon, tempest_fast): **41–1 and 41–1** —
+  the beacon line already handles the rush archetype; no interceptor needed for that
+  mechanism as such.
+- **Then the big one: `maps/` is the OLD pool.** The ladder's v3 pool (replaced
+  2026-08-06; it's in the memory notes, and I missed applying it) shares only FOUR maps
+  with what every local panel today ran on. Every "0.6x local edge" was measured mostly
+  on maps the ladder does not play. This is the likeliest single explanation for the
+  day's local→live transfer failure.
+- **Fixed with infrastructure**: `tools/extract_maps.py` rebuilds .map26 files from
+  replay opening snapshots (same protobuf fields as the map format — extraction is
+  re-serialization). 15 live maps recovered from today's replay downloads
+  (antler, archipelago, atoll, drumlin, eider, fjordgate, heart, hive, jackpot,
+  lighthouse, meander, moonrise, nordkap, saga, snowflake), validated exactly against a
+  decoded match. Committed as `maps/live/`; staged as `maps/lv_*` for the suite.
+- **First live-pool panel running** (`livepool_run1`): vor vs shr/fulla/loki/mimir on
+  the 15 real maps. Tomorrow's protocol: every panel runs on `lv_*` maps.
