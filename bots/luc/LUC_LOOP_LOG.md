@@ -2293,3 +2293,54 @@ money are worth nothing on top, and the remaining 70% is arrival.
 sporks seats **three to four** of these per game by round 36. The gap between
 0.3 and 3.5 is not a constant anywhere in this file — it is whether an attacker
 can cross the map and live. Deleted; `vidarr` remains the queued candidate.
+
+---
+
+## Iteration 36 — more forward Sentinels is decisively worse
+
+Two measurements first, both of which rule out what I expected.
+
+**Arrival is not the problem.** Closest approach of our attacker to the enemy
+Core, by map: aurora 4, hive 3, longship 1, quarry 3, twins 2 — all well inside
+a Sentinel's r^2=32, and it mostly survives the trip.
+
+**Nor are the gates.** Instrumenting the four early returns in
+`_build_siege_sentinel` on quarry: 56 calls in 60 rounds, **50 rejected by the
+throttle** (`SIEGE_SEARCH_EVERY = 10`), and the cap, ammunition and unseen-Core
+gates never fire once. The attacker is in position, in range, affordable and
+permitted — and allowed to *look* about six times.
+
+### `skirnir` — let it look every three rounds
+
+The mechanism worked: forward Sentinels a game go **0.3 → 0.74–1.00**. CPU stayed
+fine at 2,240 us worst.
+
+| skirnir vs | | | Sentinels |
+|---|---|---|---|
+| `snotra_h` | 14/42 | **0.333** | 0.79 |
+| `vidarr` (parent) | 17/42 | **0.405** | 0.90 |
+| `steward_hardened_reinforced` | 18/42 | 0.429 | 0.86 |
+| `ostara` | 19/42 | 0.452 | 1.00 |
+| `mimir` | 20/42 | 0.476 | 0.74 |
+| **mean** | 88/210 | **0.419**, floor 0.333 | |
+
+**Decisively worse** — the largest negative margin measured today. Deleted.
+
+### What the sporks thread comes to
+
+| what was copied | Sentinels/game | result |
+|---|---|---|
+| the counts (`alfr`: 0 Gunners, 3 Sentinels) | 2.5–3.6 | 0.476, worse |
+| the seat, tried first (`vidarr`) | 0.26–0.38 | 0.557, better |
+| the seat, more often (`skirnir`) | 0.74–1.00 | **0.419, much worse** |
+| the money to afford it (`skadi2`) | 0.29–0.40 | 0.529, no help |
+
+The response is not monotone: a little of sporks' behaviour helps and more of it
+hurts sharply. That is not what a transferable strategy looks like — it is what
+a *local optimum* looks like when you perturb it in a direction that happens to
+cost cost-scale and Builder-turns. Whatever makes sporks a 2115 bot is not
+reachable by moving this chassis toward its observable statistics, in any of the
+four ways now tried.
+
+`vidarr` remains the queued candidate, and I would not now bet on its 0.595
+surviving contact either.
