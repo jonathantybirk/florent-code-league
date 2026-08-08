@@ -53,6 +53,15 @@ round 76. Infrastructure volume is the meta; steward is not the standard.
 1. **Ore discovery.** Raising ECON_FLOOR past 7 changes nothing — the team
    only builds ~4.8 Harvesters. Builders cannot find more ore, so the economy
    caps well below the leaders' 7–17.
+
+   Broadcasting an ore BEARING was tried (3 bits of direction + 3 of distance
+   from the Core anchor, in the Builder word's spare bits — Viktor's chunking
+   idea, on the grounds that exact coordinates are unnecessary for something
+   far away). It measured **worse**: wins 3→1, collected 977→533, survived
+   5→2. A bearing sends a Builder several rounds across the map to ground that
+   may hold nothing by the time it arrives, and the walk costs more than the
+   deposit is worth. Exact coordinates would need 12 bits against 8 spare, so
+   a second slot; whether that pays is untested.
 2. **First turret at ~round 76** against the leaders' round 5–19.
 3. SPAWN_INTERVAL 3 with a smaller bank overshoots: wins 3→1, survived 5→1.
    Six is the measured optimum.
