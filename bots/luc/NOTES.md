@@ -1570,3 +1570,67 @@ the `vigil` lineage's known overrun (below) is the likely source.
 - Untested idea from the Pantheon replays worth its own experiment: they throw
   **economy** Builders to ore that is fifteen rounds' walk away. We only ever
   ferry attackers.
+
+## 2026-08-09 — start from the replays, not the zoo
+
+A full session of local iteration (30 candidates, ~80 logged iterations in
+`LUC_LOOP_LOG.md`) produced two real gains, one real bug fix, and a long list of
+refutations that were mostly measuring the wrong thing. The findings that
+generalise:
+
+**1. Decode the opponents first.** `fcode match list --mine --json` →
+`fcode match replay <full-uuid>` → `tools/pantheon_analysis/decode.py`. Cores are
+not in `placeEntity` (team A's Core is entity id 1, B's is 2); `placeEntity`
+carries `entity.team`, so composition per team is a ten-line tally, and
+`updatePlayers` carries both teams' titanium and ammo every round.
+
+Composition per game, decoded 2026-08-09:
+
+| | builders | harvesters | conveyors | gunners | sentinels | launchers |
+|---|---|---|---|---|---|---|
+| `sporks` (rank 1, 2107) | 8.8 | 9.9 | 75.0 | 3.8 | 4.7 | 0.0 |
+| `Pivot` (rank 7) | 10.0 | 7.6 | 39.8 | 11.6 | 1.4 | 0.0 |
+| `Besvikomat` | 13.4 | 6.8 | 59.4 | 82.4 | 0.8 | 0.8 |
+| `Big O` | 13.6 | 6.0 | 34.2 | 3.6 | 3.2 | 0.0 |
+| `I Stone` | 8.6 | 4.4 | 25.2 | 1.6 | 1.6 | 0.0 |
+| **us** | 4.6 | 2.7 | 24.3 | 22.7 | 0.1 | 2.0 |
+
+Their Gunner counts span 1.6 to 82.4 — turrets are not what they agree on.
+Economy is, and **nobody above us builds Launchers**.
+
+**2. Long games are decided on titanium and we are not in the competition.**
+Two of five Pivot losses ran the full 1000 rounds with our Core untouched: we
+dealt 2828 and 4123 damage to a 500-HP Core it mends through, then lost the
+tiebreak **20 to 10,045** and **14 to 6,986**.
+
+**3. The internal panel cannot see the mechanisms that decide those games.**
+Our own bots do not press us, so internally we build 3.3 Gunners against 22.7
+live, and 0.2 siege Sentinels a game. A turret ceiling and a siege-targeting fix
+both measure *exactly* level locally and cannot be measured by any local means
+(tripling `SIEGE_SENTINEL_TARGET` moves siege count 0.03 → 0.3).
+
+**4. On-pool numbers do not generalise.** The 21 official maps are the tuning
+pool. Ten lineage heads span 0.262-0.667 there and **0.429-0.512** on 42
+generated maps, every interval overlapping. Generate off-pool maps
+(`tools/generate_maps.py`) and require both pools to move. Sets are committed in
+`maps/offpool/`, `maps/offpool2/`, `maps/offpool_square/`.
+
+**5. Instrument on stderr.** Bot `stdout` is swallowed entirely; `stderr` is
+not. Three findings were retracted after a control print proved the channel dead.
+And instrument the *outcome*, not the call site — and check the verb exists
+(`ct.attack` does not; the API is `fire`, `destroy`, `heal`, `launch`,
+`convert_ammo`, `rotate`, `self_destruct`, `spawn_builder`, `build_*`).
+
+**6. The economy was capped by two store slots.** `CLAIM_SLOTS = (1, 8)`, and
+`_pick` silently sets no task when both are held, so Builders re-pick forever
+(22 successes against 228 "no free slot" in three games, holding the same four
+values all game — claims also leak, because `_done` releases by matching the
+holder's own task). Fixed in `freyja` (4 slots) and `hlin` (recycle on a visible
+finished Harvester). Harvesters 1.50 → 2.79. Both knobs are now bracketed:
+miners peak at two, claim slots at four.
+
+**7. The farm promotes on noise.** `best_challenger` compares
+`best_est <= incumbent_elo` with no margin and never uses the half-width it
+computes. 131 promotions; six in one hour with margins of 1.8-23 Elo against
+standard errors of 43-80. Until that is fixed, live A/B results cannot
+accumulate.
