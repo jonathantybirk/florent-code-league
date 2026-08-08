@@ -531,3 +531,24 @@ from round 4) is a separate unaddressed failure mode.
   not in the feed's bot index yet. Left alone.
 - Team rank 18 at 1700. No build this iteration; vor's full 25-game verdict picks the
   next move (vor vs loki vs traffic-gated synthesis).
+
+## Iteration 31 — 2026-08-08 ~18:50 — the hyper-rush wave
+
+- vor's full verdict: **13–13 over 26, est 1717** — the local vor>fulla edge didn't
+  transfer either. fulla decayed to 1687. Team in free-fall: rank 21 at 1670, five
+  straight rated losses to mid-table.
+- **Decoded Banminary's 0–5 sweep of shr: games end at rounds 35 and 43.** Their new
+  build is a Sentinel hyper-rush — Launcher-throw on round 1–2, two Sentinels shooting
+  our Core from rounds 4–13, 18 damage/round vs our menders' 8, Core dead before any
+  reactive machinery matters. The ladder upgraded into this over the evening (I Stone,
+  kladde, now Banminary): the meta is cycling rush → econ → hyper-rush within a single
+  day.
+- Counter-design sketch for the next build: the throw lands a lone Builder near our Core
+  — kill the *Builder* in the landing window (rounds 2–5, before its first Sentinel
+  stands), via an opening Gunner covering the likely landing arc (our own throw-range
+  geometry r²≤26 names the arc) or the guard intercepting on sight. Healing is not a
+  counter at 18/round; interception is.
+- Meta-lesson for the log: with the field shipping new builds hourly, any fixed build's
+  live estimate decays within hours. Rank 1 here is a red-queen race — the loop's real
+  product is diagnosis speed, and the farm's promotion logic (small-sample churn) is
+  still the team's biggest self-inflicted cost.
