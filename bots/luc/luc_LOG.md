@@ -441,3 +441,16 @@ from round 4) is a separate unaddressed failure mode.
   off — retirement is what triggers rebuilds, so never-retire should end the cycle
   cheaply. 126-game panel vs fulla/shr/vidar (`fulla_lq_run`).
 - fulla's 20 extra live games still queued behind snotra_h.
+
+## Iteration 25 — 2026-08-08 ~16:45
+
+- **Probe confirmed and shipped: `vor` (59941c6e8) = fulla with Launcher retirement off.**
+  24–18 over fulla, 24–18 shr, 34–8 vidar (0.810), total 0.651; Launcher builds 2.56/game
+  from 4–6. The Jython-loss diagnosis (retire→rebuild cycle eating the weapons budget)
+  held up in one constant. Queued `vor@59941c6:5` for a 25-game live test.
+- Note the cadence that worked here: decode a specific top-team loss → name the leak →
+  one-variable probe in scratch → panel → promote only on a parent-beating number. The
+  morning's misses came from skipping the first step.
+- The other agent bumped snotra_h to a bigger sample too (`snotra_h@a494b78:6`).
+- Team 1698, rank 17, incumbent shr@f1f2bda active. Test queue: fulla:4, snotra_h:6,
+  vor:5.
