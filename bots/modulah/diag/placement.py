@@ -320,3 +320,47 @@ def best_firing_seat(ct, enemies, kind: EntityType, buildable, near: Position):
 # out-mines its opponent and mends is worth more than one that fights back
 # badly. The gap to steward is that it can afford both, because its economy
 # and its unit count are larger to begin with.
+
+
+def siege_seat(ct, target_core, kind: EntityType, legal, from_pos, limit: int = 40):
+    """A seat with a firing solution on the ENEMY Core's footprint.
+
+    The Core is a 2x2 building that cannot move or be rebuilt elsewhere, so a
+    turret aimed at it stays useful for the rest of the game -- the one target
+    on the board where a Sentinel's permanent facing costs nothing at all.
+
+    Why this exists: our own bot out-collects steward (878 to 788 on the full
+    pool) and still loses every game, because steward wins ~90% of its matches
+    on a Core kill and we have never attacked anything. Out-surviving a bot
+    built to kill Cores is the harder half of the problem; killing its Core is
+    the half we have not tried.
+
+    `target_core` comes from geometry.enemy_core_guess -- available at round 0
+    from map dimensions, no scouting needed.
+    """
+    foot = [Position(target_core.x + dx, target_core.y + dy)
+            for dx in (0, -1) for dy in (0, -1)]
+    foot = [f for f in foot if in_bounds(ct, f)]
+    if not foot:
+        return None
+    reach = RAY_LEN[kind][0]
+    best = None
+    for dx in range(-reach, reach + 1):
+        for dy in range(-reach, reach + 1):
+            spot = Position(target_core.x + dx, target_core.y + dy)
+            if not in_bounds(ct, spot) or building_at(ct, spot) is not None:
+                continue
+            for tile in foot:
+                try:
+                    facing = spot.direction_to(tile)
+                    if not ct.can_fire_from(spot, facing, kind, tile):
+                        continue
+                except GameError:
+                    continue
+                if not legal(spot, facing):
+                    continue
+                cost = spot.distance_squared(from_pos)
+                if best is None or cost < best[2]:
+                    best = (spot, facing, cost)
+                break
+    return best

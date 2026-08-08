@@ -49,56 +49,50 @@ Each produced plausible behaviour and none was visible in a win rate.
 6. **Ammo never converted**, so turrets were decoration.
 7. **Exploration was "first legal cardinal"** — walk north into a wall, vibrate.
 
-## Measured and rejected — the full record
+## Measured and rejected — full ledger
 
-All on the 15-map official pool, both seats, vs steward/vidar/odin. The
-harness is deterministic (a repeat run reproduced 823.33 collected exactly),
-so these are real differences, not noise.
+15-map official pool, both seats, vs steward/vidar/odin. Harness is
+deterministic (a repeat run reproduced 823.33 collected to the decimal).
 
 | change | collected | hp end | survived | wins |
 |---|---|---|---|---|
-| **baseline (shipped)** | **823** | **47** | **7/45** | **0** |
-| walking counter-battery | 1856* | — | — | 5* |
-| Sentinels in standing ring | — | — | — | worse on every map |
-| BFS navigation | 387 | 8 | 3/45 | 0 |
+| baseline | 823 | 47 | 7/45 | 0 |
+| **+ rear-corner ore ranking** | **878** | 19 | 6/45 | **1** |
+| + siege role (kept, neutral) | 809 | 21 | **7/45** | 1 |
+| BFS navigation (all movement) | 387 | 8 | 3/45 | 0 |
 | BFS + bearing fallback | 472 | 19 | 4/45 | 0 |
+| BFS for the guard's walk only | 596 | 22 | 6/45 | 1 |
 | home-seat counter-battery | 375 | 12 | 2/45 | 0 |
 | aggressive economic scale | 246 | 3 | 1/45 | 0 |
-| ore chosen by chain cost | 777 | 15 | 4/45 | **1** |
 | planned route from recorded walk | 112 | 0 | 0/45 | 0 |
+| unconditional early guard | 491 | 25 | 5/45 | 0 |
+| guards from top ranks | 261 | 19 | 3/45 | 0 |
+| walking counter-battery | — | — | — | worse |
+| Sentinels in standing ring | — | — | — | worse |
 
-\* measured on the old 6-map panel before it was found to be unrepresentative.
+**Two of thirteen helped.** The pattern is unchanged and now very well
+evidenced: anything that diverts a Builder from mining costs more economy than
+the threat it answers costs us.
 
-**The pattern.** Eight of nine measured worse. Every change that diverts a
-Builder from mining — to counter-battery, to a distant seat, to a longer walk
-— costs more economy than the threat it answers costs us. At this unit count
-Builders are too scarce to spend on reacting, and out-mining plus mending
-beats fighting back badly.
+### The gap, measured
 
-The one that produced a win (ore chosen by distance-to-Core, so chains are
-short) also cut survival 7→4 and core hp 47→15. Reverted: one lucky matchup
-against a bot closer to death everywhere else.
+aegis already **out-collects steward** (878 vs 788) and still loses every game.
+The difference is entirely military timing:
 
-The planned-route attempt is the sharpest failure and worth understanding.
-The idea was sound and cheap — the Builder has already walked from the Core to
-the deposit, so the reverse of that walk is a route guaranteed passable and no
-longer than the walk. Against `starter` it worked (archipelago 6,330 mined;
-eider 10,960). Against the real field it collapsed to 112 titanium and 0
-survivals with the HIGHEST harvester count yet recorded (3.64 at round 100).
+| | aegis | steward |
+|---|---|---|
+| first gunner | round 77 | **round 25** |
+| gunners built | 3.4 | 4.4 |
+| launchers built | 0.0 | 1.7 |
+| harvesters built | 4.4 | 2.3 |
+| builders spawned | 5.6 | 3.7 |
 
-Deposits opened, nothing delivered. Under pressure the Builder is interrupted
-part-way along a rigid route and the remembered path goes stale — the tiles it
-walked are no longer free, or it is no longer near them. The lay-behind
-version is worse in principle and more robust in practice, because it only
-ever commits to the one tile it is standing next to.
-
-**The diagnosis that actually held up.** Replay attribution across four
-losses: enemy GUNNERS deal 94-100% of all damage to our Core (archipelago
-882/938, drumlin 490/504, nordkap 539/546, heart 504/504). Reach 3, so they
-are planted inside our own back yard. And raising Harvester count pushed
-harvesters@100 3.31 -> 4.13 while collected FELL 823 -> 246 — more Harvesters,
-less titanium, because they are stranded. **Chain completion, not harvester
-count, is the binding constraint.**
+Traced on archipelago: a guard takes the role at round 26 and **never places
+anything** — picks a seat, walks, stalls after 8 rounds, re-picks. The first
+turret arrives at 73, from a different Builder. Three separate attempts to fix
+this (earlier assignment, top-rank guards, BFS routing to the seat) each moved
+first-gunner by ~15 rounds and cost 300–600 titanium. The role assignment is
+not the bottleneck and neither is the walk.
 
 ## Next, in priority order
 

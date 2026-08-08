@@ -17,6 +17,7 @@ from __future__ import annotations
 from fcode import Controller, EntityType, GameConstants, GameError, Position
 
 import comms
+import navigation
 import placement
 import roles
 import situation
@@ -100,6 +101,7 @@ class BuilderBrain:
             friendly_turrets=self._friendly_turrets(ct),
             harvesters=len(sit.my_harvesters),
             titanium=sit.titanium,
+            round_no=r,
         )
         role = roles.assign(rank, mix)
 
@@ -163,6 +165,8 @@ class BuilderBrain:
             return self._mend(ct, sit, r)
         if role == roles.ROLE_GUARD:
             return self._guard(ct, sit, r)
+        if role == roles.ROLE_SIEGE:
+            return self._siege(ct, sit, r)
         return self._mine(ct, sit, r)
 
     def _mend(self, ct: Controller, sit, r: int) -> int:
@@ -302,6 +306,73 @@ class BuilderBrain:
         if not self._step(ct, spot, r):
             self.commit = None
         return comms.ACT_NONE
+
+    def _siege(self, ct: Controller, sit, r: int) -> int:
+        """Put a turret on the enemy Core and leave it there.
+
+        The enemy Core is a 2x2 building that cannot move, so a turret aimed
+        at it keeps paying for the rest of the game -- the one target where a
+        Sentinel's permanent facing costs nothing. Its position needs no
+        scouting: every official map is rotationally symmetric, so it is our
+        own Core mirrored about the map centre, known at round 0.
+        """
+        foot = self._footprint(ct, sit)
+        if not foot:
+            return self._mine(ct, sit, r)
+        enemy = sit.enemy_core or enemy_core_guess(ct, foot)
+
+        kind = EntityType.GUNNER
+        base = GameConstants.GUNNER_BASE_COST
+        if sit.afford(GameConstants.SENTINEL_BASE_COST, BUILD_RESERVE):
+            kind, base = EntityType.SENTINEL, GameConstants.SENTINEL_BASE_COST
+        if not sit.afford(base, BUILD_RESERVE):
+            return self._mine(ct, sit, r)
+
+        def tile_ok(spot, facing):
+            try:
+                return ct.get_tile_env(spot).name != "WALL"
+            except GameError:
+                return False
+
+        pos = ct.get_position()
+        if pos.distance_squared(enemy) > 64:
+            # Still crossing the map; nothing to site yet.
+            self._march(ct, enemy, r)
+            return comms.ACT_NONE
+
+        seat = placement.siege_seat(ct, enemy, kind, tile_ok, pos)
+        if seat is None:
+            self._march(ct, enemy, r)
+            return comms.ACT_NONE
+        spot, facing, _ = seat
+        try:
+            build = (ct.can_build_sentinel if kind == EntityType.SENTINEL
+                     else ct.can_build_gunner)
+            if build(spot, facing):
+                if kind == EntityType.SENTINEL:
+                    ct.build_sentinel(spot, facing)
+                else:
+                    ct.build_gunner(spot, facing)
+                return (comms.ACT_BUILD_SENTINEL if kind == EntityType.SENTINEL
+                        else comms.ACT_BUILD_GUNNER)
+        except GameError:
+            pass
+        self._march(ct, spot, r)
+        return comms.ACT_NONE
+
+    def _march(self, ct: Controller, goal: Position, r: int) -> None:
+        """Cross the map toward goal, preferring tiles nothing is aiming at."""
+        try:
+            avoid = placement.enemy_covered_tiles(ct)
+        except GameError:
+            avoid = set()
+        d = navigation.step_toward(ct, goal, avoid)
+        if d is None:
+            return
+        try:
+            ct.move(d)
+        except GameError:
+            pass
 
     def _mine(self, ct: Controller, sit, r: int) -> int:
         if self.harvester is not None and not situation.harvester_is_connected(ct, self.harvester):

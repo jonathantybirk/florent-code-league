@@ -34,8 +34,10 @@ HEAL_AMOUNT = GameConstants.HEAL_AMOUNT
 ROLE_MINER = 0
 ROLE_MENDER = 1
 ROLE_GUARD = 2
+ROLE_SIEGE = 3
 
-NAMES = {ROLE_MINER: "miner", ROLE_MENDER: "mender", ROLE_GUARD: "guard"}
+NAMES = {ROLE_MINER: "miner", ROLE_MENDER: "mender", ROLE_GUARD: "guard",
+         ROLE_SIEGE: "siege"}
 
 # A Core that has taken any damage at all gets a mender. Not a fraction of max
 # hp -- see the module docstring for why a threshold reacts too late.
@@ -60,6 +62,14 @@ GUARDS_WHEN_QUIET = 1
 # matter what is happening -- see the floor in desired_mix.
 ECON_FLOOR_HARVESTERS = 4
 
+# Builders sent to besiege the enemy Core once the economy is standing, and
+# the round from which it is worth starting. We out-collect steward and still
+# lose every game, because it wins ~90% of its matches on a Core kill and we
+# have never attacked anything -- surviving a Core-killer is the harder half.
+SIEGE_BUILDERS = 1
+SIEGE_FROM_ROUND = 60
+SIEGE_MIN_HARVESTERS = 2
+
 # Titanium per extra standing guard while unthreatened. A Gunner is 20 base
 # plus cost scale, so this is several turrets' worth of slack before another
 # Builder is pulled off the economy.
@@ -75,6 +85,7 @@ def desired_mix(
     friendly_turrets: int = 0,
     harvesters: int = 0,
     titanium: int = 0,
+    round_no: int = 0,
 ) -> dict:
     """Split `n_builders` across roles.
 
@@ -162,10 +173,19 @@ def desired_mix(
     if floor:
         guards = min(guards, max(0, remaining - floor))
 
+    siege = 0
+    left = max(0, remaining - guards)
+    if (round_no >= SIEGE_FROM_ROUND
+            and harvesters >= SIEGE_MIN_HARVESTERS
+            and incoming <= 0
+            and left > 1):
+        siege = min(SIEGE_BUILDERS, left - 1)
+
     return {
         ROLE_MENDER: menders,
         ROLE_GUARD: guards,
-        ROLE_MINER: max(0, remaining - guards),
+        ROLE_SIEGE: siege,
+        ROLE_MINER: max(0, left - siege),
     }
 
 
@@ -181,4 +201,6 @@ def assign(rank: int, mix: dict) -> int:
         return ROLE_MENDER
     if rank < mix[ROLE_MENDER] + mix[ROLE_GUARD]:
         return ROLE_GUARD
+    if rank < mix[ROLE_MENDER] + mix[ROLE_GUARD] + mix.get(ROLE_SIEGE, 0):
+        return ROLE_SIEGE
     return ROLE_MINER
