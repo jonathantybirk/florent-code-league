@@ -41,6 +41,12 @@ MAX_OPENING_BUILDERS = LAUNCHER_BUILDER_INDEX + LAUNCHER_BUILDERS
 # 470 -- a third of the economy, every game, to buy a pad a few rounds earlier.
 # Tempo bought with the opening Harvester is not tempo, it is a loan.
 PAD_FIRST_ORDER = False
+
+# byggvir: the boom's defensive half — one home Gunner stands on the enemy
+# approach before anything fires at us, Jython/Pivot-style (their first
+# Gunners at rounds 14-19, undamaged).
+PROACTIVE_HOME_GUNNER = True
+PROACTIVE_GUARD_ROUND = 12
 # Ring Launchers one Builder will put up. Superseded: the count now comes from
 # RING_MAX_SITES in the Launcher-screen section at the foot of this file, and
 # the sites come from a set cover of the approach shell rather than a compass.
