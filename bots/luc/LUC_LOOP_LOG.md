@@ -5664,3 +5664,46 @@ it.
 promotion rule being fixed.** I have measured every build we own against every
 other at 2,000 games; there is nothing further local measurement can tell me,
 and the one large effect in the system is a build the rule cannot see is bad.
+
+## Iteration 114 — no sanctioned lever exists, so the patch is prepared instead
+
+Checked whether the recurring promotion of the 0.273 build could be stopped
+through the channel the loop authorises me to use. `farm.py` reads exactly three
+config keys:
+
+    config.get("enabled"), config.get("yield_until"), config.get("test_next")
+
+`enabled` and `yield_until` are explicitly off-limits (they switch the farm off),
+and `test_next` only *adds* builds. **There is no exclusion mechanism in the
+config at all**, so there is no way to make `steward@e55aab5` unpromotable
+without editing `farm.py` or the farm's runtime state, both of which are outside
+what I have been given.
+
+So the useful thing left was to make the fix a single command. The one-line
+change, against the real code:
+
+    -    if best_id is None or best_est <= incumbent_elo:
+    +    if best_id is None or best_half is None or best_est - best_half <= incumbent_elo:
+
+`best_half` is computed three lines above and returned by the function; it has
+simply never been used in the decision. Written out with its evidence to
+`farm_promotion_margin.patch` in the session scratchpad.
+
+**What that one line would have done tonight**, on the promotions actually
+logged:
+
+| promotion | test |
+|---|---|
+| `steward@e55aab5` 1805 ±83 vs 1776 | 1722 < 1776 — **rejected** |
+| `steward@e55aab5` 1805 ±78 vs 1769 | 1727 < 1769 — **rejected** |
+| `snotra_h` 1781 ±60 vs 1780 | 1721 < 1780 — rejected |
+| `a994296` 1788 ±48 vs 1773 | 1740 < 1773 — rejected |
+| `366cd1b` 1784 ±46 vs 1779 | 1738 < 1779 — rejected |
+
+**Every promotion tonight would have been rejected**, and the flagship would
+have stayed put — which, given that the three builds it churned between measure
+0.500, 0.500 and 0.503 against each other and the fourth measures 0.286, is the
+correct outcome in all five cases.
+
+That is the end of what I can do from here. The measurement is complete, the
+diagnosis is complete, the patch is written, and applying it needs Lucas.
