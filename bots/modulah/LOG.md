@@ -142,9 +142,17 @@ every Builder and a guard never exists.
 | 4 | 4 | 1065 | **48.8** | **7/45** |
 
 Lowering it produces the best survival and core-hp figures recorded here and
-loses a win. Kept at 7 because wins is the objective, but the saga failure
-mode is real and unfixed: a per-map floor, or one that yields once titanium
-stops accumulating, would get both.
+loses a win. Kept at 7 because wins is the objective.
+
+The principled fix was then tried: **release the floor on established income**
+rather than on a Harvester count, reading the Core's own published arrival
+schedule (which nothing was using for this). Same 5 wins, and worse elsewhere
+— collected 1197 → 805, games survived 6/45 → 4/45. Reverted.
+
+So the saga failure mode is real, understood, and **still unfixed**: on that
+map the bot pours everything into economy, banks nothing, builds no turret and
+dies at round 99. Neither a lower count nor an income test recovers the win it
+costs. Left recorded rather than shipped as a silent weakness.
 
 ### Spawn rate re-tuned on the current build: 6 still wins
 
