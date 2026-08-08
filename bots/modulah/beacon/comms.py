@@ -207,7 +207,7 @@ def arrivals_from_now(word: int, round_no: int) -> dict[int, int]:
 # for "can I survive the worst round", and the name says bound, not estimate.
 THREAT_HP = Field(0, 8, scale=2)          # 0..510, covers CORE_MAX_HP 500
 THREAT_DHP = Field(8, 6, signed=True)     # -32..+31 hp/round
-THREAT_BURST = Field(14, 6)               # 0..63 hp in one round
+THREAT_BURST = Field(14, 5, scale=2)               # 0..63 hp in one round
 # The connected frontier: offset from the Core anchor of the furthest tile
 # that genuinely delivers. 4 bits an axis is enough because a chain worth
 # joining is near the Core, and it fits the threat word's spare bits rather

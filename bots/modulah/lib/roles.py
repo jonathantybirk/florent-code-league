@@ -57,6 +57,19 @@ PANIC_ROUNDS = 8
 # when the Builder that placed them dies.
 GUARDS_WHEN_QUIET = 1
 
+# Damage per round assumed to exist beyond what max_burst can see: it counts
+# only turrets currently in vision AND on a ray, never reinforcements or
+# anything still walking. So threat is never really zero.
+#
+# Applied as a FLOOR, not an addition. That distinction is the whole thing: a
+# bit-collision supplied this term by accident for most of development
+# (THREAT_BURST bits 14-19 against THREAT_HAS_JOIN on bit 19), and what it
+# computed was `burst | 32` -- which equals max(burst, 32) below 32 and leaves
+# large bursts untouched. Adding 32 instead over-reacts exactly where the
+# threat is already severe: a real burst of 40 became 72, tripping PANIC,
+# emptying the economy floor and collapsing collected from 1296 to 415.
+BASELINE_THREAT = 32
+
 # Builders held on the economy until this many Harvesters are working, no
 # matter what is happening -- see the floor in desired_mix.
 # Effective ceiling: raising this past 7 changes nothing, because the team
@@ -144,7 +157,7 @@ def desired_mix(
     #
     # Suspended only when the Core is genuinely about to die, where there is
     # no later economy to protect.
-    survival = (hp / burst) if burst > 0 else float("inf")
+    survival = hp / max(burst, BASELINE_THREAT)
     # On a blitz map the economy floor is suspended outright. With the enemy
     # Core six tiles away the game is over before a supply line pays for
     # itself, and holding Builders on the economy just hands over the tempo.
