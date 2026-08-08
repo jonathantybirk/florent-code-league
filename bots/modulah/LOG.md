@@ -1,25 +1,48 @@
 # modulah log
 
-## Status: 3/45 against our best three — still short, but moving
+## Status: 6/45 against our best three — goal NOT met
 
-`aegis` on the full 15-map official pool, both seats, vs
-`steward_hardened_reinforced`, `vidar`, `odin`.
+`aegis` on the full 15-map official pool, both seats:
+**odin 4/30, vidar 2/30, steward 0/30.**
 
-| | early session | now |
+The stated goal was to beat `steward_hardened_reinforced` and improve online.
+Neither happened. aegis has never won a game against steward in the shipped
+build, and its one live outing lost rating.
+
+| | session start | now |
 |---|---|---|
-| **wins** | 0/45 | **3/45** |
-| titanium collected | 823 | **977** (steward 788) |
+| **wins vs the top three** | 0/45 | **6/45** |
+| titanium collected | 823 | **1068** (steward 788) |
 | conveyors built | 11.7 | **25.6** (steward 12.1) |
-| harvesters built | 4.5 | 4.8 |
-| enemy cores killed | never | **round 389** |
+| harvesters @300 | — | **4.20** |
+| worst stall (rounds) | 48 | **15** |
 | first harvester | round 4 | round 4 (field: 7) |
 
 **Measure on the full pool, never on a small panel.** The early 6-map panel is
-four old-pool 12x12s and inflated this bot badly (reported 2184 collected and
-200 core hp where the real figures were 823 and 47).
+four old-pool 12x12s and inflated this bot badly — it reported 2184 collected
+and 200 core hp where the real figures were 823 and 47.
 
-**The deployed online bot is untouched** — `v34
-(steward_hardened_reinforced f1f2bda)`, team #12 of 109.
+### Online
+
+aegis was submitted live (v51, v52) with permission, lost rating, and was
+pulled: **1708 → 1681, rank 17 → 21**. The internal 0/30 against steward had
+predicted exactly that. `v34 steward` was restored manually; the farm has since
+rotated to `v33` and the team recovered to ~1702 / #18.
+
+**Do not put aegis on the ladder again until it beats steward on this pool.**
+
+### The honest shape of the remaining gap
+
+aegis **out-collects steward** (1068 vs 788) and dies around round 100 anyway.
+For home defence the following have each been measured and ruled out: aim,
+ammo (zero dry turns), rotation (zero refusals), turret count, siting policy,
+mender/guard allocation, spawn rate, and workforce size. What is left is **ray
+geometry** — enemy Gunners park at offsets like (1,2) that no facing can reach
+— and no policy tried here beats it.
+
+The one build that ever beat steward did it by **surviving to round 1000 and
+out-collecting** (fjordgate, 530 titanium to 60). That is the win condition
+worth building toward; out-fighting is not.
 
 ### What unlocked it: publishing connectivity
 
