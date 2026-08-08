@@ -1,0 +1,5 @@
+source_commit = "7ac9bb7ae"
+source_path = "bots/luc/fulla"
+engine = "2.3.6"
+status = "development"
+variant = "fulla with Launcher retirement off: the retire-rebuild cycle ate the weapons budget (6 Launchers, 1 Gunner, 90 damage in a decoded Jython loss); a kept pad blocks its own rebuild"
