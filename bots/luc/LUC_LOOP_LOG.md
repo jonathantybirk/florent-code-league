@@ -5439,3 +5439,49 @@ the size of their own uncertainty.
 `tools/live_matchups.py --compare` across all of them at once. That comparison
 needs no model, does not move when opponents drift, and is the only live
 measurement this project has that behaves.
+
+## Iteration 108 — the churn put a 28% bot on the ladder
+
+The flagship changed while I was measuring, so the comparison I had been making
+was against a build that is no longer live. Re-measured against the new one, on
+the 1,000-map instrument:
+
+    lofn vs steward@e55aab5 (the newly promoted flagship)
+        1351/2000 = 0.6755 +-0.0205   (+16.8 sd)
+
+That is not a small difference, so I checked the promoted build against the one
+it replaced:
+
+    steward@e55aab5  vs  steward_hardened_reinforced
+        286/1000 = 0.2860 +-0.0280   (-15.0 sd)
+
+**The farm promoted a build that wins 28.6% against its predecessor, and put it
+on the live ladder.** The promotion line, verbatim:
+
+    PROMOTING steward@e55aab5 (v38): elo 1805 +-83 beats incumbent 1776
+
+A 29-point margin against an **83-point** half-width, on a build that is
+15 sd worse in 1,000 games of direct play.
+
+**It was live for about ten minutes.** The next round promoted again:
+
+    PROMOTING snotra_h@6951e03 (v48): elo 1781 +-60 beats incumbent 1780
+
+A **one-point** margin against a sixty-point interval. The rating went
+1704 → 1670 across that window; some of that is ordinary variance and some is
+ten minutes of rated games played by a bot that loses seven times in ten to what
+it replaced.
+
+**So the promotion defect is no longer theoretical.** Iteration 81 quantified it
+as "margins of 1.8-23 Elo against standard errors of 43-80" and called it
+unsound. This is the same rule doing measurable harm: it cannot distinguish a
+build that is 15 sd worse, because it never looks at the interval it computes.
+
+The fix remains two lines and remains blocked: compare `best_est - best_half`
+against the incumbent, and count matches rather than games in `min_games`. On
+tonight's evidence the first line alone would have rejected all three of those
+promotions.
+
+**One piece of luck worth recording:** the bot the churn landed on, `snotra_h`,
+is the best live build we have by shared-opponent record (0.614 ±0.114). The
+system is right by accident, having been wrong by design ten minutes earlier.
