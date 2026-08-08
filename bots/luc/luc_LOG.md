@@ -71,3 +71,28 @@ from round 4) is a separate unaddressed failure mode.
   bank kept growing, so a healthy economy never triggers it. True-positive test is the live
   field (needs an opponent that actually kills our economy).
 - Waiting on: internal run with freyr; freyr's 10 unrated matches (~25 min).
+
+## Iteration 3 — 2026-08-08 ~06:15
+
+- **steward@e55aab5 verdict: stale-field artifact confirmed.** Fresh rounds went ~4–11;
+  estimate 1876 → 1827 → **1715 [1650–1782]**. The flagship line stands. Lesson: a live Elo
+  estimate built on matches older than ~2 days runs high; re-test before believing any old
+  build's number.
+- freyr live after round 1: 3–2, estimate 1748 on 5 games — meaningless until ≥25. Second
+  round queued.
+- **Internal ladder pipeline looks stuck**: index.json run_id `auto-b10e94bd7fe6` unchanged
+  since 2026-08-06 16:36. Not mine to fix (harness owner's). Relying on the live ladder.
+- **New failure mode dissected** (Besvikomat lighthouse loss, game 5): their opener throws a
+  Builder by round-1 Launcher and plants a Gunner at (6,6) — three tiles from our Core — on
+  round 3. That 25 HP turret chipped our Core for 186 rounds and ended the game **untouched at
+  25/25 HP**. Why: `_defend_core` requires a *visible* target, the guard's own vision never
+  covered (6,6) from its post, and the barrier/counter-turret/aligned-gunner answers all fell
+  through to healing, 4 HP/round against 10. The docstring even documents the hole ("no
+  inferred firing position").
+- **Built `bots/luc/vali`** = freyr + shooter beacon: the Core (vision r²=36 — it always sees
+  a Core-range shooter) packs the nearest visible enemy turret's position into the upper bits
+  of SLOT_CORE_DAMAGED (alarm keeps the low 2 bits; all readers masked). When the guard has no
+  visible enemy turret, it walks toward the beacon (standoff 2) until its own vision picks the
+  target up, then the existing answers engage.
+- Smoke: compiles, HUNT fires on showdown/sprint/duel vs vidar (3 of 4 wins). 168-game panel
+  vs shr/freyr/vidar/odin running (`vali_run1`).

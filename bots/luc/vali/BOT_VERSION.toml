@@ -1,0 +1,5 @@
+source_commit = "c2c0d3d8b"
+source_path = "bots/luc/freyr"
+engine = "2.3.6"
+status = "development"
+variant = "freyr plus the shooter beacon: the Core names the turret killing it, and the guard walks until it can answer"
