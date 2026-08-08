@@ -3936,3 +3936,53 @@ therefore one the panel can neither find nor price. `spar_sentinel` was built to
 close that gap and modelled the wrong opponent; the replays closed it properly.
 Any future work on this bot should start from `fcode match replay` rather than
 from the zoo.
+
+## Iteration 71 — hlin: the claim slots were leaking all along
+
+Chased the miners' idle time. A phase histogram of miner turns over three games:
+
+    goto   614 (43%)   walking to a deposit
+    scout  542 (38%)   no task at all
+    prelay 271 (19%)   laying belt
+
+**38% of miner turns have no work.** `_pick` runs every scout turn, so it was
+refusing them — but instrumenting its three known exits caught nothing: 22
+successes, zero failures. There was a fourth exit I had not instrumented, the
+one `freyja` was built around: falling out of the `for slot in CLAIM_SLOTS`
+loop and returning silently.
+
+    _pick succeeded            22
+    _pick "no free slot"      228
+    slots held when blocked   [177, 58, 410, 249] -- identical every time
+
+**The claims leak.** `_done` and `_abandon_task` both release by matching the
+*holder's own* `p.task`, so a Builder that dies holding a claim leaks it
+forever. Four values freeze and every miner scouts for the rest of the game.
+
+That is why `freyja` did not fix it. Going 2 slots → 4 bought exactly two more
+Harvesters before the same permanent lock — 1.50 → 2.02 → 2.73 — and I read that
+as "the cap was two". The cap was never the count; it was that claims are never
+returned.
+
+`hlin` clears a claim when any Builder can see a finished Harvester on the
+claimed tile. **Failures 228 → 5, successes 22 → 34.**
+
+| vs | on-pool | off-pool | combined | |
+|---|---|---|---|---|
+| `lofn` (parent) | 0.500 | 0.548 | **82/156 = 0.526 ±0.078** | +0.6 sd |
+| `vili` | 0.569 | 0.595 | 91/156 = 0.583 | +2.1 sd |
+| `steward_hardened_reinforced` | 0.678 | 0.415 | 57/100 = 0.570 | +1.4 sd |
+
+Committed and queued `hlin@a72a7dc:8`, after `lofn`, so the farm compares them
+directly.
+
+**And the honest part: Harvesters did not move.** 2.75 against `lofn`'s 2.73.
+Granted tasks went up by half and production did not follow — 34 tasks yield
+2.75 Harvesters, about one in twelve. The miners now get work and abandon it
+before it is built.
+
+So the bottleneck has moved one step later, three times in a row now: slot count
+(`freyja`), slot leak (`hlin`), and now task abandonment. Each fix was real and
+each one revealed the next. **The next thing to instrument is why eleven of
+every twelve granted tasks are abandoned** — `_abandon_task` already takes a
+`reason`, so the histogram is a one-line probe.
