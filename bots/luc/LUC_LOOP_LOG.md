@@ -1541,3 +1541,53 @@ So I can build and measure locally, and I cannot read a live result or ship a
 build. `snotra@34b0ce8` (20 matches, level with mimir) and
 `snotra_h@6951e03` (queued, four rounds) are both already in flight and will
 keep playing without me.
+
+---
+
+## Iteration 19 — snotra_h is the best build of the day, live and local
+
+Access restored. Team **rank 17 of 112 at 1693**, flagship reverted to
+`steward_hardened_reinforced@f1f2bda`.
+
+### Live, model-free (raw game win rate, no model)
+
+| build | | |
+|---|---|---|
+| **`snotra_h@6951e03`** | 32/50 | **0.640** |
+| `fulla@7ac9bb7` (other agent) | 70/125 | 0.560 |
+| `snotra@34b0ce8` | 56/100 | 0.560 |
+| `mimir@62df0ec` | 55/100 | 0.550 |
+| `hodr@d540e5b` | 38/75 | 0.507 |
+
+Fifty games is about two standard deviations above even. Best live number of the
+day, still not settled.
+
+### Local, wider panel
+
+| snotra_h vs | | |
+|---|---|---|
+| `gefjon` | 24/42 | 0.571 |
+| `steward_hardened_reinforced` | 24/42 | 0.571 |
+| `spar_sniper` (grind fixture) | 25/42 | 0.595 |
+| `spar_mender` | 32/42 | 0.762 |
+| `vidar_guard` | 33/42 | 0.786 |
+| `odin` | 34/42 | 0.810 |
+| **mean** | 172/252 | **0.683**, floor **0.571** |
+
+It beats every bot in the zoo and the floor is better than the 0.548 the
+flagship's own README claims for this lineage.
+
+**Queued six more rounds** as `snotra_h@a494b78` — the same code under the
+README commit's sha, because `test_next` dedups on `name@commit` and the
+original four rounds are nearly spent. Thirty more games is what it needs to be
+worth promoting on.
+
+### Two dead ends checked and dropped
+
+- **Opening speed.** In the Flotte sweep our first Harvester lands on round 7.6
+  against their 4.4, which looked like a deficit — but by round 50 we hold 3.2
+  Harvesters to their 2.8. We are slower to start and ahead by the time it
+  matters. Not the gap.
+- **Turret siting.** `_aligned_turret_site` ranks seats by
+  `distance_squared` to the target, and for a *seat* that is the correct
+  quantity — it is about reach, not walking. No sibling defect there.
