@@ -1627,3 +1627,55 @@ That is the fourth defensive idea to die this way — third mender twice, Sentin
 only counter, and now rotation. The pattern across all of them: our defensive
 budget is already spent about as well as it can be, and the losses are decided
 by what we did before the attack arrived, not by what we do once it does.
+
+---
+
+## Iteration 21 — the ammunition "trap" is real behaviour and not a defect
+
+Live: rank 17 of 112 at 1698. `snotra_h` **34/55 = 0.618** model-free, still
+ahead of `snotra` 0.560, `fulla` 0.560, `mimir` 0.550. Six more rounds queued
+behind `fulla`.
+
+### What the instrumentation showed
+
+Logging the Core's bank every 20 rounds against `spar_sniper`:
+
+```
+hive:  r0 ammo=120 ti=380  ->  r40 ammo=26 ti=10     (dead r56)
+atoll: r0 ammo=120 ti=380  ->  r20 ti=23  ->  ti=10 pinned for the whole game
+```
+
+`_keep_ammunition` has an override: below `COMBAT_AMMO_FLOOR = 80` it converts
+down to `EMERGENCY_RESERVE = 10`, bypassing the 60 Ti construction reserve.
+Turrets that are firing keep ammunition under 80 more or less permanently, so
+the override fires every round and the bank sits at 10 — below a Harvester,
+below a Gunner — while ammunition still falls to 11–26, under
+`MIN_AMMO_FOR_GUNNER`. It reads like a feedback trap that affords neither.
+
+### And it costs nothing
+
+`bragi` narrows the override to `COMBAT_AMMO_CRITICAL = 40`, so above that the
+construction reserve holds:
+
+| bragi vs | | |
+|---|---|---|
+| `snotra_h` (parent) | 20/42 | **0.476** |
+| `snotra` | 22/42 | 0.524 |
+| `steward_hardened_reinforced` | 25/42 | 0.595 |
+| `spar_sniper` | 26/42 | 0.619 |
+| `mimir` | 27/42 | 0.643 |
+| **mean** | 120/210 | 0.571, floor 0.476 |
+
+Slightly *worse* than its parent, and turrets (5.36) and Harvesters (1.88) are
+unchanged. Freeing the bank produced neither.
+
+**I over-called this one.** I described it while writing as the biggest defect
+of the day. The behaviour is exactly as instrumented, but converting spare
+titanium into ammunition is not waste — ammunition is what turrets spend — and
+the empty bank is a **symptom of low income rather than a cause of it**. A
+diagnosis that looks severe on a trace still has to beat the control. Deleted.
+
+That is now five defensive/economic ideas refuted the same way. Everything that
+survives contact is upstream: `snotra`'s deposit ordering and `snotra_h`'s
+harass ordering, both of which changed *which target we walk to*, not how we
+spend once we get there.
