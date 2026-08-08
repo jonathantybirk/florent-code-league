@@ -6151,3 +6151,34 @@ regardless: **`steward@e55aab5` wins 0.581 over 1,425 ladder games and 0.286 ove
 
 The queue is the instrument. `vili` is mid-run, `lofn` and `mani` are the pair
 that matters, and nothing I can build tonight will tell me more than they will.
+
+## Iteration 127 — status: no external opponents exist, the churn continues
+
+Checked the last two unexplored directories for opponents strong enough to
+discriminate between our lineages: `bots/opponent_luc` has `entities/` and
+`utils/` but no `main.py`, and `bots/rl` is empty. **There is no external panel
+in this repo**, which closes the last route to testing the mirror-match
+hypothesis locally.
+
+**The churn has produced a seventh promotion:**
+
+    01:42  PROMOTING steward_hardened_reinforced@a994296 (v33): elo 1814 +-47 beats incumbent 1787
+    01:52  PROMOTING vidarr@bbfaa9c (v55): elo 1829 +-83 beats incumbent 1803
+
+`vidarr` measured **0.487** against the reference in the pool screen — mid-pack
+of the twenty tied builds. The margin test rejects this one too: 1829 - 83 =
+1746, below the 1803 incumbent. Seven promotions tonight, seven rejections under
+a rule that uses the interval it already computes.
+
+**Live standing: rank 20 of 113, rating 1687** — up from the session's low of
+1667 and roughly where it started, on churn between builds that are
+statistically tied.
+
+**Queue:** `vili` has 2 rounds left, then `freyja` (6), `lofn` (8), `hlin` (8),
+`nanna` (8), `b61aaac` (2), `byggvir` (5), `mani` (8). At ~11 minutes a round
+that is about seven hours to `mani`, and roughly two to `lofn`.
+
+I am in a monitoring role now rather than a building one, and I would rather say
+that than keep inventing experiments the instrument has already been shown
+unable to settle. What would change that: `lofn` and `mani` reporting, or Lucas
+applying the margin patch.
