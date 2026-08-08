@@ -5274,3 +5274,48 @@ worse than `freyja` plus a second miner (0.527), which is a real interaction
 measured twice, on different opponents. Everything else in that table — the
 ordering of `hlin`, `syn`, `gefn`, `nanna`, and the claim that the early chain
 is a liability — is within noise and I over-read it.
+
+## Iteration 104 — 2,294 cells say lofn is level with the live flagship
+
+The non-transitivity in iteration 103 said ±5.7 points cannot rank builds that
+differ by 2 to 5. Maps are cheap and games are fast, so the fix is more maps:
+generated **1,000** (seed 31337, `tools/generate_maps.py --count 1000`) and ran
+`lofn` against the live flagship on all of them — 2,000 games, zero errors.
+
+| | | |
+|---|---|---|
+| 147 maps (iterations 101-102) | 155/294 | 0.5272 ±0.0571 (+0.9 sd) |
+| **1,000 fresh maps** | **981/2000** | **0.4905 ±0.0219 (-0.8 sd)** |
+| **all 1,147 maps** | **1136/2294** | **0.4952 ±0.0205 (-0.5 sd)** |
+
+**`lofn` is level with the build the ladder is already running.** 49.5% ± 2.1.
+Not better, not worse, and now measured tightly enough to say so.
+
+**The full arc of this one number, in order:**
+
+| measurement | value |
+|---|---|
+| on the 21 official maps, vs the flagship (`vili`, iteration 49) | 0.690 |
+| on 147 generated maps (iteration 101) | 0.527 |
+| **on 1,147 maps (this iteration)** | **0.495** |
+
+Nineteen points, then three, then zero. Every increase in map coverage moved it
+toward even, and the last step had a small enough interval to stop the drift
+being deniable.
+
+**So the honest conclusion of the session's bot work is that it produced no
+measurable improvement over the build that was already live.** `lofn` remains
+the best-motivated candidate — it is the only one whose mechanism is confirmed
+(1.50 → 2.73 Harvesters, a two-slot cap removed, an interaction reproduced
+twice) — but the mechanism does not convert into wins against this opponent.
+
+That is not a reason to unqueue it: level locally over 2,294 cells is not the
+same as level on the ladder's held-out pool against 113 real opponents, which is
+precisely what the queue exists to find out. It *is* a reason to stop claiming
+it is an upgrade, and to stop building further candidates on the assumption that
+the line is productive.
+
+**What this session actually produced, final:** a great deal of diagnosis, one
+confirmed mechanism that does not pay, three plumbing defects in the farm, and
+a measurement methodology — off-pool maps, model-free comparison, cells not
+games — that turned a claimed +19 points into a measured zero.
