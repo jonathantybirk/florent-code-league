@@ -6182,3 +6182,49 @@ I am in a monitoring role now rather than a building one, and I would rather say
 that than keep inventing experiments the instrument has already been shown
 unable to settle. What would change that: `lofn` and `mani` reporting, or Lucas
 applying the margin patch.
+
+## Iteration 128 — the live rates are confounded by opponent difficulty, both ways
+
+Re-read every build's live record with the correct filter (opponents' *current*
+builds only), and added the median rank of the opponents each actually faced:
+
+| build | games | vs current builds | median opp rank |
+|---|---|---|---|
+| `vidarr@bbfaa9c` | 60 | 0.733 ±0.112 | **24** |
+| `snotra_h@6951e03` | 80 | 0.675 ±0.103 | **22** |
+| `steward@e55aab5` | 100 | 0.580 ±0.097 | **26** |
+| `vili@419bf08` | 95 | 0.526 ±0.100 | **17** |
+| `hoenir@1e5de25` | 135 | 0.504 ±0.084 | **18** |
+| `bifrost@a29403f` | 90 | 0.500 ±0.103 | **18** |
+
+**The builds with the best rates faced the easiest fields.** Tonight's builds
+drew median rank 17-18; the builds beating them drew 22-26. Raw live win rates
+cannot rank these, which is precisely why `--compare` intersects on shared
+opponents — and why the intersection being thin is a real obstacle rather than a
+tooling annoyance.
+
+**Two of my own claims fall.**
+
+**Iteration 122** said `bifrost` and `hoenir` "are not improvements... and they
+faced *easier* opponents". Backwards: with the correct filter they faced the
+**hardest** fields on the board and scored 0.500 and 0.504 against them. They may
+be fine; I cannot tell.
+
+**Iteration 122 and 123** both leaned on `steward@e55aab5` having "the hardest
+opponent mix we own, median rank 10". That number came from unfiltered rows
+including opponents' retired versions. Filtered, its median is **rank 26 — the
+easiest of the set**. So the strongest piece of evidence for the 110 threshold —
+"best record against the hardest field" — is not there. Its record is 0.580
+against rank-26 opposition, which is unremarkable.
+
+**What that does to the queued experiment.** `mani` was queued on the argument
+that `e55aab5` proves the 110 threshold works live. That argument is now much
+weaker: `e55aab5`'s live record is ordinary once opponent strength is accounted
+for. The experiment is still worth running — `lofn` and `mani` differ by one
+constant and will be read on shared opponents, which is confound-free by
+construction — but its motivation was inflated, and I inflated it.
+
+That is three corrections in a row arising from the same root cause: **I read
+raw win rates across builds that faced different fields.** The tool that avoids
+it has existed since iteration 95 and I kept reaching past it for the number
+that was easier to get.
