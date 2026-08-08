@@ -2613,3 +2613,42 @@ The test that separates them is not "does it fire" but "was it *meant* to fire".
 The ferry had a cooldown carefully written to schedule retries that could never
 happen. The sabotage has a gate that has simply never been true, and making it
 true is a change of plan rather than a repair.
+
+---
+
+## Iteration 43 — a third kind of dormancy
+
+`_patrol_core` fits the ferry pattern on paper: its docstring argues the guard
+must walk a circuit ("a guard parked on one tile sees one approach"), and it is
+gated on `network_load >= _network_cap` — 1–2 against a cap of 6–12, so never
+true. Profiled, it returns True zero times. Saturation was clearly a proxy for
+"no mining left to do".
+
+`heimdallr` replaces the proxy with the direct test, `not _has_unclaimed_ore`.
+
+| heimdallr vs | | |
+|---|---|---|
+| `bifrost` (parent) | 21/42 | **0.500** |
+| `snotra_h` | 22/42 | 0.524 |
+| `steward_hardened_reinforced` | 27/42 | 0.643 |
+| `mimir` | 28/42 | 0.667 |
+| `spar_sniper` | 28/42 | 0.667 |
+| **mean** | 126/210 | 0.600 |
+
+On the four opponents both faced it is **105/168 for each** — identical. The
+change is neither better nor worse. Deleted.
+
+So dormancy comes in three kinds, and only the first is worth chasing:
+
+1. **Defect** — the mechanism was meant to run and cannot. `_opening_ferry`:
+   the reply was never cleared, the retry cooldown beside it could never fire,
+   and repairing it was worth about six points.
+2. **Design** — the mechanism could run and should not. `_contest_enemy_logistics`:
+   wiring it to the unit that is in position cost twenty points.
+3. **Immaterial** — the mechanism was meant to run, now does, and nothing
+   changes. `_patrol_core`.
+
+The distinguishing question before building is not "does this fire" but "what
+would change if it did", and for the guard's circuit the answer turned out to be
+nothing: the Core already sees r^2=36, and the extra sight the circuit buys is
+sight of ground nothing is coming from.
