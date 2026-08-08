@@ -236,13 +236,34 @@ def best_defensive_site(ct, footprint, kind: EntityType, buildable, limit: int =
         key=lambda t: -traffic[(t.x, t.y)],
     )[:limit]
 
+    # Tiles orthogonally touching the Core: where an attacker must stand to
+    # hit it, and therefore what a home turret has to be able to reach.
+    doorstep = set()
+    for f in footprint:
+        for d in CARDINALS:
+            n = f.add(d)
+            if in_bounds(ct, n) and (n.x, n.y) not in {(g.x, g.y) for g in footprint}:
+                doorstep.add((n.x, n.y))
+
     best = None
     for spot in seats:
         for facing in COMPASS:
             if not buildable(spot, facing):
                 continue
+            cover = turret_cover(ct, spot, facing, kind)
+            # A defensive turret must cover ground touching the Core.
+            #
+            # Traffic alone sites turrets along corridors attackers walk, but
+            # what kills us is static enemy Gunners parked beside the Core.
+            # Traced on archipelago: our Gunner sat 145 turns with ammo and a
+            # visible enemy at dist_sq 5 -- an offset of (1,2), which is on no
+            # ray at any facing -- and fired ZERO shots all game. Requiring the
+            # ray to reach the footprint's doorstep makes the turret able to
+            # answer whatever is actually doing the damage.
+            if not any(t in doorstep for t in cover):
+                continue
             score = 0.0
-            for tile in turret_cover(ct, spot, facing, kind):
+            for tile in cover:
                 w = traffic.get(tile)
                 if w:
                     score += w * (0.25 if tile in already else 1.0)
