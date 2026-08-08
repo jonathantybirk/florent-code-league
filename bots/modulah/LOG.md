@@ -138,6 +138,18 @@ victory against steward — outlast and out-mine, not out-fight — and repair i
 what let a line survive long enough to do it. Worth rebuilding properly on top
 of the 6-win base rather than in place of it.
 
+### Barriers for guards too: a dead branch
+
+Steward's note cites Pantheon (#2 on the ladder, 31 of 33 barrier actions
+across twenty games): 3 Ti and +1% scale for 30 HP absorbs three Gunner rounds
+and six of their ammunition, titanium 1:1 — the cheapest trade on the board.
+Our screen was gated to menders, so guards were offered it too.
+
+Byte-identical results (1291.56 collected, odin 5/30, vidar 1/30). The branch
+never fires: a guard is rarely standing next to a tile that both lies on an
+enemy ray and is legal to build on — menders stand at the Core, which is
+exactly where those tiles are. Reverted as dead code.
+
 ### Mending doctrine: steward's biggest win does not reproduce here
 
 Steward's README calls "the guard mends on any damage" its single largest
