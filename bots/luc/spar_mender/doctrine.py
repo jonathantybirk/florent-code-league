@@ -91,8 +91,8 @@ CORNER_MARGIN = 0
 # because it is the right place for a role change to live if a later one earns
 # its way in, not because this one varies.
 _ROLES = {
-    RUSH: (2, 0),
-    FORTIFY: (2, 0),
+    RUSH: (1, 1),
+    FORTIFY: (1, 1),
     # Nobody mines, but somebody guards and somebody mines: one of each.
     #
     # This was three attackers, no miner and -- through _LAUNCHER_BUILDERS
@@ -111,7 +111,7 @@ _ROLES = {
     # The miner matters for the reason Jon traced on the ladder: a blitz that is
     # answered has nothing behind it, and the opponent that survived simply
     # out-mines a bot holding zero Harvesters at round 120.
-    BLITZ: (2, 0),
+    BLITZ: (1, 1),
 }
 # Builders held back to ring our own Core with Launchers. The ring is a throw
 # pad for the ferry and a displacement screen, and BLITZ maps are shorter than

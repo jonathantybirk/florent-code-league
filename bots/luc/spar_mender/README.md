@@ -39,15 +39,28 @@ lifted early (`ECON_BUILDER_ROUND` 200 → 80, `ECON_MAX_TOTAL_BUILDERS` 6 → 1
 It is deliberately not trying to be strong. It is trying to be *slow*, so that a
 besieging opponent has something to fail against.
 
+## Revision: every home Builder mends
+
+The first cut kept the stock mend gate, which is `p.is_launcher_builder` only —
+one mender, restoring 4 HP a round. That cannot hold a Core against a siege,
+which is the entire property the fixture needs. So the gate is now "any Builder
+within `MENDER_LEASH` of home", and the leash widened 10 → 14.
+
+It also got its attacker back (`_ROLES` returned to `(1, 1)` from `(2, 0)`).
+With no attacker at all the fixture was simply overrun before mending could
+matter — it died on quarry at turn 126 and on hive at 112 — which made it a test
+of nothing.
+
 ## How well it works — honestly, partially
 
-It reproduces the shape on some maps: on jackpot it takes the flagship to round
-1000 and wins on the titanium tiebreak, which is exactly how we lost jackpot to
-Besvikomat. But over the full pool the flagship still beats it 0.667 and still
-kills its Core in about 60% of games, so it does **not** yet hold a Core at full
-against a real siege the way Besvikomat does. `steward_relent` scores 0.667
-against it too — the two are indistinguishable here, because the stall condition
-still does not trip.
+It reproduces the shape on some maps — it now beats the flagship on aurora
+(turn 140) and jackpot (turn 528), and an earlier build took jackpot to the
+round-1000 titanium tiebreak, which is exactly how we lost jackpot to
+Besvikomat. But it still dies to a straight rush on quarry (turn 90), vault
+(94), twins (109) and hive (161), so it does **not** yet hold a Core the way
+Besvikomat does. `steward_relent` scored 0.667 against the first cut, same as
+the flagship — the two were indistinguishable, because the stall condition
+still did not trip.
 
 Treat its current numbers as a floor, not a measurement. Making it genuinely
 un-killable — more dedicated menders rather than more miners — is the obvious

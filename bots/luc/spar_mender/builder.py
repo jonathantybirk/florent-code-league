@@ -421,8 +421,11 @@ def _run(p, ct):
     # healing saves; this Builder is already at the Core, so the alternative use
     # of its turn is a Launcher, not a march. What is dropped is the FORTIFY
     # restriction and the 200-HP wait, neither of which survives the reason.
-    if (p.is_launcher_builder
-            and _chebyshev(tuple(ct.get_position()), p.core) <= MENDER_LEASH):
+    # FIXTURE: any Builder near home mends, not just the ring Builder. This is
+    # the whole point of spar_mender -- the opponents that beat us on the live
+    # ladder hold their Core at full against a real siege, and one mender
+    # restoring 4 HP a round cannot do that.
+    if _chebyshev(tuple(ct.get_position()), p.core) <= MENDER_LEASH:
         if GUARD_HEALS_ON_ANY_DAMAGE:
             worth_mending = bool(alarm) or _core_is_hurt(p, ct)
         else:
