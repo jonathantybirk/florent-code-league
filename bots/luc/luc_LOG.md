@@ -349,3 +349,18 @@ from round 4) is a separate unaddressed failure mode.
   is joinable (head-on check still guards direction), and an unroutable-but-wanted deposit
   becomes a scout target instead of an idle round. Panel vs shr/snotra/mimir/vidar running
   (`gefn_run1`).
+
+## Iteration 19 — 2026-08-08 ~14:10
+
+- **gefn panel: 24–18 shr (day's best vs flagship), 21–21 snotra, 25–17 mimir, 34–8 vidar
+  (0.810, day's best), total 0.619.** The two agents' fixes stack cleanly. Committed
+  (`gefn`), submission pause holds.
+- The harvester mystery narrows again: even in *won* long games gefn holds median 2
+  Harvesters (max 3) against a cap of 6 and an open map. Not survivorship, not the fence,
+  not the caps, not miner count — the serial task pipeline itself stops after ~2 trunks
+  per miner. Next dig: what a miner does after its second `_done` (suspects: the
+  harass-phase switch at `network_load >= cap` with per-builder load counting joined
+  trunks wrongly, `_has_unclaimed_ore` vs the 2-slot claim system, or the patrol loop
+  eating rounds).
+- Farm: flagship is shr@f1f2bda again; churn over. Team ~1703, rank 17. My builds' volume
+  rounds still queued.
