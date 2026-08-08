@@ -3649,3 +3649,69 @@ the economy experiments against *that*, rather than to assume the reversal.
 Replays kept in the scratchpad; the decode path is
 `tools/pantheon_analysis/decode.py` + `entity_kind`, and `placeEntity` carries
 `entity.team`, so composition per team is a ten-line tally.
+
+## Iteration 65 — the profile confirmed across the cluster, and why we cannot copy it
+
+**The macro profile is not one team's quirk.** Downloaded three more matches
+(Besvikomat 0-5, Big O 1-4, I Stone 1-4) — 20 games across four opponents:
+
+| | builders | harvesters | conveyors | gunners | launchers |
+|---|---|---|---|---|---|
+| **us** | 4.6 | **2.7** | 24.3 | 22.7 | **2.0** |
+| Pivot | 10.0 | 7.6 | 39.8 | 11.6 | 0.0 |
+| Besvikomat | 13.4 | 6.8 | 59.4 | **82.4** | 0.8 |
+| Big O | 13.6 | 6.0 | 34.2 | 3.6 | 0.0 |
+| I Stone | 8.6 | 4.4 | 25.2 | **1.6** | 0.0 |
+
+Gunner counts span **1.6 to 82.4** — turrets are not what these teams agree on.
+They agree on **2-3x our Builders, ~2x our Harvesters, and zero Launchers**.
+We are the only team on this list that builds Launchers at all.
+
+**`iduna`** turned the Launcher ring off. Launchers only fell 2.4 → 1.9,
+because most of ours are not the ring: they are `_build_escape_launcher`, the
+pathing ferry. On-pool it was level with `vili` (0.514 head to head), off-pool
+slightly behind (0.452 mean). Not shipped — it fails the both-pools rule, and
+it did not test what I meant it to.
+
+**Then the important one. I tried to build a fixture that plays the live
+profile, and our codebase cannot produce it.**
+
+`spar_macro`: expansion from round 8 instead of 120, replacement cooldown 4
+instead of 12, Builder cap 14 instead of 9, `LATE_BUILDERS_MINE = True`, ring
+off. Result against the live target:
+
+| | spar_macro | live |
+|---|---|---|
+| Builders | 5.76 | 10.0 |
+| **Harvesters** | **1.61** | **7.6** |
+| conveyors | 14.50 | 39.8 |
+| Launchers | 2.36 | 0.0 |
+
+Builders nearly doubled and **Harvesters did not move at all** — 1.61 against
+`vili`'s 1.50. The constants are not the binding constraint.
+
+**Where it actually breaks.** Instrumented `_pick` (deposit selection) and the
+Harvester build:
+
+    PICK calls by builder index:  idx=0: 2   idx=3: 44   idx=4: 3
+    HARV built: 1, round 14
+
+The expansion Builders **spawn, re-run deposit selection every round, and never
+commit**. One Builder called `_pick` forty-four times in a game that produced a
+single Harvester. Whatever `_pick` hands back for the second and later miners,
+they never convert it into a Harvester.
+
+**That is the real gap to the top of the ladder, and it is a defect, not a
+tuning choice.** It also finally explains the whole "2.3-Harvester ceiling"
+thread: `sif` forced late Builders to mine and Harvesters did not move;
+`saga` added an opening miner and got 2.33; `spar_macro` doubled the Builders
+and got 1.61. Three different approaches, one blocker — miners past the first
+cannot turn a deposit into a Harvester.
+
+**Next candidate is therefore specified rather than guessed:** find why `_pick`
+does not commit for builder_index >= 1 and fix that. If it lands, the economy
+gap to Pivot closes by construction rather than by constant-twiddling.
+
+`spar_macro` deleted rather than committed — a fixture that does not reproduce
+the profile is worse than none, which is the mistake `spar_sentinel` already
+made once tonight.
