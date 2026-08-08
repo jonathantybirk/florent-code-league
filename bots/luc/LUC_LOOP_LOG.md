@@ -5956,3 +5956,44 @@ finding about the instrument.
 
 **Queue now:** `vili` (5 rounds left), `freyja`, `lofn`, `hlin`, `nanna`,
 `b61aaac`, `byggvir`, `mani`.
+
+## Iteration 122 — the first live verdict, and my generated maps were right after all
+
+`bifrost` and `hoenir` have completed their six rounds. Live records, all
+opponents, with the median rank of the opponents each actually faced:
+
+| build | games | live win rate | median opp rank |
+|---|---|---|---|
+| `steward@e55aab5` | 1425 | **0.581 ±0.026** | **10** |
+| `steward_hardened_reinforced@f1f2bda` | 1930 | 0.560 ±0.022 | 15 |
+| `snotra_h@6951e03` | 260 | 0.554 ±0.060 | 14 |
+| `steward_hardened_reinforced@366cd1b` | 1300 | 0.549 ±0.027 | 17 |
+| **`bifrost@a29403f`** | **150** | **0.533 ±0.080** | 17 |
+| **`hoenir@1e5de25`** | **150** | **0.507 ±0.080** | 18 |
+| `vili@419bf08` | 25 | 0.600 ±0.192 | 22 |
+
+**Tonight's builds are not improvements.** `bifrost` and `hoenir` sit below every
+established build despite facing *easier* opponents — median rank 17-18 against
+`e55aab5`'s 10. Intervals overlap, so this is not proof, but the direction is
+consistent and the opponent mix works against them rather than for them.
+
+**And that vindicates the generated-map instrument, for these builds.** It gave
+`bifrost` 0.512 and `hoenir` 0.483 against the flagship; live they read 0.533
+and 0.507 against a field. Both said "no improvement", and the on-pool panel that
+said 0.610 and 0.633 was the one that lied.
+
+**So the instrument is not uniformly wrong — it was wrong about `e55aab5`
+specifically**, and I over-generalised in iterations 115-120 from a single
+spectacular failure to "my maps cannot measure anything that pays late". The
+honest version: the generated maps track live results for most builds and were
+29 points wrong for one, and I do not know which class a new build falls into
+until the ladder says.
+
+**A second correction to iteration 114.** I claimed `e55aab5`'s estimate came
+from a weak-opponent draw, then retracted that in 115 as an artifact of my tool's
+filter. It is worse than neutral: **`e55aab5` has the hardest opponent mix of any
+build we own**, median rank 10, and the best record anyway. Every reading I have
+taken of that build has been wrong in the direction of underrating it.
+
+Queue: `vili` is mid-run at 25 games, then `freyja`, `lofn`, `hlin`, `nanna`,
+`b61aaac`, `byggvir`, `mani`.
