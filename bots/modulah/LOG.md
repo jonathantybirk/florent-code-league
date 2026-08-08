@@ -138,6 +138,19 @@ victory against steward — outlast and out-mine, not out-fight — and repair i
 what let a line survive long enough to do it. Worth rebuilding properly on top
 of the 6-win base rather than in place of it.
 
+### Three barrier changes, three byte-identical results
+
+Offering the screen to guards, and separately widening it to seal any empty
+doorstep tile rather than only tiles already under an enemy ray, both returned
+results **identical to the decimal** (1291.56 collected, odin 5/30, vidar
+1/30). Identical output is how you tell a branch never executes, as opposed to
+executing and not helping.
+
+The screen is reached only from the mender role, which exists only once `dhp`
+is negative, and by then the free tiles beside a mender are rarely both legal
+and useful. It places 1–3 Barriers a game and those are worth a win — but the
+path cannot be widened from where it currently sits.
+
 ### Barriers for guards too: a dead branch
 
 Steward's note cites Pantheon (#2 on the ladder, 31 of 33 barrier actions
