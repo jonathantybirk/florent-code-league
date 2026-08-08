@@ -20,7 +20,8 @@ import comms
 import placement
 import roles
 import situation
-from geometry import CARDINALS, building_at, entity_type_of, in_bounds
+from geometry import (CARDINALS, building_at, entity_type_of, enemy_core_guess,
+                      in_bounds, rear_corner)
 
 # Keep this much banked so a cut route can be repaired. Turrets are worth
 # more than a fourth Harvester, but neither is worth being unable to rebuild.
@@ -34,6 +35,7 @@ class BuilderBrain:
         self.harvester: Position | None = None
         self.trail: Position | None = None
         self._heading = None
+        self._rear_corner = None
 
     def run(self, ct: Controller) -> None:
         r = ct.get_current_round()
@@ -331,7 +333,7 @@ class BuilderBrain:
                         return comms.ACT_BUILD_HARVESTER
                 except GameError:
                     continue
-            target = sit.nearest_free_ore(pos)
+            target = sit.nearest_free_ore(pos, self._rear(ct, sit))
             if target is not None:
                 if self.commit is None or self.commit.kind != "ore":
                     self.commit = situation.Commitment("ore", target, r)
@@ -371,6 +373,14 @@ class BuilderBrain:
         return comms.ACT_BLOCKED
 
     # --- helpers -------------------------------------------------------------
+
+    def _rear(self, ct: Controller, sit) -> Position | None:
+        """Cached rear footprint corner -- the rotation-safe anchor."""
+        if self._rear_corner is None:
+            foot = self._footprint(ct, sit)
+            if foot:
+                self._rear_corner = rear_corner(foot, enemy_core_guess(ct, foot))
+        return self._rear_corner
 
     def _footprint(self, ct: Controller, sit) -> list[Position]:
         core = sit.core_tile or self._find_core(ct)
