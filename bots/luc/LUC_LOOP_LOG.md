@@ -2723,3 +2723,50 @@ against us we laid 188 to Flotte's 60 and lost every game. Belt is not the
 problem and belt volume is not the answer; what the winners have is belt
 *serving* a large economy, which is the thing nine interventions have failed to
 give us.
+
+---
+
+## Iteration 46 — copying the ladder's opening is catastrophic
+
+Decoding builder spawn rounds from the sporks sweep:
+
+```
+SPORKS g2: builders=13  spawns=[0,1,2,3,4,92]   harv=25, one every 9 rounds
+adgato g2: builders= 7  spawns=[0,1,2,3,4,29]   harv= 4
+```
+
+**Both sides spawn five Builders at rounds 0-4.** We spawn three and reach a
+fourth only through an expansion gate that does not open until round 60+. The
+Core holds 380 Ti on round 0 and five Builders cost about 223 with scaling, so
+it is affordable — and it is what the rank-1 bot and its opponent both do.
+
+`njord2` spawns five inside the first eight rounds.
+
+| njord2 vs | | | its Harvesters | its Builders |
+|---|---|---|---|---|
+| `bifrost` (parent) | 8/42 | **0.190** | 1.07 | 5.71 |
+| `snotra_h` | 8/42 | **0.190** | 1.12 | 5.05 |
+| `mimir` | 11/42 | 0.262 | 1.12 | 5.14 |
+| **mean** | 52/210 | **0.248**, floor 0.190 | | |
+
+Catastrophic — and the Harvester column is the explanation. Five Builders put
+the team at roughly scale 200, so a 20 Ti Harvester costs 40, and Harvesters
+built **fall from 2.3 to 1.1**. The opening bank pays for the bodies and then
+nothing else is affordable all game. More Builders bought *less* economy.
+
+That is now the fourth distinct way of copying sporks that has failed:
+
+| copied | result |
+|---|---|
+| its turret composition (`alfr`) | 0.476 |
+| its forward Sentinel seat, more of it (`skirnir`) | 0.419 |
+| its economy headroom and two miners (`spork`, live) | 0.458 vs flagship 0.520 |
+| **its opening five Builders (`njord2`)** | **0.248** |
+
+The one thing that transferred was a single Sentinel seated forward
+(`vidarr`, 0.557), and even that was non-monotone. Everything about this bot's
+composition is at a local optimum that its cost-scale economy enforces: any
+extra body is +20% on every later price, and this chassis converts titanium into
+value too slowly to carry that tax. sporks can carry thirteen Builders because
+its economy is large; ours cannot get large because every attempt to grow it
+costs more scale than it returns.
