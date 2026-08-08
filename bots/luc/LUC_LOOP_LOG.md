@@ -5042,3 +5042,26 @@ eight for `lofn`/`hlin`/`nanna` (40 matches, 200 games) — clear the first two
 comfortably, since the farm's policy picks opponents near our own rank
 (this round: #13, #14, #16, #21, #23). That was luck rather than design; I chose
 those round counts for sample size, not coverage.
+
+## Iteration 98 — verifying the queue will not waste its rounds
+
+`bifrost` is under an hour from its first live games, and each queued build gets
+6-8 rounds of the farm's budget. A mistyped hash or a build that does not load
+from *its commit* — rather than from my working tree — would burn that silently.
+Never checked it; checking it now.
+
+**All eight queued commits resolve, contain `bots/luc/<name>/main.py`, and are
+ancestors of `origin/x/luc`:**
+
+    bifrost@a29403f  hoenir@1e5de25  vili@419bf08  freyja@6a8a5f7
+    lofn@86287ec     hlin@a72a7dc    nanna@9a11215
+    steward_hardened_reinforced@b61aaac
+
+Stronger check on the three that matter most: extracted `lofn`, `hlin` and
+`nanna` from their commits with `git archive` and ran each against `vili` on two
+maps. Eleven Python files each, **zero crash or `PLAN_FAILED` lines, both games
+completed.** What the farm will check out is what I measured.
+
+That is the whole of what I can usefully do while the queue drains. Both
+investigation lines are closed, the instrument for reading the results is built
+and commit-exact, and the builds are verified deliverable.
