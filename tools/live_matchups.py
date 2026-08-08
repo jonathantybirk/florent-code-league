@@ -161,8 +161,30 @@ def print_compare(feed: dict, names: list[str]) -> None:
 
     shared = set.intersection(*(set(a) for a in per.values()))
     shared = {o for o in shared if all(per[n][o][1] >= 4 for n in per)}
-    if not shared:
-        print("  no opponent has been faced by every build yet")
+    if len(shared) < 3:
+        # The farm picks opponents per round, so an intersection over several
+        # builds collapses fast -- five builds shared one opponent on
+        # 2026-08-09. Fall back to the per-opponent detail, which still shows
+        # the pattern, instead of printing nothing useful.
+        print(f"  only {len(shared)} shared opponent(s); showing per-opponent detail\n")
+        opponents = sorted({o for a in per.values() for o in a})
+        names = list(per)
+        print("  " + "opponent".ljust(24) + "".join(n[:14].rjust(16) for n in names))
+        for opp in opponents:
+            cells = []
+            for n in names:
+                w, g = per[n][opp]
+                cells.append((f"{w}/{g} {w/g:.2f}" if g else "-").rjust(16))
+            print("  " + opp[:24].ljust(24) + "".join(cells))
+        print()
+        for n in names:
+            w = sum(per[n][o][0] for o in per[n])
+            g = sum(per[n][o][1] for o in per[n])
+            if g:
+                half = 1.96 * math.sqrt((w / g) * (1 - w / g) / g)
+                print(f"  {labels[n]:34s} all opponents {w:5d}/{g:<6d} {w/g:.3f} +-{half:.3f}")
+        print("\nPer-opponent records against different fields are not directly")
+        print("comparable; read the columns, not the totals.")
         return
 
     print(f"shared opponents ({len(shared)}): {', '.join(sorted(shared))}\n")
