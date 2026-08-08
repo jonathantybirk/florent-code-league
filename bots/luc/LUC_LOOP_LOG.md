@@ -2850,3 +2850,79 @@ The reason is the ordering: once `hoenir` has stopped buying the early turrets,
 there are few idle ones left to retire, and the refund it would recover is one
 this build never spent. Avoiding the multiplier and recovering it are the same
 lever pulled twice, and the first pull takes all of it.
+
+## Iteration 49 — the ACTIVE:[None] scare, and where my builds actually went
+
+Two findings, one of them about the loop rather than the bots.
+
+**No outage.** `live.json` showed `ACTIVE: [None]`, which is also how a real
+failure looks (`farm.py` logs "COULD NOT RESTORE FLAGSHIP"). `uv run fcode
+status` says otherwise: **v34 `steward_hardened_reinforced f1f2bda (farm)`,
+rank 18/112, 1700, last 10 4W 6L**. The feed's `is_active` was stale. Checked
+before reporting, which was the right order.
+
+**The queue is the bottleneck, not the builds.** Chasing why `bifrost` and
+`hoenir` still had no live games, I read `~/projects/ladderfarm/state.json` and
+found an empty queue and no `test_next_done` — which looked like nothing was
+consuming my config. Wrong read: that file was last written **2026-08-07
+03:52**, and there is no farm timer on this machine. The farm moved to the
+desktop, like the evaluator did (there is a `sync.sh.from-pc-20260807` sitting
+in the directory). The config *is* reaching it — my queue commits are on
+`origin/x/ladderfarm`.
+
+The real state on the PC (round 324, written 18:05):
+
+    vor(2) spork(5) aegis(2) ostara(5) aegis(2) vidarr(5) aegis(2) bifrost(6) hoenir(6)
+
+35 rounds at ~11 min each. `bifrost` starts in about four hours and `hoenir` in
+about six, and **everything ahead of them is a build this session already
+refuted locally**. The two builds with an actual mechanism behind them are
+queued behind seven that are known-worse, purely because the queue is
+append-only and they were built later.
+
+I tried to reorder it — PAUSE the farm, reorder, unpause, with a trap to
+guarantee the unpause — and the permission classifier blocked the write to
+remote runtime state. Not worked around. `vili` is queued the sanctioned way,
+at the back, `vili@419bf08:6`.
+
+Second farm change now blocked and waiting on Lucas. Both are about the same
+thing — the farm spends its budget in the wrong order:
+
+1. the promotion-churn fix (`best_est - best_half > incumbent_elo`, and a
+   `min_games` that counts matches rather than games);
+2. reordering the queue so the best local build is tested first.
+
+**Lesson.** I spent iterations 40-48 measuring builds locally and calling them
+shipped. Shipped means *queued*, and queued means eighth in line. Local
+throughput stopped being the constraint some hours ago and I did not check the
+thing downstream of it.
+
+## Iteration 49b — vili: the Launcher ring pays the same tax
+
+Straight continuation of `hoenir`'s axis, and the third win on it.
+
+Every build raises `get_scale_percent` permanently; a Harvester costs 20 Ti at
+the start and 48 Ti at scale 243, which a normal opening reaches by round 30.
+`hoenir` held the first Gunner until two Harvesters existed. The Launcher ring
+is +10 each, is laid in the same opening, and was untouched. `vili` gates
+`_run_launcher_ring` on the identical test.
+
+| vs | | | harvesters |
+|---|---|---|---|
+| `hoenir` (parent) | 23/42 | 0.548 | 1.64 |
+| `bifrost` | 26/42 | 0.619 | 1.69 |
+| `steward_hardened_reinforced` | 29/42 | 0.690 | 2.05 |
+| `mimir` | 30/42 | 0.714 | 2.02 |
+| `spar_sniper` | 30/42 | 0.714 | 2.02 |
+| **mean** | 138/210 | **0.657** | floor **0.548** |
+
+Best mean *and* best floor the lineage has recorded (`hoenir` 0.633/0.524). The
+predicted metric moved: Harvesters built 1.38-1.90 → 1.64-2.05.
+
+It does **not** break the 2.3-Harvester ceiling that has held all session
+against a map ceiling near 6. Three builds have now improved the opening by
+removing things that made the economy more expensive, and none has raised the
+ceiling itself. Whatever caps Harvesters is still unexplained.
+
+Head-to-head against its parent is 0.6 sd — suggestive, not settled. CPU 2,693
+us worst of 10,000, zero over, deterministic across three runs.
