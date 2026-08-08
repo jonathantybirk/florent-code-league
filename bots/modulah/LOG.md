@@ -138,6 +138,25 @@ victory against steward — outlast and out-mine, not out-fight — and repair i
 what let a line survive long enough to do it. Worth rebuilding properly on top
 of the 6-win base rather than in place of it.
 
+### Writing off stuck Builders
+
+Steward's `WRITE_OFF_STUCK_BUILDERS`, and the reasoning is the part that
+transfers: a walled-in Builder keeps its **+20% cost scale forever** while
+contributing nothing, so every future build is dearer because of a unit that
+cannot act. Self-destructing refunds that scale and lets the Core respawn one
+somewhere it can reach the map. Not hypothetical here — `worst_stall` was
+29–48 rounds, so a Builder really does spend a third of a game stuck.
+
+| | before | write-off |
+|---|---|---|
+| wins | 6 | 6 |
+| **collected** | 1208 | **1291** (best recorded) |
+| odin | 4/30 | **5/30** |
+| vidar | 2/29 | 1/30 |
+
+Equal wins, best economy recorded, and it removes a permanent tax rather than
+trading one thing for another. Kept.
+
 ### Network repair, all three variants measured
 
 | variant | wins | collected | steward | why it fails |
@@ -484,7 +503,8 @@ repeat run reproduced 823.33 collected to the decimal).
 | **+ connectivity broadcast** | 568 | 6/45 | 2 |
 | **+ blitz doctrine** | 983 | 5/45 | 4 |
 | **+ doorstep coverage** | 1197 | 6/45 | 5 |
-| **+ steward's ammo policy (kept)** | **1208** | 5/45 | **6** |
+| **+ steward's ammo policy** | 1208 | 5/45 | **6** |
+| **+ write off stuck Builders (kept)** | **1291** | 5/45 | **6** |
 | blitz threshold widened to 9 | 665 | 3/45 | 3 |
 | siege role (kept, off by default) | 809 | 7/45 | 1 |
 | turret map, all 8 facings (bug) | 256 | 1/45 | 0 |

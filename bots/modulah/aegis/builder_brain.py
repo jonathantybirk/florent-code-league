@@ -28,6 +28,11 @@ from geometry import (CARDINALS, COMPASS, building_at, entity_type_of,
 # more than a fourth Harvester, but neither is worth being unable to rebuild.
 BUILD_RESERVE = 40
 
+# Rounds a Builder may sit on the same tile before it is written off. It keeps
+# its +20% cost scale while stuck, so a walled-in unit taxes every future
+# build; steward uses 40 for the same reason.
+STUCK_ROUNDS = 40
+
 # Round from which a guard will put up the team's one Launcher.
 LAUNCHER_FROM_ROUND = 25
 
@@ -48,6 +53,8 @@ class BuilderBrain:
         self._core_anchor = None
         self._danger = set()
         self._opened = False
+        self._stuck_since = None
+        self._last_pos = None
         self._laid = set()
         self._blitz_flag = None
         self._intel_join = None
@@ -69,6 +76,8 @@ class BuilderBrain:
             if self.commit.stalled(r) or not self.commit.still_valid(ct, sit):
                 self.commit = None
 
+        if self._write_off_if_stuck(ct, r):
+            return
         action = self._act(ct, sit, intel, role, r)
 
         ct.write_store(
@@ -79,6 +88,36 @@ class BuilderBrain:
                 if self.commit and self.commit.target else None,
             ),
         )
+
+    def _write_off_if_stuck(self, ct: Controller, r: int) -> bool:
+        """Self-destruct a Builder that has been unable to move for too long.
+
+        Steward's WRITE_OFF_STUCK_BUILDERS, and its reasoning is the part that
+        matters: a walled-in Builder keeps its +20% cost scale forever while
+        contributing nothing, so every future build is more expensive because
+        of a unit that cannot act. Destroying it refunds that scale and lets
+        the Core respawn one somewhere it can reach the map.
+
+        Measured here as worst_stall of 29-48 rounds, so this is not
+        hypothetical -- a Builder really does spend a third of a game stuck.
+        """
+        pos = ct.get_position()
+        here = (pos.x, pos.y)
+        if here != self._last_pos:
+            self._last_pos = here
+            self._stuck_since = r
+            return False
+        if self._stuck_since is None:
+            self._stuck_since = r
+            return False
+        if r - self._stuck_since < STUCK_ROUNDS:
+            return False
+        try:
+            ct.self_destruct()
+            return True
+        except GameError:
+            self._stuck_since = r  # cannot, so stop retrying every round
+            return False
 
     # --- team picture --------------------------------------------------------
 
