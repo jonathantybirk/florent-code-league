@@ -1879,3 +1879,59 @@ raised caps, shared belts twice, and better deposit ordering — have moved 1.8 
 2.3 against a ceiling of about 6, and none of the structural ones moved it at
 all. Whatever holds us at 2.3 is not permission, not the network, and not the
 ordering.
+
+---
+
+## Iteration 26 — where Builder turns actually go, and a ceiling that will not move
+
+### The profile
+
+Counters per Builder, 300 rounds on aurora against mimir. (`_escape_encirclement`
+and `_leave_the_firing_line` are per-round guards, not work — discount them.)
+
+| Builder | what it does |
+|---|---|
+| id=5, miner | **`_repair_network` on 299 of 300 rounds**; `_prelay` 50; **`_pick` 3** |
+| id=13, miner | `_heal_core` 167, `_repair_network` 126, `_explore` 39, `_pick` 35 |
+| id=9, attacker | `_rush` 298, `_harass` 231 |
+
+Our miners spend their lives **re-laying belt and mending**, not claiming
+deposits. `_broken_network_tiles` is "planned tiles now visibly empty", and the
+opponent runs `CUT_ENEMY_BELT` — so the line is cut faster than it is relaid and
+the miner never returns to `_pick`. The "rented damage" trade the codebase
+describes, pointed at us.
+
+Note this also required per-Builder instrumentation: units do not share globals,
+so a module counter read from the Core reports `total=1`.
+
+### Two more refutations
+
+`fjolnir` (expansion reserve 60 → 20, from round 60) produced **7.4 Builders
+against ~4.5** and **2.14–2.31 Harvesters** — unchanged. `nanna`
+(`REPAIR_ATTEMPT_LIMIT` 3 → 1, abandon contested belt fast) scores 0.500 against
+its parent with Harvesters at **2.29** — unchanged. Both deleted.
+
+### The ceiling
+
+Seven interventions have now been aimed at the 2.3-Harvester economy:
+
+| intervention | Harvesters after |
+|---|---|
+| second miner (`gefjon`) | 2.3 |
+| raised caps (`spork`) | 2.3 |
+| shared belt network (`sindri`, `gna`) | 2.4 |
+| deposit ordering (`snotra`) | 1.8 → 2.3 |
+| more Builders, cheaper (`fjolnir`, 7.4 of them) | 2.3 |
+| abandon contested belt (`nanna`) | 2.3 |
+
+Against a map ceiling near six a side. **Nothing moves it**, including giving the
+economy three extra Builders. The arithmetic that does fit: a deposit costs a
+miner roughly a hundred rounds of walking, belt-laying and building, and the
+median game here is ~240 rounds. Two miners × ~1.2 completions is 2.3. The
+constraint is Builder-turns per deposit, and every lever tried so far adds
+Builders or permission rather than making a deposit cheaper to claim.
+
+What would actually move it is a shorter path from Builder to delivered ore —
+fewer belt tiles per Harvester, or deposits chosen for total build cost rather
+than distance. `snotra`'s ordering was the one thing that ever moved the number,
+and it moved it by choosing nearer-to-reach deposits, which is the same lever.
