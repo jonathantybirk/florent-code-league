@@ -111,6 +111,7 @@ from constants import (BELT_SCORE_CANDIDATES, BELT_TILE_WEIGHT,
     SIEGE_WALL_RADIUS,
     SIEGE_WALL_RESERVE,
     SIEGE_WALL_ROUND,
+    WALLIN_TRIES_PER_TILE,
     GAP_SENTINEL,
     SIEGE_SENTINEL_TARGET,
     ECON_EXPAND_BUILDERS,
@@ -3184,12 +3185,26 @@ def _wall_in_enemy(p, ct, enemy_core):
         p.wallin_gap = gap
         p.wallin_targets = [t for t in ring if t != gap]
         p.wallin_done = set()
+        p.wallin_tries = {}
     if not p.wallin_targets:
         return False
-    remaining = [t for t in p.wallin_targets if t not in p.wallin_done]
-    if (len(p.wallin_done) >= max(4, len(p.wallin_targets) * 6 // 10)
-            and _gap_sentinel(p, ct, enemy_core)):
+    # v2: the door Sentinel arms FIRST. Its seat sits at range from the gap
+    # — usually on our side of their base and actually reachable — and the
+    # sniping value never depended on the finished ring. v1 gated it on 60%
+    # wall and built 0 barriers in 126 games: the walker could not path into
+    # contested ground and paced outside the base forever.
+    if _gap_sentinel(p, ct, enemy_core):
         return True
+    remaining = [t for t in p.wallin_targets
+                 if t not in p.wallin_done
+                 and p.wallin_tries.get(t, 0) < WALLIN_TRIES_PER_TILE]
+    if not remaining:
+        return False
+    me = tuple(ct.get_position())
+    # Nearest reachable tile first, and every approach round is charged to
+    # the tile: a tile that eats its budget without being reached is skipped
+    # for good rather than pacing the Builder outside the base forever.
+    remaining.sort(key=lambda t: (max(abs(t[0] - me[0]), abs(t[1] - me[1])), t))
     for key in remaining:
         target = Position(*key)
         if ct.is_in_vision(target) and ct.get_tile_building_id(target) is not None:
@@ -3199,15 +3214,20 @@ def _wall_in_enemy(p, ct, enemy_core):
         if ct.get_global_resources() < cost + SIEGE_WALL_RESERVE:
             # The wall waits for the economy, never the other way round.
             return False
-        me = tuple(ct.get_position())
+        p.wallin_tries[key] = p.wallin_tries.get(key, 0) + 1
         if _cardinal_distance(me, key) != 1:
-            _move_cardinal_adjacent(p, ct, key)
+            if max(abs(key[0] - me[0]), abs(key[1] - me[1])) > 2:
+                if not _step(p, ct, target, True):
+                    _move_cardinal_adjacent(p, ct, key)
+            else:
+                _move_cardinal_adjacent(p, ct, key)
             return True
         if ct.can_build_barrier(target):
             ct.build_barrier(target)
             _mark_progress(p, ct, "walled in enemy base", key)
             p.solids.add(key)
             p.wallin_done.add(key)
+            p.wallin_tries.pop(key, None)
         elif _build_failure(p, ct, key, "wall-in barrier", cost):
             p.wallin_done.add(key)
         return True
