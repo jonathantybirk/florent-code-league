@@ -465,3 +465,88 @@ Read `live.json` for gefjon. If the generated-map result transfers, the second
 miner is worth more than either of the first two iterations' changes; if the
 pool result transfers instead, it is a wash and the disagreement between panels
 is the thing to understand.
+
+---
+
+## Iteration 4 — where the economy ceiling actually is
+
+### Online
+
+Team **rank 12–13 of 109, rating 1772** (session start: 15 at 1748).
+
+| build | matches | elo | interval |
+|---|---|---|---|
+| `gefjon@f66a427` | 5 | **1850** | [1731, 2002] |
+| `freyr@c2c0d3d` (other agent) | 10 | 1758 | [1669, 1849] |
+| `steward_relent@7ed1acc` | 10 | 1749 | [1631, 1869] |
+| `vali@d123262` (other agent) | 10 | 1622 | — |
+| flagship `f1f2bda` | 330 | 1841 | [1804, 1875] |
+
+gefjon leads the challengers after one round, but this is exactly the number
+that fooled me last iteration — relent read 1842 at five games and 1740 at ten.
+Two rounds still queued. Not a result yet.
+
+### Two miners is the operating point, not three
+
+`gefjon_m3` (three miners, `LAUNCHER_BUILDER_INDEX` 4): **9 wins of 24** against
+gefjon's 10 — indistinguishable — with longer games (410 rounds vs 297) and
+worse CPU (4,341 us vs 2,426). Harvesters built identical at 1.75, though more
+survive late (1.56 @300 vs 1.33).
+
+So the gain is in the step from **one to two**, and it saturates there. Deleted
+rather than pushed; the bracket is the useful part.
+
+### The real ceiling: `_route`, not ore knowledge and not permission
+
+Jackpot is the clean case, and it refutes two of my own earlier candidates. It
+is an atlas map, so every deposit is known; we took zero Core damage that game,
+so there is no alarm; `load=2` against `cap=8`, so permission is spare — and we
+held **exactly 2 Harvesters for all 1000 rounds** while Besvikomat went to 9.
+
+Instrumenting `_pick` on a long jackpot game says why, and it is the same line
+every time:
+
+```
+PICK r=200 idx=1 ores=14 claimed=4 load=1 cap=8 avail=10
+   REJECT ore=(0,13) route=None travel=6
+   REJECT ore=(1,4)  route=None travel=3
+   REJECT ore=(0,14) route=None travel=7
+   REJECT ore=(10,15) route=None travel=7
+```
+
+**Every candidate fails on `route=None`, while `travel` succeeds.** The Builder
+can walk to these deposits; it cannot find a conveyor route to them. Fourteen
+known deposits, ten available, and the belt planner rejects all of them.
+
+I suspected the vision rule at `_route`'s line 909 (`if nxt not in p.seen`) —
+the atlas supplies ore positions without ever having observed the ground
+between, which would be a neat explanation. **It is wrong**: re-running the
+search with the vision rule disabled still finds no route, on 12 of 12
+candidates (`unseen_only=False`). The blockage is the `blocked` set itself —
+`p.walls | p.foot | (p.ores - {ore}) | p.solids | rejected sites | launcher
+hazards | non-joinable conveyors`.
+
+The suspicious term is `(p.ores - {ore})`: **every other deposit is an obstacle
+to routing**, so deposits in a cluster can enclose one another and become
+permanently unbeltable. On jackpot that appears to be most of the map.
+
+Whether that term is a real rule or a self-imposed one is **unresolved**. An
+in-match probe of `can_build_conveyor` on ore tiles returned False on all four
+directions, but only for tiles that already had a harvester (`empty=False`), so
+it proves nothing; a probe restricted to genuinely empty ore never fired in 249
+rounds, because our miners are never adjacent to a free deposit. The engine is a
+compiled `.so` and does not expose the rule in strings. Settling it needs a
+purpose-built probe bot that walks to a free deposit and tries — and note that
+even if legal, a conveyor on ore would consume the deposit, so blocking it may
+be correct design after all.
+
+That is the honest state: the economy ceiling is precisely localised to
+`_route`, and the one term that would explain it is not yet proven wrong.
+
+### Next
+
+gefjon's remaining rounds. Then either the `_route` question above, or the
+cluster-level observation from the sweep — our Harvesters **peak early and
+collapse** (eider 7→2, antler 1→0) while theirs **scale late** (jackpot 2→9
+after round 300) — which is two different problems and gefjon only addresses
+the first.
