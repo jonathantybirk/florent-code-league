@@ -5485,3 +5485,37 @@ promotions.
 **One piece of luck worth recording:** the bot the churn landed on, `snotra_h`,
 is the best live build we have by shared-opponent record (0.614 ±0.114). The
 system is right by accident, having been wrong by design ten minutes earlier.
+
+## Iteration 109 — lofn is level with the bot that is live, and the pool is bimodal
+
+    lofn vs snotra_h@6951e03 (live right now): 997/2000 = 0.4985 +-0.0219
+
+Level, at ±2.2 points. The 1,000-map picture, complete:
+
+| comparison | result |
+|---|---|
+| `lofn` vs `snotra_h` (live now) | **0.4985 ±0.0219** |
+| `lofn` vs `steward_hardened_reinforced` | 0.4952 ±0.0205 |
+| `lofn` vs `steward@e55aab5` | **0.6755 (+16.8 sd)** |
+| `steward@e55aab5` vs `steward_hardened_reinforced` | **0.2860 (-15.0 sd)** |
+
+**Our promotable pool is bimodal, and that is the finding.** Three builds —
+`lofn`, `snotra_h`, `steward_hardened_reinforced` — are mutually
+indistinguishable at ±2 points, and their differences are the ones I have spent
+the session chasing. A fourth, `steward@e55aab5`, is **fifteen standard
+deviations worse** than all of them and sat on the live ladder for ten minutes
+this evening because the promotion rule compared point estimates.
+
+So the ranking problem is not "which of our good builds is best" — measured
+properly, none of them is. It is **"never promote the bad one"**, and that is a
+much easier problem: a margin test would solve it, and none of my bot work
+would.
+
+**That reframes the whole night.** I spent it hunting a few points of win rate
+between builds that are within 0.5 points of each other, while the system that
+chooses between them can select a build that loses 71% of the time. The
+expected value of the promotion-margin fix is larger than everything in
+`bots/luc/` I touched tonight, and I could not apply it.
+
+`lofn` stays queued. It is level with what is live, its mechanism is confirmed,
+and the ladder's held-out pool is the only place left where it might differ.
