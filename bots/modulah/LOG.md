@@ -57,6 +57,20 @@ build it is the largest single gain of the session:
 | titanium collected | 1068 | **1235** |
 | harvesters @300 | 4.20 | 4.00 |
 
+Swept further, 2 is worse on wins despite being better on everything else:
+
+| floor | wins | collected | survived | core hp end |
+|---|---|---|---|---|
+| 7 | 6/45 | 1068 | 4/45 | 27 |
+| **4** | **8/45** | 1235 | 4/45 | 23 |
+| 2 | 6/45 | **1304** | **9/45** | **81** |
+
+Floor 2 survives more than twice as often and ends with three times the core
+hp, and wins less. Surviving does not convert against odin because odin
+out-collects us in exactly those long games — so the tiebreak still goes to
+them. Four is the optimum, and the shape says the remaining wins are not
+hiding behind survival.
+
 That is the third result in this log to reverse once the build underneath it
 was corrected (after "more Harvesters collects less" and the spawn rate). The
 pattern is now thoroughly evidenced: **a negative result is only as good as
