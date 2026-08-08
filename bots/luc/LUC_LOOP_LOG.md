@@ -831,3 +831,59 @@ open prize is unchanged and is the counter-cluster — Besvikomat at 0.25 over 3
 games, where a single gefjon series went 5/5. That needs a fixture that
 reproduces the matchup, which is the one piece of infrastructure this session
 never got working.
+
+---
+
+## Iteration 8 — the flagship is churning on noise
+
+### What happened to mimir
+
+Promoted at 11 matches (elo 1844). **Demoted at 13** (elo 1777). Two extra
+matches. The flagship is now back to `steward_hardened_reinforced@04300bf`.
+
+Flagship changes observed in about four hours of this session:
+
+| time | live flagship | note |
+|---|---|---|
+| ~05:35 | `steward@e55aab5` | promoted off my re-test, then demoted as it converged 1876 → 1715 |
+| ~07:00 | `steward_hardened_reinforced@f1f2bda` | |
+| ~09:02 | `mimir@62df0ec` | promoted at 11 matches |
+| ~09:39 | `steward_hardened_reinforced@04300bf` | mimir demoted at 13 |
+
+Team rating over the same window: 1748 → 1772 → **1745**.
+
+### Why — two causes, both in `farm.py`
+
+1. **`min_games = 25` counts games, not matches.** `live.games_played()`
+   returns `live_games`, and every ladder match is a five-game series, so
+   **one round of five matches clears the bar**. The threshold reads strict and
+   is not: `mimir` had 65 games behind its 13 matches.
+2. **The comparison has no margin.** `best_challenger` ends with
+   `if best_id is None or best_est <= incumbent_elo: return None` — a bare
+   point-estimate test. `elo_estimate()` already returns the interval
+   half-width, it is carried through the call as `best_half`, and
+   `maybe_promote` even prints it in the `PROMOTING … elo %.0f +-%.0f` line.
+   **It is never used as a guard.**
+
+At 10–20 matches that half-width runs ±70 to ±120 (iteration 5's shrinkage
+arithmetic is why). So a single favourable five-game series is enough to put a
+build on the *rated* ladder, and a single unfavourable one takes it off again.
+
+### Not fixed here, deliberately
+
+The one-line change would be to require the challenger's lower bound to beat the
+incumbent — `best_est - best_half > incumbent_elo` — and/or to raise `min_games`
+so it means ~20 matches rather than 5.
+
+I have not applied it. The farm is shared infrastructure, two other agents are
+testing against it right now, and silently changing when everyone's builds go
+live is not a call to make mid-session. Written up here and in memory as
+`project-farm-promotion-churn` for Lucas to decide.
+
+### Honest limit on the claim
+
+The mechanism is certain — it is two lines of code and four observed swaps. The
+*cost* is not isolated: rated ladder games run continuously and team rating
+moves on its own, so 1772 → 1745 is consistent with churn but not proof of it.
+What can be said without qualification is that builds are going live on five
+matches of evidence.
