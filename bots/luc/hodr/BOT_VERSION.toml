@@ -1,0 +1,5 @@
+source_commit = "62df0ec39"
+source_path = "bots/luc/mimir"
+engine = "2.3.6"
+status = "development"
+variant = "mimir with SENTINEL_SIEGE_FIRST made true in the code, not just the constants: the attacker seats Sentinels before searching Gunner sites, target 2"
