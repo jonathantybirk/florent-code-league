@@ -2560,3 +2560,56 @@ session that is a *defect* rather than a preference — a slot that is written a
 never cleared, disabling a mechanism the code goes to some trouble to
 implement. Every constant I tuned was already at or near its local optimum;
 the thing that moved was a piece of the bot that was silently not running.
+
+---
+
+## Iteration 42 — twelve dormant mechanisms, and dormant is not the same as broken
+
+Applying iteration 41's method properly: wrap each mechanism and count only the
+calls that **return True**, i.e. actually do something. Over 150 rounds on
+quarry, across three Builders, exactly one mechanism ever acts:
+
+```
+_opening_ferry = 5        (after the bifrost fix)
+```
+
+Zero, all game: `_cut_enemy_belt`, `_tap_enemy_harvester`,
+`_contest_enemy_logistics`, `_deny_enemy_ore`, `_counter_sentinels`,
+`_engage_with_turret`, `_patrol_core`, `_trap_enemy_builder`, `_repair_network`,
+`_build_siege_sentinel`, `_write_off`, `_harass`.
+
+### Why the sabotage half never fires
+
+`_contest_enemy_logistics` taps their Harvesters and cuts the belt feeding their
+Core — Lucas's idea, already implemented. Its gate is `saturated or
+_enemy_logistics_is_nearer`, and `network_load` is 1–2 against a cap of 6–12, so
+never saturated; the rest needs us to have *seen* their economy. The whole path
+hangs off the **economy Builder**, which never leaves our half. The **attacker**,
+measured at 1–4 tiles from their Core, never runs it. Dormant because it is
+wired to the wrong unit.
+
+### `loki` — give it to the unit that is there
+
+| loki vs | | |
+|---|---|---|
+| `bifrost` (parent) | 15/42 | **0.357** |
+| `mimir` | 17/42 | 0.405 |
+| `snotra_h` | 18/42 | 0.429 |
+| **mean** | 85/210 | **0.405**, floor 0.357 |
+
+Much worse. The attacker spends its turns tapping and cutting instead of seating
+the siege turret, and the turret is worth more. Deleted.
+
+### The synthesis worth keeping
+
+Iteration 41 awakened a dormant mechanism and gained six points; this one
+awakened a dormant mechanism and lost twenty. **Dormant is not the same as
+broken.** The ferry was dormant because a slot was never cleared — a defect,
+with the intended behaviour written down beside it. The sabotage is dormant
+because a Builder that could use it is never in the right place — a *design*
+that the measurements say is correct, since forcing it costs more than it wins.
+
+The test that separates them is not "does it fire" but "was it *meant* to fire".
+The ferry had a cooldown carefully written to schedule retries that could never
+happen. The sabotage has a gate that has simply never been true, and making it
+true is a change of plan rather than a repair.
