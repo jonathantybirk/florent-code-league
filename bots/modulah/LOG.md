@@ -128,6 +128,26 @@ Best build recorded here, and it improves every measure at once — the first
 change to do that. It also explains why so many defensive experiments read as
 no-ops: the turrets they were arguing about could not shoot.
 
+### Our turrets do kill now — and Sentinels are still the wrong answer
+
+After the doorstep fix, counting kills rather than shots:
+
+| map | enemy Gunners we destroyed | outcome |
+|---|---|---|
+| drumlin | 3 | lost at 105 |
+| eider | 3 | lost at 95 |
+| archipelago | 2 | lost at 119 |
+| saga | **0** (no turrets built) | lost at 99 |
+
+So the defence works and still loses the race: steward fields 4.4 Gunners, we
+field 2.8 and kill 3.
+
+Preferring **Sentinels** for home defence looked like the fix — reach 5 against
+their Gunner's 3, so they kill from outside return fire, and a permanent
+facing costs nothing against a building. It measured **5 wins → 2**. A Sentinel
+is 50% dearer, cannot rotate to a second target, and the doorstep seats suit
+Gunners. Reverted.
+
 ### The economy floor starves defence on some maps — but lowering it costs wins
 
 Follow-up diagnostic to the doorstep fix. On saga the GUARD role is assigned
