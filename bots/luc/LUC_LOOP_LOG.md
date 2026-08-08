@@ -4510,3 +4510,52 @@ do not have.
 
 That is the honest end of the local investigation. Nothing further here is a
 tuning question.
+
+## Iteration 85 — syn: the architectural limit was not one, and it still does not win
+
+Iteration 84 called the shared "done" set impossible: all 16 comms slots
+allocated. That was wrong in a checkable way, so I checked. **The store word is
+a full 32-bit integer** — wrote 2147483647, read it back — so 31 deposits fit in
+*one* slot as a bitmask. The same probe re-confirmed the buffering: round 3
+reads 0, round 4 reads round 3's write.
+
+`syn` spends one launch-request slot on a done-mask. The index is a hash of the
+tile rather than a position in a shared list, because the atlas covers only the
+21 published maps and the ladder's pool is held out — anything atlas-indexed is
+dead where it matters. Hash collisions are real (12 deposits in 31 buckets ≈ two
+colliding pairs), so the mask is **advisory**: it reorders preference and is
+ignored when it would leave nothing to mine.
+
+**The mechanism is a complete success:**
+
+    hlin:  built 6,  found_existing 13
+    syn:   built 8,  found_existing  0
+
+Wasted arrivals eliminated. Harvesters 2.75 → **2.97**.
+
+**And the win rate is exactly unchanged:**
+
+| vs | combined | |
+|---|---|---|
+| `hlin` (parent) | 78/156 = **0.500 ±0.078** | 0.0 sd |
+| `nanna` | 79/156 = 0.506 | +0.2 sd |
+| `vili` | 82/155 = 0.529 | +0.7 sd |
+| `spar_sentinel` | 52/93 = 0.559 | +1.1 sd |
+
+**Fifth time.** `saga`, the ammunition build, `gna`, `var`, and now `syn`: every
+one raised Harvesters, none moved the result. Against our own bots the Harvester
+count is simply not what decides games — which is consistent with the whole
+session and with `ran`'s collapse, where cutting turrets to fund economy lost by
+5.4 sd.
+
+Whether it decides games against the *ladder* is a different question, and the
+replays say yes: those teams finish long games on 6,986-10,045 titanium against
+our 14-20. Our panel cannot see that because our own bots do not out-mine us.
+
+Committed unqueued. The queue stays `lofn` → `hlin` → `nanna`; adding a level
+build ahead of them would spend live rounds on the wrong question.
+
+**Correction to iteration 84:** "a genuine architectural limit, not a constant"
+was wrong. It was one slot's worth of ingenuity, and I declared it impossible
+without probing the word width first — the same mistake as assuming
+`ct.attack` existed, in the other direction.
