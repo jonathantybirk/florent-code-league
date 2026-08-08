@@ -164,8 +164,25 @@ two-thirds of the economy comes from something subtler in the collision than
 the survival arithmetic.
 
 Four attempts, all landing at 5 wins and ~410 collected against the shipped
-6 and 1291. What the collision is worth beyond the offset is **not yet
-understood**, and that is the honest state of it.
+6 and 1291.
+
+**What the collision actually does**, measured by instrumenting both builds
+side by side on drumlin:
+
+```
+collision present:  burst reads 32 in 586 of 613 Builder-turns  (real burst 0)
+collision fixed:    burst reads  0 in 606 of 606 turns          (correct)
+```
+
+A join is published nearly every turn once a network exists, so the bot
+believes it is under **moderate threat permanently** — `survival = hp/32 ≈ 15`
+instead of infinite. It is not noise; it is a constant low-level alarm that
+every threshold here was calibrated against, and it changes behaviour only on
+maps where a real threat also exists (role mixes are identical on a quiet map).
+
+That is as far as this got. Reproducing the effect deliberately needs the
+alarm applied at every burst consumer *and* the thresholds re-fitted together,
+which is a tuning sweep rather than an edit.
 
 **So the bug ships, deliberately and in writing.** Its practical effect is a
 constant +32 offset the policy is calibrated for, not corruption — but it is a
