@@ -4321,3 +4321,32 @@ the top of the ladder as well as by the team that beats us.
 which is the closest this codebase can get to the rank-1 shape — the economy
 work from tonight, plus turret discipline to stop 456 points of scale tax
 strangling it.
+
+## Iteration 80 — nanna: the rank-1 shape, queued
+
+`hlin`'s economy plus `bil`'s turret ceiling, on the current base.
+
+| vs | on-pool | off-pool | combined | |
+|---|---|---|---|---|
+| `hlin` (parent) | 0.500 | 0.512 | **79/156 = 0.506 ±0.078** | +0.2 sd |
+| `lofn` | 0.500 | 0.548 | 82/156 = 0.526 | +0.6 sd |
+| `vili` | 0.625 | 0.652 | 45/71 = 0.634 | +2.3 sd |
+
+Gunners 3.11 → 3.09. Level, and structurally it must be — a 350 ceiling cannot
+bind in a three-turret game, and the 22.7-Gunner game only exists live.
+
+**Queued as `nanna@9a11215:8`, which reverses what I said about `bil` in
+iteration 70.** There I declined to queue the same mechanism because it did not
+beat the best build and the queue was deep. Two things changed: the rank-1
+replays arrived, making turret count the *largest single divergence* between our
+composition and the top of the ladder (22.8 against 8.5), and the mechanism is
+now corroborated by two independent teams rather than one. It sits behind `hlin`
+so the pair isolates the ceiling: same economy, one difference.
+
+`bil` and `frigg` stay unqueued — `bil` because `nanna` supersedes it on a newer
+base, `frigg` because the siege path is unmeasurable and it should wait for a
+live baseline.
+
+**Queue as it stands:** `lofn@86287ec:8`, `hlin@a72a7dc:8`, `nanna@9a11215:8`.
+Three builds, one hypothesis each: two miners with room to hold them, claims
+that come back, and turret discipline.
