@@ -2045,3 +2045,56 @@ The first is the biggest and the most tractable: it is a *ratio* that should be
 near one and is 4.3, in the one loop the whole economy runs through. That is the
 next thing to look at — where the extra moves go between laying one tile and
 the next.
+
+---
+
+## Iteration 30 — a real livelock, and it is not a regression
+
+### The trace
+
+Tracing one miner's position and action, quarry against mimir:
+
+```
+r20-36  move -> build_conveyor -> move -> build_conveyor   (one move per tile, correct)
+r37     phase switches to goto
+r39 (4,7) r40 (4,6) r41 (4,7) r42 (4,6) r43 (4,7) r44 (4,6) ...
+```
+
+It lays its line cleanly and then **bounces between two tiles indefinitely**
+with a fixed task. That is the oscillation `benchmarks/pathology.py` exists to
+catch — "invisible in the score and obvious in the position trace".
+
+Quantified with that tool, share of Builder-rounds paced:
+
+| build | quarry | hive | twins |
+|---|---|---|---|
+| `snotra_h` | 0.6% | 0.6% | 1.4% |
+| **`spork`** | **19.2%** | **19.6%** | **10.5%** |
+| `ostara` | 19.2% | 19.6% | 10.5% |
+
+Removing **only** the second miner from spork, keeping every other change,
+restores 0.6 / 0.6 / 1.4%. **Two miners thrash over the same deposits**, and
+that is where a tenth to a fifth of all Builder turns go.
+
+### And it is still worth having
+
+The obvious conclusion — that I had shipped a regression in `spork` and
+`ostara`, both queued live — is **wrong**. `eostre`, which is spork plus
+ostara's ordering minus the second miner, measures:
+
+| eostre vs | | | its Harvesters |
+|---|---|---|---|
+| `ostara` | 19/42 | **0.452** | 1.83 |
+| `spork` | 20/42 | 0.476 | 1.88 |
+| `snotra_h` | 20/42 | 0.476 | 1.69 |
+| `mimir` | 26/42 | 0.619 | 1.76 |
+| **mean** | 110/210 | 0.524 | |
+
+The single-miner version is **worse**, and its Harvesters fall from 2.3 to
+1.7-1.9. So the second miner earns its keep: it adds about half a Harvester and
+wins more, *while* wasting a fifth of the turns on contention. Deleted.
+
+That makes the livelock an **opportunity rather than a defect to revert**. Two
+miners that do not thrash should beat both — the gain is already banked, and
+10-20% of Builder turns are sitting on the floor next to it. `CLAIM_SLOTS`
+exists for exactly this kind of contention and is the obvious place to look.
