@@ -1,0 +1,5 @@
+source_commit = "6b39ebbe3"
+source_path = "bots/luc/steward_hardened_reinforced"
+engine = "2.3.6"
+status = "development"
+variant = "stops besieging a Core it cannot break, and mines instead"
