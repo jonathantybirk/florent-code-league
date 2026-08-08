@@ -2689,3 +2689,37 @@ broken and nobody is stuck — they are alarms that correctly never ring.
 That leaves the dormant set fully accounted for: one defect (fixed, +6 points),
 one design (priced, costly to change), one immaterial (`_patrol_core`), and the
 remainder either doctrine or alarms.
+
+---
+
+## Iteration 45 — the one unused mechanic is unused by everyone
+
+Our bot never calls `build_splitter` — zero occurrences. A splitter is 6 Ti
+against a conveyor's 3, 20 HP either way. Since the network cap ("one trunk
+carries one stack a round, exactly four Harvesters") is the constraint that has
+resisted nine interventions, a mechanic that could widen a trunk would matter.
+
+It is not that mechanic, and nobody thinks it is. Splitters built across four
+downloaded ladder sweeps, both teams in every game:
+
+| sweep | splitters | conveyors |
+|---|---|---|
+| sporks 5-0 not adgato | **0 / 0** | 97 / 331 |
+| The Flotte Experience 5-0 us | **0 / 0** | 188 / 60 |
+| I Stone 5-0 us | **0 / 0** | 219 / 77 |
+| Besvikomat 5-0 us | **0 / 0** | 99 / 193 |
+
+Zero, across eight teams including the rank-1 bot. And the mechanism explains
+why: a conveyor already accepts input from every cardinal side except its own
+output, so *merging* is free. A splitter divides one stream into several, which
+cannot raise the one-stack-a-round throughput that the cap is about.
+
+Checked and empty. Worth the ten minutes: an entirely unused engine feature is
+exactly where a blind spot would hide, and this one is unused for a reason.
+
+Incidentally the same table restates the economy gap plainly: sporks laid **331
+conveyors** across its five games where its opponent laid 97, and in the sweep
+against us we laid 188 to Flotte's 60 and lost every game. Belt is not the
+problem and belt volume is not the answer; what the winners have is belt
+*serving* a large economy, which is the thing nine interventions have failed to
+give us.
