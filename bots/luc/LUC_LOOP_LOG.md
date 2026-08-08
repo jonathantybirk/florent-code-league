@@ -4688,3 +4688,43 @@ days ago that is already measured, already better than what is live, and
 structurally unable to be chosen. That is not a bot problem or a measurement
 problem — it is a plumbing problem, and it is the second one tonight (the first
 being promotion margins).
+
+## Iteration 89 — the gap is exactly one build, and my "+17 Elo" was noise
+
+Systematic version of iteration 88: every build with live data, checked against
+the farm's uploads.
+
+**Only one build with ≥50 live games is missing** — `b61aaac`, 300 games, 1776.
+Every other build the feed knows about is already uploaded and therefore already
+promotable. So the plumbing gap is a single case, not a pattern, and it is now
+queued.
+
+**And a correction I owe from last iteration.** I told Lucas that activating
+`b61aaac` was "+17 Elo over the current flagship's lineage-mate" and "the
+fastest real gain available". The point estimates:
+
+    b61aaac   300 games   1776
+    f61245f   215 games   1760
+    f1f2bda   305 games   1759
+
+Seventeen Elo. The farm's own promotion log reports standard errors of **43-49**
+for builds at these game counts, so the difference between the best and third
+best large-sample build is **well under half a standard error** — the same
+noise-sized margin I spent iteration 81 criticising the farm for promoting on.
+
+I made exactly the error I had documented eight iterations earlier, in the
+direction that flattered my own finding.
+
+**What survives.** `b61aaac` genuinely cannot be promoted, which is a real
+defect worth fixing whatever its estimate — the promotion logic should be able
+to see every build we have live data for. What does *not* survive is the claim
+that swapping to it is a known gain. It is the best point estimate among builds
+that are statistically tied.
+
+The pattern of the whole night, stated once: **nearly every difference I have
+measured — locally, live, between builds, between map sets — is smaller than
+its own error bar.** The exceptions are few and worth naming: the claim-slot cap
+(1.50 → 2.73 Harvesters), the `ran` collapse (-5.4 sd), `sigyn`'s third miner
+(-5.4 sd), the on-pool/off-pool divergence, and the composition gap to the top
+of the ladder (2.7 Harvesters against 9.9, 22.8 turrets against 8.5). Everything
+else is noise I have been reading tea leaves in.
