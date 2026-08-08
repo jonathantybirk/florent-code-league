@@ -1,0 +1,5 @@
+source_commit = "62df0ec39"
+source_path = "bots/luc/mimir"
+engine = "2.3.6"
+status = "development"
+variant = "shoot the mender at the full range a Sentinel can reach"
