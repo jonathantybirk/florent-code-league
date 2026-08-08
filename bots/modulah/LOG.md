@@ -122,6 +122,33 @@ vidar 1/30 → 2/29. Firing was never blocked outright (zero dry turns measured)
 — a deeper pool is what lets several turrets fire in the *same* round instead
 of taking turns.
 
+### What did NOT transfer from steward, and a trap in our own error handling
+
+**Demand-driven spawning** — spawn only to replace a dead Builder, or when the
+bank is large enough to prove the workforce cannot spend its income — is
+steward's rule and it does not transfer:
+
+| | shipped | demand-driven |
+|---|---|---|
+| wins | **6** | 5 |
+| collected | **1208** | 937 |
+| games survived | **5/45** | 3/45 |
+
+aegis's economy is chain-based and needs more Builders per unit of income than
+steward's does, so a rule tuned to a three-Builder team starves it. The
+*reasoning* is still right — surplus should not become Builders — but the
+threshold is bot-specific.
+
+**A trap worth remembering.** The first version of that change referenced an
+undefined `BUILD_FLOOR`. `main.py` wraps every unit in
+`except Exception: pass`, so the `NameError` became total silence: the bot
+scored **0 wins, 0 harvesters, 0 titanium, 0 buildings across all 45 games**
+and looked like a strategy failure rather than a typo. The blanket catch is
+there for a good reason (an uncaught exception permanently kills a unit) but
+it converts any coding error into a silent, plausible-looking loss. Surfacing
+the traceback took one line and found it immediately — do that FIRST whenever
+a change produces an implausibly total collapse.
+
 ### Turrets that could never fire
 
 The single most productive diagnostic of the session. Counting shots rather
