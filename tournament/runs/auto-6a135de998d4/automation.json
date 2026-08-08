@@ -1,0 +1,12 @@
+{
+  "challengers": [
+    "sif@3fc5cd8"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "b11b57df5668c49ac26de385b402464abdd16e94",
+    "x/jon": "6a2af02a9d07ed943bf730e686b34e71c633b3c5",
+    "x/luc": "3fc5cd80f622de12ac523884ce7c5f8c31a37268"
+  },
+  "submitted_at": "2026-08-08T08:17:50+00:00"
+}
