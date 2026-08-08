@@ -70,7 +70,12 @@ class CoreBrain:
         )
         ct.write_store(
             comms.SLOT_CORE_THREAT,
-            comms.pack_threat(self.monitor.hp, self.monitor.dhp(), burst, round_no),
+            comms.pack_threat(
+                self.monitor.hp, self.monitor.dhp(), burst, round_no,
+                # Only the Core can tell a delivering conveyor from a stranded
+                # one; it already walks the network for the arrival schedule.
+                join=econ.network_frontier(ct, self._footprint, ct.get_position()),
+            ),
         )
         anchor = ct.get_position()
         recs = threat.turret_records(ct, self._footprint, anchor, limit=4)

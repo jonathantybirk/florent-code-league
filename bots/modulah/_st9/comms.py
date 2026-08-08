@@ -208,13 +208,24 @@ def arrivals_from_now(word: int, round_no: int) -> dict[int, int]:
 THREAT_HP = Field(0, 8, scale=2)          # 0..510, covers CORE_MAX_HP 500
 THREAT_DHP = Field(8, 6, signed=True)     # -32..+31 hp/round
 THREAT_BURST = Field(14, 6)               # 0..63 hp in one round
+# The connected frontier: offset from the Core anchor of the furthest tile
+# that genuinely delivers. 4 bits an axis is enough because a chain worth
+# joining is near the Core, and it fits the threat word's spare bits rather
+# than costing a slot -- slots are the scarce resource, bits are not.
+THREAT_JOIN_X = Field(20, 4, signed=True)
+THREAT_JOIN_Y = Field(24, 4, signed=True)
+THREAT_HAS_JOIN = Field(19, 1)
 THREAT_HEARTBEAT = Field(HEARTBEAT_OFFSET, HEARTBEAT_BITS)
 
 
-def pack_threat(hp: int, dhp: float, burst: int, round_no: int) -> int:
+def pack_threat(hp: int, dhp: float, burst: int, round_no: int, join=None) -> int:
     word = THREAT_HP.pack(0, hp)
     word = THREAT_DHP.pack(word, dhp)
     word = THREAT_BURST.pack(word, burst)
+    if join is not None:
+        word = THREAT_HAS_JOIN.pack(word, 1)
+        word = THREAT_JOIN_X.pack(word, join[0])
+        word = THREAT_JOIN_Y.pack(word, join[1])
     return THREAT_HEARTBEAT.pack(word, round_no & HEARTBEAT_MASK)
 
 
@@ -223,6 +234,8 @@ def unpack_threat(word: int) -> dict:
         "hp": THREAT_HP.unpack(word),
         "dhp": THREAT_DHP.unpack(word),
         "burst": THREAT_BURST.unpack(word),
+        "join": (THREAT_JOIN_X.unpack(word), THREAT_JOIN_Y.unpack(word))
+                if THREAT_HAS_JOIN.unpack(word) else None,
     }
 
 

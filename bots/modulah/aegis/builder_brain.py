@@ -48,6 +48,8 @@ class BuilderBrain:
         self._core_anchor = None
         self._danger = set()
         self._opened = False
+        self._laid = set()
+        self._intel_join = None
 
     def run(self, ct: Controller) -> None:
         r = ct.get_current_round()
@@ -58,6 +60,7 @@ class BuilderBrain:
         if self._core_anchor is None:
             self._core_anchor = sit.core_tile or self._find_core(ct)
         intel = self._intel(ct, r)
+        self._intel_join = intel.get("join")
         self._danger = self._reported_danger(ct, intel)
         role = self._role(ct, r, intel, sit)
 
@@ -90,7 +93,7 @@ class BuilderBrain:
         word = ct.read_store(comms.SLOT_CORE_THREAT)
         info = {"fresh": False, "hp": GameConstants.CORE_MAX_HP,
                 "dhp": 0, "burst": 0, "income": 0, "enemy_hp": None,
-                "turrets": []}
+                "join": None, "turrets": []}
         if comms.is_fresh(word, r):
             info.update(comms.unpack_threat(word))
             info["fresh"] = True
@@ -528,6 +531,7 @@ class BuilderBrain:
                             and ct.can_build_harvester(tile)):
                         ct.build_harvester(tile)
                         self.harvester, self.trail = tile, pos
+                        self._laid = set()
                         self.commit = situation.Commitment("build", None, r)
                         return comms.ACT_BUILD_HARVESTER
                 except GameError:
@@ -544,13 +548,24 @@ class BuilderBrain:
     def _lay(self, ct: Controller, r: int) -> int:
         """Extend the conveyor behind us, so bends get the right facing."""
         pos = ct.get_position()
-        core = self._find_core(ct)
+        # Route to the CONNECTED frontier the Core published, not to the Core
+        # itself and not to the nearest friendly conveyor.
+        #
+        # Routing to the Core meant only the first chain per Builder ever got
+        # built: afterwards it walked home over its own conveyors,
+        # can_build_conveyor failed on every occupied tile, and it arrived
+        # having built nothing. Routing to the nearest conveyor fixed that and
+        # created a worse failure -- Builders joined each other's STRANDED
+        # spurs and grew a web reaching nothing (307 collected on record
+        # infrastructure). A Builder cannot tell the difference; the Core can.
+        core = self._join_point(ct) or self._find_core(ct)
         if self.trail is not None and self.trail != pos:
-            d = self._core_dir(ct, self.trail)
+            d = self._join_dir(ct, self.trail)
             facing = d if d is not None else self.trail.cardinal_direction_to(pos)
             try:
                 if ct.can_build_conveyor(self.trail, facing):
                     ct.build_conveyor(self.trail, facing)
+                    self._laid.add((self.trail.x, self.trail.y))
                     self.trail = pos
                     if self.commit:
                         self.commit.progressed(r)
@@ -602,6 +617,29 @@ class BuilderBrain:
             except GameError:
                 continue
         return None
+
+    def _join_point(self, ct: Controller) -> Position | None:
+        """The connected frontier tile the Core published, in absolute terms."""
+        j = self._intel_join
+        a = self._core_anchor
+        if j is None or a is None:
+            return None
+        return Position(a.x + j[0], a.y + j[1])
+
+    def _join_dir(self, ct: Controller, pos: Position):
+        """Direction from pos into the connected network, if it touches it.
+
+        Falls back to the Core so a chain laid before any frontier exists
+        still terminates correctly.
+        """
+        target = self._join_point(ct)
+        for d in CARDINALS:
+            n = pos.add(d)
+            if not in_bounds(ct, n) or (n.x, n.y) in self._laid:
+                continue
+            if target is not None and n.x == target.x and n.y == target.y:
+                return d
+        return self._core_dir(ct, pos)
 
     def _core_dir(self, ct: Controller, pos: Position):
         for d in CARDINALS:
