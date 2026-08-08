@@ -59,6 +59,11 @@ GUARDS_WHEN_QUIET = 1
 # matter what is happening -- see the floor in desired_mix.
 ECON_FLOOR_HARVESTERS = 4
 
+# Titanium per extra standing guard while unthreatened. A Gunner is 20 base
+# plus cost scale, so this is several turrets' worth of slack before another
+# Builder is pulled off the economy.
+RICH_PER_GUARD = 250
+
 
 def desired_mix(
     n_builders: int,
@@ -68,6 +73,7 @@ def desired_mix(
     dhp: float,
     friendly_turrets: int = 0,
     harvesters: int = 0,
+    titanium: int = 0,
 ) -> dict:
     """Split `n_builders` across roles.
 
@@ -144,7 +150,13 @@ def desired_mix(
         elif incoming > 0:
             guards = min(remaining, 2)
         else:
-            guards = min(remaining, GUARDS_WHEN_QUIET)
+            # A quiet game with a full treasury should be turning titanium
+            # into turrets, not banking it. Earlier builds sat on 400+ while
+            # the Core died. Scale the guard count with what we can actually
+            # spend, so a strong economy becomes a strong defence instead of
+            # a bigger number.
+            rich = max(0, titanium // RICH_PER_GUARD)
+            guards = min(remaining, max(GUARDS_WHEN_QUIET, rich))
 
     if floor:
         guards = min(guards, max(0, remaining - floor))

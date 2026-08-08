@@ -1,72 +1,92 @@
 # modulah log
 
-## Where things stand
+## Status: NOT yet beating our own bots
 
-`lib/` is a verified utility layer — the first shared library in the repo.
-`diag` re-checks every engine fact it rests on (8/8 against 2.3.6).
+`aegis` is **0/18** against `steward_hardened_reinforced`, `vidar` and `odin`
+over 6 maps in both seats. It beats `starter` on the tiebreak. The goal is not
+met.
 
-Bots are **not yet competitive**. Measured, 6 maps, both seats:
+What did move, same panel throughout:
 
-| build | vs steward/vidar/odin | vs starter | killed at round |
+| | beacon | aegis v1 | aegis now |
 |---|---|---|---|
-| beacon | 0/12 | — | 181–312 |
-| aegis  | **0/18** | 3/6 | **72–92** |
+| wins vs top three | 0/12 | 0/18 | **0/18** |
+| games survived | — | 7/24 | **9/24** |
+| titanium collected | 937 | 786 | **2184** |
+| harvesters @300 | — | 1.17 | **3.83** |
+| first harvester | 3.5 | 30.5 | **3.5** (field: 6.5) |
+| core hp at end | 39 | 142 | **200** |
+| enemy cores killed | never | never | **round ~225** |
 
-aegis out-collects steward and odin (1798 vs 501/583 mean titanium) and dies
-*faster* than beacon did. The top three kill our Core around round 72–92,
-which is a rush landing before any defence exists. Economy is not the gap.
+So: the economy is now competitive and we kill cores, but the top three still
+kill ours around round 90 every time.
 
 **The deployed online bot is untouched** — `v34
-(steward_hardened_reinforced f1f2bda)`, rank #10/108 at 1791, managed by the
-farm. Nothing from this branch has been submitted, and nothing should be until
-it beats the flagship locally.
+(steward_hardened_reinforced f1f2bda)`, team #12 of 109 at 1772. Nothing from
+this branch has been submitted, and nothing should be until it beats the
+flagship locally.
 
-## The next thing to fix
+## Bugs found, in order of how much they cost
 
-Dying at round 72 means the first Gunner arrives far too late. Order of work:
+Each produced plausible behaviour and none was visible in a win rate.
 
-1. **Opening defence.** A turret sited before the rush arrives, not after
-   `max_burst` reports one. `placement.best_defensive_site` already answers
-   *where* — the gap is that nobody calls it until a threat is visible.
-2. **Pathing.** `_step` is greedy and bounces: a Builder was traced
-   oscillating (7,7)↔(7,8) laying conveyor back and forth. Steward uses a BFS
-   distance map; this needs the same.
+1. **Mined literally zero.** `_mine` re-anchored `trail` to the current
+   position every turn, so the conveyor branch was unreachable.
+2. **Turrets never fired a single shot** in a whole match — four standing, 60
+   ammo, 8–11 visible targets. They were Sentinels, whose facing is permanent
+   (`can_rotate` is Gunner-only), sited by approach-betweenness at corridors
+   nobody used.
+3. **One Harvester per Builder, forever.** A miner that finished its route
+   kept re-laying instead of opening another deposit, so we lost tiebreaks in
+   games we had already survived.
+4. **Role rank was not dense** — slots claimed scattered, so a Builder on slot
+   9 ranked 5 and never fell inside a two-role mix. Every Builder read MINER
+   at `dhp = -16`.
+5. **Menders unbounded** — 4 Builders all mending a 16/round rush, no turret
+   ever built.
+6. **Ammo never converted**, so turrets were decoration.
+7. **Exploration was "first legal cardinal"** — walk north into a wall, vibrate.
+
+## Measured and rejected
+
+- **Counter-battery by walking** — find a Sentinel seat near an enemy turret,
+  walk a Builder to it. Lost on every axis (wins 6→5, collected 2121→1856,
+  cores killed 233→never). The walk crosses the ground the siege covers.
+- **`1/(1+d)` seat weighting** — replaced by betweenness. It cannot tell a
+  corridor from a plaza, which is the whole question.
+
+## Next, in priority order
+
+1. **Why we die at round ~90.** Gunners reach 3 tiles, Sentinels 5. Steward
+   shells from 5. Counter-battery from adjacent seats works but rarely
+   triggers; the answer is probably a standing Sentinel ring sited *before*
+   contact, not a reaction.
+2. **Pathing.** `_step` is greedy and bounces; steward uses a BFS distance
+   map. `worst_stall` is 62 rounds.
 3. **Doctrine.** Steward branches RUSH/FORTIFY/BLITZ on Core-to-Core Chebyshev
-   distance ≤ 6, measured over 138,785 matches. aegis has no opening at all.
+   ≤ 6, measured over 138,785 matches. aegis has no opening at all.
+4. **Bigger panel.** 6 maps is too noisy to resolve a 5pp change — steward's
+   own log records five apparent gains that reversed sign on a second panel.
 
-## Engine facts established (all measured, not from docs)
-
-The docs contradict themselves on Splitters; these came from experiment and
-from disassembling `fcode_engine.*.so` (Rust, stripped, `battlecode-platform`).
+## Engine facts (measured, not from docs — the docs contradict themselves)
 
 - Conveyors move **once per round, after every unit has acted**
-  (`distribute_resources` sits between the unit loop and `update_cooldowns` in
-  `GameRunner::run`). Unit order has no economic effect.
-- A stack `h` hops out is credited at `T+h`. Verified at h=1 only; congestion
-  and merges are arbitrated by `edge_priority` (per-edge LRU plus a uniform
-  random tie-break) whose state the API does not expose.
+  (`distribute_resources` between the unit loop and `update_cooldowns`).
+- A stack `h` hops out is credited at `T+h`. Verified at h=1; congestion is
+  arbitrated by `edge_priority` (per-edge LRU + uniform random tie-break).
 - A Splitter with one accepting output delivers **identically to a Conveyor**
-  (144 stacks each over 575 rounds). The 1/3 weight is wrong; it is 1/k over
-  outputs that can currently accept.
-- A Conveyor pointing at bare ground **holds its stack forever** rather than
-  dumping it, so a backed-up branch silently leaves a Splitter's rotation.
-- Store writes land at the **next round**, invisible to later-id units in the
-  same round. One writer per slot is therefore forced.
-- Turrets are **line weapons**: Gunner 3 tiles cardinal / 2 diagonal
-  (`dist_sq` 9 / 8), Sentinel 5 / 4 (25 / **32**). Core vision is 36, so the
-  Core sees everything that can shoot it — margin 4.
+  (144 stacks each over 575 rounds). Weight is 1/k over *accepting* outputs.
+- A Conveyor pointing at bare ground **holds its stack forever**.
+- Store writes land **next round**, invisible to later-id units in the same
+  round → one writer per slot is forced.
+- Turrets are **line weapons**: Gunner 3 cardinal / 2 diagonal, Sentinel 5 / 4
+  (`dist_sq` 25 / **32**). Core vision 36 — sees everything that can shoot it,
+  margin 4. **Only Gunners can rotate.**
 - Core vision is the **union** of radius-6 discs over the 2×2 footprint (140
   tiles, not 113). Walls do not occlude.
 
-## Store schema
+## Layout
 
-| slot | contents |
-|---|---|
-| 0 | econ: stacks arriving t+2..t+6, 3 bits each |
-| 1 | threat: hp (2-hp bins), 4-round dhp (signed), max_burst |
-| 2–3 | up to 4 enemy turrets: offset, type, facing |
-| 4–15 | one per Builder: action, target, hp, heartbeat |
-
-Read econ with `comms.arrivals_from_now()`, never `unpack_econ()` — the reader
-is always a round behind the writer, and the raw buckets are indexed from the
-write.
+`lib/` is canonical; `vendor.py --check` detects drift into the bot dirs.
+`diag` re-verifies the engine facts (8/8) — run it after every fcode bump.
+Read econ with `comms.arrivals_from_now()`, never `unpack_econ()`.
