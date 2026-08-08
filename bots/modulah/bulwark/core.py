@@ -73,7 +73,48 @@ def run(player: "Player", ct: Controller) -> None:
                 [tile for tile in ct.get_nearby_tiles()
                  if ct.get_tile_env(tile) == Environment.ORE_TITANIUM
                  and ct.get_tile_building_id(tile) is None])
-        ores.sort(key=lambda tile: (tile.distance_squared(core), tile.x, tile.y))
+        # Rank deposits from the nearest FOOTPRINT tile, not from the Core
+        # anchor.
+        #
+        # get_position() returns the top-left tile of the 2x2 block for BOTH
+        # seats. Every official map is rotationally symmetric, so seat B is
+        # seat A turned 180 degrees -- which means seat A measures from the
+        # corner facing AWAY from the enemy and seat B from the corner facing
+        # TOWARD it. The same deposit is a tile further away for seat B, and
+        # the ranking diverges.
+        #
+        # Observed directly on archipelago, both seats, same build:
+        #   seat A  core anchor (5,5)    nearest ore (2,6)   d2=10  harvester r7
+        #   seat B  core anchor (19,19)  nearest ore (16,17) d2=13  harvester r26
+        # (5,5) mirrors to (20,20), not to (19,19) -- the anchor is the wrong
+        # reference point by one diagonal tile, consistently against seat B.
+        #
+        # This is the opening half of the seat gap the README records as real,
+        # large and unexplained: 0.817 from seat A against 0.667 from seat B,
+        # with seat B slower at everything downstream (first Harvester 10.5
+        # against 7.9). Every fix tried before was on the combat side, which
+        # is why they were all inert.
+        #
+        # The footprint is symmetric under the rotation, so measuring from the
+        # nearest of its four tiles is identical for both seats.
+        # Measure from the footprint corner FARTHEST from the enemy Core --
+        # the rear corner. Measuring from the nearest footprint tile is
+        # geometrically honest and equalises the seats by dragging seat A DOWN
+        # (0.817 -> 0.750) as much as it lifts seat B (0.667 -> 0.783).
+        #
+        # Seat A's advantage was never a fluke of ranking: reading from the
+        # corner facing away from the enemy prefers deposits behind the Core,
+        # which are the ones a Builder can work without crossing the middle.
+        # Under 180-degree symmetry the enemy Core is our Core mirrored about
+        # the map centre, so "the rear corner" is well defined and identical
+        # for both seats.
+        foot = [tile for tile in ct.get_nearby_tiles(dist_sq=2)
+                if ct.get_tile_building_id(tile) == ct.get_id()] or [core]
+        enemy = Position(ct.get_map_width() - 1 - core.x,
+                         ct.get_map_height() - 1 - core.y)
+        rear = max(foot, key=lambda f: f.distance_squared(enemy))
+        ores.sort(key=lambda tile: (tile.distance_squared(rear),
+                                    abs(tile.x - core.x), abs(tile.y - core.y)))
         player.opening_ore_targets = ores
     ct.write_store(SLOT_OWN_CORE,
                    pack_core(ct.get_position(), player.doctrine))
