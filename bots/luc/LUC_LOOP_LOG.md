@@ -2477,3 +2477,36 @@ the barriers were meant to solve.
 
 The sniping refinement — a Sentinel aimed at a deliberate hole rather than the
 Core — was never reached, since the wall it depends on never went up.
+
+---
+
+## Iteration 40 — the relay that would solve delivery never runs
+
+Delivery is the wall behind three separate failures now: the forward Sentinel
+seat fires in three games of ten, the Core-ring barrier never fires because the
+attacker is never adjacent, and both are limited by arriving alive rather than
+by permission or money.
+
+The bot has a Launcher relay that could cross that ground in one round instead
+of seven, and `RELAY_STOP_DISTANCE = 7` stops it exactly where the dangerous
+part begins. `ratatosk` drops it to 3.
+
+| ratatosk vs | | | Sentinels |
+|---|---|---|---|
+| `snotra_h` (parent) | 21/42 | **0.500** | 0.05 |
+| `snotra` | 23/42 | 0.548 | 0.05 |
+| `steward_hardened_reinforced` | 24/42 | 0.571 | 0.02 |
+| `mimir` | 26/42 | 0.619 | 0.02 |
+| **mean** | 119/210 | 0.567, floor 0.500 | |
+
+Level with its parent and Sentinels unchanged. The action profile from iteration
+29 says why: across four Builders over eighty rounds there were **zero `launch`
+actions**. Pads get built — one a game — and never throw. The stop distance
+guards a path that does not run, which is the seventh constant in this log to
+turn out inert for that reason.
+
+So delivery cannot be bought by tuning the relay, because the relay is not being
+used. Whether that is `FERRY_ON_INFERENCE = False`, a pad-siting failure, or the
+request protocol never completing is the next question — but it is a *bug hunt*
+in the ferry, not a tuning exercise, and the ferry is the one mechanism that
+could plausibly put a Builder next to their Core alive.
