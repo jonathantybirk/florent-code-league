@@ -7,6 +7,6 @@
   "yield_until": null,
   "_yield_until": "ISO-8601 UTC timestamp, e.g. '2026-08-06T18:30:00Z'. Fires nothing until then, then resumes by itself. Prefer this over enabled:false -- it cannot be forgotten.",
 
-  "test_next": ["steward@e55aab5:3", "freyr@c2c0d3d:2", "steward_relent@7ed1acc:2", "vali@d123262:2", "njord@0c51bc1:2", "gefjon@f66a427:3"],
+  "test_next": ["steward@e55aab5:3", "freyr@c2c0d3d:2", "steward_relent@7ed1acc:2", "vali@d123262:2", "njord@0c51bc1:2", "gefjon@f66a427:3", "mimir@62df0ec:2"],
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally."
 }
