@@ -4470,3 +4470,43 @@ to name it.
 `hoenir`, `vili`), two more on the economy line (`freyja`, `lofn`), one real bug
 fix (`hlin`), and the rest level or refuted. Everything now depends on live
 games for `lofn`, `hlin` and `nanna`.
+
+## Iteration 84 — the conversion loss, named and attributed
+
+Stopped guessing and instrumented the close reason. Three games:
+
+    CLOSE built_harvester             6
+    CLOSE found_existing_harvester   13
+
+**68% of arrivals find a Harvester already on the tile**, and a second probe
+says **all 13 of them are ours**. That is the conversion loss, exactly.
+
+Two attributions, both clean:
+
+- **Not the recheck window.** With `HARVESTER_RECHECK_ROUNDS` at 250 instead of
+  90 the counters are *identical* — 6 and 13. That confirms `eir`'s null with a
+  direct measurement rather than a win rate, which is the check I should have
+  run before building it.
+- **It is `hlin`'s own claim recycling.** Clearing a claim because the deposit is
+  finished frees the slot *and* lets a Builder that has never had vision of that
+  tile target it. The Builder walks, finds our Harvester, closes.
+
+**And that trade is already known to be the right one.** `var` (iteration 72)
+kept claims on finished deposits precisely to stop this, and scored **0.474**
+against `hlin` — the wasted walk is cheaper than the blocked slot. The waste is
+real, understood, and worth paying.
+
+Closing it properly needs something the comms store cannot give: a shared "done"
+set. All 16 slots are allocated, and encoding done-ness in the claim slot
+re-creates the leak `hlin` fixed. It is a genuine architectural limit, not a
+constant.
+
+So the mystery that has run since iteration 51 — why Harvesters stall near 2.8
+— now has a complete answer: **two claim slots capped it (fixed), and past that
+each miner spends two thirds of its arrivals confirming work already done,
+because Builders cannot publish what they have finished.** The teams above us
+run 4.4-9.9 Harvesters; we run 2.79; and the gap is a communication channel we
+do not have.
+
+That is the honest end of the local investigation. Nothing further here is a
+tuning question.
