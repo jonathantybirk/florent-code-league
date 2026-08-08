@@ -154,12 +154,18 @@ roughly forty experiments. Correcting it is strictly worse:
 | collision fixed | 4 | 531 | 2/45 |
 | fixed + re-tuned thresholds | 4 | 346 | 1/45 |
 | fixed + explicit BASELINE_THREAT 32 | 5 | 410 | 1/45 |
+| fixed + BASELINE_THREAT in *both* consumers | 5 | 410 | 1/45 |
 
-The third attempt is the instructive one. Restoring the offset as a documented
-`BASELINE_THREAT` in the survival calculation recovers a win but not the
-economy, because `burst` has **two** consumers: `roles.desired_mix` and
-`builder_brain._core_in_danger`. Compensating in one under-corrects the other,
-and getting both right needs a tuning sweep this session cannot fund.
+Restoring the offset as a documented `BASELINE_THREAT` recovers a win but not
+the economy. Applying it to **both** burst consumers — `roles.desired_mix` and
+`builder_brain._core_in_danger` — produced results identical to the decimal,
+which proves the danger test is not a material consumer and that the missing
+two-thirds of the economy comes from something subtler in the collision than
+the survival arithmetic.
+
+Four attempts, all landing at 5 wins and ~410 collected against the shipped
+6 and 1291. What the collision is worth beyond the offset is **not yet
+understood**, and that is the honest state of it.
 
 **So the bug ships, deliberately and in writing.** Its practical effect is a
 constant +32 offset the policy is calibrated for, not corruption — but it is a
