@@ -58,6 +58,27 @@ feature is dead until you have checked the metric exists AND resolves the
 entity, and the fastest way to test whether code matters is to delete it and
 measure.
 
+### The blitz threshold: 6 transfers, 9 does not
+
+Core-to-core Chebyshev distance is the one predictor of opponent behaviour
+available at round 0 — from the pool's rotational symmetry, needing no
+scouting and impossible for the opponent to disguise. Every damage-based
+signal fails because it only exists after the damage starts, by which point a
+30 Ti Sentinel cannot be placed in time.
+
+Measured across the official pool: fjordgate 5, meander 8, antler 9,
+lighthouse 9, everything else 10–20. Steward's threshold is 6, measured on a
+different bot, so it was re-tested rather than inherited:
+
+| threshold | wins | collected | new blitz maps |
+|---|---|---|---|
+| **6** (fjordgate only) | **4/45** | **983** | — |
+| 9 | 3/45 | 665 | meander 0/6, antler 0/6, lighthouse 0/6 |
+
+All three added maps lose outright and the economy damage costs an odin
+tiebreak on top. Six is right for this bot too — at eight or nine tiles an
+attacker arrives with nothing behind it, exactly as steward's own note said.
+
 ### Where the wins actually come from
 
 Per-opponent, 30 games each (15 maps, both seats):
@@ -181,6 +202,7 @@ repeat run reproduced 823.33 collected to the decimal).
 | — removing it, to check | 979 | 3/45 | 2 |
 | **+ connectivity broadcast** | 568 | 6/45 | 2 |
 | **+ blitz doctrine (kept)** | **983** | 5/45 | **4** |
+| blitz threshold widened to 9 | 665 | 3/45 | 3 |
 | siege role (kept, off by default) | 809 | 7/45 | 1 |
 | turret map, all 8 facings (bug) | 256 | 1/45 | 0 |
 | BFS navigation (all movement) | 387 | 3/45 | 0 |
