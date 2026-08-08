@@ -106,6 +106,12 @@ corrected build**, and the shipped values are a genuine local optimum:
 Each is single-peaked, and moving any one of them costs at least two wins. So
 the remaining gap is not hiding in these thresholds.
 
+The **siege role** was also re-tested on this stronger economy (it was
+measured neutral at 809 collected; the bot now collects 1235). Still neutral —
+8 wins either way, collected 1235 → 1167. An attacker does not convert even
+when we can afford one, which is consistent with everything else here: the
+bot's losses are Core deaths at home, not a failure to apply pressure.
+
 So exactly one decision in the policy was reading the corrupted field, and
 exactly one measurement reversed. That is a much better predictor of what to
 re-test after fixing a defect than any intuition about which constants "feel"
