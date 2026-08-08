@@ -3856,3 +3856,37 @@ one constant.
 
 `lofn` remains the best build: 0.577 against `vili`, stronger off-pool than on,
 queued as `lofn@86287ec:8`.
+
+## Iteration 69 — nott: four claim slots is the optimum too (refutation 28)
+
+If two slots capped the economy and four freed it, six should free it further.
+`nott` = `lofn` with `CLAIM_SLOTS = (1, 8, 6, 7, 4, 5)`, paying for the two
+extra out of `LAUNCH_REQUEST_SLOTS` again (down to 2..3).
+
+| vs | on-pool | off-pool | combined | |
+|---|---|---|---|---|
+| `lofn` (parent) | 0.408 | 0.500 | **71/155 = 0.458 ±0.078** | -1.0 sd |
+| `vili` | 0.600 | 0.600 | 81/135 = 0.600 | +2.4 sd |
+
+Worse than its parent, and Harvesters barely move — 2.73 → **2.83**. So the
+claim cap stopped binding at four, and the two extra slots are paid for out of
+the ferry protocol, which apparently does need the bandwidth.
+
+Both knobs on this line are now bracketed, and both agree across map sets:
+
+| | 1 | **2** | 3 |
+|---|---|---|---|
+| opening miners | `vili` 1.50 harv | **`lofn` 2.73** | `sigyn` 3.16 harv, **0.301** |
+
+| | 2 | **4** | 6 |
+|---|---|---|---|
+| claim slots | `vili` 1.50 harv | **`lofn` 2.73** | `nott` 2.83 harv, **0.458** |
+
+`lofn` sits on the peak of both. It stays the best build of the session at
+0.577 against `vili`, and it is still queued as `lofn@86287ec:8` behind
+`bifrost`, `hoenir`, `vili` and `freyja`.
+
+Worth noting against the vili line: `nott` beats `vili` 0.600 (+2.4 sd) on both
+pools, which is the largest verified margin over the pre-economy flagship that
+this session has produced — the economy line is real, it is just that `lofn`
+expresses it better than `nott` does.
