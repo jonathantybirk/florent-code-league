@@ -128,6 +128,22 @@ Best build recorded here, and it improves every measure at once — the first
 change to do that. It also explains why so many defensive experiments read as
 no-ops: the turrets they were arguing about could not shoot.
 
+### Idle Builders guarding: same wins, worse economy
+
+Aimed at the saga failure without touching the floor: a Builder with no
+reachable deposit puts up a turret instead of wandering, on the reasoning that
+those turns were already being wasted.
+
+| | shipped | idle-guard |
+|---|---|---|
+| wins | **5** | 5 (odin 4→3, vidar 1→2) |
+| collected | **1197** | 880 |
+| harvesters @100 | **3.47** | 2.2 |
+| stalled builders | **0.64** | 2.6 |
+
+Same total, and the turns were evidently not free after all — exploration that
+looks idle is how the next deposit gets found. Reverted.
+
 ### Our turrets do kill now — and Sentinels are still the wrong answer
 
 After the doorstep fix, counting kills rather than shots:
