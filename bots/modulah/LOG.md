@@ -68,10 +68,11 @@ deterministic (a repeat run reproduced 823.33 collected to the decimal).
 | unconditional early guard | 491 | 25 | 5/45 | 0 |
 | guards from top ranks | 261 | 19 | 3/45 | 0 |
 | opening turret, zero walk | 305 | 16 | 4/45 | 0 |
+| workforce capped at 4 builders | 763 | 14 | 6/45 | 0 |
 | walking counter-battery | — | — | — | worse |
 | Sentinels in standing ring | — | — | — | worse |
 
-**Two of fourteen helped.** The pattern is unchanged and now very well
+**Two of fifteen helped.** The pattern is unchanged and now very well
 evidenced: anything that diverts a Builder from mining costs more economy than
 the threat it answers costs us.
 
