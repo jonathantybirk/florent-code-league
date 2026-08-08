@@ -508,3 +508,15 @@ from round 4) is a separate unaddressed failure mode.
 - fulla live estimate decayed further without new games (1775 → 1745): estimates rot with
   staleness, another calibration point.
 - Panel running (`loki_run2`).
+
+## Iteration 29 — 2026-08-08 ~17:45
+
+- **loki v2 panel: 24–18 vor (beats the tip head-to-head), 23–19 shr, 29–13 vidar, total
+  0.603, 0.87 Sentinels/game.** The trade is visible: vidar dropped 0.810 → 0.690 — door
+  work costs the siege tempo that was beating vidar. vor and loki are co-tips with
+  different profiles: vor the generalist, loki the anti-Builder specialist.
+- Synthesis candidate for later: door Sentinel gated on observed Builder traffic (arm it
+  when enemy Builder sightings near their base exceed a threshold) instead of
+  unconditionally at round 90 — keeps vor's siege tempo on maps where the door is dead
+  weight.
+- Still waiting on vor's live test (queue) and fulla's extra games.
