@@ -613,3 +613,135 @@ parallel at that budget will all read below the incumbent whatever they built.
 
 Recorded in memory as `project-farm-cannot-resolve-small-gains`, since it
 changes how anyone should use the farm.
+
+---
+
+## Iteration 6 — our own belt network walls off our own economy
+
+Acting on the conclusion above: chase a large structural change, validated
+locally. The `_route` ceiling from iteration 4 was the obvious candidate, and
+resolving it took three attempts, two of which were wrong.
+
+### First, an actual rule established
+
+Wrote a minimal probe bot (`main.py`, ~70 lines) that walks a Builder to the
+nearest **empty** ore tile and asks the engine directly. Result:
+
+```
+PROBE r=3 ore=(5,0) empty=True passable=True
+      can={'NORTH': True, 'EAST': True, 'SOUTH': True, 'WEST': True}
+PROBE BUILD_SUCCEEDED on ore tile
+```
+
+**A conveyor can be built on an empty ore tile.** So `_route` blocking
+`(p.ores - {ore})` is a self-imposed restriction, not a game rule. That is worth
+knowing on its own — earlier in-bot probes had only ever hit ore tiles that
+already held a harvester, which proved nothing.
+
+### …and it was not the cause
+
+Built the fallback anyway (clean route first, through-ore only when that
+fails). It changed **nothing** — identical harvesters, conveyors and outcome on
+jackpot. Instrumenting it: `clean=None thru_ore=None` on every candidate. The
+ore block was never what stopped us.
+
+### What actually stops us
+
+Rebuilt the diagnostic to drop each term of `blocked` one at a time and report
+which unblocks the route:
+
+```
+RT ore=(5,0)  unblock->{'walls':True, 'rej':True, 'conv':True, 'ALL':True}
+              nettiles=2 conv=7 load=1
+```
+
+Dropping `ores` alone never helps. Dropping **`conv`** does — and there is the
+number that matters: **7 friendly conveyor tiles, of which only 2 count as
+joinable.**
+
+`p.network_tiles` is filled in `_done` from `p.current_route_tiles`, so it holds
+the belts *this* Builder finished. Each Builder is a separate `Player` instance,
+so it never contains a team-mate's work. Every other friendly conveyor therefore
+falls into `blocked` and is routed around **as if it were a wall**. Our own
+infrastructure encloses our own Core, and every further deposit becomes
+unreachable.
+
+That also explains iteration 3's puzzle: a second miner lays belt that walls the
+first one in, which is why three miners scored no better than two.
+
+### Built: `bots/luc/sindri`
+
+`gefjon` with one line changed —
+`joinable = set(p.conveyors) if p.network_load < 4 else set()`. `p.conveyors` is
+friendly-only (`_sense` files enemy belts under `enemy_conveyors`) and the BFS
+already refuses a head-on join, so this widens what we may connect to without
+letting us join anything of theirs. The refuted ore fallback was **dropped** so
+this is a single variable.
+
+It works mechanically: deposits that reported `route=None` now report
+`route=12`, and the near one `route=0`.
+
+| | before | after |
+|---|---|---|
+| jackpot, ore (0,13) | `route=None` | `route=12` |
+| jackpot, ore (5,0) | `route=None` | `route=0` |
+
+Whether that converts into wins is a different question, and one jackpot game
+went *worse* (183 rounds vs 249), which is one game and means nothing.
+
+### Measured: the fix is real and the bot is worse
+
+Generated maps (24 games each) — identical wins and Harvesters to gefjon, but
+**fewer conveyors for the same economy** (7.2 against 8.0), which is exactly
+what joining an existing trunk instead of laying a parallel one should look
+like:
+
+| build | wins /24 | Harvesters | conveyors |
+|---|---|---|---|
+| flagship | 5 | 1.33 | 9.3 |
+| `gefjon` | 10 | 1.75 | 8.0 |
+| `sindri` | 10 | 1.75 | **7.2** |
+
+Official pool, 21 maps × both seats, where the deposits are dense enough for the
+enclosure to bite:
+
+| | vs flagship | vs gefjon | vs vidar | vs odin | mean |
+|---|---|---|---|---|---|
+| `sindri` | 0.381 | **0.405** | 0.524 | 0.786 | 0.524 |
+| `gefjon` | 0.452 | — | 0.571 | 0.762 | 0.554 |
+
+**Worse.** And the reason is in the same table: against the flagship `sindri`
+averages **4.79 Harvesters** where it runs 1.75 elsewhere. It is claiming the
+deposits it unlocked, and still losing.
+
+The explanation is the warning `_pick` already carries: "A conveyor network
+carries one stack/round: exactly four Harvesters at their 10-Ti-per-four-round
+cadence. Do not create silently idle deposits." `network_load` is counted
+**per Builder**, so two Builders feeding one shared trunk oversaturate it —
+more Harvesters, no more throughput, and the extra ones are the silently idle
+deposits the comment names. Sharing the network without sharing the load
+accounting buys deposits that deliver nothing and cost +20% each.
+
+Fixing that properly needs a team-wide network load, and that is exactly what
+the store cannot carry: writes are buffered, so a per-round headcount never
+accumulates (this is the same wall that capped `ECON_MAX_TOTAL_BUILDERS` by
+spawns rather than by live count).
+
+So `p.network_tiles` being per-Builder is a genuine defect **and** an accidental
+guard. `sindri` deleted; the diagnosis is the value.
+
+CPU, for the record: worst turn 4,896 us, zero over — safe, though up from
+gefjon's 2,426 because the joinable set makes the BFS goal set larger.
+
+### Next
+
+Three structural candidates are now closed with evidence: the alarm latch
+(inert), the ore block in `_route` (not the cause, though the rule it assumed is
+genuinely wrong), and shared belt networks (real defect, measurably worse
+without team-wide load accounting). The economy ceiling is understood and is
+harder than one line.
+
+The counter-cluster remains the biggest prize: `gefjon` went 5/5 against
+Besvikomat in its one series there, where the flagship line sits at 0.25 over
+390 games. That is a hint worth chasing with a fixture that actually reproduces
+the matchup — which is where `spar_mender` stalled.
