@@ -2822,3 +2822,31 @@ CPU 2,830 us, zero over. Deterministic. **Queued six rounds.**
 Two builds now in the queue that are both mechanism-level rather than tuning:
 `bifrost` (a message slot never cleared, disabling the ferry) and `hoenir` (the
 cost multiplier bought before the thing it taxes).
+
+---
+
+## Iteration 48 — recovering the multiplier is not the same as not paying it
+
+`hoenir` works by not buying turrets early. The same trace shows the other half:
+scale reaches 243 by round 30 and sits at 245 all game, because almost nothing is
+ever retired — and retiring *does* refund it, visible as a dip to 235 when
+something died. `TURRET_QUIET_ROUNDS = 60` is most of a short game, so the
+refund arrives after it could buy anything.
+
+`ullr2` retires an idle turret after 25 quiet rounds instead of 60.
+
+| ullr2 vs | | |
+|---|---|---|
+| `hoenir` (parent) | 21/42 | **0.500** |
+| `bifrost` | 24/42 | 0.571 |
+| `steward_hardened_reinforced` | 28/42 | 0.667 |
+| `mimir` | 30/42 | 0.714 |
+| **mean** | 133/210 | 0.633, floor 0.500 |
+
+Identical to its parent — 112/168 against hoenir's 111/168 on the four shared
+opponents, and a slightly worse floor. Deleted.
+
+The reason is the ordering: once `hoenir` has stopped buying the early turrets,
+there are few idle ones left to retire, and the refund it would recover is one
+this build never spent. Avoiding the multiplier and recovering it are the same
+lever pulled twice, and the first pull takes all of it.
