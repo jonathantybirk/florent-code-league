@@ -1,0 +1,5 @@
+source_commit = "7ed1acc2f"
+source_path = "bots/luc/steward_relent"
+engine = "2.3.6"
+status = "development"
+variant = "a second economy Builder, added rather than reallocated"
