@@ -4602,3 +4602,46 @@ intervals, so it does not discriminate either.
 unable to lose, which is not a test. The value of `lofn`, `hlin`, `nanna` and
 `syn` is a live question, and the ladder is the only instrument that plays games
 long enough to answer it.
+
+## Iteration 87 — testing my own excuse, and it does not hold
+
+Iteration 86 concluded the panel plays 104-turn games and therefore cannot price
+economy. That is a comfortable story for a night of level results, so it is
+worth attacking. It makes a sharp prediction: the economy builds should beat
+`vili` *more* in long games than in short ones.
+
+Every head-to-head recorded tonight, split by game length — free, no new games:
+
+| economy builds vs `vili` | | |
+|---|---|---|
+| short (<250 turns) | 407/742 | **0.549 ±0.036** |
+| long (250-998) | 112/206 | **0.544 ±0.068** |
+| tiebreak (≥999) | 23/43 | **0.535 ±0.149** |
+
+**Flat.** No length effect at all, and if anything the advantage shrinks as games
+lengthen. Per build in the tiebreak regime: `syn` 0.600, `freyja` 0.545, and
+`hlin`, `lofn`, `nanna` all exactly 0.500 — on 6 to 11 games each, so nothing.
+
+**So the excuse does not hold, and I should say so plainly.** "The panel cannot
+see economy because its games are too short" predicts an effect that is not
+there. What the data supports is narrower and less flattering: **the economy
+line beats `vili` by about 4-5 points in every regime I can measure, and that is
+the whole of it.** The 104-turn median is real and the live/internal divergence
+is real, but neither rescues the economy builds into being worth more than they
+measure.
+
+What still stands, because it rests on replays rather than on my panel:
+
+- the ladder's top runs 4.4-9.9 Harvesters against our 2.79, and finishes long
+  games on 6,986-10,045 titanium against our 14-20;
+- nobody above us builds Launchers, and rank 1 fields 8.5 turrets to our 22.8;
+- our own live composition is measured, not guessed.
+
+What does *not* stand is any claim that `lofn`/`hlin`/`nanna` will be worth more
+live than the ~0.55 they measure here. They might be — the compositions they
+produce move toward the ladder's shape — but I have no evidence for it, and I
+have just spent an iteration failing to manufacture some.
+
+**Honest expected value of tonight's queued work: a few points of win rate over
+`vili`, which was itself level with the live flagship.** That is worth having and
+it is not a route to rank 1 on its own.
