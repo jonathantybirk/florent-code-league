@@ -41,6 +41,23 @@ privilege. With connectivity published, both economic levers reverse:
 
 A negative result is only as good as the build it was measured on.
 
+### Trap: `barriers_built` and the replay decoder both miss Barriers
+
+`benchmarks` reports `a_barriers_built = 0` in every game, and the replay
+decoder labels the entity `unknown{18}` — `BARRIER` is the one `EntityType`
+neither of them names. On that evidence the Barrier screen looked like dead
+code that had never fired, and it was one commit from being deleted as such.
+
+Removing it is what proved otherwise: **wins 3 → 2, core hp at end 23.8 →
+12.6, games survived 5 → 3.** The replays carry 1–3 `unknown{18}` entities a
+game on our side; those are the Barriers, doing exactly the job they were
+built for (30 hp soaking a Gunner's 7 damage, five shots for 3 Ti).
+
+Two lessons, both cheap to repeat: a metric reading zero is not evidence a
+feature is dead until you have checked the metric exists AND resolves the
+entity, and the fastest way to test whether code matters is to delete it and
+measure.
+
 ### The ladder's actual standard
 
 sporks (#1, 2117) and Pantheon (#2) build **41–97 conveyors** a game, first
@@ -121,6 +138,7 @@ repeat run reproduced 823.33 collected to the decimal).
 | **+ Launcher (ferry Builders)** | **933** | 4/45 | 0 |
 | **+ consume the published turret map** | 933 | 5/45 | 0 |
 | **+ Barrier screening** | 823 | 5/45 | **1** |
+| — removing it, to check | 979 | 3/45 | 2 |
 | **+ connectivity broadcast (kept)** | 568 | **6/45** | **2** |
 | siege role (kept, off by default) | 809 | 7/45 | 1 |
 | turret map, all 8 facings (bug) | 256 | 1/45 | 0 |
