@@ -207,3 +207,29 @@ from round 4) is a separate unaddressed failure mode.
   (flagship ~1780–1800). Needs ≥25 games to qualify for auto-promotion; the farm's UCB
   should feed it more rounds on its own.
 - Team rank 12 at 1772.
+
+## Iteration 10 — 2026-08-08 ~09:15
+
+- **mimir promoted to live flagship by the farm** (8–4, est 1844). hodr's test rounds: 6–4
+  (est 1743, 10 games).
+- Dissected the rated 0–5 to I Stone (1637): played by the *old* flagship shr@f1f2bda just
+  before promotion. I Stone builds zero Gunners and one Sentinel at round ~37 — we
+  out-damaged them in both decoded games and still lost, because one 2.3.4 Sentinel deals
+  9/round and two menders heal 8. Healing through a Sentinel is losing arithmetic; it must
+  be killed. shr couldn't see it (out of guard vision) — the beacon+hunt in vali+ closes
+  exactly this, so mimir on the ladder should already answer it. Watch item, not a build.
+- **Sentinel delivery autopsy** (hodr seats 0.61/game vs target 2): two blockers found —
+  the ammo check ran *after* the throttle update, so a low pool burned the 10-round search
+  slot; and between attempts the attacker built 25-ammo Gunners that kept the pool under
+  the Sentinel's 40 forever. **Built `bots/luc/forseti`** = hodr + ammo-before-throttle +
+  hold-Gunner-spend-while-saving (falls back to harass, which spends nothing).
+- Panel running (`forseti_run1`).
+- **forseti verdict: correct but inert.** Avg Sentinels seated unchanged (0.61/game), vault
+  byte-identical, 23–19 vs hodr (noise), 0.649 total. The two unblocks weren't the binding
+  constraint — ammo rarely sits under 40 in practice. Real limiter likely attacker lifetime
+  vs the round-60 gate or the seen-terrain precondition. Committed for the record, no farm
+  slot.
+- mimir as flagship: beat team lazy (1864) 3–2, lost 2–3 to Erebus (1870) — competitive at
+  top-6 level. Rated scheduler seems quiet since 07:04 UTC; watching.
+- Pacing note: farm queue is long and mimir needs rated volume — shifting to longer
+  observation windows, building only on live-evidence targets.
