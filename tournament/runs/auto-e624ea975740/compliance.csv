@@ -1,2 +1,2 @@
 bot_id,bot_name,bot_commit,status,matches_planned,matches_completed,matches_reported,samples,min_turn_us,p25_turn_us,p50_turn_us,p75_turn_us,max_turn_us,timeouts,bot_exceptions,close_threshold_us,limit_us
-spar_mender@d5b46bc,spar_mender,d5b46bc,pending,33,0,0,0,,,,,,0,0,9000,10000
+spar_mender@d5b46bc,spar_mender,d5b46bc,pass,33,33,33,5550,22,55,155,1565,7788,0,0,9000,10000
