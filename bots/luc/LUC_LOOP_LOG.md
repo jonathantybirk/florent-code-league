@@ -5921,3 +5921,38 @@ the outcome.
 cannot do: run `mani` on the ladder for 150 games and read it against `lofn`
 with `--compare`. That is a farm question, and the farm is eleven rounds from
 reaching either of them.
+
+## Iteration 121 — mani queued, and a silent no-op in my own queueing
+
+Queued `mani@11aec08:8` — `lofn` with the replacement threshold at 110 — on the
+grounds that it is the one mechanic separating our best live build from
+everything I made tonight, and that the panel which rates it -5.5 sd rates its
+parent 29 points below that parent's live record.
+
+**Two things went wrong on the way, both mine.**
+
+**The edit silently did nothing.** My script guarded on `if "mani@11aec08" not
+in s`, performed a `str.replace` whose anchor no longer matched, and printed
+"queued mani@11aec08:8" regardless. `git commit` then said "nothing added",
+which is the only reason I noticed. A guard that checks the *intent* and a
+replace that checks nothing is a lie waiting to happen; the fix is to assert the
+replacement count, which I do everywhere in the bot patches and did not do here.
+
+**The anchor moved because another agent is working this file.** `byggvir@bf22593`
+was appended after `nanna` — commit `c79a493`, "the boom the internal rush-panel
+cannot price" — which put a comma on the line I was matching. `CLAUDE.local.md`
+says to expect exactly this and leave their work alone, so I re-read the file,
+appended after their entry, and verified both entries survive:
+
+    last three: nanna@9a11215:8, byggvir@bf22593:5, mani@11aec08:8
+
+Their queue entry is intact and their commit is untouched.
+
+**Worth noting what they are testing:** byggvir is a "boom" build, and their
+commit message says the internal rush-panel cannot price it. That is the same
+conclusion I reached from the other direction tonight — my panel plays 110-turn
+games and cannot price anything that pays late. Two agents, two routes, same
+finding about the instrument.
+
+**Queue now:** `vili` (5 rounds left), `freyja`, `lofn`, `hlin`, `nanna`,
+`b61aaac`, `byggvir`, `mani`.
