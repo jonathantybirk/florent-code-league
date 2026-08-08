@@ -3275,3 +3275,62 @@ finding approached from opposite ends.
 
 `vili` still stands. Eight consecutive candidates have now failed to beat it,
 and the two that came closest were nulls.
+
+## Iteration 58 — syn: the ammunition is not waste (refutation 25)
+
+Followed iteration 57's finding — the bot is broke — to where the titanium
+actually goes. The Core converts titanium to ammunition 1:1, with
+`AMMO_TARGET = 120`, `COMBAT_AMMO_FLOOR = 80` and `EMERGENCY_RESERVE = 10`.
+
+Probed, over two games against Sentinel mass:
+
+- **1160 titanium converted into ammunition**, against roughly 730 mined a game;
+- **1101 of it** through the COMBAT_AMMO_FLOOR path, which converts the bank
+  down to 10 Ti to keep the magazine near 80;
+- the first conversion is **120 Ti on round 0** — six Harvesters' worth, spent
+  before the economy exists, at the one moment cost scale is still 100.
+
+Against turret requirements of 20 (Gunner) and 40 (Sentinel), holding 120 looked
+indefensible, and it is the direct cause of the 2-42 bank that prices out the
+Sentinel (73) and the denial barrier (28).
+
+`syn` set AMMO_TARGET 120 → 60 and the floor 80 → 45, both still above every
+threshold any turret checks.
+
+**The mechanism worked and the bot got worse.**
+
+| | syn | vili |
+|---|---|---|
+| Harvesters | **1.89** | 1.50 |
+| conveyors | **8.53** | 6.10 |
+| Gunners | 3.59 | 3.19 |
+| barriers | 0.00 | 0.00 |
+| **vs Sentinel mass** | **0.524** | **0.667** |
+
+-1.3 sd. Freed titanium became 26% more Harvesters and 40% more belt, and cost
+2.5 games in seven against the live meta. Barriers stayed at 0.00 even with the
+bank freed, so the denial gate is not only about titanium either.
+
+**Five builds have now tried to turn resources into economy, and all five lost.**
+
+| | Harvesters | vs Sentinel mass |
+|---|---|---|
+| `saga` (second miner) | 2.33 | 0.567* |
+| `syn` (ammo budget) | 1.89 | 0.524 |
+| `gna` (ore denial) | 1.79 | 0.500 |
+| `ran` (turret hold) | 1.74 | 0.167 |
+| **`vili`** | **1.50** | **0.667** |
+
+*`saga` measured on the blind panel.
+
+The build with the **fewest** Harvesters wins by the widest margin, and the
+ordering is monotone the wrong way. The ammunition is not waste: it is what
+makes the turrets fire, and the turrets are what win. This bot's economy is
+small because a bigger one is worth less than what the titanium buys instead.
+
+That closes the loop opened in iteration 51. The 2.3-Harvester ceiling, the
+unaffordable Sentinel, the unaffordable denial barrier and the full magazine are
+one decision, made deliberately and correctly by whoever tuned this bot. I have
+now attacked it from five directions and lost every time.
+
+`vili` stands. Nine consecutive candidates have failed to beat it.
