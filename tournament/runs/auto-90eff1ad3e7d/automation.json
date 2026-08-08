@@ -1,0 +1,12 @@
+{
+  "challengers": [
+    "mimir@cfc1ec4"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "f9434e8de89b0acbc2df196d102ebcc2d54c3749",
+    "x/jon": "6a2af02a9d07ed943bf730e686b34e71c633b3c5",
+    "x/luc": "cfc1ec4d84835d407b80d977dc543841214e8012"
+  },
+  "submitted_at": "2026-08-08T05:54:47+00:00"
+}
