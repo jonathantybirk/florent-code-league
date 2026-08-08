@@ -2171,3 +2171,44 @@ builds — it has held across the whole lineage, including bots from two
 generations back. Nothing in the stable is meaningfully better than anything
 else, and the spread between the best and worst of them is smaller than the
 noise on a five-game series.
+
+---
+
+## Iteration 33 — the rank-1 composition, reproduced exactly, is worse on our chassis
+
+`alfr` removes the Gunner from this bot entirely, to match what sporks does:
+zero Gunners, Sentinels seated early.
+
+**First attempt did nothing**, and the reason is worth recording. Setting
+`SENTINEL_ONLY` in `_turret_kind` still left 3.7–6.4 Gunners a game, because
+**five call sites build Gunners directly** and never consult it:
+`_build_blocker_gunner`, `_engage_with_turret`, `_trap_enemy_builder`,
+`_build_basic_gunner`, `_breaker_gunner_body`. That is almost certainly why
+`heid` measured inert two iterations ago as well — the constants it changed were
+not where the turrets come from.
+
+Routing all five through one policy makes the mechanism fire exactly:
+
+| alfr vs | | | Gunners | Sentinels |
+|---|---|---|---|---|
+| `snotra_h` | 14/42 | **0.333** | **0.00** | 2.55 |
+| `ostara` | 20/42 | 0.476 | 0.00 | 3.45 |
+| `steward_hardened_reinforced` | 20/42 | 0.476 | 0.00 | 3.57 |
+| `mimir` | 22/42 | 0.524 | 0.00 | 3.17 |
+| `spork` | 24/42 | 0.571 | 0.00 | 3.48 |
+| **mean** | 100/210 | **0.476**, floor 0.333 | | |
+
+That is the sporks combat profile — zero Gunners, three-ish Sentinels — and it
+is **clearly worse than what we already had**. Deleted.
+
+### What this closes
+
+Lucas asked for the top three to be the model. Their composition is now
+measured, reproduced faithfully, and rejected: it is not the composition that
+makes sporks a 2115 bot. Whatever it has is in *how* it plays — where it seats
+those Sentinels, when, and what its economy is doing meanwhile — not in the
+counts, and copying counts onto a different chassis makes things worse.
+
+Eleventh refutation, and the most informative one: it rules out the entire
+"imitate the leader's build order" family, which is where the last three
+iterations were heading.
