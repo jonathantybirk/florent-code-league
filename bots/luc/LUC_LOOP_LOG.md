@@ -4099,3 +4099,42 @@ the night, whatever the last two candidates added.
 
 Queued and awaiting live games: `lofn@86287ec:8`, `hlin@a72a7dc:8`. Committed
 unqueued: `bil` (team-wide turret ceiling, live-only hypothesis).
+
+## Iteration 75 — sjofn: the collisions were not there to remove (refutation 31)
+
+The conversion problem — one Harvester per twelve granted tasks, one
+`_abandon_task` per three games, so tasks close on arrival at deposits somebody
+already finished — looked like a coordination failure. Builders cannot tell each
+other what is done, because all 16 store slots are spoken for.
+
+But they do not need to talk: every unit derives its ore list from the same
+atlas, so a deterministic function of the tile partitions the deposits for free.
+`sjofn` gives each miner a preferred residue class and lets it fall back to the
+rest, so nothing is unreachable and two miners rarely target the same tile.
+
+| sjofn vs | on-pool | off-pool | combined | |
+|---|---|---|---|---|
+| `hlin` (parent) | 0.444 | 0.488 | **73/156 = 0.468 ±0.078** | -0.8 sd |
+| `lofn` | 0.479 | 0.536 | 79/155 = 0.510 | +0.2 sd |
+| `vili` | 0.453 | 0.784 | 53/90 = 0.589 | +1.7 sd |
+
+Worse, and Harvesters do not move: **2.75**, identical to `hlin`. With two
+miners and a median of twelve deposits, collisions were already rare — the
+partition removed a problem that was not there and cost the miners their
+nearest deposit to do it.
+
+**So the "arrive and find a Harvester" closes are not two miners racing.** The
+likelier reading is a single miner re-picking ground it already worked: `p.ores`
+is the full atlas list and a Builder's own `p.solids`/`harvester_seen` only
+covers what it has seen recently, with `HARVESTER_RECHECK_ROUNDS` deliberately
+expiring that memory. Chasing that further means touching the staleness rule
+that `_pick`'s own comment says was measured and deliberately chosen — and the
+last four attempts to improve this bot by reasoning about its economy have
+returned 0.494, 0.474, 0.510 and 0.468.
+
+**The economy line is closed.** Seven candidates: `freyja` (+), `lofn` (+),
+`njorun` (0), `hlin` (+, bug fix), `var` (-), `gna` (0), `sjofn` (-). Two real
+gains, one real bug fix, four dead ends, and Harvesters at 2.79 against the
+4.4-7.6 the ladder's top runs.
+
+Queued: `lofn@86287ec:8`, `hlin@a72a7dc:8`. Unqueued but ready: `bil`.
