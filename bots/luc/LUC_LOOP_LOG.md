@@ -6228,3 +6228,46 @@ That is three corrections in a row arising from the same root cause: **I read
 raw win rates across builds that faced different fields.** The tool that avoids
 it has existed since iteration 95 and I kept reaching past it for the number
 that was easier to get.
+
+## Iteration 129 — the live ordering matches the official pool, not my generated maps
+
+Ran the confound-free comparison on the three builds with live data. Ten shared
+opponents — a real intersection this time:
+
+| build | shared record | rate |
+|---|---|---|
+| **`vili@419bf08`** | 31/55 | **0.564 ±0.131** |
+| `bifrost@a29403f` | 38/80 | 0.475 ±0.109 |
+| `hoenir@1e5de25` | 42/90 | 0.467 ±0.103 |
+
+**The same three builds, ranked by three instruments:**
+
+| instrument | ordering |
+|---|---|
+| **live, shared opponents** | **`vili` > `bifrost` ≈ `hoenir`** |
+| on-pool, 21 official maps | **`vili` > `hoenir` > `bifrost`** |
+| off-pool, 147 generated maps | `bifrost` > `hoenir` > `vili` |
+
+**The official pool got the live ordering right and my generated maps got it
+exactly backwards.** `vili` is first live and first on-pool; it is *last*
+off-pool. That is the reverse of iteration 61, where I concluded the official
+pool "does not generalise" and replaced it with generated maps for the next
+seventy iterations.
+
+**The honest reading, with its caveats up front.** The live samples are 55-90
+games with intervals of ±0.10 to ±0.13; `vili` over `hoenir` is 1.2 sd, not
+significant. One ordering agreement on three builds is weak evidence. But it is
+evidence *against* the methodological switch that shaped most of this session,
+and it points the same way as the `e55aab5` inversion: **my generated maps are
+the instrument that disagrees with the ladder, and the official pool is the one
+that agrees with it.**
+
+If that holds up, the correction runs deeper than any individual build: iteration
+61's finding was that on-pool and off-pool orderings differ, and I assumed the
+off-pool one was the truth because the tuning pool "must" be overfitted. I never
+checked which of the two tracked the ladder. When I finally did — here, and with
+`e55aab5` — the answer both times was the pool I had discarded.
+
+Nothing to ship from this. What it changes is which number to believe when
+`lofn` and `mani` report: their on-pool figures, which I have been treating as
+contaminated, may be the better predictor.
