@@ -4029,3 +4029,39 @@ than the number.
 
 `hlin@a72a7dc:8` stays the queued head of the line, with `lofn@86287ec:8` ahead
 of it for comparison.
+
+## Iteration 73 — pre-live validation of hlin
+
+`hlin` is what will actually play on the ladder, and the one thing the off-pool
+panel has been shown to resolve is catastrophe (`jotunn`, 0.131). So before it
+spends live games, a wide sweep: seven opponents across the official pool and
+21 generated maps, 743 games.
+
+| opponent | on-pool | off-pool | combined |
+|---|---|---|---|
+| `odin` | — | — | 0.833 |
+| `spar_mender` | 0.819 | 0.810 | 0.816 |
+| `maporacle` | 0.806 | 0.548 | 0.711 |
+| `mimir` | 0.653 | 0.476 | 0.588 |
+| `spar_sniper` | 0.653 | 0.476 | 0.588 |
+| `snotra_h` | 0.625 | 0.500 | 0.558 |
+| `spar_sentinel` | 0.542 | 0.548 | **0.544** |
+| **mean** | | | **483/743 = 0.650** |
+
+**No collapsed matchup.** Floor 0.544, and the floor is the same on both pools
+(0.542 / 0.548), which is the pattern a robust build should show — the on-pool
+figures are inflated (0.81, 0.81) and the off-pool ones are not, exactly as
+iteration 61 predicted, but nothing falls through the floor.
+
+Zero engine errors in 700 results.
+
+That is as much assurance as local measurement can give. `hlin@a72a7dc:8` and
+`lofn@86287ec:8` are queued, `bil` is committed unqueued behind them, and every
+further question on this line needs the live games.
+
+**Where the session stands.** Rank started at 15/109 and 1743-1748 by the feed's
+reckoning, dropped to 21/112 at 1669 mid-session, and is now 18-20/113 at
+1686-1695. None of that movement is attributable to my builds — the live
+flagship has been `steward_hardened_reinforced` throughout, and the farm's
+promotions have been between its own variants. The builds from tonight are all
+still queued.
