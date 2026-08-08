@@ -6042,3 +6042,38 @@ one difference, 200 live games each, read with `--compare`.
 That is the cleanest experiment this session has set up, and it exists because
 the loop kept going long enough to find the constant, trace its history, and
 queue the test.
+
+## Iteration 124 — making the queued experiment readable before it lands
+
+`lofn` and `mani` differ by one constant and are both queued, but the farm picks
+opponents per round, so they will not face the same field. Tested `--compare` on
+three builds that have already played: **two shared opponents**, and the tool
+printed almost nothing. The experiment I set up in iteration 123 would have been
+unreadable when it arrived.
+
+`--compare` now falls back below three shared opponents to a per-opponent grid:
+
+    opponent                  bifrost@a29403  hoenir@1e5de25    vili@419bf08
+    0033                            2/5 0.40       3/10 0.30               -
+    CtrlAltDefeat                  7/10 0.70        4/5 0.80        5/5 1.00
+    O(1)                           3/10 0.30       2/10 0.20               -
+    gsxWins                        8/10 0.80       9/10 0.90               -
+    ...
+
+plus each build's own total, with a note that totals against different fields
+are not comparable. The pattern stays visible where before there was nothing.
+
+**And it exposed a discrepancy in my own reporting.** `--compare` counts only
+opponents' *current* builds; the ad-hoc script I used in iteration 122 counted
+every row including retired opponent versions. The two disagree:
+
+| build | current builds only | all rows |
+|---|---|---|
+| `bifrost` | 0.471 (85 games) | 0.533 (150) |
+| `hoenir` | 0.477 (130 games) | 0.507 (150) |
+
+The filtered number is the correct one — this tool exists because pooling
+retired opponent versions made Besvikomat look like our worst matchup at 0.24
+when against its current build we were at 0.53. So **`bifrost` and `hoenir` are
+0.471 and 0.477 against live opposition, not 0.53 and 0.51**, and iteration 122's
+verdict ("not improvements") holds more strongly than I stated it.
