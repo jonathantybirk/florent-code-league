@@ -71,10 +71,25 @@ out-collects us in exactly those long games — so the tiebreak still goes to
 them. Four is the optimum, and the shape says the remaining wins are not
 hiding behind survival.
 
-`SPAWN_INTERVAL` was re-swept on the corrected build too and did **not**
-reverse: 4 collapses to 3/45 (odin 1/30), against 8/45 at 6. So the confound
-did not invalidate everything indiscriminately — spawn pacing was measured
-correctly the first time, the economy floor was not.
+### Which measurements the collision actually invalidated
+
+Two re-tests bounded it. `SPAWN_INTERVAL` 4 still collapses (3/45 against 8/45
+at 6). `GUARDS_WHEN_QUIET` 2 still loses (5/45), even though it gates defence
+— so "defence constants are suspect" was too coarse a rule, and it was wrong.
+
+The precise rule is visible in `desired_mix`. There are two threat inputs:
+
+* `incoming = max(0, -dhp)` — from the **hp trend**, which the collision never
+  touched. Mender counts and `GUARDS_WHEN_QUIET` hang off this, and their
+  measurements were always valid.
+* `survival = hp / max(burst, ...)` — from **burst**, which read 32
+  permanently. Only the economy floor's `PANIC` suspension hangs off this, and
+  that is the one constant that reversed.
+
+So exactly one decision in the policy was reading the corrupted field, and
+exactly one measurement reversed. That is a much better predictor of what to
+re-test after fixing a defect than any intuition about which constants "feel"
+related to it: **follow the data dependency, not the topic**.
 
 That is the third result in this log to reverse once the build underneath it
 was corrected (after "more Harvesters collects less" and the spawn rate). The
