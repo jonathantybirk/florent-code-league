@@ -4395,3 +4395,44 @@ for them, which I did not have before.
 
 Not a bot problem. The strongest build of the night cannot be recognised as one
 by the system that is supposed to measure it.
+
+## Iteration 82 — the wall, stated plainly, and what is durable
+
+Three axes are exhausted or unmeasurable:
+
+- **Economy** — bracketed on both knobs, leak fixed, seven candidates, two
+  gains. Harvesters 1.50 → 2.79 against the 4.4-9.9 the ladder's top runs, and
+  the remaining gap is conversion, not constants.
+- **Turrets and siege** — the two mechanisms the replays most strongly support
+  (`bil`/`nanna`'s ceiling, `frigg`'s targeting) measure *exactly* level locally
+  and cannot be measured here by any means I could construct, including forcing
+  the mechanism on both arms of a controlled experiment.
+- **Live A/B** — the farm promotes on differences of 1.8-23 Elo against standard
+  errors of 43-80, so results cannot accumulate even when the games are played.
+
+There is one way to get live data on tonight's builds without waiting for the
+queue: `fcode match unrated` against chosen opponents with a non-flagship
+submission, per `reference_ladder_bot_swap`. It means activating a different bot
+on the live account while the farm fires every ~11 minutes, and a rated pairing
+inside that window would play an unvalidated bot for real rating. That is
+outward-facing, hard to reverse, and races a system I do not own, so it is
+Lucas's call rather than mine.
+
+**What was made durable instead**, since the loop's value is now in what
+survives the session:
+
+- `bots/luc/NOTES.md` — seven generalising findings, with the replay-decoding
+  recipe and the composition table for ranks 1, 7 and the cluster that beats us.
+- Memory: `reference-replay-workflow` (how to decode, and the gotchas that cost
+  an hour), joining `project-offpool-generalisation` and
+  `project-sentinel-fixture` from earlier tonight.
+- Three map sets committed for off-pool evaluation.
+- Two fixtures, one honest (`spar_sentinel`, with a README saying what it models
+  and what it got wrong).
+
+**Queued and waiting:** `lofn@86287ec:8`, `hlin@a72a7dc:8`, `nanna@9a11215:8`.
+**Ready, unqueued:** `bil`, `frigg`.
+
+The session's honest summary: the bot is better than it was — `nanna` beats
+`vili` 0.634 on both pools, and `vili` was already the flagship's equal — but
+none of it has reached the ladder, and the reason is not the bots.
