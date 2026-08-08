@@ -3083,3 +3083,41 @@ locally-refuted builds at ~11 min a round.
 The next build should therefore be a *fixture*, not a candidate — an opponent
 that plays the live meta (economy-funded Sentinel mass) so the internal panel
 can see the thing the ladder is actually beating us with.
+
+## Iteration 54 — spar_sentinel: the panel finally contains the live meta
+
+Built a fixture rather than a candidate, because the panel had stopped
+discriminating and the reason turned out to be that it contained no opponent
+playing the style the ladder runs.
+
+`vili`'s economy, every turret seat bought as a Sentinel (six `ct.build_gunner`
+sites redirected): **2.38 Sentinels to 0.73 Gunners**.
+
+| our bot | vs spar_sentinel | its live number |
+|---|---|---|
+| `steward_hardened_reinforced` (live) | **0.262** | Pivot 0.25, O(1) 0.31, 0033 0.37, I Stone 0.41 |
+| `mimir` | 0.262 | |
+| `spar_sniper` | 0.262 | |
+| `bifrost` | 0.381 | |
+| `hoenir` | 0.405 | |
+| `vili` | **0.667** | not played live yet |
+
+**The fixture reproduces the ladder.** The live flagship scores 0.262 against
+it, inside the range of its four worst live matchups. That is the first time
+this session an internal number has predicted a live one.
+
+**And it re-prices the whole session.** Against the zoo, `vili` beats the
+flagship 0.690 and the three cost-scale builds looked like a 0.610 → 0.633 →
+0.657 creep worth a few points each. Against the live meta the same four builds
+read **0.262 → 0.381 → 0.405 → 0.667**. Holding the Launcher ring is worth
+**26pp** against Sentinel mass and 5pp against the zoo. The panel was not
+measuring the thing that decides our rank, so it undersold every fix that did.
+
+This also explains the 21 refutations more honestly than "the ideas were bad":
+a panel where every opponent plays Gunners cannot tell a Sentinel answer from a
+Gunner answer, so most of what was tested was invisible to it either way.
+
+**Consequence for the queue.** `vili` is not a 5pp improvement on `hoenir`; on
+the matchup that is costing us the ladder it is +26pp, and +40pp on the bot
+currently live. It is ninth in the farm queue behind seven builds already
+refuted locally, which is now a much more expensive place for it to be.
