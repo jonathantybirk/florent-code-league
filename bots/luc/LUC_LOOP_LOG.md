@@ -5886,3 +5886,38 @@ flattering reading: whether `lofn` is better than the live flagship. The
 unselected 1,000-map answer is 0.4952 ±0.0205. The length-selected answer is
 0.5625 ±0.0558 and is confounded. The live ladder is the only unconfounded
 instrument, `lofn` is queued for it, and that was true twenty hours ago.
+
+## Iteration 120 — a clean dose-response that contradicts the live evidence
+
+`lofn` never replaces a lost Builder (threshold 260, unreachable); `steward`
+replaces on 77% of checks (110) and has the best live record we own; so the
+obvious experiment is the middle. `nott` sets the threshold to **175**, the
+bank's own median, so it fires about half the time.
+
+| build | threshold | fires | Builders | vs `lofn` |
+|---|---|---|---|---|
+| `lofn` | 260 | never | 4.76 | — |
+| **`nott`** | 175 | ~half | 5.26 | **0.4660 ±0.0309 (-2.2 sd)** |
+| **`mani`** | 110 | 23/30 | 5.67 | **0.4140 ±0.0305 (-5.5 sd)** |
+
+`nott` beats `mani` **0.5658 ±0.0371 (+3.5 sd)**, so the ordering is confirmed
+internally as well as against the parent: **monotone in dose.** The more this
+bot replaces lost Builders, the worse it does on my panel, and the Builder
+counts confirm the mechanism scales as intended.
+
+**And the ladder says the opposite.** The build that replaces most —
+`steward@e55aab5` at threshold 110 — has the best live record of anything we
+own, 0.581 over 1,425 games, while my panel rates it 0.286.
+
+These cannot both describe the ladder. A monotone dose-response is exactly what
+a real effect looks like, and I have two of them pointing in opposite
+directions: one measured over 2,684 games on maps I generated, one over 1,425
+games on the maps that count. **The second wins on relevance and the first wins
+on control, and I cannot resolve it from here** — iteration 119 established that
+I cannot even build a panel with the right game length without conditioning on
+the outcome.
+
+`nott` deleted; `mani` stays committed and unqueued. What I would want next, and
+cannot do: run `mani` on the ladder for 150 games and read it against `lofn`
+with `--compare`. That is a farm question, and the farm is eleven rounds from
+reaching either of them.
