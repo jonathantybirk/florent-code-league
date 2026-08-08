@@ -2926,3 +2926,75 @@ ceiling itself. Whatever caps Harvesters is still unexplained.
 
 Head-to-head against its parent is 0.6 sd — suggestive, not settled. CPU 2,693
 us worst of 10,000, zero over, deterministic across three runs.
+
+## Iteration 50 — the scale ledger, and what the opening actually buys
+
+Instrumenting the Controller failed twice (it is a C type with no `__dict__`,
+and a delegating proxy was never called — `Player.run` is apparently not the
+only entry the engine uses). The suite metrics already had the answer, which is
+the second time this session that building a probe was slower than reading what
+was already collected.
+
+Mean structures over 210 games, priced at the measured scale weights:
+
+| | vili | hoenir |
+|---|---|---|
+| Builders | 4.40 → **88 scale (38%)** | 3.14 → 63 |
+| Gunners | 3.40 → 68 (30%) | 2.79 → 56 |
+| Harvesters | 1.89 → 38 (16%) | 1.33 → 27 |
+| Conveyors | 9.22 → 9 (4%) | 8.83 → 9 |
+| Barriers | **0.00** | **0.00** |
+| **total** | **230** | 182 |
+
+Two things fall out.
+
+**"Buy less scale" was never the rule.** `vili` buys 230 against `hoenir`'s 182
+and wins. It buys more Builders and more Harvesters. The three wins on this axis
+were not about spending less; they were about not paying the multiplier *before*
+the thing it taxes. Stated correctly the first time it would have been: buy the
+scale that earns, in the order that earns.
+
+**Barriers are 0.00 in every bot measured.** The wall-in code exists and never
+executes once in 210 games. That is why three wall-in experiments refuted: there
+was nothing to refute.
+
+## Iteration 51 — the harvester ceiling is not a defect. Two builds, both wrong.
+
+The ceiling looked cracked. Win rate is cleanly monotone in Harvesters built —
+1 → 0.507, 2 → 0.689, 3 → 0.826, 4 → **13/13** — and the count is frozen from
+round 50 onward: 1.81 at round 50, 1.82 at round 999. A 950-round game never
+adds one.
+
+**`sif`** — `LATE_BUILDERS_MINE = True`. The constant's own comment describes the
+bug in detail ("every Builder the Core bought ... walked to the enemy Core as a
+fourth attacker instead of laying belt") with ledger evidence, and then sets it
+`False`. Flipping it: **0.581**, loses to `vili` 0.476, and Harvesters did not
+move (1.71, h@999 1.64). Deleted.
+
+**`saga`** — two opening miners instead of one, keeping the attacker. The
+opening runs `_ROLES = {RUSH: (1, 1)}`, so exactly **one** Builder mines on a map
+with a median of twelve deposits. The prior 2-12 measurement against this was
+two miners *and no attacker* — a reallocation, not an addition, so this was
+untested. Required making the ring-Builder index doctrine-derived rather than the
+hardcoded 2, which held only while every doctrine ran one of each; BLITZ was left
+exactly as measured.
+
+It worked, mechanically: Harvesters **2.05-2.33**, h@999 **2.10** against
+`vili`'s 1.82. The ceiling broke.
+
+And it scored **0.567**, against `vili`'s 0.657. Deleted.
+
+**So the curve was backwards.** More Harvesters do not cause wins; winning
+causes more Harvesters — a game you are winning is longer and safer, so the
+belt survives and the count climbs. `13/13 at four Harvesters` is the shape of
+games already won, not a lever. The constant's own comment made the same
+correlational argument ("winning games spawn 5.6 Builders and hold 1.63
+Harvesters") and reached the same wrong conclusion, which is presumably why the
+flag it justifies is switched off.
+
+Two builds spent to learn it, and the 2.3-Harvester ceiling stops being the open
+question of this session: it is an equilibrium the bot chose, and both attempts
+to raise it made the bot worse. Refutation count now 20.
+
+`vili` remains the best build at 0.657/0.548, queued and still behind seven
+locally-refuted builds in the farm queue.
