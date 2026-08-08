@@ -1,0 +1,18 @@
+{
+  "submissions": [
+    {
+      "job_id": "29052113",
+      "name": "trn_auto-a82020855ca2",
+      "elements": 505,
+      "chunk": 10,
+      "range": "1-505",
+      "submitted_at": "2026-08-08T07:08:47+0200"
+    }
+  ],
+  "job_ids": [
+    "29052113"
+  ],
+  "job_id": "29052113",
+  "host": "dtu",
+  "remote": "florent-tournament/auto-a82020855ca2"
+}
