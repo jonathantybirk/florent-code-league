@@ -1450,3 +1450,55 @@ Evaluating four and taking the true minimum is the fix.
 The shipped build is unchanged — weight 3 saves a conveyor for free — but the
 README now leads with the corrected explanation rather than the one I shipped it
 under.
+
+---
+
+## Iteration 17 — the defect has siblings
+
+### snotra's live verdict, at the readable sample
+
+Four rounds done: **20 matches, 90 games, elo 1766**, against mimir 1772 and
+hodr 1766. Model-free, which is the read that needs no model:
+
+| | overall | shared opponents |
+|---|---|---|
+| `snotra` | 56/100 = **0.560** | 32/55 = **0.582** |
+| `mimir` | 55/100 = 0.550 | 53/95 = 0.558 |
+
+Marginally ahead, in the direction the local panel predicted, and +1pp at 100
+games is inside noise. Not a demonstrated win; not worse.
+
+### The same defect, at a second site
+
+If ranking by Chebyshev while acting on a real path is a bug in `_pick`, it is a
+bug wherever else the pattern appears. `_harass` sorts enemy-economy targets by
+`(priority, Chebyshev)` and then walks a real path to them.
+
+`bots/luc/snotra_h` re-prices only the head of that list, and only within one
+priority class, so the cheap ordering still decides *what* to hit and the real
+distance decides which of the equally valuable ones. Bounded at four candidates.
+
+| snotra_h vs | | |
+|---|---|---|
+| `snotra` | 23/42 | **0.548** |
+| `mimir` | 26/42 | 0.619 |
+| `hodr` | 26/42 | 0.619 |
+| `vidar` | 29/42 | 0.690 |
+| **mean** | 104/168 | **0.619**, floor 0.548 |
+
+Honest size: on the three opponents both faced, 81/126 against snotra's 80/126.
+The panel gain is one game and the head-to-head is 0.6 sd. Suggestive, not
+established — but it lifts the floor from 0.524 to 0.548 and costs nothing, and
+the standing instruction is to ship what beats the current best rather than
+withhold it. **Queued for four rounds.**
+
+CPU 3,717 us worst, *better* than snotra's 5,478 — the re-rank replaces walking
+with searching. Deterministic across three runs.
+
+### Two remaining Chebyshev sites, not touched
+
+`_deny_enemy_ore` picks the nearest enemy-side ore to barrier, and `_explore`
+picks its next stride target, both by Chebyshev. Neither has a real distance
+already computed nearby, so both would cost a fresh search for a decision that
+is either rare (denial) or intentionally cheap (exploration). Left alone
+deliberately.
