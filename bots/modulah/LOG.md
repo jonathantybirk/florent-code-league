@@ -1,9 +1,9 @@
 # modulah log
 
-## Status: 6/45 against our best three — goal NOT met
+## Status: 8/45 against our best three — goal NOT met
 
 `aegis` on the full 15-map official pool, both seats:
-**odin 4/30, vidar 2/30, steward 0/30.**
+**odin 7/30, vidar 1/30, steward 0/30.**
 
 The stated goal was to beat `steward_hardened_reinforced` and improve online.
 Neither happened. aegis has never won a game against steward in the shipped
@@ -11,8 +11,8 @@ build, and its one live outing lost rating.
 
 | | session start | now |
 |---|---|---|
-| **wins vs the top three** | 0/45 | **6/45** |
-| titanium collected | 823 | **1068** (steward 788) |
+| **wins vs the top three** | 0/45 | **8/45** |
+| titanium collected | 823 | **1235** (steward 788) |
 | conveyors built | 11.7 | **25.6** (steward 12.1) |
 | harvesters @300 | — | **4.20** |
 | worst stall (rounds) | 48 | **15** |
@@ -33,7 +33,7 @@ rotated to `v33` and the team recovered to ~1702 / #18.
 
 ### The honest shape of the remaining gap
 
-aegis **out-collects steward** (1068 vs 788) and dies around round 100 anyway.
+aegis **out-collects steward** (1235 vs 788) and dies around round 100 anyway.
 For home defence the following have each been measured and ruled out: aim,
 ammo (zero dry turns), rotation (zero refusals), turret count, siting policy,
 mender/guard allocation, spawn rate, and workforce size. What is left is **ray
@@ -43,6 +43,29 @@ geometry** — enemy Gunners park at offsets like (1,2) that no facing can reach
 The one build that ever beat steward did it by **surviving to round 1000 and
 out-collecting** (fjordgate, 530 titanium to 60). That is the win condition
 worth building toward; out-fighting is not.
+
+### ECON_FLOOR 4: a third confounded result reverses
+
+Lowering the Harvester floor from 7 to 4 was tested mid-session and rejected —
+best survival figures, one fewer win. Re-tested on the **collision-free**
+build it is the largest single gain of the session:
+
+| | ECON_FLOOR 7 | ECON_FLOOR 4 |
+|---|---|---|
+| **wins** | 6/45 | **8/45** |
+| odin | 4/30 | **7/30** |
+| titanium collected | 1068 | **1235** |
+| harvesters @300 | 4.20 | 4.00 |
+
+That is the third result in this log to reverse once the build underneath it
+was corrected (after "more Harvesters collects less" and the spawn rate). The
+pattern is now thoroughly evidenced: **a negative result is only as good as
+the build it was measured on**, and a systematic defect invalidates every
+tuning decision taken while it was present.
+
+Trading a little economy for defence pays *now* because the threat signal is
+finally honest — with burst reading 32 permanently, the bot could not tell a
+real threat from the phantom, so spending Builders on defence bought nothing.
 
 ### What unlocked it: publishing connectivity
 
