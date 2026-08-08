@@ -1066,3 +1066,68 @@ thing left on my side of this problem.
 incumbent's estimate wandered too. Team rating 1784 → 1744 over the same window.
 The mechanism is iteration 8's; still not changed unilaterally, since the farm
 is shared and two other agents are testing against it.
+
+---
+
+## Iteration 11 — one Sentinel, and why we cannot answer it
+
+### The killer, identified
+
+I Stone v22 swept us **0–5 twice** today. Decoding one (`match 5d7ea43c`):
+
+| map | their Gunners | their Sentinels | their Core damage | our Gunners | our damage |
+|---|---|---|---|---|---|
+| snowflake | **0** | **1** @r40 | **4,464** | 5 | 602 |
+| saga | 3 @r168 | 3 @r25 | **5,616** | 4 | 105 |
+| antler | **0** | **1** @r71 | 1,944 | 3 | 560 |
+| jackpot | **0** | **1** @r36 | 846 | 7 | 0 |
+| hive | **0** | **1** @r38 | 918 | 3 | 1,099 |
+
+**One Sentinel, seated around round 36–40, grinds our Core down for the whole
+game.** 9 damage a round against the 8 our two menders restore is a net loss of
+1 a round that patience cannot fix; 9 × 500 ≈ 4,500, which is snowflake exactly.
+Our Core ended on 0 in all five games. On hive we out-damaged them 1,099 to 918
+and still lost.
+
+And we cannot reach it: a Sentinel's reach is r²=32, a Gunner's 13, a Builder's
+vision 20. `_note_incoming_fire` already says this in as many words — "the
+turret that kills us is routinely outside our own vision".
+
+### `spar_sniper` — the fixture finally works
+
+Third attempt, and this one reproduces. `mimir` takes 0.524 against it and ends
+with its Core on a mean of **191 HP** — ground down, not killed outright, which
+is the live shape. Committed as `bots/luc/spar_sniper`.
+
+### Two answers, both failed
+
+**1. "Only a Sentinel answers a Sentinel."** `_counter_sentinels` falls back to
+a Gunner when a Sentinel is unaffordable or unsited. That seats a 25 HP turret
+inside an 18-damage line — dead in two shots, needing six to kill — and then
+adds the Sentinel to `countered_sentinels` regardless, so it is never answered
+again. Removing the fallback measured **identical**: 22/42 either way, 0.07
+Sentinels built per game. **The routine never fires**, because the shooter is
+outside the Builder's vision. My fix was to the wrong half of the problem.
+
+**2. A third mender.** Their 9 a round loses to 12, and healing is the one
+answer whose price does not move with cost scale. Recalling the attacker on a
+"Core lost HP over the last 25 rounds" alarm measured **worse**: 0.405 against
+mimir's 0.524, with our Core *lower* at 142.5 and games 60 rounds shorter. The
+trigger fires on ordinary skirmishing, so the attacker is recalled constantly
+and the offence is gutted — the same mis-calibration as njord's release
+condition in iteration 2.
+
+`syn` deleted. On the general panel it was 0.500 vs mimir and mean 0.530, so it
+was not a regression there; it simply does not solve the problem it was for.
+
+### What the real fix looks like
+
+**Localisation.** `hurt_tiles` already infers unseen shooters from damage — but
+only to *avoid* them. Nothing turns "we are being shot from somewhere" into
+"seat a Sentinel on that ray". A turret fires along one of eight compass rays,
+so a Core losing HP constrains the shooter to eight lines within r²=32, and a
+Sentinel's own line is never blocked. That is a tractable search, it needs no
+vision of the target, and `spar_sniper` is now the harness to test it against.
+
+That is the highest-value piece of work left on this problem, and it is bigger
+than the time I had left in this iteration.
