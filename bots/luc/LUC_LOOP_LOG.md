@@ -3447,3 +3447,58 @@ Off-pool maps live in `maps/offpool/` and `maps/offpool2/` (generated, seeds
 8081 and 20260809). The suite resolves map names against `maps/` root only, so
 running them means copying them in; I removed the copies afterwards, since
 globbing `maps/` is itself a known bug.
+
+## Iteration 61 — the whole lineage is one bot, off the tuning pool
+
+Iteration 60 showed `vili`'s advantage was a property of the 21 official maps.
+The obvious follow-up: how much of *anything* in this repo survives leaving
+them? Ten lineage heads against `spar_sentinel`, 42 generated maps, 84 games
+each.
+
+| bot | off-pool | on-pool |
+|---|---|---|
+| `snotra_h` | 0.512 ±0.107 | — |
+| `mimir` | 0.500 ±0.107 | **0.262** |
+| `maporacle` | 0.500 ±0.107 | — |
+| `bifrost` | 0.488 ±0.107 | 0.381 |
+| `hoenir` | 0.488 ±0.107 | 0.405 |
+| `vili` | 0.488 ±0.107 | **0.667** |
+| `steward_hardened_reinforced` | 0.452 ±0.106 | 0.262 |
+| `heimdall` | 0.440 ±0.106 | — |
+| `odin` | 0.429 ±0.106 | — |
+| `jotunn` | **0.131** ±0.072 | — |
+
+**Nine of the ten span 0.429 to 0.512** — an 8-point spread with every interval
+overlapping every other. On the pool these bots were tuned on, the same nine
+span **0.262 to 0.667**. `mimir` alone moves from 0.262 to 0.500.
+
+Only `jotunn` is distinguishable, and it is distinguishably *broken* off-pool
+(0.131) — the one thing this panel can resolve is catastrophe.
+
+**What this means.**
+
+- The internal ranking signal is almost entirely map-set-specific. Eight
+  eras of bots, dozens of measured mechanisms, and off their tuning pool they
+  are one bot with noise on top.
+- It explains iterations 49-60 completely. Eleven candidates measured "level or
+  worse" because *everything* is level once you leave the 21 maps. I was
+  searching a surface that is flat, using an instrument that reads 40 points of
+  slope on it.
+- The live ladder is not a nice-to-have confirmation of internal work; it is the
+  only measurement in this project with a held-out map pool. That makes the
+  farm's promotion rule — and the `min_games`/margin bug in it — more important
+  than any local build I could produce tonight.
+- It does not say the tuning was wrong. On-pool gains are real on-pool, and the
+  live pool shares three maps with the official one. It says the *transfer* is
+  unmeasured, and I have been reporting on-pool differences as if it were.
+
+**On `vili`.** Still not a regression: 0.488 off-pool against
+`steward_hardened_reinforced`'s 0.452, and clearly ahead on-pool. Worth its
+place in the queue. But "the build that fixes our worst matchup" was an on-pool
+sentence, and the honest version is: it is level with everything else we have,
+on maps it has not seen.
+
+**Method change for the rest of this loop.** No candidate gets reported as an
+improvement on the official pool alone. The off-pool set is 42 maps in
+`maps/offpool/` and `maps/offpool2/`, and a build has to move *both* before it
+is worth queueing.
