@@ -5997,3 +5997,48 @@ taken of that build has been wrong in the direction of underrating it.
 
 Queue: `vili` is mid-run at 25 games, then `freyja`, `lofn`, `hlin`, `nanna`,
 `b61aaac`, `byggvir`, `mani`.
+
+## Iteration 123 — the 110 -> 260 change was measured, on internal panels
+
+Traced where our lineage's unreachable threshold came from. Commit `c04e46e3`,
+"steward_hardened_reinforced: the replacement Builder was the cost-scale leak",
+raised `REPLACEMENT_BANK_THRESHOLD` **110 -> 260** with more evidence than most
+changes get:
+
+    rank-stratified   0.705 -> 0.786 mean, worst 0.595 unchanged
+    top-18 vidar      0.671 -> 0.743 mean, 0.571 -> 0.595 worst
+    beats jon/skadi 24-18 where the previous build drew 21-21
+    180 worse (0.700/0.429), 320 same mean worse floor, longer cooldown worse
+    "260 is the measured optimum on both panels"
+
+The reasoning is sound and the ledger it cites is real: every replacement is a
+permanent +20% on every later price, and a Core answering a thin bank by buying
+another body mortgages the economy it is restoring.
+
+**Every one of those numbers is from an internal panel.** The same class of
+instrument that told me `vili` beats the flagship 0.690 when the ladder says it
+does not, that rated `steward@e55aab5` at 0.286 against its live 0.581, and that
+rated `bifrost` and `hoenir` at 0.610 and 0.633 when live they are 0.533 and
+0.507.
+
+**And the live record disagrees with it:**
+
+| build | threshold | live record |
+|---|---|---|
+| `steward@e55aab5` | **110** | **0.581 over 1,425 games**, median opponent rank 10 |
+| `steward_hardened_reinforced@f1f2bda` | 260 | 0.560 over 1,930 |
+| `steward_hardened_reinforced@366cd1b` | 260 | 0.549 over 1,300 |
+
+The build with the *old* threshold has the best live record we own, against the
+hardest opponent mix we own.
+
+**The confound, stated:** `e55aab5` is not `steward_hardened_reinforced` minus
+one constant — it is an earlier bot, and everything hardening added came after.
+So this is suggestive, not decisive. What makes it worth acting on is that it is
+*testable*: `mani` is `lofn` with exactly this one constant reverted, it is
+queued for eight rounds, and `lofn` is queued directly ahead of it. Two builds,
+one difference, 200 live games each, read with `--compare`.
+
+That is the cleanest experiment this session has set up, and it exists because
+the loop kept going long enough to find the constant, trace its history, and
+queue the test.
