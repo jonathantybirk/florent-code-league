@@ -205,3 +205,60 @@ def titanium_over(schedule, rounds: int) -> int:
     """
     stacks = sum(schedule[:rounds])
     return stacks * GameConstants.STACK_SIZE + int(passive_per_round() * rounds)
+
+
+def network_frontier(ct, footprint, anchor):
+    """The far end of the supply network that is genuinely CONNECTED.
+
+    Only the Core can answer this. A Builder sees radius ~4.5 and cannot tell
+    a conveyor that delivers from one that is stranded -- so when Builders
+    routed new chains to "the nearest friendly conveyor" they joined each
+    other's dead spurs and grew a web that reached nothing. Infrastructure
+    went up (14.7 conveyors, 5.3 Harvesters, both records) and titanium
+    collected fell to 307.
+
+    The Core already walks the network backward every round to build the
+    arrival schedule, so the connected set is free. This returns the connected
+    tile FURTHEST from the Core -- the frontier worth extending -- as an offset
+    a Builder can act on.
+
+    Returns None when there is no network yet, which correctly tells a Builder
+    to start one at the Core instead.
+    """
+    reach = _connected(ct, footprint)
+    if not reach:
+        return None
+    best = max(reach, key=lambda t: min(f.distance_squared(Position(*t)) for f in footprint))
+    dx, dy = best[0] - anchor.x, best[1] - anchor.y
+    if not (-8 <= dx <= 7 and -8 <= dy <= 7):
+        return None
+    return dx, dy
+
+
+def _connected(ct, footprint) -> set:
+    """Every tile feeding the Core, walked backward from the footprint.
+
+    Same traversal as arrivals_by_hop, but collecting identity rather than
+    stacks, and run to MAX_HOP so it covers the whole visible network.
+    """
+    seen = set()
+    frontier = []
+    for tile in footprint:
+        for m, kind, _w in _feeders(ct, tile, EntityType.CORE):
+            frontier.append((m, kind))
+            seen.add((m.x, m.y))
+    budget = NODE_BUDGET
+    for _ in range(MAX_HOP):
+        nxt = []
+        for pos, kind in frontier:
+            if budget <= 0:
+                break
+            for m, m_kind, _f in _feeders(ct, pos, kind):
+                budget -= 1
+                key = (m.x, m.y)
+                if key in seen:
+                    continue
+                seen.add(key)
+                nxt.append((m, m_kind))
+        frontier = nxt
+    return seen

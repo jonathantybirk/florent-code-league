@@ -58,7 +58,8 @@ repeat run reproduced 823.33 collected to the decimal).
 | **+ rear-corner ore ranking** | 878 | 6/45 | **1** |
 | **+ Launcher (ferry Builders)** | **933** | 4/45 | 0 |
 | **+ consume the published turret map** | 933 | 5/45 | 0 |
-| **+ Barrier screening (kept)** | 823 | 5/45 | **1** |
+| **+ Barrier screening** | 823 | 5/45 | **1** |
+| **+ connectivity broadcast (kept)** | 568 | **6/45** | **2** |
 | siege role (kept, off by default) | 809 | 7/45 | 1 |
 | turret map, all 8 facings (bug) | 256 | 1/45 | 0 |
 | BFS navigation (all movement) | 387 | 3/45 | 0 |
@@ -217,12 +218,31 @@ harvesters@300 3.98). The reason is the next layer down: any friendly conveyor
 counts as a sink, so Builders join each other's *unconnected* chains and build
 a web that never reaches the Core.
 
-**The missing primitive is connectivity.** A Builder cannot tell a delivering
-conveyor from a stranded one — but the Core can, because `econ.py` already
-walks the network backward from the footprint every round. Publishing "is this
-tile connected" (or simply the set of connected chain-ends) is the piece that
-makes all of the above work, and it is exactly the kind of thing the comms
-layer exists for.
+**The missing primitive was connectivity, and publishing it worked.** A
+Builder cannot tell a delivering conveyor from a stranded one; the Core can,
+because `econ.py` already walks the network backward every round for the
+arrival schedule. `econ.network_frontier` returns the connected tile furthest
+from the Core and it rides in the threat word's spare bits (19–27) rather than
+costing a slot.
+
+Builders now extend the CONNECTED network instead of guessing:
+
+| | baseline | connectivity broadcast |
+|---|---|---|
+| wins | 1/45 | **2/45** |
+| core hp at end | 12 | **30** |
+| games survived | 5/45 | **6/45** |
+| conveyors built | 11.7 | **19.4** |
+| enemy cores killed | never | **round 676** |
+
+Titanium collected fell (823 → 568) and everything that decides games improved.
+That trade is the point: the earlier 823 was banked by a bot that died, and
+`collected` was never the objective.
+
+This is the first time published information has changed an outcome rather
+than decorating one. The scouting experiment failed because early warning
+unblocked no decision; connectivity unblocks a decision a Builder physically
+cannot make alone.
 
 ### The gap, measured
 
