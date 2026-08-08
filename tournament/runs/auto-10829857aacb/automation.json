@@ -1,0 +1,12 @@
+{
+  "challengers": [
+    "spork@05ab6a2"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "b11b57df5668c49ac26de385b402464abdd16e94",
+    "x/jon": "6a2af02a9d07ed943bf730e686b34e71c633b3c5",
+    "x/luc": "05ab6a28656b27c4681b3b8071b1cbdbdab64349"
+  },
+  "submitted_at": "2026-08-08T14:27:49+00:00"
+}
