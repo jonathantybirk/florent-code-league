@@ -5149,3 +5149,47 @@ proof that on-pool rankings do not generalise; the 104-turn median that makes
 economy nearly worthless internally; the three plumbing defects in the farm
 (no margin, unstable estimates, a build it cannot see); and every exit from
 `_pick` instrumented so the next person does not re-derive it.
+
+## Iteration 101 — every build measured against the thing that is actually live
+
+The early chain was only ever measured on the 21 official maps, and iteration 61
+showed those rankings do not generalise. With 147 generated maps now available,
+the question can be asked properly: **is any of tonight's work better than the
+build the ladder is running?**
+
+294 map/seat cells each, against `steward_hardened_reinforced`:
+
+| build | off-pool vs live flagship | | on-pool, same matchup |
+|---|---|---|---|
+| **`lofn`** | **0.527 ±0.057** | +0.9 sd | — |
+| `hlin` | 0.514 ±0.057 | +0.5 sd | 0.570 |
+| `nanna` | 0.510 ±0.057 | +0.4 sd | — |
+| `bifrost` | **0.486 ±0.057** | -0.5 sd | 0.610 (panel) |
+| `hoenir` | **0.483 ±0.057** | -0.6 sd | 0.633 (panel) |
+| `vili` | **0.476 ±0.057** | -0.8 sd | **0.690** |
+
+**Two conclusions, and the first is unwelcome.**
+
+**The early chain is not an improvement.** `bifrost`, `hoenir` and `vili` — the
+three builds I reported as clean wins in iterations 45-49, each with a
+mechanism I could name — are all *slightly worse* than the live flagship on maps
+they were not tuned against. `vili` beats it 0.690 on the official pool and
+0.476 off it. Those were real mechanisms (a ferry slot never cleared, a turret
+bought before the economy, a Launcher ring bought before the economy) and they
+are still real; what is not real is the improvement I claimed from them.
+
+**The economy line is a small improvement, and `lofn` is the best of it** at
+0.527 — 2.7 points over what is live, ±5.7. Under one standard deviation.
+
+**And the queue is ordered exactly wrong.** Ahead of `lofn` sit `bifrost`,
+`hoenir` and `vili` — the three builds measured *below* the flagship — consuming
+18 rounds of live games before the one build that measures above it gets any.
+I have argued for the reorder three times on grounds of speed; this is the first
+time I can say the current order is actively spending the ladder's budget on
+builds that are probably worse than what it already runs.
+
+**The session's bot work, stated finally and honestly: one build, `lofn`, about
+2.7 points better than the live flagship, inside its own error bar.** Everything
+else is diagnostic — which, given that the diagnostics include "on-pool
+measurement does not generalise" and "the farm promotes on noise", may be the
+more useful half.
