@@ -57,7 +57,7 @@ GUARDS_WHEN_QUIET = 1
 
 # Builders held on the economy until this many Harvesters are working, no
 # matter what is happening -- see the floor in desired_mix.
-ECON_FLOOR_HARVESTERS = 2
+ECON_FLOOR_HARVESTERS = 4
 
 
 def desired_mix(

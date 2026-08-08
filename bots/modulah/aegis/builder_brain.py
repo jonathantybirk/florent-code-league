@@ -334,6 +334,15 @@ class BuilderBrain:
                     self.trail = pos
                     if self.commit:
                         self.commit.progressed(r)
+                    if d is not None:
+                        # That segment fed the Core, so this route is finished.
+                        # Release the Builder to open another deposit -- it
+                        # used to keep calling _lay forever, which capped the
+                        # whole team at one Harvester per Builder and left us
+                        # losing tiebreaks we had survived to reach.
+                        self.harvester = None
+                        self.trail = None
+                        self.commit = None
                     return comms.ACT_BUILD_CONVEYOR
             except GameError:
                 pass
