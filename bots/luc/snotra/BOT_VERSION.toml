@@ -1,0 +1,5 @@
+source_commit = "62df0ec39"
+source_path = "bots/luc/mimir"
+engine = "2.3.6"
+status = "development"
+variant = "pick deposits by delivery cost, not walking distance"
