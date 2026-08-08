@@ -97,6 +97,7 @@ class BuilderBrain:
             intel["burst"], intel["dhp"],
             friendly_turrets=self._friendly_turrets(ct),
             harvesters=len(sit.my_harvesters),
+            titanium=sit.titanium,
         )
         return roles.assign(rank, mix)
 
