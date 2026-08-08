@@ -76,6 +76,7 @@ repeat run reproduced 823.33 collected to the decimal).
 | chain-length cap (neutral) | 821 | 5/45 | 1 |
 | planned route, de-looped walk | **27** | 1/45 | 0 |
 | supply line grown outward | 341 | 2/45 | 1 |
+| deposits capped to 4 tiles | 660 | 4/45 | 0 |
 | scouts round-robin sightings | 660 | 5/45 | 0 |
 | scouts, idle Builders only | 691 | 4/45 | 0 |
 | walking counter-battery | — | — | worse |
@@ -153,22 +154,39 @@ that a Builder cannot FOLLOW a frozen route. It gets blocked, shoved, or
 shot off the path, and every deviation invalidates the plan it is carrying.
 A route that must be walked exactly is the wrong abstraction for a unit that
 does not control where it can stand. Growing the line OUTWARD from the Core was then tried, which fixes both known
-faults by construction: the chain is attached to the Core from its first tile
-so partial progress is never a liability, the Builder only ever has to reach
-the tile beside the chain end rather than follow a route, and the Harvester is
-built LAST so a stranded one cannot exist.
+faults by construction. It collected 341: the first Harvester slipped round 4
+to 8 and the team finished on 1.6 Harvesters against 4.5, because nothing
+mines until the line is done. Strictly safer, strictly slower.
 
-It collected 341. The reason is tempo, not correctness: the first Harvester
-slipped from round 4 to round 8 and the team finished with 1.6 Harvesters
-against 4.5, because nothing mines until the whole line is finished. Building
-the route first is strictly safer and strictly slower, and on this map pool
-slower loses by more than stranding costs.
+### CORRECTION: the chains are not crooked, they barely exist
 
-Which closes the loop on chain-laying. Laying behind a wandering Builder
-works but wastes conveyors; laying a frozen plan cannot survive being pushed
-off it; laying outward is too slow to start. The remaining option nobody has
-tried is to keep the current lay-as-you-walk and make the WALK straighter --
-the chain is only crooked because the walk out was.
+An earlier version of this file blamed wasteful, wandering chains. **A replay
+audit says the opposite.** Conveyors actually built against conveyor tiles
+*needed* to connect the Harvesters that exist:
+
+| map | harvesters | conveyors built | tiles needed |
+|---|---|---|---|
+| archipelago | 7 | 14 | **28** |
+| drumlin | 4 | **4** | **40** |
+| nordkap | 3 | 4 | **17** |
+
+Chains are not wasteful, they are **absent**. On drumlin four Harvesters share
+four conveyors against forty tiles of need. Most Harvesters have no route home
+at all, which is the entire content of "more Harvesters, less titanium"
+measured four separate times: those Harvesters were never connected to
+anything.
+
+This also kills the "make the walk straighter" idea the previous version of
+this file ended on — a staircase and an L-path have identical Manhattan
+length, so a straighter walk cannot shorten a chain. That conclusion was
+wrong.
+
+Capping deposits to a route we finish was tried at both 8 tiles (neutral, 821)
+and 4 tiles (worse, 660 — near ore runs out and Builders idle). So refusing
+distant deposits is not the answer either. **The Builder needs to keep laying
+until the route is done rather than being pulled off it**, and finding what
+pulls it off is a debugging job on `_lay` and the Commitment lifecycle, not
+another policy knob.
 
 ### The gap, measured
 
