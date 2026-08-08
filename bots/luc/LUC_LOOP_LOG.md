@@ -3762,3 +3762,57 @@ chose, deliberately and correctly", after `saga` broke it and lost. That was
 wrong, and it was wrong because every measurement behind it came from our own
 bots on our own maps. It took decoding four opponents' replays to see that the
 number is not a choice but a cap, and the cap is two slots in a comms store.
+
+## Iteration 67 — njorun (null), then lofn: the best build of the session
+
+**`njorun` (null).** If four claim slots beat two, commit without a slot at all
+when they are full — `_pick` has already chosen the deposit by then. Harvesters
+2.02 → **2.08**, head to head against `freyja` **0.494 (-0.2 sd)**. So once the
+cap is four, claims stop being the binding constraint. Deleted.
+
+That pointed at the next one: not slots, **miners**. We field one opening miner
+where the ladder's top fields many.
+
+**`lofn` = `freyja` + `saga`'s second opening miner.** Neither half is new. The
+combination is, and it is worth more than either.
+
+`saga` measured **0.567** against `vili`'s 0.657 in iteration 51 and I recorded
+it as a refutation of economy. It was not the miner that failed — with
+`CLAIM_SLOTS = (1, 8)` the second miner had **nowhere to commit**, so it walked,
+paid its +20% cost scale and mined nothing. `freyja` opened the cap; `lofn` adds
+the miner the cap was blocking.
+
+Three map sets (21 official, 21 generated oblong, 21 shape-matched), 156 games
+a cell:
+
+| vs | on-pool | off-pool | combined | |
+|---|---|---|---|---|
+| `vili` | 0.556 | 0.595 | **90/156 = 0.577 ±0.078** | **+1.9 sd** |
+| `freyja` (parent) | 0.528 | 0.571 | 86/156 = 0.551 | +1.3 sd |
+| `steward_hardened_reinforced` (live) | 0.688 | 0.414* | 45/77 = 0.584 | +1.5 sd |
+
+*29 games.
+
+**Stronger off-pool than on-pool.** That is the first time all session, and it
+is the exact inverse of the pattern that dissolved every earlier gain: the
+lineage spans 0.262-0.667 on the official maps and collapses to one interval on
+generated ones, because the official pool is the tuning pool.
+
+Composition, the metric the mechanism predicts: Harvesters **1.50 → 2.02 →
+2.73**, conveyors 6.10 → 9.36 → 17.37, Builders 3.67 → 4.46. That is the 2.7
+Harvesters our *live* replays show, reproduced internally for the first time.
+
+CPU 4,232 us worst of 10,000, deterministic. Committed and queued
+`lofn@86287ec:8` — eight rounds, because the farm's promotion rule needs volume
+before it will believe an estimate.
+
+**The arc that got here.** Iteration 51: "the ceiling is an equilibrium the bot
+chose, correctly" — wrong. Iteration 58: "the ammunition is not waste, economy
+loses" — measured against our own bots on our own maps. Iteration 64: decode the
+opponents, and every team above us runs 2-3x our economy. Iteration 65: our code
+cannot produce that profile. Iteration 66: because two store slots cap it.
+Iteration 67: with the cap lifted, the change I had already refuted becomes the
+best build of the session.
+
+Five refuted ideas were refuted by a blocker upstream of them, not on their
+merits. That is the lesson worth keeping from tonight.
