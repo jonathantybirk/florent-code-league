@@ -75,6 +75,7 @@ repeat run reproduced 823.33 collected to the decimal).
 | opening spawn burst (3 fast) | 522 | 2/45 | 0 |
 | chain-length cap (neutral) | 821 | 5/45 | 1 |
 | planned route, de-looped walk | **27** | 1/45 | 0 |
+| supply line grown outward | 341 | 2/45 | 1 |
 | scouts round-robin sightings | 660 | 5/45 | 0 |
 | scouts, idle Builders only | 691 | 4/45 | 0 |
 | walking counter-battery | — | — | worse |
@@ -151,9 +152,23 @@ Why it fails is now the interesting question, and it is not the plan: it is
 that a Builder cannot FOLLOW a frozen route. It gets blocked, shoved, or
 shot off the path, and every deviation invalidates the plan it is carrying.
 A route that must be walked exactly is the wrong abstraction for a unit that
-does not control where it can stand. Anything further here should let the
-route be repaired locally rather than abandoned, or lay it from the Core
-outward where the ground is already held.
+does not control where it can stand. Growing the line OUTWARD from the Core was then tried, which fixes both known
+faults by construction: the chain is attached to the Core from its first tile
+so partial progress is never a liability, the Builder only ever has to reach
+the tile beside the chain end rather than follow a route, and the Harvester is
+built LAST so a stranded one cannot exist.
+
+It collected 341. The reason is tempo, not correctness: the first Harvester
+slipped from round 4 to round 8 and the team finished with 1.6 Harvesters
+against 4.5, because nothing mines until the whole line is finished. Building
+the route first is strictly safer and strictly slower, and on this map pool
+slower loses by more than stranding costs.
+
+Which closes the loop on chain-laying. Laying behind a wandering Builder
+works but wastes conveyors; laying a frozen plan cannot survive being pushed
+off it; laying outward is too slow to start. The remaining option nobody has
+tried is to keep the current lay-as-you-walk and make the WALK straighter --
+the chain is only crooked because the walk out was.
 
 ### The gap, measured
 
