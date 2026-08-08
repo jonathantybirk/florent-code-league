@@ -492,3 +492,19 @@ from round 4) is a separate unaddressed failure mode.
 - Live: fulla drifted 1806 → 1775 [1709,1841] at 25m (extra 20 games still queued);
   snotra_h 9–11/1706 (underperforms snotra); vor's test still queued. Team 1685, rank 18,
   incumbent shr@b61aaac active at 1818.
+
+## Iteration 28 — 2026-08-08 ~17:15 — loki v2: the door Sentinel works
+
+- v2 changes: door Sentinel arms FIRST (its seat is the reachable piece; v1 gated it on
+  a 60% wall that never existed), per-tile approach budgets (20 rounds then written off),
+  nearest-tile-first ordering, real pathfinding for the approach.
+- **Smoke result on jackpot vs vidar: the door Sentinel killed 11 of vidar's 12 Builders**
+  — several at the gap tile itself — each a 30+ Ti loss with compounding scale, and it
+  re-seats itself when lost (DOOR at rounds 101 and 781). Still lost the round-1000
+  tiebreak: their Harvesters were untouched and our own economy sat at 2. The sniper
+  works; converting the slaughter into wins needs their standing economy tapped too
+  (harass already tries) or ours to out-collect. Wall itself still 0 barriers — but the
+  wall was scaffolding for the door concept, and the door works without it.
+- fulla live estimate decayed further without new games (1775 → 1745): estimates rot with
+  staleness, another calibration point.
+- Panel running (`loki_run2`).

@@ -643,6 +643,10 @@ SIEGE_WALL_ROUND = 90
 SIEGE_WALL_RADIUS = 3
 SIEGE_WALL_RESERVE = 25
 GAP_SENTINEL = True
+# Approach rounds a single ring tile may consume before it is written off as
+# unreachable. v1 had no budget and the walker paced outside the base for
+# entire games.
+WALLIN_TRIES_PER_TILE = 20
 
 # --- Guard patrol and trapping ------------------------------------------------
 # The ring the guard walks when nothing is attacking. Outside the Core's own
