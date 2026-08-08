@@ -60,6 +60,8 @@ GUARDS_WHEN_QUIET = 1
 
 # Builders held on the economy until this many Harvesters are working, no
 # matter what is happening -- see the floor in desired_mix.
+# Effective ceiling: raising this past 7 changes nothing, because the team
+# only ever builds ~3.8 Harvesters. Ore discovery, not policy, is the limit.
 ECON_FLOOR_HARVESTERS = 7
 
 # Builders sent to besiege the enemy Core once the economy is standing, and
