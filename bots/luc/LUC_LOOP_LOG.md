@@ -4065,3 +4065,37 @@ reckoning, dropped to 21/112 at 1669 mid-session, and is now 18-20/113 at
 flagship has been `steward_hardened_reinforced` throughout, and the farm's
 promotions have been between its own variants. The builds from tonight are all
 still queued.
+
+## Iteration 74 — gna: early expansion still buys nothing (refutation 30)
+
+`spar_macro` moved `ECON_BUILDER_ROUND` 120 → 8 and got Builders 3.6 → 5.76 with
+Harvesters stuck at 1.61. That was before `hlin`, so the extra Builders spawned
+into a world where all four claims were permanently held. With claims recycling
+the test is worth repeating honestly: `gna` = `hlin` with expansion from round
+**40**.
+
+| gna vs | on-pool | off-pool | combined | |
+|---|---|---|---|---|
+| `hlin` (parent) | 0.486 | 0.500 | **77/156 = 0.494 ±0.078** | -0.2 sd |
+| `lofn` | 0.486 | 0.494 | 75/153 = 0.490 | -0.2 sd |
+| `vili` | 0.596 | 0.700 | 59/92 = 0.641 | +2.8 sd |
+
+Builders 4.5 → **5.0**, Harvesters 2.75 → **2.79**. Level. The extra Builder
+arrives, gets a deposit now that claims recycle, and still does not turn into a
+Harvester.
+
+**So the economy line is exhausted locally.** Four separate levers — slot count
+(`freyja`), miner count (`lofn`), slot leak (`hlin`), expansion timing (`gna`) —
+and Harvesters have gone 1.50 → 2.02 → 2.73 → 2.75 → 2.79. The first two moved
+it; nothing since has, and the ceiling now sits about 2.8 against the 4.4-7.6 the
+teams above us run. What remains is the conversion rate: roughly one Harvester
+per twelve granted tasks, with only one abandonment per three games, so the
+tasks are closing on arrival at deposits somebody already worked.
+
+One number worth keeping from the failure: **`gna` beats `vili` 0.641 (+2.8 sd)**
+and does it on both pools. The accumulated line — four claim slots, two miners,
+recycled claims — is a real and repeatable improvement on the build that started
+the night, whatever the last two candidates added.
+
+Queued and awaiting live games: `lofn@86287ec:8`, `hlin@a72a7dc:8`. Committed
+unqueued: `bil` (team-wide turret ceiling, live-only hypothesis).
