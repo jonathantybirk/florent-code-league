@@ -103,3 +103,44 @@ from round 4) is a separate unaddressed failure mode.
   timestamps are UTC).
 - Queue depth note: 4 test entries are now stacked on the farm (~11 min per round), so vali's
   first live round is ~30–45 min out.
+
+## Iteration 4 — 2026-08-08 ~07:00
+
+- Live so far: freyr 6–4 over 10 (est 1731 [1624–1834]); vali round 1 went 2–3 (est 1645, one
+  round left); other agent's steward_relent 3–7. All below the 25-game bar — no conclusions.
+- **Studied sporks (ladder #1, 2030 — above Pantheon).** Six games decoded (5–0 over Erebus,
+  3–2 over Pantheon). Consistent shape: 9–21 Harvesters and 44–95 conveyors a game (nobody
+  else breaks 6 Harvesters); Sentinels up by round 5–10 and Gunners nearly absent until a
+  round-200+ kill wave (`first_gunner` 210/230/243 with `first_core_hit` one round later);
+  eats 1000+ Core damage early and heals through it on economy. It is the 2.3.4 patch
+  (Sentinel buff, Gunner nerf) played to its conclusion.
+- Our own code already knows Sentinel siege is right (`SENTINEL_SIEGE_FIRST`), and its own
+  measurement says the cap of one is a **delivery** ceiling: one attacker can't survive/stay
+  solvent long enough to seat a second. sporks fixes delivery with bodies.
+- **Built `bots/luc/ullr`** = vali + late attack wave: from round 170, with bank ≥ builder cost
+  + 120, the Core buys up to 3 extra attacker Builders (announce-then-spawn through spare bits
+  of SLOT_OWN_CORE — a window [start, start+count) so post-wave miners aren't misrouted; other
+  spawn paths stand down during the one-round handshake). Each wave attacker seats its own
+  siege Sentinel on its own line.
+- Smoke: WAVE fires 3/3 on jackpot vs vidar and the Core kill lands at 621 vs freyr's 789 in
+  the same matchup. 168-game panel vs shr/vali/vidar/odin running (`ullr_run1`).
+
+## Iteration 5 — 2026-08-08 ~07:30
+
+- **ullr verdict: neutral, not shipped to the farm.** 19–23 shr, 20–22 vali, long games 31–28,
+  and a median of *zero* siege Sentinels seated in 64 long games (freyr/vali medians identical
+  — the whole lineage almost never converts long games into siege). sporks' wave lands because
+  4:1 mining has starved the defense it walks into; the wave without the economy is bodies
+  into a working defense. Committed as a parts bin (`ullr`), no farm slot.
+- Also learned: 27–45 builder spawns in some 1000-round games pre-exist across the lineage
+  (replacement path has no total cap) — not a new bug, but a cost-scale anomaly worth a look
+  someday.
+- **Built `bots/luc/njord`** = vali + economy ceilings raised toward sporks' scale:
+  NETWORK_CAP 4/8 → 6/12, ECON_EXPAND_ROUND 120 → 80, ECON_BUILDER_ROUND 200 → 120,
+  ECON_MAX_TOTAL_BUILDERS 6 → 9. Smoke: beats vali on the jackpot tiebreak but only +40
+  mined of ~4900 — the caps may not be the binding constraint. Panel running (`njord_run1`);
+  the analysis to do on it is *harvesters built / titanium collected* vs vali, not just wins.
+- Inherited, confirmed not-njord: the lineage mines 0 and loses deterministically as seat A on
+  sweden vs shr (known symmetry-guess failure map).
+- Live: freyr 6–4 (est 1732), vali still 5 games (2nd round pending), flagship shr@f1f2bda
+  active, team 1751 rank 14.
