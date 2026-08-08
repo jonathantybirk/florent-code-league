@@ -207,6 +207,18 @@ LAUNCHER_QUIET_ROUNDS = 45
 # (measured with get_scale_percent, not assumed), where a step of walking costs
 # one Builder-turn and nothing permanent -- so a belt tile is worth several
 # steps. Bounded so the extra `_route` calls cannot cost a turn.
+# Re-rank the head of the harass target list by real path distance rather than
+# Chebyshev. Same defect _pick had; see _harass. Bounded by work.
+HARASS_TRUE_DISTANCE = True
+HARASS_RERANK_CANDIDATES = 4
+# Hold discretionary turrets until the economy exists. Every price scales and
+# ours hits 243 by round 30; each turret is +20 of that on everything bought
+# after it. See _turret_tax_is_affordable.
+ECONOMY_BEFORE_TURRETS = True
+# The Launcher ring pays the same +10 multiplier and is laid in the opening.
+RING_AFTER_ECONOMY = True
+TURRET_HOLD_ROUNDS = 60
+TURRET_HOLD_MIN_HARVESTERS = 2
 BELT_SCORE_CANDIDATES = 4
 BELT_TILE_WEIGHT = 3
 NETWORK_CAP_EARLY = 6
@@ -413,8 +425,60 @@ SLOT_BUILDER_TICKET = 0
 # Two ore reservations: the ring Builder becomes a second miner whenever the
 # seal is unaffordable, so two claims can be live at once. Slot 8 was the
 # seventh Launcher-request slot; six requests still cover every builder.
-CLAIM_SLOTS = (1, 8)
-LAUNCH_REQUEST_SLOTS = range(2, 8)
+# Deposit claims are the economy's real cap, and there were two of them.
+#
+# `_pick` commits a Builder to a deposit by taking a claim slot; if every slot
+# is occupied it falls out of the loop having set no task, and the Builder
+# re-picks next round, forever. Instrumented on a macro-economy build: one
+# expansion Builder called `_pick` **44 times** in a game that produced **one**
+# Harvester. That is the 2.3-Harvester ceiling -- not a tuning choice, not an
+# equilibrium, just two slots.
+#
+# Live replays of the four teams that beat us run 4.4-7.6 Harvesters against our
+# 2.7, on 8.6-13.6 Builders against our 4.6. Two concurrent deposits cannot
+# produce that however many Builders we spawn.
+#
+# The store has 16 slots and all 16 were allocated, so this buys claim slots
+# with launch-request slots -- the ferry protocol, which is the one mechanic on
+# this list that **no team above us builds at all** (their Launchers: 0.0, 0.0,
+# 0.0, 0.8; ours: 2.0). Four launch slots remain, against 3.6 Builders.
+CLAIM_SLOTS = (1, 8, 6, 7)
+LAUNCH_REQUEST_SLOTS = range(2, 5)
+# A shared "already harvested" set, in one slot.
+#
+# Instrumented: 68% of mining arrivals close as "found existing harvester", and
+# all of them are *our own* Harvesters. Builders cannot tell each other what
+# they have finished, so one walks to a deposit another already worked. `var`
+# tried to fix that by keeping the claim on a finished deposit and scored 0.474
+# -- a blocked slot costs more than a wasted walk.
+#
+# But the store word is a full 32-bit int (probed: wrote 2147483647, read it
+# back), so 31 deposits fit in a single slot as a bitmask, and the claim slots
+# stay free.
+#
+# The index has to be a hash of the tile rather than a position in a shared
+# list: the atlas only covers the 21 published maps and the ladder's pool is
+# held out, so any atlas-indexed scheme is dead where it matters. A hash
+# collides -- 12 deposits in 31 buckets is about two colliding pairs -- so the
+# mask is **advisory**: it reorders preference, and is ignored entirely when it
+# would leave nothing to mine. A collision then costs a detour, never a deposit.
+# Claims expire, because observation is not reliable enough to release them.
+#
+# `hlin` clears a claim when a Builder can *see* a finished Harvester on the
+# claimed tile. If nobody looks there again -- the holder died, the tile is far,
+# vision moved on -- the claim is immortal. Measured on top of `hlin` + the
+# done-mask: **178 "no free slot" failures in three games, holding the same four
+# values every time** ([306, 174, 438, 364]). The jam that `freyja` and `hlin`
+# each partly fixed is still there.
+#
+# The store word is a full 32-bit int (probed), and `pack_pos` uses about ten
+# bits, so a claim can carry a coarse round-stamp in the high bits and any
+# Builder can expire a stale one without having to observe anything.
+CLAIM_TTL_ROUNDS = 60
+CLAIM_STAMP_SHIFT = 12
+DONE_MASK_ENABLED = True
+SLOT_DONE_MASK = 5
+DONE_MASK_BITS = 31
 LAUNCH_DIRECTION_BITS = 4
 LAUNCH_DIRECTION_MASK = (1 << LAUNCH_DIRECTION_BITS) - 1
 # A launch request now carries where the passenger was actually going, not just

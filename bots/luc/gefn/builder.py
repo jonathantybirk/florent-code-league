@@ -9,8 +9,17 @@ from fcode import Controller, EntityType, Environment, GameError, Position, Team
 import doctrine
 from atlas import identify_visible
 from constants import (BELT_SCORE_CANDIDATES, BELT_TILE_WEIGHT,
+    RING_AFTER_ECONOMY,
+    CORE_ALARM_MASK, ECONOMY_BEFORE_TURRETS, TURRET_HOLD_MIN_HARVESTERS,
+    TURRET_HOLD_ROUNDS,
+    HARASS_RERANK_CANDIDATES, HARASS_TRUE_DISTANCE,
     
     CLAIM_SLOTS,
+    DONE_MASK_ENABLED,
+    CLAIM_TTL_ROUNDS,
+    CLAIM_STAMP_SHIFT,
+    SLOT_DONE_MASK,
+    DONE_MASK_BITS,
     CORE_THREAT_RADIUS_SQ,
     D4_DELTAS,
     D8,
@@ -243,7 +252,7 @@ def _run(p, ct):
         p.network_load = 0
         p.network_plan = {}
         p.economy_lines_completed = 0
-        p.ring_slot = p.builder_index - LAUNCHER_BUILDER_INDEX
+        p.ring_slot = 0
         p.launcher_builders_wanted = 0
         p.lock_required = False
         p.home_gunners_built = 0
@@ -283,6 +292,8 @@ def _run(p, ct):
                 < p.launcher_builders_wanted + attackers
             )
         else:
+            p.ring_slot = (p.builder_index
+                           - doctrine.launcher_builder_index(p.doctrine))
             p.is_launcher_builder = (
                 0 <= p.ring_slot < p.launcher_builders_wanted
             )
@@ -296,7 +307,7 @@ def _run(p, ct):
         # would walk to the enemy Core as an attacker instead of laying belt.
         # The expansion exists to answer a tiebreak on titanium collected; a
         # sixth attacker does not collect titanium.
-        if LATE_BUILDERS_MINE and p.builder_index >= MAX_OPENING_BUILDERS:
+        if LATE_BUILDERS_MINE and p.builder_index >= doctrine.max_opening_builders(p.doctrine):
             p.is_launcher_builder = False
             p.is_attacker = False
         # Which seat we are seeing the game from. Units act in ascending global
@@ -790,16 +801,49 @@ def _network_cap(ct) -> int:
 
 
 def _has_unclaimed_ore(p, ct) -> bool:
-    claimed = {x for x in (unpack_pos(ct.read_store(s)) for s in CLAIM_SLOTS) if x}
+    claimed = {x for x in (_claim_pos(ct.read_store(s)) for s in CLAIM_SLOTS) if x}
     return bool(p.ores - claimed - p.solids - set(p.conveyors))
 
+
+
+def _done_bit(ore):
+    """Which bit of the shared done-mask this tile owns. See DONE_MASK_ENABLED."""
+    return 1 << (((ore[0] * 73856093) ^ (ore[1] * 19349663)) % DONE_MASK_BITS)
+
+
+def _mark_deposit_done(ct, ore):
+    if DONE_MASK_ENABLED:
+        ct.write_store(SLOT_DONE_MASK,
+                       ct.read_store(SLOT_DONE_MASK) | _done_bit(ore))
+
+
+def _claim_pos(value):
+    """Position half of a stamped claim."""
+    return unpack_pos(value & ((1 << CLAIM_STAMP_SHIFT) - 1))
+
+
+def _claim_stamp(value):
+    return value >> CLAIM_STAMP_SHIFT
+
+
+def _stamped_claim(ore, ct):
+    return pack_pos(ore) | (ct.get_current_round() << CLAIM_STAMP_SHIFT)
+
+
+def _expire_stale_claims(p, ct):
+    """Release claims older than CLAIM_TTL_ROUNDS, whoever holds them."""
+    now = ct.get_current_round()
+    for slot in CLAIM_SLOTS:
+        value = ct.read_store(slot)
+        if value and now - _claim_stamp(value) > CLAIM_TTL_ROUNDS:
+            ct.write_store(slot, 0)
 
 def _pick(p, ct):
     # A conveyor network carries one stack/round: exactly four Harvesters at
     # their 10-Ti-per-four-round cadence. Do not create silently idle deposits.
     if p.network_load >= _network_cap(ct):
         return
-    claimed = {x for x in (unpack_pos(ct.read_store(s)) for s in CLAIM_SLOTS) if x}
+    claimed = {x for x in (_claim_pos(ct.read_store(s)) for s in CLAIM_SLOTS) if x}
     # An ore tile we believe carries one of our Harvesters is claimed only while
     # that belief is fresh. Measured over 414 games, live Harvesters ran 1.80 at
     # round 50 down to 1.42 at round 500 in games this bot won, and 1.69 down to
@@ -818,9 +862,38 @@ def _pick(p, ct):
                 if expires >= ct.get_current_round()}
     p.deferred_ores = {ore: expires for ore, expires in p.deferred_ores.items()
                        if expires >= ct.get_current_round()}
+    # Recycle claims whose deposit is already finished.
+    #
+    # A claim slot is released by `_done`/`_abandon_task`, both of which match
+    # on the *holder's own* `p.task` -- so a Builder that dies holding a claim
+    # leaks it permanently, and nothing else can ever take that deposit. The
+    # slots then fill and stay filled: instrumented over three games, `_pick`
+    # succeeded 22 times and hit "no free slot" **228 times**, holding the same
+    # four values for the rest of every game.
+    #
+    # That is the real ceiling. freyja raising the count 2 -> 4 did not fix it,
+    # it just bought two more Harvesters before the lock (1.50 -> 2.02 -> 2.73).
+    #
+    # Any Builder that can see a finished Harvester on a claimed tile clears the
+    # claim: the deposit is done, so the claim protects nothing. Writes are
+    # buffered and land next round, which is soon enough for a slot that has
+    # been stuck all game.
+    _expire_stale_claims(p, ct)
+    for slot in CLAIM_SLOTS:
+        held = _claim_pos(ct.read_store(slot))
+        if held and held in p.harvester_seen:
+            ct.write_store(slot, 0)
+    available = p.ores - claimed
+    # Prefer deposits nobody has finished -- advisory, see DONE_MASK_ENABLED.
+    if DONE_MASK_ENABLED:
+        mask = ct.read_store(SLOT_DONE_MASK)
+        if mask:
+            unworked = {ore for ore in available if not (mask & _done_bit(ore))}
+            if unworked:
+                available = unworked
     me, best = tuple(ct.get_position()), None
     candidates = sorted(
-        p.ores - claimed,
+        available,
         key=lambda ore: max(abs(ore[0] - me[0]), abs(ore[1] - me[1])),
     )
     # Seat B does not race for the contested deposit.
@@ -872,19 +945,11 @@ def _pick(p, ct):
         _, travel, _, ore, route = priced[0]
         best = (travel, len(route), ore, route)
     if best is None:
-        # gefn: unroutable is not unreachable. _route refuses tiles this
-        # Builder has never seen, so a miner parked at its trunk cannot route
-        # to most of the map and used to idle here for hundreds of rounds
-        # while deposits sat unclaimed. Remember the nearest candidate;
-        # _explore walks toward it, the walk reveals the terrain, and the
-        # next _pick prices it for real.
-        p.scout_ore = candidates[0] if candidates else None
         return
-    p.scout_ore = None
     _, _, ore, route = best
     for slot in CLAIM_SLOTS:
         if ct.read_store(slot) == 0:
-            ct.write_store(slot, pack_pos(ore))
+            ct.write_store(slot, _stamped_claim(ore, ct))
             p.task, p.route = ore, route
             p.current_route_tiles.clear()
             if route:
@@ -915,15 +980,7 @@ def _route(p, ore):
     falls back and this Builder mines elsewhere, which is the correct answer:
     ore that can only be delivered through a firing line is not ore we can bank.
     """
-    # gefn: the fence comes down. `network_tiles` is per-Builder, so every
-    # other miner's belt — and every belt of a Builder that died — was BLOCKED
-    # as if it were a wall, and a two-miner team routed a median of ONE
-    # Harvester per long game while its own infrastructure strangled the map
-    # (watched on jackpot: both trunks done by round 9, then 600 rounds of
-    # "no alternate conveyor route"). Any friendly conveyor is a legal join;
-    # the head-on output check below already guards direction.
-    joinable = ((p.network_tiles | set(p.conveyors))
-                if p.network_load < 4 else set())
+    joinable = p.network_tiles if p.network_load < 4 else set()
     blocked = (p.walls | p.foot | (p.ores - {ore}) | p.solids
                | p.rejected_build_sites
                | _launcher_hazards(p)
@@ -978,6 +1035,7 @@ def _goto(p, ct):
     if _cardinal_distance(me, p.task) == 1:
         if ct.can_build_harvester(target):
             ct.build_harvester(target)
+            _mark_deposit_done(ct, p.task)
             _mark_progress(p, ct, "built harvester", p.task)
             p.solids.add(p.task)
             p.economy_lines_completed += 1
@@ -990,6 +1048,7 @@ def _goto(p, ct):
                 and ct.get_entity_type(building_id) == EntityType.HARVESTER
             )
             if compatible:
+                _mark_deposit_done(ct, p.task)
                 _mark_progress(p, ct, "found existing harvester", p.task)
                 _done(p, ct)
             elif building_id is not None or _build_failure(
@@ -1484,9 +1543,8 @@ def _done(p, ct):
     if owner == p.builder_index + 1:
         ct.write_store(SLOT_CONSTRUCTION_LOCK, 0)
     if p.task:
-        value = pack_pos(p.task)
         for slot in CLAIM_SLOTS:
-            if ct.read_store(slot) == value:
+            if _claim_pos(ct.read_store(slot)) == tuple(p.task):
                 ct.write_store(slot, 0)
                 break
     p.task, p.route, p.route_i, p.phase = None, [], 0, "scout"
@@ -1500,9 +1558,8 @@ def _abandon_task(p, ct, reason):
     if owner == p.builder_index + 1:
         ct.write_store(SLOT_CONSTRUCTION_LOCK, 0)
     if p.task:
-        value = pack_pos(p.task)
         for slot in CLAIM_SLOTS:
-            if ct.read_store(slot) == value:
+            if _claim_pos(ct.read_store(slot)) == tuple(p.task):
                 ct.write_store(slot, 0)
                 break
     old_task = p.task
@@ -2248,6 +2305,24 @@ def _consume_launch_rejection(p, ct):
         # same answer, and the intel the refusal carried is already folded into
         # the threat map, so the route it walks is the informed one.
         p.launch_retry_round = ct.get_current_round() + LAUNCH_RETRY_COOLDOWN
+    # Clear the answer once it has been read.
+    #
+    # Nothing cleared this slot, so the pad's reply stayed in it for the rest of
+    # the game, this function returned True on every later round, and
+    # `_opening_ferry` bailed on its first line every time. Instrumented over
+    # ~58 ferry calls a game: one request, one pad built, and **56 blocked** --
+    # the relay makes a single request, is refused once, and never runs again.
+    #
+    # The cooldown immediately above is the intended behaviour and could never
+    # take effect: `launch_retry_round` is compared against the current round by
+    # a gate that is never reached, because the stale reply short-circuits ahead
+    # of it. Clearing the slot is what makes the cooldown mean what it says.
+    #
+    # This matters because delivery is the wall behind three separate failures
+    # in this log -- the forward Sentinel seat, the Core-ring barrier, and the
+    # attacker walking the last seven tiles into turret fire. The ferry is the
+    # one mechanism that crosses that ground in a single round.
+    ct.write_store(slot, 0)
     return True
 
 
@@ -2668,15 +2743,6 @@ def _distance_map(p, source, hops=True):
 def _explore(p, ct):
     me, stride = tuple(ct.get_position()), 4
 
-    # gefn: a deposit _pick wanted but could not route (unseen terrain along
-    # every line) beats any generic exploration target — walking toward it is
-    # what turns it routable. Cleared the moment a claim succeeds.
-    scout_ore = getattr(p, "scout_ore", None)
-    if (scout_ore is not None and scout_ore in p.ores
-            and max(abs(scout_ore[0] - me[0]), abs(scout_ore[1] - me[1])) > 2):
-        if _step(p, ct, Position(*scout_ore), True):
-            return
-
     # A miner that knows of no ore has a better prior than a grid sweep: a
     # fair map places its shared ore between the Cores. On sweden, seat A's
     # Core at (0,0) has the whole ore band outside its r^2=36 opening vision
@@ -2745,6 +2811,27 @@ def _harass(p, ct):
             tile,
         ),
     )
+    # Re-rank the head of the list by the distance actually walked.
+    #
+    # Same defect `_pick` had: the sort key is Chebyshev, which is what the
+    # target looks like as the crow flies, and the Builder then walks a real
+    # path around terrain. Around a wall those orders differ, and the harasser
+    # spends the difference walking. Only the head is re-priced, and only within
+    # one priority class, so the cheap ordering still decides *what* to hit and
+    # this decides *which one* of the equally valuable.
+    if HARASS_TRUE_DISTANCE and targets:
+        top = HARASS_PRIORITY[p.enemy_economy[targets[0]]]
+        head = [t for t in targets[:HARASS_RERANK_CANDIDATES]
+                if HARASS_PRIORITY[p.enemy_economy[t]] == top]
+        priced = []
+        for tile in head:
+            walk = _distance(p, me, {tile})
+            if walk is not None:
+                priced.append((walk, tile))
+        if priced:
+            priced.sort()
+            best_tile = priced[0][1]
+            targets = [best_tile] + [t for t in targets if t != best_tile]
     # 2.3.3 inverted the attack rule: a Builder damages an orthogonally
     # adjacent tile and never the one it stands on, so stand *beside* the
     # target rather than on it.
@@ -2979,6 +3066,14 @@ def _heal_core(p, ct):
 
 
 def _run_launcher_ring(p, ct):
+    # Same tax, same ordering. A Launcher is +10 on the multiplier, permanently,
+    # and the ring is laid in the opening -- before the Harvesters it makes more
+    # expensive. Measured: scale reaches 243 by round 30 and a Harvester goes
+    # from 20 Ti to 48. Holding the ring until the economy exists is the same
+    # trade `_turret_tax_is_affordable` makes for turrets, which was worth
+    # 0.633 against 0.610.
+    if RING_AFTER_ECONOMY and not _turret_tax_is_affordable(p, ct):
+        return False
     """Build the Launcher ring, returning true when economy work can resume."""
     packed = ct.read_store(SLOT_ENEMY_CORE)
     if packed == 0:
@@ -3617,6 +3712,33 @@ def _aligned_turret_site(p, ct, enemies, kind=EntityType.GUNNER):
     return position, facing
 
 
+def _turret_tax_is_affordable(p, ct):
+    """Refuse a turret while the economy is still being bought.
+
+    Measured: every price scales with `get_scale_percent`, and ours reaches
+    **243 by round 30** and stays there -- a Harvester goes from 20 Ti to 48 and
+    never comes back. Each turret is +20 of that scale, permanently, on every
+    Harvester and conveyor bought afterwards.
+
+    So the opening is a race between buying economy at 20 Ti and taxing it to
+    48. This bot currently buys about five turrets early and two Harvesters all
+    game; sporks buys one Gunner after round 100 and a Harvester every nine
+    rounds. Holding the turret budget until the economy exists is the only
+    ordering that keeps the multiplier low while the things that compound are
+    being bought.
+
+    The exception is damage: a Core under fire needs the answer now, whatever it
+    costs later.
+    """
+    if not ECONOMY_BEFORE_TURRETS:
+        return True
+    if ct.get_current_round() >= TURRET_HOLD_ROUNDS:
+        return True
+    if ct.read_store(SLOT_CORE_DAMAGED) & CORE_ALARM_MASK:
+        return True
+    return p.network_load >= TURRET_HOLD_MIN_HARVESTERS
+
+
 def _engage_with_turret(p, ct):
     """Answer any enemy this Builder can see with an aligned Gunner.
 
@@ -3629,7 +3751,8 @@ def _engage_with_turret(p, ct):
     Gunner is its cost plus +10% on every build the team makes afterwards, so
     "a turret for every enemy" pays for itself only while the count is small.
     """
-    if (p.field_gunners_built >= p.max_field_gunners
+    if (not _turret_tax_is_affordable(p, ct)
+            or p.field_gunners_built >= p.max_field_gunners
             or ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER
             # Keep a harvester's worth of budget out of reach: a field Gunner
             # bought with the economy's opening titanium costs far more than
