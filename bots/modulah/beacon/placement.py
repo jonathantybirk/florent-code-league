@@ -301,3 +301,22 @@ def best_firing_seat(ct, enemies, kind: EntityType, buildable, near: Position):
 # ground the siege covers to get there. best_firing_seat, which only seats
 # from tiles already adjacent to the Builder, keeps the counter-battery that
 # works and drops the part that does not.
+
+
+# MEASURED AND REJECTED: home_counter_seat -- a seat near our OWN Core with a
+# firing solution on an enemy Gunner. Motivated by replay attribution showing
+# enemy Gunners deal 94-100% of all damage to our Core, and unlike the earlier
+# counter_battery_seat the walk was short and stayed inside our defences.
+#
+# Full 15-map pool, vs steward/vidar/odin:
+#     titanium collected   823 -> 375
+#     core hp at end        47 -> 12
+#     games survived      7/45 -> 2/45
+#
+# Fourth reactive-combat change in a row to measure worse. The pattern is
+# consistent and is not about siting: every behaviour that diverts a Builder
+# to answer a threat costs more economy than the threat costs us. With this
+# few Builders they are simply too scarce to spend on reacting, and a bot that
+# out-mines its opponent and mends is worth more than one that fights back
+# badly. The gap to steward is that it can afford both, because its economy
+# and its unit count are larger to begin with.
