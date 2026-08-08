@@ -122,6 +122,22 @@ vidar 1/30 → 2/29. Firing was never blocked outright (zero dry turns measured)
 — a deeper pool is what lets several turrets fire in the *same* round instead
 of taking turns.
 
+### FIRST WIN AGAINST STEWARD — on the repair build, which is otherwise worse
+
+Single-owner line repair produced **steward 1/30**: fjordgate, turn 1000, won
+on the tiebreak with **530 titanium to steward's 60**. That is the only game
+aegis has ever taken from the flagship.
+
+It is not shipped, because the same build is worse overall — **4 wins against
+6**, collected 1208 → 500. Shipping a weaker bot to claim one headline win
+would be gaming the metric.
+
+But it says something specific and useful: the win came on the **blitz map**,
+by surviving to round 1000 and out-collecting. That is aegis's real theory of
+victory against steward — outlast and out-mine, not out-fight — and repair is
+what let a line survive long enough to do it. Worth rebuilding properly on top
+of the 6-win base rather than in place of it.
+
 ### Network repair: right idea, wrong execution (mine)
 
 Steward's note is compelling — *"every Harvester upstream of a gap mines into
