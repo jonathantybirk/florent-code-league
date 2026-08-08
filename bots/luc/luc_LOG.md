@@ -288,3 +288,25 @@ from round 4) is a separate unaddressed failure mode.
   Sentinel-first transfers live, the delivery bottleneck (attacker lifetime, seat search
   preconditions) is next; if it doesn't, the sif economy-opening trade plus a defensive
   Sentinel answer is the pivot.
+
+## Iteration 15 — 2026-08-08 ~11:55 — the honest mid-day verdict
+
+- **hodr got auto-promoted and is bleeding rated**: 0–5 to Besvikomat (1664!) and 1–4 to
+  kladde as flagship; team 1745 → 1720, rank 14. The farm should demote it as the estimate
+  slides — not intervening (promotion is the farm's job).
+- **Day-scale result: the local panel ordering inverts live.** Local: hodr 0.661 > mimir
+  0.619 ≈ njord 0.625 > vali/freyr ~0.55. Live (10–16 games each): freyr 1754 > hodr 1734 ≈
+  mimir 1731 > njord 1688 > vali 1601 — and *every one* is below the incumbent
+  shr@b61aaac's 1806 (385-match sample). The simplest change (freyr, income watchdog only)
+  is the best live performer of the day; each added layer measured worse.
+- Decision: **no more farm submissions from this lineage** until something shows
+  live-relevant promise. The two confirmed code-level bugs (mend-pin economy shutdown,
+  Sentinel-first-as-a-label) are real and stay in the parts bin; their measured value just
+  doesn't exceed the incumbent's on the live field.
+- What would actually move rank: the meta intel says economy-Sentinel bots dominate at
+  every level, but porting fragments of that shape onto the steward chassis has now failed
+  four ways (ullr, magni, sif, hodr-live). If a next big push happens, it should be a
+  ground-up economy-Sentinel bot measured *against live opponents from day one* — not
+  another chassis patch.
+- Note for whoever reads this: samples are 10–16 games; the ordering above could still
+  shuffle ±50 Elo. hodr and mimir volume rounds remain queued and will firm this up.
