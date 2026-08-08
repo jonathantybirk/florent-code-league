@@ -1197,3 +1197,63 @@ agents' builds go live is not a unilateral call, the documented config levers
 independently reached the same "not mine to intervene in" conclusion. The exact
 one-line change is in `project-farm-promotion-churn` and in iteration 8 above,
 ready for Lucas.
+
+---
+
+## Iteration 13 — tooling for the constraint both agents named
+
+Both agents now say the measurement apparatus is what binds. The single error
+that cost me eight iterations — reading `matchups` pooled across opponent
+versions — had no tooling, so I wrote some: **`tools/live_matchups.py`**.
+
+```
+uv run python tools/live_matchups.py                    # current builds only
+uv run python tools/live_matchups.py --all-versions     # and the pooled lie
+uv run python tools/live_matchups.py --versions "Besvikomat"
+uv run python tools/live_matchups.py --build gefjon
+uv run python tools/live_matchups.py --shrinkage
+```
+
+It reads the published feed (with a browser user-agent — Cloudflare refuses
+urllib's default) or a saved snapshot, and defaults to a 20-game floor.
+
+### It paid for itself immediately
+
+The target list had **churned again within two hours**:
+
+| opponent | rank | vs current | pooled |
+|---|---|---|---|
+| **The Flotte Experience** | 6 | **0.05** (1/20) | 0.38 over 380 |
+| **Besvikomat** | 17 | **0.16** (22/135) | 0.28 over 465 |
+| Pivot | 8 | 0.32 (21/65) | 0.42 over 740 |
+
+O(1) — my target three iterations ago — has dropped below the sample floor
+entirely. Besvikomat's `current` flag now points at **v25 (0.16)** where two
+hours ago it pointed at v26 (0.53): **opponents churn their active build exactly
+the way we do**, so even the version-filtered number moves.
+
+### The strategic reading
+
+Flotte's record against us, by their version:
+
+```
+v26 0.63   v33 0.33   v35 0.24   v36 0.30   v37 0.37   v38 0.05  <-- current
+```
+
+They have shipped fifteen versions in the window this log covers, and the recent
+ones beat us progressively harder. **We are being out-iterated, not
+out-designed.** That reframes the goal: rank 1 is not one big fix, it is a
+faster loop — which is exactly what the measurement problems in iterations 5, 8
+and 9 have been eating.
+
+### Two checks I made rather than assumed
+
+- My first `--versions` run appeared to be missing v38, which would have been a
+  bug. It was my own `head -10` truncating the table. Verified before believing
+  it.
+- The `shrinkage` field now reads **1.00 for every build**, where this morning
+  it ran 0.11 for a 333-game incumbent and 0.69 for a 10-game challenger. Either
+  the field changed meaning or the model recalibrated. The tool's explanatory
+  text says so plainly rather than asserting a regime that has already moved
+  once today — iteration 5's arithmetic was right about *that* feed, and the
+  per-opponent table needs no model at all.
