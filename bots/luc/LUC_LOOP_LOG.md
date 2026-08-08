@@ -3986,3 +3986,46 @@ So the bottleneck has moved one step later, three times in a row now: slot count
 each one revealed the next. **The next thing to instrument is why eleven of
 every twelve granted tasks are abandoned** — `_abandon_task` already takes a
 `reason`, so the histogram is a one-line probe.
+
+## Iteration 72 — var: the wasted walk is cheaper than the blocked slot (refutation 29)
+
+Ran the abandonment probe iteration 71 asked for. **One** `_abandon_task` in
+three games. So the ~11 granted tasks a game that do not become Harvesters are
+not being abandoned — they close on arrival, via the "found existing harvester"
+path: a Builder picks a deposit another Builder already finished, walks there,
+finds the Harvester, and closes the task. The walk is the entire cost.
+
+That implicated `hlin`'s own fix: clearing a claim whose deposit is *finished*
+unsticks the slot, but it also invites the next Builder to walk to a deposit
+that is already done.
+
+`var` inverted the rule — keep the claim when the deposit is finished (it is
+doing useful work, telling everyone else not to go there) and clear it only when
+the tile is visibly **empty**, which is exactly the case where the holder died.
+
+Pick outcomes over three games, for the three designs:
+
+| | successes | "no free slot" |
+|---|---|---|
+| `lofn` (leaking) | 22 | 228 |
+| `hlin` (clear when finished) | 34 | 5 |
+| `var` (clear only when empty) | 27 | 69 |
+
+| var vs | on-pool | off-pool | combined | |
+|---|---|---|---|---|
+| `hlin` | 0.500 | 0.452 | **74/156 = 0.474 ±0.078** | -0.6 sd |
+| `lofn` | 0.500 | 0.464 | 75/156 = 0.481 | -0.5 sd |
+| `vili` | 0.583 | 0.574 | 62/107 = 0.579 | +1.7 sd |
+
+**Worse than both parents, with more Harvesters (2.90 against 2.75 and 2.73).**
+Precise claim bookkeeping is not worth what it costs in blocked slots: a Builder
+that walks to a finished deposit loses a walk, a Builder that cannot claim at
+all loses the game. `hlin`'s blunt rule wins.
+
+This is the fourth time this session that a Harvester count moved up and the win
+rate did not follow it. The count is genuinely not the objective — it is a
+symptom of a game going well, and the mechanism that produces it matters more
+than the number.
+
+`hlin@a72a7dc:8` stays the queued head of the line, with `lofn@86287ec:8` ahead
+of it for comparison.
