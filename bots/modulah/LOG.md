@@ -138,57 +138,37 @@ victory against steward — outlast and out-mine, not out-fight — and repair i
 what let a line survive long enough to do it. Worth rebuilding properly on top
 of the 6-win base rather than in place of it.
 
-### KNOWN BUG, shipped deliberately: THREAT_BURST / THREAT_HAS_JOIN collide
+### FIXED: THREAT_BURST / THREAT_HAS_JOIN collided, and what it was worth
 
-`THREAT_BURST = Field(14, 6)` occupies bits 14-19 and `THREAT_HAS_JOIN` sits
-on bit **19**. They overlap. Publishing a join sets burst's top bit, so every
-reported `burst` reads **32 too high**, and `has_join` reads true for any burst
->= 32. A join is published whenever a supply network exists, i.e. nearly always.
+`THREAT_BURST = Field(14, 6)` occupied bits 14-19 and `THREAT_HAS_JOIN` sat on
+bit **19**. Publishing a join set burst's top bit, so every reported burst read
+`burst | 32`. A join is published whenever a network exists, so the bot
+believed it was under moderate threat permanently — measured on drumlin,
+**burst read 32 in 586 of 613 Builder-turns** where the real value was 0.
 
-**Every constant in `roles.py` was tuned against that inflated number**, over
-roughly forty experiments. Correcting it is strictly worse:
+Every threshold in `roles.py` was tuned against that, so naive fixes all lost:
 
-| build | wins | collected | survived |
-|---|---|---|---|
-| **shipped (collision present)** | **6** | **1291** | 5/45 |
-| collision fixed | 4 | 531 | 2/45 |
-| fixed + re-tuned thresholds | 4 | 346 | 1/45 |
-| fixed + explicit BASELINE_THREAT 32 | 5 | 410 | 1/45 |
-| fixed + BASELINE_THREAT in *both* consumers | 5 | 410 | 1/45 |
+| build | wins | collected |
+|---|---|---|
+| collision present | 6 | 1296 |
+| collision fixed, no compensation | 4 | 531 |
+| fixed + re-tuned thresholds | 4 | 346 |
+| fixed + `BASELINE_THREAT` **added** | 5 | 415 |
+| **fixed + `BASELINE_THREAT` as a FLOOR** | **6** | **1068** |
 
-Restoring the offset as a documented `BASELINE_THREAT` recovers a win but not
-the economy. Applying it to **both** burst consumers — `roles.desired_mix` and
-`builder_brain._core_in_danger` — produced results identical to the decimal,
-which proves the danger test is not a material consumer and that the missing
-two-thirds of the economy comes from something subtler in the collision than
-the survival arithmetic.
+The distinction is the whole thing. The collision computed `burst | 32`, which
+is `max(burst, 32)` below 32 and leaves large bursts **untouched**. Adding 32
+instead over-reacts exactly where the threat is already severe — a real burst
+of 40 became 72, tripping PANIC, emptying the economy floor and collapsing
+collected to 415.
 
-Four attempts, all landing at 5 wins and ~410 collected against the shipped
-6 and 1291.
+Shipped as `survival = hp / max(burst, BASELINE_THREAT)`, which is now a
+deliberate, documented allowance for what `max_burst` cannot see: it counts
+only turrets in vision and on a ray, never reinforcements or anything still
+walking, so threat is never truly zero.
 
-**What the collision actually does**, measured by instrumenting both builds
-side by side on drumlin:
-
-```
-collision present:  burst reads 32 in 586 of 613 Builder-turns  (real burst 0)
-collision fixed:    burst reads  0 in 606 of 606 turns          (correct)
-```
-
-A join is published nearly every turn once a network exists, so the bot
-believes it is under **moderate threat permanently** — `survival = hp/32 ≈ 15`
-instead of infinite. It is not noise; it is a constant low-level alarm that
-every threshold here was calibrated against, and it changes behaviour only on
-maps where a real threat also exists (role mixes are identical on a quiet map).
-
-That is as far as this got. Reproducing the effect deliberately needs the
-alarm applied at every burst consumer *and* the thresholds re-fitted together,
-which is a tuning sweep rather than an edit.
-
-**So the bug ships, deliberately and in writing.** Its practical effect is a
-constant +32 offset the policy is calibrated for, not corruption — but it is a
-landmine for the next person: any change touching burst, has_join, or those
-thresholds will behave unpredictably until the whole set is re-tuned together.
-Fix it and re-tune all consumers in one pass, or not at all.
+Same 6 wins with the **best harvester count (4.20 @300) and lowest stalls (15)
+recorded here**, and the store word is collision-free. The landmine is gone.
 
 ### Three barrier changes, three byte-identical results
 
