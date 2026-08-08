@@ -3170,3 +3170,51 @@ run before the build, not after the measurement.
 
 `vili` remains the best build: 0.657 on the zoo, **0.667 against the live meta**,
 where the currently-live flagship scores 0.262.
+
+## Iteration 56 — ran: the alarm exemption is load-bearing (refutation 23)
+
+Followed the loss profile. `vili`'s 14 losses to Sentinel mass differ from its
+28 wins in a consistent way: first damage on round **10.6** against 12.6, first
+Gunner on **10.3** against 12.9, first Harvester 8.5 against 7.4, and 1.21
+Harvesters against 1.64. Games lost are short (209 turns against 305).
+
+Probed before building, per the rule from iteration 55 — and the mechanism was
+real. On the three maps we lose, `_turret_tax_is_affordable` is released **by
+alarm 153 times, every one of them at zero Harvesters**, and never once by the
+economy test. `hoenir`'s economy-first gate is switched off by its own escape
+hatch against any opponent that pokes the Core early.
+
+So `ran` made the exemption conditional: level 2 (Core below CRITICAL_HP) still
+releases instantly, but a level-1 scratch now waits for the first Harvester.
+
+**It is the worst build of the session by a wide margin.**
+
+| vs | ran | vili |
+|---|---|---|
+| `spar_sentinel` | **0.167** | 0.667 |
+| `hoenir` | 0.167 | |
+| `vili` | 0.238 | |
+| `mimir` | 0.262 | |
+| `steward_hardened_reinforced` | 0.262 | |
+| **mean** | **0.219**, floor 0.167 | |
+
+-0.500 against Sentinel mass, **5.4 sd**. First Gunner moves from round 12.1 to
+**74.9**: with the exemption gone the hold runs to TURRET_HOLD_ROUNDS, the bot
+stands unarmed for seventy rounds and dies. Harvesters actually *rose* to 1.74
+against 1.50 — more economy, three times fewer wins.
+
+**The loss profile was backwards causation again, and this is the third time.**
+Harvesters: losing games hold fewer, but adding them (`saga`) made the bot
+worse. Turret timing: losing games buy the Gunner earlier, but delaying it is
+catastrophic. Both metrics are *downstream of the opponent's aggression* — the
+enemy attacks early, so we take damage early, buy a turret early, and lose.
+The turret is the response to the thing that beats us, not the thing that beats
+us.
+
+**Rule for the rest of this loop.** A win/loss metric split is a hypothesis about
+what the *opponent* did, never about what we should stop doing. The only way to
+price one of ours is to change it and measure, and the honest prior is that the
+existing value is load-bearing — this codebase has been tuned by people who
+measured, and three of my last five "obvious defects" were the tuning working.
+
+`vili` still stands: 0.657 zoo, 0.667 against the live meta.
