@@ -55,6 +55,63 @@ decision in this codebase that reads "the store cannot tell us X" should be
 re-checked against the Controller API first.
 
 
+## The seat gap: found, and it was a one-tile reference error
+
+steward's README records a seat asymmetry as real, large and unexplained, with
+every attempted fix "inert". It is an OPENING bug, which is why every fix
+tried was on the combat side.
+
+`get_position()` returns the **top-left tile of the 2x2 Core for both seats**.
+Every official map is rotationally symmetric, so seat B is seat A turned 180
+degrees — meaning seat A ranks deposits from the corner facing AWAY from the
+enemy and seat B from the corner facing TOWARD it. Observed directly,
+archipelago, same build:
+
+```
+seat A  anchor (5,5)    nearest ore (2,6)   d2=10   first harvester r7
+seat B  anchor (19,19)  nearest ore (16,17) d2=13   first harvester r26
+```
+
+(5,5) mirrors to (20,20), not (19,19). The reference point is wrong by one
+diagonal tile, consistently against seat B, and everything downstream inherits
+it: first Gunner 26 vs 23, conveyors 11.3 vs 12.8, titanium 555 vs 619.
+
+Ranking from the *nearest* footprint tile equalises the seats the wrong way —
+it drags seat A down (0.817 → 0.750) as far as it lifts seat B. Seat A's
+advantage was not an artefact: the rear corner prefers deposits behind the
+Core, workable without crossing the middle. So the anchor is the footprint
+corner **farthest from the enemy Core**, well defined for both seats.
+
+### Result: +5.0pp over the flagship, no regressions
+
+8 opponents, 15 official maps, both seats, 240 games each:
+
+| | total | seat A | seat B |
+|---|---|---|---|
+| steward | 180/240 = 0.750 | 0.808 | 0.692 |
+| **bulwark** | **192/240 = 0.800** | **0.817** | **0.783** |
+
+| opponent | steward | bulwark |
+|---|---|---|
+| casemate | 29/30 | 29/30 |
+| odin | 25/30 | **26/30** |
+| prospect | 19/30 | **20/30** |
+| ragnarok | 26/30 | **28/30** |
+| tempest_reinf | 22/30 | **25/30** |
+| vanguard | 21/30 | **22/30** |
+| vidar | 19/30 | **21/30** |
+| vigil | 19/30 | **21/30** |
+
+Better or equal against every opponent, zero regressions. Seat B +9.1pp is the
+mechanism, exactly as designed.
+
+Compliance: `benchmarks.timing` **0 turns over 10 ms**; determinism **16/16**
+identical outcomes on rerun.
+
+Head-to-head against steward is 13–17. Both bots share ~99% of their code, so
+that is a near-mirror; the ladder rates against a field, and against a field
+this is clearly the better bot.
+
 ## Also tried: rotation-invariant ore tie-break — no effect
 
 The opening ore list was sorted `(distance, tile.x, tile.y)` — an ABSOLUTE
