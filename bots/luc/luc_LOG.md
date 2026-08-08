@@ -271,3 +271,20 @@ from round 4) is a separate unaddressed failure mode.
 - Plan: long observation window; next build only on live evidence. Candidate on the shelf:
   vidar-matchup repair for sif's economy opening (defensive Sentinel earlier?), pending
   hodr/mimir live verdicts.
+
+## Iteration 14 — 2026-08-08 ~11:00
+
+- Rank 14 at 1745 (window slipped). The rated bleed traces to old shr builds losing to
+  Sentinel-meta teams (I Stone 0–5 again, kladde 2–3) while they hold the flagship on
+  sample size.
+- **I Stone shipped a new build today**: their old versions lose 0–5/1–4 to everything of
+  ours; their new one swept hodr 0–5 and shr@04300bf 0–5 — but the last hour of farm
+  series against it runs 3–2/2–3 both ways. hodr's 0–5 is one series; per the prompt's own
+  rule, not a conclusion. hodr and mimir volume rounds are queued and grinding.
+- No build this iteration — deliberate. Wrote two memory notes: the Sentinel-economy meta
+  (internal panels under-represent it) and the small-sample estimate regression pattern
+  (three sightings today).
+- Standing hypothesis for the next build (pending hodr's ≥25-game estimate): if
+  Sentinel-first transfers live, the delivery bottleneck (attacker lifetime, seat search
+  preconditions) is next; if it doesn't, the sif economy-opening trade plus a defensive
+  Sentinel answer is the pivot.
