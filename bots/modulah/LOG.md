@@ -253,6 +253,30 @@ somewhere it can reach the map. Not hypothetical here — `worst_stall` was
 Equal wins, best economy recorded, and it removes a permanent tax rather than
 trading one thing for another. Kept.
 
+### Core-driven repair: the version that finally works
+
+All three Builder-driven variants failed because a Builder cannot distinguish
+a severed line from one still being built — both look like "a conveyor
+pointing at empty ground". The Core can, and for free: it already walks the
+connected set every round for the arrival schedule.
+
+`econ.NetworkWatch` remembers that set. A break has a signature construction
+cannot fake — **a tile that WAS connected and is now EMPTY** — because
+building only ever adds tiles. The hole is then published through the existing
+frontier field, so Builders route to it and ordinary chain-laying plugs it. No
+new store bits, no Builder guessing.
+
+| variant | wins | collected |
+|---|---|---|
+| every Builder repairs | 3 | 127 |
+| one owner, any distance | 4 | 500 |
+| one owner, underfoot only | 6 | 831 |
+| **Core-driven (shipped)** | **6** | **1296** |
+
+Neutral on wins, best economy recorded, and the first version that does not
+damage the economy at all. Kept: it is the correct mechanic at zero cost, and
+it matters against opponents that actually cut lines.
+
 ### Network repair, all three variants measured
 
 | variant | wins | collected | steward | why it fails |
