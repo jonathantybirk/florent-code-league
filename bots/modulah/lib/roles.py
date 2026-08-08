@@ -74,7 +74,7 @@ BASELINE_THREAT = 32
 # matter what is happening -- see the floor in desired_mix.
 # Effective ceiling: raising this past 7 changes nothing, because the team
 # only ever builds ~3.8 Harvesters. Ore discovery, not policy, is the limit.
-ECON_FLOOR_HARVESTERS = 7
+ECON_FLOOR_HARVESTERS = 4
 
 # Builders sent to besiege the enemy Core once the economy is standing, and
 # the round from which it is worth starting. We out-collect steward and still
