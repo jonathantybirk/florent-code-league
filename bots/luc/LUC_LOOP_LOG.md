@@ -6118,3 +6118,36 @@ has either failed or been confounded.
 `dellingr` deleted: worse than its own base locally, and I will not queue a build
 on a hypothesis my instrument cannot test when the queue is nine deep with
 builds that were.
+
+## Iteration 126 — the mirror-match hypothesis is untestable with what is here
+
+Every local measurement I have made uses **our own bots as opponents**; the
+ladder does not. If `steward@e55aab5` is strong against diverse real opponents
+and weak against its own relatives, that would explain the inversion exactly —
+my panel would be measuring a family resemblance rather than strength.
+
+Tested it against the non-`luc` bots in the repo:
+
+| | vs other teams' bots |
+|---|---|
+| `lofn` | **28/28 = 1.000** |
+| `base_e55` | 22/28 = 0.786 |
+
+**Uninformative.** The available external bots resolve to `casemate`, `denier`,
+`idle`, `mistral_fast`, `prospect_rushonly` and `turtle` — one of them is
+literally called `idle` — and `lofn` sweeps the set. An opponent every build
+beats cannot rank builds, so this neither supports nor refutes the hypothesis.
+
+What it does confirm is the shape of the problem: **the only opponents in this
+repo strong enough to discriminate are our own**, which is exactly the condition
+under which a panel measures family resemblance. The ladder has 112 other teams;
+I have six weak bots and our own lineage.
+
+So the mirror-match explanation joins game length, map shape and opponent mix on
+the list of plausible accounts of the inversion that I cannot test from here.
+Four hypotheses, no discriminating instrument, and one fact that stands
+regardless: **`steward@e55aab5` wins 0.581 over 1,425 ladder games and 0.286 over
+1,000 of my maps.**
+
+The queue is the instrument. `vili` is mid-run, `lofn` and `mani` are the pair
+that matters, and nothing I can build tonight will tell me more than they will.
