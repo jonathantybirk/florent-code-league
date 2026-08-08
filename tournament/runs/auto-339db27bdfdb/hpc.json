@@ -1,0 +1,27 @@
+{
+  "submissions": [
+    {
+      "job_id": "29052128",
+      "name": "trn_auto-339db27bdfdb_1",
+      "elements": 1000,
+      "chunk": 10,
+      "range": "1-1000",
+      "submitted_at": "2026-08-08T07:21:05+0200"
+    },
+    {
+      "job_id": "29052129",
+      "name": "trn_auto-339db27bdfdb_2",
+      "elements": 30,
+      "chunk": 10,
+      "range": "1001-1030",
+      "submitted_at": "2026-08-08T07:21:06+0200"
+    }
+  ],
+  "job_ids": [
+    "29052128",
+    "29052129"
+  ],
+  "job_id": "29052128",
+  "host": "dtu",
+  "remote": "florent-tournament/auto-339db27bdfdb"
+}
