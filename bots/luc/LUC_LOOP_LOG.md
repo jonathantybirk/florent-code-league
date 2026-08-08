@@ -2431,3 +2431,49 @@ to exploit: we already play both seats equally.
 Worth recording anyway, because it means **seat splits in this suite are not
 evidence about a bot** — they are evidence about the map set. Any future reading
 of "our seat B is weak" from these panels is reading terrain.
+
+---
+
+## Iteration 39 — the wall-in idea, tested three ways
+
+Lucas asked for this directly: cut their belt, barrier the gap, wall in their
+base so the mender cannot reach the Core, and leave one hole to snipe through. I
+had deferred it on the grounds that sporks builds zero barriers, which is not
+evidence about *us*. Tested properly now.
+
+**The cut-and-barrier half already ships.** `_cut_enemy_belt` breaks the enemy
+conveyor nearest their Core and remembers the hole so it can drop our own
+barrier into it next pass.
+
+**The wall-in half does not work, and the reason is specific.**
+
+`_wall_enemy_core` barriers the tiles orthogonally adjacent to their Core
+footprint — the tiles their mender must stand on. Three attempts:
+
+| version | barriers/game | mean |
+|---|---|---|
+| hooked after the turret searches | **0.00** | 0.610 |
+| hooked before them | **0.00** | 0.590 |
+| plus a deliberate walk to the ring | **0.00** | **0.167** |
+
+Instrumenting the second version explains the first two: over 77 calls the
+attacker was orthogonally adjacent to a ring tile **zero times**, and was too
+poor for a 3 Ti barrier plus reserve on 30 of them. It parks at *turret* range,
+three or four tiles out, so an opportunistic check there can never fire.
+
+The third version made it walk to the ring, and that is the instructive
+failure: mean **0.167**, floor 0.119 — the worst build measured in this whole
+log — and still zero barriers. The approach returns True every round, so the
+attacker walks toward a tile it never reaches and does nothing else for the
+rest of the game. One body removed from the bot is worth about 0.4 of win rate.
+
+**What would be needed.** The barrier is cheap (3 Ti, +1 scale, 30 HP); the
+problem is entirely delivery — the same wall that limits the forward Sentinel
+seat. A Builder standing orthogonally adjacent to a defended Core is inside
+every turret they own, and ours dies there. Making this work is not a matter of
+finding the right hook: it needs a Builder that can survive beside their Core
+long enough to lay four to six barriers, which is a harder problem than the one
+the barriers were meant to solve.
+
+The sniping refinement — a Sentinel aimed at a deliberate hole rather than the
+Core — was never reached, since the wall it depends on never went up.
