@@ -310,3 +310,22 @@ from round 4) is a separate unaddressed failure mode.
   another chassis patch.
 - Note for whoever reads this: samples are 10–16 games; the ordering above could still
   shuffle ±50 Elo. hodr and mimir volume rounds remain queued and will firm this up.
+
+## Iteration 16 — 2026-08-08 ~12:45
+
+- Farm churn continues: hodr demoted, **freyr now flagship** (1777 on 11 games). Team 1721,
+  rank 15 — the day is net negative on rating from these small-sample flagship stints; the
+  queued volume rounds are the fix (estimates regress to truth, churn ends).
+- **Built `bots/luc/audhumla`** = sif minus the opening attacker (RUSH/FORTIFY roles
+  (2,0)): two miners + ring guard, all opening titanium into economy — re-testing the last
+  standing pre-2.3.4 doctrine law ("no-attacker lost 2–12"), which is exactly the shape
+  every team above us plays. Smoke: loses to hodr's rush (turn 100), beats vidar on
+  jackpot (turn 666). Panel vs shr/hodr/sif/vidar running (`audhumla_run1`).
+- **audhumla panel: the second doctrine law dies.** 21–21 shr, 22–20 hodr, 20–22 sif,
+  18–24 vidar, 0.482 total — the no-attacker economy opening is a mild trade, not the old
+  2–12 catastrophe. Both pre-patch laws that shaped this chassis are now measured dead.
+  The gap to the meta teams is not the opening; it's the mid-game conversion
+  (their 7–20 Harvesters and Sentinel batteries vs our 2–5 and 0.6). Committed as record.
+- Session state: 11 builds, 5 live-tested, 2 hard bug fixes, 2 dead laws, extensive meta
+  intel in memory. Farm churn ongoing (freyr flagship at 11 games); volume rounds queued
+  will settle the day's live ordering. Monitoring cadence from here.
