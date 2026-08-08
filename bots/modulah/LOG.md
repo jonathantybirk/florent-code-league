@@ -1,30 +1,32 @@
 # modulah log
 
-## Status: NOT yet beating our own bots
+## Status: NOT beating our own bots
 
-`aegis` is **0/18** against `steward_hardened_reinforced`, `vidar` and `odin`
-over 6 maps in both seats. It beats `starter` on the tiebreak. The goal is not
-met.
+`aegis` is **0/45** against `steward_hardened_reinforced`, `vidar` and `odin`
+on the full 15-map official pool, both seats. The goal is not met.
 
-What did move, same panel throughout:
+**Measure on the full pool, never on a small panel.** The 6-map panel used
+early on (duel, atoll, hive, jackpot, eider, saga) is four old-pool 12x12s and
+flatters this bot badly — it reported 2184 collected and 200 core hp where the
+real figures are 823 and 47. Every number in this file is full-pool.
 
-| | beacon | aegis v1 | aegis now |
-|---|---|---|---|
-| wins vs top three | 0/12 | 0/18 | **0/18** |
-| games survived | — | 7/24 | **9/24** |
-| titanium collected | 937 | 786 | **2184** |
-| harvesters @300 | — | 1.17 | **3.83** |
-| first harvester | 3.5 | 30.5 | **3.5** (field: 6.5) |
-| core hp at end | 39 | 142 | **200** |
-| enemy cores killed | never | never | **round ~225** |
+| | full pool |
+|---|---|
+| wins vs top three | **0/45** |
+| games survived | 7/45 |
+| titanium collected | 823 (steward 788, vidar 4003, odin 2109) |
+| harvesters @300 | 3.29 |
+| first harvester | round 4 (field: 7) |
+| core hp at end | 47 |
 
-So: the economy is now competitive and we kill cores, but the top three still
-kill ours around round 90 every time.
+The opening is genuinely good — first Harvester at round 4 against the field's
+7 — and the economy is level with steward. vidar out-collects us five to one.
+The top three kill our Core around round 90-105 in every single game.
 
 **The deployed online bot is untouched** — `v34
 (steward_hardened_reinforced f1f2bda)`, team #12 of 109 at 1772. Nothing from
 this branch has been submitted, and nothing should be until it beats the
-flagship locally.
+flagship on this pool.
 
 ## Bugs found, in order of how much they cost
 
@@ -87,16 +89,22 @@ count, is the binding constraint.**
 
 ## Next, in priority order
 
-1. **Why we die at round ~90.** Gunners reach 3 tiles, Sentinels 5. Steward
-   shells from 5. Counter-battery from adjacent seats works but rarely
-   triggers; the answer is probably a standing Sentinel ring sited *before*
-   contact, not a reaction.
-2. **Pathing.** `_step` is greedy and bounces; steward uses a BFS distance
-   map. `worst_stall` is 62 rounds.
-3. **Doctrine.** Steward branches RUSH/FORTIFY/BLITZ on Core-to-Core Chebyshev
-   ≤ 6, measured over 138,785 matches. aegis has no opening at all.
-4. **Bigger panel.** 6 maps is too noisy to resolve a 5pp change — steward's
-   own log records five apparent gains that reversed sign on a second panel.
+The ledger says stop adding combat behaviour and fix the supply line.
+
+1. **Chain completion.** The measured binding constraint. Routes are laid one
+   conveyor per step as a Builder walks home, so they are slow, fragile, and
+   follow the Builder's wander rather than a plan. Plan the route first, then
+   lay it — and prefer deposits whose route is short, which produced the only
+   win so far.
+2. **Survive the Gunner siege.** 94-100% of Core damage is enemy Gunners at
+   reach 3. Every reactive answer tried has cost more than it saved, so the
+   answer is probably structural: enough standing defence bought early from a
+   working economy, not a Builder despatched on contact.
+3. **Doctrine.** All 15 official maps are rotationally symmetric, so the enemy
+   Core is our Core rotated 180° about the map centre — available at round 0
+   from map dimensions alone. steward branches RUSH/FORTIFY/BLITZ on
+   Core-to-Core Chebyshev ≤ 6, measured over 138,785 matches. aegis has no
+   opening at all.
 
 ## Engine facts (measured, not from docs — the docs contradict themselves)
 
