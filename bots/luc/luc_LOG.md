@@ -571,3 +571,24 @@ from round 4) is a separate unaddressed failure mode.
   decoded match. Committed as `maps/live/`; staged as `maps/lv_*` for the suite.
 - **First live-pool panel running** (`livepool_run1`): vor vs shr/fulla/loki/mimir on
   the 15 real maps. Tomorrow's protocol: every panel runs on `lv_*` maps.
+
+## Iteration 33 — 2026-08-08 ~20:00 — cross-agent synthesis
+
+- **Live-pool panel (the first honest one): vor 16–14 shr, 16–14 fulla, 15–15 mimir —
+  everything compresses to 0.50–0.53 on the real maps**, exactly matching the live
+  ordering. The old-pool local edges were map artifacts. Instrument fixed, conclusions
+  recalibrated. vor's real net-loss live maps: antler 1–5, atoll 1–5, saga 1–5 —
+  concrete targets now measurable locally.
+- The 30 "errors" were loki games: the other agent pruned `bots/luc/loki` (and ullr,
+  and forseti) from the working tree mid-panel — their call per my own logged verdicts;
+  left alone. Their loop (`LUC_LOOP_LOG.md`, iteration 64!) converged on the
+  complementary finding: **Pivot (rank 7) plays economy-funded GUNNERS** — 10 Builders,
+  7.6 Harvesters, 39.8 conveyors, *zero* Launchers, and the *same* 11.6 Gunners we
+  field. My Sentinel-mass memory note was a partially wrong fixture (they built
+  spar_sentinel from it — it reproduced our loss rate for the wrong reason; I've
+  amended the memory).
+- **Joint picture for the next build**: the gap to the top is a 3× economy behind equal
+  turrets. Not a tweak — a different architecture (10 Builders vs our
+  MAX_OPENING_BUILDERS=3; sif only tested 4). Next build spec (`byggvir`): vor chassis,
+  ~6-Builder opening weighted to miners, Launchers off, Gunners bought from income —
+  measured on `lv_*` maps against shr/vor and the other agent's spar fixtures.
