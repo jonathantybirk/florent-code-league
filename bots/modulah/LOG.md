@@ -65,10 +65,11 @@ so these are real differences, not noise.
 | home-seat counter-battery | 375 | 12 | 2/45 | 0 |
 | aggressive economic scale | 246 | 3 | 1/45 | 0 |
 | ore chosen by chain cost | 777 | 15 | 4/45 | **1** |
+| planned route from recorded walk | 112 | 0 | 0/45 | 0 |
 
 \* measured on the old 6-map panel before it was found to be unrepresentative.
 
-**The pattern.** Six of seven measured worse. Every change that diverts a
+**The pattern.** Eight of nine measured worse. Every change that diverts a
 Builder from mining — to counter-battery, to a distant seat, to a longer walk
 — costs more economy than the threat it answers costs us. At this unit count
 Builders are too scarce to spend on reacting, and out-mining plus mending
@@ -76,8 +77,20 @@ beats fighting back badly.
 
 The one that produced a win (ore chosen by distance-to-Core, so chains are
 short) also cut survival 7→4 and core hp 47→15. Reverted: one lucky matchup
-against a bot closer to death everywhere else. It is the most promising
-direction to retry once chains are laid reliably.
+against a bot closer to death everywhere else.
+
+The planned-route attempt is the sharpest failure and worth understanding.
+The idea was sound and cheap — the Builder has already walked from the Core to
+the deposit, so the reverse of that walk is a route guaranteed passable and no
+longer than the walk. Against `starter` it worked (archipelago 6,330 mined;
+eider 10,960). Against the real field it collapsed to 112 titanium and 0
+survivals with the HIGHEST harvester count yet recorded (3.64 at round 100).
+
+Deposits opened, nothing delivered. Under pressure the Builder is interrupted
+part-way along a rigid route and the remembered path goes stale — the tiles it
+walked are no longer free, or it is no longer near them. The lay-behind
+version is worse in principle and more robust in practice, because it only
+ever commits to the one tile it is standing next to.
 
 **The diagnosis that actually held up.** Replay attribution across four
 losses: enemy GUNNERS deal 94-100% of all damage to our Core (archipelago
