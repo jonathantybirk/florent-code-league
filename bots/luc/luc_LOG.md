@@ -410,3 +410,19 @@ from round 4) is a separate unaddressed failure mode.
   losses). freyr re-promoted (1867 on 12) and beat I Stone 4–1 rated. Team 1726, rank 15.
 - No build this iteration: fulla's 25-game verdict shapes whether the next work is
   scaling this line (ammo-vs-growth arbitration) or something else.
+
+## Iteration 23 — 2026-08-08 ~15:50
+
+- **fulla's qualified verdict: 15–10 over 25 games, est 1806 [1731–1870]** — regressed
+  from 1870 as expected but landed high: the only build of the day statistically at the
+  incumbent shr@f1f2bda's level (1838 on 362), with the economy-attrition matchup wins
+  the whole day chased. Queued `fulla@7ac9bb7:4` (20 more games) to firm the estimate.
+- The other agent is iterating too: `snotra_h@6951e03` testing (2–3 at 5 games).
+- **For Lucas / the farm owner — the day's single most valuable fix is in the farm, not
+  the bots**: promotion on sub-25-game estimates churned the flagship five times today
+  (mimir → shr → hodr → freyr → shr...), and each small-sample stint bled rated points —
+  team 1756 → 1693 over the day, roughly −60 rating attributable to churn. A ≥25-game
+  qualification bar on promotion (or a hysteresis margin over the incumbent) would have
+  kept shr@b61aaac/f1f2bda active all day. The promotion logic is farm code, which I
+  don't touch by agreement — flagging with data instead.
+- Team rank 18 at 1693; incumbent restored as active.
