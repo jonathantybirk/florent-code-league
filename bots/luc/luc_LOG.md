@@ -329,3 +329,23 @@ from round 4) is a separate unaddressed failure mode.
 - Session state: 11 builds, 5 live-tested, 2 hard bug fixes, 2 dead laws, extensive meta
   intel in memory. Farm churn ongoing (freyr flagship at 11 games); volume rounds queued
   will settle the day's live ordering. Monitoring cadence from here.
+
+## Iteration 18 — 2026-08-08 ~13:40
+
+- Live: churn ended — farm restored shr@f1f2bda (1799 on 359m) as flagship. Day cost ~50
+  rating (1756 → 1703, rank 17). Painful; mechanism understood and memorized.
+- **The economy ceiling found in code.** audhumla (two miners!) still builds a median of
+  ONE Harvester in long games. Instrumented the pipeline live: both trunks connect by
+  round 9, then each miner re-claims the *other's* finished deposit (per-unit staleness),
+  abandons with "no alternate conveyor route", and the pipeline is silent for 600 rounds.
+  Root causes in `_route`: (1) `joinable` is per-Builder — every other miner's belt (and
+  every dead Builder's belt) is treated as a WALL; (2) routes may only cross
+  personally-seen tiles, and `_pick` abandons instead of scouting toward unseen deposits.
+- **Another agent is on the same trail**: their `snotra` (34b0ce8d1, on mimir) fixes
+  deposit *selection* — price by belt-length×3 + travel instead of nearest-routable-first
+  — measuring 0.607 vs mimir with no losing matchup. Complementary layer. They also
+  matched the farm-submission pause and pruned ullr in the working tree (left alone).
+- **Built `bots/luc/gefn`** = snotra + my route-reachability fixes: any friendly conveyor
+  is joinable (head-on check still guards direction), and an unroutable-but-wanted deposit
+  becomes a scout target instead of an idle round. Panel vs shr/snotra/mimir/vidar running
+  (`gefn_run1`).
