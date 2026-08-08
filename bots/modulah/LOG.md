@@ -170,6 +170,18 @@ walking, so threat is never truly zero.
 Same 6 wins with the **best harvester count (4.20 @300) and lowest stalls (15)
 recorded here**, and the store word is collision-free. The landmine is gone.
 
+Now that it is a real parameter rather than a bit position, it was swept:
+
+| `BASELINE_THREAT` | wins | collected | survived |
+|---|---|---|---|
+| 16 | 6 | 546 | 2/45 |
+| **32** | **6** | **1068** | **4/45** |
+| 48 | 6 | 833 | 3/45 |
+
+All three give the same six wins, so it trades economy against survival rather
+than buying either outright — and the value the collision happened to supply is
+the best of the three. Kept at 32, now for a measured reason.
+
 ### Three barrier changes, three byte-identical results
 
 Offering the screen to guards, and separately widening it to seal any empty
