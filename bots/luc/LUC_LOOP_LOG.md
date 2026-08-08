@@ -5630,3 +5630,37 @@ Every build we own is within ±1.5 points of every other, except one that is
 further local measurement will change it: the differences I have been chasing
 are smaller than the precision it takes 2,000 games to reach, and the only
 difference that is large is the one the promotion rule cannot see.
+
+## Iteration 113 — the 0.273 build was promoted a second time
+
+    23:52  PROMOTING steward@e55aab5 (v38): elo 1805 +-78 beats incumbent 1769
+    00:02  PROMOTING steward_hardened_reinforced@a994296 (v33): elo 1788 +-48 beats incumbent 1773
+
+**`steward@e55aab5` has now been live twice tonight**, about ten minutes each
+time. Measured against its own sibling it wins **0.273 ±0.050** over 300 games
+and **0.286 ±0.028** over 1,000 — the single worst build in the promotable pool
+by 17 points.
+
+This is no longer a one-off. Its estimate sits near **1805** every time the farm
+looks, well above every other build's, while its true strength is bottom of the
+pool. So the rule will keep selecting it, roughly whenever the incumbent's
+estimate dips below 1805, which happens every few rounds. **Twice in ninety
+minutes is the observed rate.**
+
+Why the estimate is wrong is a separate question I cannot answer from here — it
+has 100 live games and the fit puts it top of the table — but it does not matter
+for the decision. A rule that compared `best_est - best_half` would have
+rejected it both times: 1805 - 78 = 1727, below the 1769 incumbent. The same
+test rejects the other promotions of the night too, including
+`a994296` at 1788 - 48 = 1740 against 1773.
+
+**Status of tonight's builds on the ladder:** `bifrost` has finished its six
+rounds. Live shared-opponent record 15/30 = 0.500 ±0.179 over three shared
+opponents — thirty games, still unreadable, exactly as predicted. `hoenir` is
+running with two rounds left; `vili`, `freyja`, `lofn`, `hlin`, `nanna` behind
+it.
+
+**The loop's remaining value is now entirely in the queue draining and the
+promotion rule being fixed.** I have measured every build we own against every
+other at 2,000 games; there is nothing further local measurement can tell me,
+and the one large effect in the system is a build the rule cannot see is bad.
