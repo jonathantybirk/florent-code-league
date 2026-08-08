@@ -138,6 +138,35 @@ victory against steward — outlast and out-mine, not out-fight — and repair i
 what let a line survive long enough to do it. Worth rebuilding properly on top
 of the 6-win base rather than in place of it.
 
+### KNOWN BUG, shipped deliberately: THREAT_BURST / THREAT_HAS_JOIN collide
+
+`THREAT_BURST = Field(14, 6)` occupies bits 14-19 and `THREAT_HAS_JOIN` sits
+on bit **19**. They overlap. Publishing a join sets burst's top bit, so every
+reported `burst` reads **32 too high**, and `has_join` reads true for any burst
+>= 32. A join is published whenever a supply network exists, i.e. nearly always.
+
+**Every constant in `roles.py` was tuned against that inflated number**, over
+roughly forty experiments. Correcting it is strictly worse:
+
+| build | wins | collected | survived |
+|---|---|---|---|
+| **shipped (collision present)** | **6** | **1291** | 5/45 |
+| collision fixed | 4 | 531 | 2/45 |
+| fixed + re-tuned thresholds | 4 | 346 | 1/45 |
+| fixed + explicit BASELINE_THREAT 32 | 5 | 410 | 1/45 |
+
+The third attempt is the instructive one. Restoring the offset as a documented
+`BASELINE_THREAT` in the survival calculation recovers a win but not the
+economy, because `burst` has **two** consumers: `roles.desired_mix` and
+`builder_brain._core_in_danger`. Compensating in one under-corrects the other,
+and getting both right needs a tuning sweep this session cannot fund.
+
+**So the bug ships, deliberately and in writing.** Its practical effect is a
+constant +32 offset the policy is calibrated for, not corruption — but it is a
+landmine for the next person: any change touching burst, has_join, or those
+thresholds will behave unpredictably until the whole set is re-tuned together.
+Fix it and re-tune all consumers in one pass, or not at all.
+
 ### Three barrier changes, three byte-identical results
 
 Offering the screen to guards, and separately widening it to seal any empty
