@@ -42,7 +42,7 @@ class BuilderBrain:
 
         sit = situation.Situation(ct)
         intel = self._intel(ct, r)
-        role = self._role(ct, r, intel)
+        role = self._role(ct, r, intel, sit)
 
         if self.commit is not None:
             if self.commit.stalled(r) or not self.commit.still_valid(ct, sit):
@@ -70,7 +70,7 @@ class BuilderBrain:
             info["fresh"] = True
         return info
 
-    def _role(self, ct: Controller, r: int, intel: dict) -> int:
+    def _role(self, ct: Controller, r: int, intel: dict, sit) -> int:
         """Rank among live Builders decides which slice of the mix we take.
 
         Rank is derived from the store rather than negotiated, because the
@@ -96,6 +96,7 @@ class BuilderBrain:
             len(live), intel["hp"], GameConstants.CORE_MAX_HP,
             intel["burst"], intel["dhp"],
             friendly_turrets=self._friendly_turrets(ct),
+            harvesters=len(sit.my_harvesters),
         )
         return roles.assign(rank, mix)
 
@@ -301,6 +302,15 @@ class BuilderBrain:
         return None
 
     def _step(self, ct: Controller, target: Position, r: int) -> bool:
+        """Move one tile toward target, preferring tiles nothing is aiming at.
+
+        Builders were walking straight down enemy firing lanes and dying:
+        traced 3 units -> 1 by round 32 against steward, which then had a free
+        run at the Core. Turrets are line weapons, so a lane is a handful of
+        tiles and stepping around one usually costs nothing at all -- the
+        avoidance is a preference, not a refusal, so a Builder still moves when
+        every option is covered rather than standing still and dying anyway.
+        """
         pos = ct.get_position()
         dx, dy = target.x - pos.x, target.y - pos.y
         pref = []
@@ -308,7 +318,18 @@ class BuilderBrain:
             pref.append(CARDINALS[1] if dx > 0 else CARDINALS[3])
         if dy:
             pref.append(CARDINALS[2] if dy > 0 else CARDINALS[0])
-        for d in pref + list(CARDINALS):
+
+        try:
+            unsafe = placement.enemy_covered_tiles(ct)
+        except GameError:
+            unsafe = set()
+
+        order = pref + [d for d in CARDINALS if d not in pref]
+        if unsafe:
+            safe = [d for d in order if (pos.add(d).x, pos.add(d).y) not in unsafe]
+            order = safe + [d for d in order if d not in safe]
+
+        for d in order:
             try:
                 if ct.can_move(d):
                     if self.trail is not None:
