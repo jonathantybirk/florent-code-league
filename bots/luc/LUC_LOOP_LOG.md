@@ -3555,3 +3555,45 @@ available — *at worst level, plausibly slightly ahead, nowhere near +40pp*.
 
 Map sets kept: `maps/offpool/` and `maps/offpool2/` (oblong mixture, seeds 8081
 and 20260809), `maps/offpool_square/` (shape-matched, seed 424242).
+
+## Iteration 63 — the axis lead dies in a controlled test
+
+Iteration 62 found the one correlate backwards causation could not explain: the
+lineage scored 0.534 on maps with a horizontal Core axis against 0.421 on
+vertical ones, 1.7 sd. A vertical-axis weakness would be a *transferable* bug
+rather than pool-specific tuning, so it was worth a real experiment instead of
+another correlation.
+
+Generated 160 maps, kept the 158 with an unambiguous axis (84 vertical, 74
+horizontal), and greedily matched 18 pairs on area and Core distance so the two
+sets differ in axis and as little else as possible:
+
+    vertical    n=18  area 584  core distance 12.6  24.8 x 23.9
+    horizontal  n=18  area 550  core distance 12.8  22.9 x 24.2
+
+Three bots, 36 games each per set, 216 games:
+
+| | vertical | horizontal | diff |
+|---|---|---|---|
+| `steward_hardened_reinforced` | 0.472 | 0.361 | -0.111 |
+| `hoenir` | 0.583 | 0.556 | -0.028 |
+| `vili` | 0.417 | 0.417 | +0.000 |
+| **all three** | **0.491** | **0.444** | **-0.046 (-0.7 sd)** |
+
+**Refuted, and the sign flipped.** Every bot is level or slightly *better* on
+vertical maps. `vili` is 0.417 on both, to the game.
+
+The correlation was confounded: in that sample the axis co-varied with Core
+distance (+0.348, the stronger correlate) and with aspect ratio, and I picked
+the axis reading out of seven quantities I had computed. Controlling for size
+and distance leaves nothing.
+
+**That is now the fifth causal story tonight that a direct experiment has
+refuted** — harvesters, turret timing, the win/loss metric split, the
+economy/ammunition trade, and now map geometry. The one difference is that this
+one died cheaply, because it was tested as an experiment rather than shipped as
+a build.
+
+Also worth recording: on these 36 maps the three bots read 0.417, 0.491 and
+0.583, which is the same picture as iterations 61 and 62 — the spread between
+our bots is smaller than the spread between map sets.
