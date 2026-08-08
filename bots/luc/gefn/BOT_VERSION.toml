@@ -1,0 +1,5 @@
+source_commit = "34b0ce8d1"
+source_path = "bots/luc/snotra"
+engine = "2.3.6"
+status = "development"
+variant = "snotra with the belt fence torn down: any friendly conveyor is joinable, and unroutable ore is scouted toward instead of abandoned"
