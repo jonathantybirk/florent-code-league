@@ -4278,3 +4278,46 @@ structurally unmeasurable locally:
 That is the honest boundary of local iteration on this bot. The remaining work
 is not more candidates — it is live games for `lofn` and `hlin`, then `bil` and
 `frigg` behind them.
+
+## Iteration 79 — the rank-1 profile, at last
+
+Lucas asked, hours ago, to take inspiration from the top three teams rather than
+the ones we face. I analysed Pivot (rank 7) because that is who beats us. Should
+have done both. `sporks` sits at **2107** against our 1688; 10 decoded games:
+
+| | builders | harvesters | conveyors | gunners | sentinels | launchers |
+|---|---|---|---|---|---|---|
+| **`sporks` (rank 1)** | 8.8 | **9.9** | **75.0** | **3.8** | **4.7** | 0.0 |
+| their opponents | 5.0 | 3.6 | 24.5 | 3.6 | 0.4 | 0.0 |
+| `Pivot` (rank 7) | 10.0 | 7.6 | 39.8 | 11.6 | 1.4 | 0.0 |
+| **us** | 4.6 | **2.7** | 24.3 | **22.7** | **0.1** | **2.0** |
+
+Two differences, both large, both consistent with everything measured tonight.
+
+**Economy.** 9.9 Harvesters and **75 conveyors** against our 2.7 and 24.3. They
+run three times the economy of their own opponents, who are themselves ahead of
+us. This is the 500x titanium tiebreak from iteration 76, seen from the other
+side.
+
+**Turrets, and it is the reverse of what we do.** They field **8.5 turrets total
+(3.8 Gunners + 4.7 Sentinels)**; we field **22.8, almost all Gunners**. At +20
+cost scale each that is 170 of permanent tax against our 456 — and the 286-point
+difference is what buys the 75 conveyors. They also prefer the long gun: 4.7
+Sentinels to our 0.1, which is exactly the 2.3.4 turret table this bot's own
+`_turret_kind` docstring works out and then cannot afford (73 Ti against a 2-42
+bank).
+
+**So both unqueued builds are pointed the right way**, and were built from
+Pivot's replays before I had seen rank 1:
+
+- `bil` caps team turret spend by cost scale — rank 1 runs a third of our count;
+- `frigg` makes the siege Sentinel shoot the mender — rank 1 fields 4.7
+  Sentinels and mends through everything we have.
+
+Neither is measurable locally (iterations 70, 77, 78). Both are now supported by
+the top of the ladder as well as by the team that beats us.
+
+**What I would build next, if the panel could see it:** `hlin` + `bil`'s ceiling,
+which is the closest this codebase can get to the rank-1 shape — the economy
+work from tonight, plus turret discipline to stop 456 points of scale tax
+strangling it.
