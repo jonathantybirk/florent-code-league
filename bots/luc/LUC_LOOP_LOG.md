@@ -2098,3 +2098,35 @@ That makes the livelock an **opportunity rather than a defect to revert**. Two
 miners that do not thrash should beat both — the gain is already banked, and
 10-20% of Builder turns are sitting on the floor next to it. `CLAIM_SLOTS`
 exists for exactly this kind of contention and is the obvious place to look.
+
+---
+
+## Iteration 31 — the obvious fix for the thrash is worse than the thrash
+
+The mechanism is a claim race. `_pick` reads claims from `CLAIM_SLOTS`, and
+store writes are **buffered** — visible only at the start of the next round. Two
+miners choosing in the same round both read the same stale claim set, both take
+the same deposit, and each sees the other's claim next round and re-picks. A
+race with no fixed point, which is exactly the position trace.
+
+`vali2` breaks it without communication: rotate the ranked candidate list by the
+miner's own index, so miner 0 prefers the best deposit and miner 1 the second,
+and neither choice depends on what the other published.
+
+| vali2 vs | | | its Harvesters |
+|---|---|---|---|
+| `ostara` | 17/42 | **0.405** | 2.05 |
+| `spork` | 18/42 | 0.429 | 2.02 |
+| `snotra_h` | 19/42 | 0.452 | 1.93 |
+| `mimir` | 24/42 | 0.571 | 2.00 |
+| **mean** | 102/210 | 0.486, floor 0.405 | |
+
+**Worse than the thrash**, and Harvesters fall 2.3 → 2.0. Forcing the second
+miner onto a permanently worse deposit costs more than the contention it avoids
+— the two miners racing apparently do resolve, and the resolution lands both of
+them on better ground than a static partition does. Deleted.
+
+So the livelock is: real, large (a fifth of Builder-rounds), traced to a
+buffered-write race, **and not profitably removable by the obvious means**. Tenth
+refutation. It stays on the books as understood-but-unfixed rather than as a
+lead.
