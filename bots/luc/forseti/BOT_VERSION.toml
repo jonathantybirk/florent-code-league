@@ -1,0 +1,5 @@
+source_commit = "d540e5baf"
+source_path = "bots/luc/hodr"
+engine = "2.3.6"
+status = "development"
+variant = "hodr with Sentinel delivery unblocked: ammo checks no longer burn the search throttle, and the attacker saves for the Sentinel instead of draining the pool on Gunners"
