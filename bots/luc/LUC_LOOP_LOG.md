@@ -322,6 +322,26 @@ rather than pushed** — the same call as the economy-cap change in iteration 1,
 and for the same reason: an unmeasurable no-op costs a ladder cycle and muddies
 attribution.
 
+> **Correction, added in iteration 7.** That last sentence is wrong, and the
+> error matters. The latch *does* bind in play — hard. Another agent's `mimir`
+> found it independently and shipped a fix that works: on sweden seat A the
+> miner healed 4 HP a round for **240 rounds** over a finished, unbelted
+> Harvester and mined nothing all game, and their fix runs sweden 317 → 653.
+>
+> What was inert was my *release condition*, not the mechanism. I gated on the
+> Core being calm for 40 rounds, and it never is — a besieged Core is chipped
+> continuously, which is exactly when the miner is pinned. They gated on **the
+> miner having zero connected Harvesters**: when the economy is already dead,
+> mining outranks mending, and alarm 2 still outranks everything. That trigger
+> keys on the state that actually matters instead of on the attacker's
+> behaviour.
+>
+> The lesson is about the instrumentation, not the idea: I measured that my
+> build changed nothing and correctly declined to ship it, but I then concluded
+> the *mechanism* was harmless. "My fix never fires" and "there is nothing to
+> fix" are different claims, and the trace I had — `alarm=1` held from round 25
+> to 725 with `load=0` — was already evidence for the second reading.
+
 One thing did come out of it: at round 300 `relent` holds **1.11 Harvesters to
 the flagship's 0.88**. Small, and 24 games is not much, but it is in exactly the
 direction the cost-scale argument predicts — retiring stalled turrets makes
@@ -745,3 +765,69 @@ The counter-cluster remains the biggest prize: `gefjon` went 5/5 against
 Besvikomat in its one series there, where the flagship line sits at 0.25 over
 390 games. That is a hint worth chasing with a fixture that actually reproduces
 the matchup — which is where `spar_mender` stalled.
+
+---
+
+## Iteration 7 — a correction, and two fixes that turn out to be substitutes
+
+### Another agent's `mimir` is live, and it corrects iteration 2
+
+`mimir@62df0ec` was promoted at **11 games** — 8W–3L, raw game win rate
+**0.618** (34 of 55) against the flagship's 0.558 over 335. Shrinkage 0.687 and
+it still reads 1844, because its raw estimate is 1847.
+
+That **falsifies the strong form of iteration 5's claim** within the hour. The
+arithmetic there was right — a modest edge cannot be resolved at 10–20 games —
+but I wrote it as though promotion essentially never fires, and it fired for a
+build with a large edge on ~10 games. Memory note corrected rather than left
+standing.
+
+It also corrects **iteration 2**, which matters more. Their commit:
+
+> the miner healed 4 HP a round for 240 rounds over a finished, unbelted
+> Harvester — 0 mined all game … A miner with zero connected Harvesters now
+> ignores alarm 1; sweden runs 317 → 653.
+
+Same mechanism I found and dropped. The difference is the *release condition*: I
+gated on the Core being calm for 40 rounds, and it never is — a besieged Core is
+chipped continuously, which is precisely when the miner is pinned. They gated on
+**the miner having zero connected Harvesters**, i.e. on the economy already
+being dead. I had the trace that should have told me this (`alarm=1` from round
+25 to 725 with `load=0`) and read it as "the mechanism is harmless" when it
+said "my trigger is wrong". Correction written into iteration 2 above.
+
+### Built and measured: `eir` = mimir + gefjon's second miner
+
+The obvious composition: the live winner plus my one measured structural gain,
+with `PICK_CANDIDATE_LIMIT` carried across because mimir lacks it and a second
+miner without it goes over the turn limit.
+
+| eir vs | | |
+|---|---|---|
+| `mimir` | 20/42 | **0.476** |
+| `gefjon` | 20/42 | 0.476 |
+| flagship | 19/42 | 0.452 |
+| `vidar` | 22/42 | 0.524 |
+| **mean** | 81/168 | **0.482** |
+
+**No gain.** And the reason is instructive rather than disappointing: the two
+changes are **substitutes for the same defect**. gefjon's second miner is a
+workaround for the mend-pin — it keeps one miner free while the other is
+conscripted. mimir removes the pin outright. Once the pin is gone the second
+Builder buys nothing and still charges its permanent +20%, which is exactly what
+the mean shows.
+
+`eir` deleted. CPU was fine (5,144 us worst, zero over) — it simply is not
+better.
+
+The practical read for the team: **mimir's fix strictly dominates gefjon's**,
+and the second miner should not be carried forward on top of it.
+
+### Next
+
+My two shipped ideas are now understood: the Gunner siege-stall (`relent`, level
+online) and the second miner (`gefjon`, superseded by mimir's cheaper fix). The
+open prize is unchanged and is the counter-cluster — Besvikomat at 0.25 over 390
+games, where a single gefjon series went 5/5. That needs a fixture that
+reproduces the matchup, which is the one piece of infrastructure this session
+never got working.
