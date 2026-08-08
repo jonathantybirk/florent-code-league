@@ -343,3 +343,125 @@ should be pushed until it reports. Then: the economy is small because *known
 ore* is small — `p.ores` only grows from tiles a Builder physically walks past,
 and the economy Builder parks on its opening deposits. That is the constraint
 the evidence keeps pointing at, and it is untouched.
+
+---
+
+## Iteration 3 — one miner is a single point of failure
+
+### `steward_relent` online: inconclusive
+
+Both rounds in: **10 matches, elo 1740 [1607, 1847]**. The 1842 after round one
+was noise, as expected of a five-game series. 10 games against a 25-game bar and
+a ±120 interval settles nothing in either direction. Note also that the whole
+flagship line drifted up over the same window (`f1f2bda` 1784 → 1827), so
+comparing across timestamps is confounded.
+
+It cannot be retested automatically: the farm's UCB nominates only from the top
+three of the internal v3 leaderboard, which is this lineage, and config
+`test_next` de-duplicates on `name@commit` via `state["test_next_done"]` — so
+re-queueing the same sha is a no-op and it would need a fresh commit.
+
+### What actually binds the economy
+
+Instrumented the economy Builder's state every 25 rounds on two long generated
+games. This is the answer I had been guessing at for two iterations:
+
+- **r05** (747 rounds, lost): `phase=goto`, `alarm=1`, from round 25 to round
+  725. `seen` never leaves 82 — the Builder does not move for **seven hundred
+  rounds**. `load=0`, zero Harvesters, no network at all. It is conscripted as a
+  mender by `builder.py:348` (`p.builder_index == 0 and alarm`) and the Core is
+  under fire all game, so it never comes back. njord's release was right about
+  the mechanism and correctly declined to fire — the Core genuinely was under
+  attack.
+- **r04** (1000 rounds, won on titanium): `phase=scout`, `load=2` against
+  `cap=8`, one or two known unclaimed deposits, from round 225 to round 900.
+  Spare capacity, a free deposit, **675 idle rounds**.
+
+Same root cause both times: **one economy Builder is a single point of
+failure.** Pressure on the Core, or one Builder getting stuck, takes the whole
+economy to zero for the rest of the game. That is why permission was never the
+binding constraint.
+
+### Built: `bots/luc/gefjon`
+
+`steward_relent` with `_ROLES (1,1) → (2,1)` and `LAUNCHER_BUILDER_INDEX 2 → 3`.
+
+The second constant is the load-bearing one. Indices below `economy_builders`
+are miners, `ring_slot = index - LAUNCHER_BUILDER_INDEX` picks the ring, and
+anything else that is not the ring is the attacker. Raising `economy_builders`
+*alone* would have given `0=miner, 1=miner, 2=ring` and **no attacker** — the
+exact `(2, 0)` reallocation `doctrine.py` already measured losing 2–12. At 3 it
+gives `0=miner, 1=miner, 2=attacker, 3=ring`: a miner added, not taken. And
+because the conscription reads `builder_index == 0`, the second miner keeps
+mining while the first mends — the r05 failure, fixed directly.
+
+### The two panels disagree
+
+| panel | flagship | `steward_relent` | `gefjon` |
+|---|---|---|---|
+| generated maps, wins /24 | 5 | 5 | **10** |
+| generated, Harvesters built | 1.33 | 1.33 | **1.75** |
+| generated, Harvesters @150 | 1.00 | 1.00 | **1.71** |
+| official pool, vs flagship | — | 0.500 | 0.452 |
+| official pool, vs relent | — | — | 0.429 |
+
+Twice the wins on generated maps; slightly behind on the official pool. On 42
+games, 18/42 is about 0.9 sd below even, so the pool result is "no significant
+difference" rather than a clear regression — but it is not an improvement
+either. The generated maps are the closer analogue of the live condition (atlas
+misses, long games), which is an argument for the live ladder settling it, and
+also exactly the kind of reasoning that can be motivated. Recorded as a
+disagreement rather than resolved by assertion.
+
+### The check that nearly did not happen
+
+First timing run reported **0 turns over the limit** — because `tail` had cut
+aurora off the table. The full table:
+
+| build | aurora worst | turns over 10 ms |
+|---|---|---|
+| `steward_hardened_reinforced` | 2,846 us | 0 |
+| `steward_relent` | 3,657 us | 0 |
+| `gefjon` (as built) | **11,237 us** | **9** |
+
+A second miner tripled worst-case Builder CPU and put it over the platform's
+10 ms kill threshold, which would have scored those turns zero however good the
+strategy was.
+
+The cost is `_pick`: it runs a `_route` **and** a `_distance` — two searches —
+per candidate deposit, every round, per miner, and a second miner in longer
+games multiplies that. Bounding it by work rather than by a clock
+(`PICK_CANDIDATE_LIMIT`, nearest-first so the dropped tail is deposits a nearer
+candidate would have beaten) puts it back:
+
+| limit | aurora worst |
+|---|---|
+| unbounded | 11,237 us |
+| 6 | 8,233 us |
+| 4 | **2,426 us** |
+| 2 | 2,853 us |
+
+At 4 the worst Builder turn is **2,426 us with p99 1,482** — better than either
+parent, since the bound helps regardless of miner count. (The values are not
+monotonic in the limit because changing it changes the game; single runs on
+different trajectories, not a clean curve.)
+
+Re-measured with the bound in place: **identical** — 10 wins, 1.75 Harvesters.
+On generated maps only about four deposits are ever known (`ores=4` in the
+traces), so the limit never binds there; it bites only on ore-rich pool maps,
+which is exactly where the spike was. The CPU fix is free.
+
+Deterministic: three identical runs agree to the last unit of titanium.
+
+### Pushed and queued
+
+`gefjon@<this commit>` for 3 rounds — 15 matches, enough to matter alongside
+relent's 10. Queued behind whatever else is in flight rather than replacing it;
+two other agents are testing `freyr` and `vali` on the same budget.
+
+### Next
+
+Read `live.json` for gefjon. If the generated-map result transfers, the second
+miner is worth more than either of the first two iterations' changes; if the
+pool result transfers instead, it is a wash and the disagreement between panels
+is the thing to understand.
