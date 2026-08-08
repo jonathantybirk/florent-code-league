@@ -4772,3 +4772,44 @@ not a constant, and not something to attempt at the end of a session by pushing
 or — twice — a correction of my own overclaim. The remaining moves are all
 Lucas's: the queue order, the promotion margin, `b61aaac`'s uploadability, or
 authorising unrated challenges.
+
+## Iteration 91 — where the economy actually stops, and one more null
+
+Three measurements, all new, that finally locate the ceiling precisely:
+
+**A deposit is cheap.** From grant to Harvester: **median 8 turns**, mean 14,
+max 27. Belt granted: median **4 tiles**.
+
+**Miners are not dying.** Nine miners over three games, **0 of 9** stopped
+acting before the game ended; one game ran 404 rounds with the miner alive
+throughout.
+
+**So the ceiling is not time, and not survival.** A miner alive for 400 rounds,
+doing 8-turn jobs, completes about **one**. After the near ore is taken, `_pick`
+stops granting — the median belt it will ever authorise is four tiles, while
+rank 1 lays 75 conveyors a game.
+
+`vor` tested the most likely cause: `_route` blocks every threat tile outright,
+so a deposit whose only cardinal line passes a known firing line is simply
+unroutable. Turning that off:
+
+| vor vs | | |
+|---|---|---|
+| `syn` (parent) | 57/114 = **0.500 ±0.092** | 0.0 sd |
+| `hlin` | 59/114 = 0.518 | +0.4 sd |
+| `vili` | 61/114 = 0.535 | +0.8 sd |
+
+Harvesters 2.97 → **3.05**, conveyors 18.63 → **19.71**. Level, and the belts
+stay short. Not the binding constraint either.
+
+**What is left, named exactly:** `_pick` prices only the nearest
+`BELT_SCORE_CANDIDATES` deposits and `_route` only accepts a clean cardinal line
+to the Core or to an unsaturated network. Between them, the bot can only ever
+see short, clean belts — which is why its economy stops at three Harvesters no
+matter how many miners, slots, claims or rounds it is given. Rank 1's 75
+conveyors are not a bigger version of what we do; they are a different router.
+
+That is the fourth distinct thing this session has proved is *not* the ceiling
+(slots, leak, miners, survival, time, threat routing) and the first precise
+statement of what is. It is a rewrite, not a constant, and I am not starting one
+at the end of a session.
