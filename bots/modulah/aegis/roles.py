@@ -60,7 +60,7 @@ GUARDS_WHEN_QUIET = 1
 
 # Builders held on the economy until this many Harvesters are working, no
 # matter what is happening -- see the floor in desired_mix.
-ECON_FLOOR_HARVESTERS = 4
+ECON_FLOOR_HARVESTERS = 7
 
 # Builders sent to besiege the enemy Core once the economy is standing, and
 # the round from which it is worth starting. We out-collect steward and still
