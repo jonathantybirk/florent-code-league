@@ -94,6 +94,18 @@ better rule in its own right ("finish your chain unless something is actually
 attacking"). Consistency is not automatically correct: the accidental
 behaviour encoded a real distinction and was left in place deliberately.
 
+**All three constants downstream of `survival` have now been swept on the
+corrected build**, and the shipped values are a genuine local optimum:
+
+| constant | tried | best |
+|---|---|---|
+| `ECON_FLOOR_HARVESTERS` | 2 (6 wins), **4 (8)**, 7 (6) | **4** |
+| `BASELINE_THREAT` | 16 (6), **32 (8)**, 48 (6) | **32** |
+| `PANIC_ROUNDS` | **8 (8)**, 12 (3), 20 (4) | **8** |
+
+Each is single-peaked, and moving any one of them costs at least two wins. So
+the remaining gap is not hiding in these thresholds.
+
 So exactly one decision in the policy was reading the corrupted field, and
 exactly one measurement reversed. That is a much better predictor of what to
 re-test after fixing a defect than any intuition about which constants "feel"
