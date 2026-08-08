@@ -3334,3 +3334,44 @@ one decision, made deliberately and correctly by whoever tuned this bot. I have
 now attacked it from five directions and lost every time.
 
 `vili` stands. Nine consecutive candidates have failed to beat it.
+
+## Iteration 59 — thrud: both directions lose, and a correction to iteration 58
+
+Last iteration ended with a table showing Harvesters built and win rate running
+monotone in opposite directions across five builds, and I called it a gradient:
+economy down, turrets up. The cheapest possible test of a gradient is to push
+the same constant the other way, so `thrud` set AMMO_TARGET 120 → **180** and
+the floor 80 → 120.
+
+| AMMO_TARGET | vs Sentinel mass |
+|---|---|
+| 60 (`syn`) | 0.524 |
+| **120 (`vili`)** | **0.667** |
+| 180 (`thrud`) | 0.571 |
+
+Both directions lose. 120 is a local optimum, and it is not a gradient — it is a
+peak. Refutation 26.
+
+**And the table in iteration 58 does not survive.** `thrud` converts *more*
+titanium into ammunition and still finishes with **1.78 Harvesters against
+`vili`'s 1.50** — more ammunition and more Harvesters at once, which the
+"titanium moves between economy and ammunition" story cannot produce. Harvester
+count is not the explanatory variable. It tracks how long the bot survives:
+longer games build more of everything, so a build that dies at turn 209 shows
+fewer Harvesters than one that lives to 305 whatever it spent its titanium on.
+
+That is the *fourth* time today the same error has caught me — reading a metric
+that is downstream of winning as though it were a cause. Harvesters (`saga`),
+turret timing (`ran`), the win/loss split (iteration 56), and now my own summary
+table. The metric moved, the story was plausible, and the experiment said no.
+
+What survives from iteration 58 is only what was measured directly: cutting the
+ammunition budget scores 0.524 against 0.667, and raising it scores 0.571. The
+explanation of *why* was mine, and it was wrong.
+
+**Standing position.** Ten consecutive candidates have failed to beat `vili`,
+across six distinct mechanisms, and the two constants I have swept are peaks in
+both directions. This is what a well-tuned local optimum looks like from the
+inside, and the remaining leverage is not in local search — it is in getting
+`vili` live, where it scores 0.667 against the style that has the live flagship
+at 0.262.
