@@ -41,7 +41,7 @@ AMMO_FLOOR = GameConstants.SENTINEL_AMMO_COST * 2
 REPLACEMENT_BANK = 160
 
 # Minimum rounds between Builders.
-SPAWN_INTERVAL = 12
+SPAWN_INTERVAL = 6
 
 
 class CoreBrain:
