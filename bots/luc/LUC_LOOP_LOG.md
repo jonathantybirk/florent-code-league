@@ -4728,3 +4728,47 @@ its own error bar.** The exceptions are few and worth naming: the claim-slot cap
 (-5.4 sd), the on-pool/off-pool divergence, and the composition gap to the top
 of the ladder (2.7 Harvesters against 9.9, 22.8 turrets against 8.5). Everything
 else is noise I have been reading tea leaves in.
+
+## Iteration 90 — imitating rank 1 without rank 1's machinery costs 19 points
+
+The composition gap is the only large real signal left, so: build the closest
+thing this codebase can express to the rank-1 shape and price it. `saga` = `syn`
+(done-mask, four claim slots, recycling) + three miners + the turret ceiling.
+`sigyn` tried three miners alone and collapsed; it had neither the done-mask nor
+the ceiling, so the combination was untested.
+
+**It collapses too, harder.**
+
+| saga vs | | |
+|---|---|---|
+| `hlin` | 36/114 = **0.316 ±0.085** | -4.2 sd |
+| `syn` | 35/114 = 0.307 | -4.5 sd |
+| `vili` | 35/114 = 0.307 | -4.5 sd |
+
+And it does not arrive anywhere near the shape it was imitating:
+
+| | Harvesters | conveyors | Builders | Gunners |
+|---|---|---|---|---|
+| `hlin` | 2.75 | 17.9 | 4.5 | 3.11 |
+| **`saga`** | **3.38** | **25.2** | **6.14** | 2.51 |
+| **rank 1 live** | **9.9** | **75.0** | **8.8** | 3.8 |
+
+A third of the way to their economy, for **nineteen points of win rate**.
+
+**What that settles.** The rank-1 composition is not a setting we are failing to
+choose; it is the output of machinery we do not have. Their 75 conveyors imply
+belt logistics that survive being that long, and their 9.9 Harvesters imply
+Builders that convert tasks at a rate ours cannot (ours: one Harvester per
+twelve granted tasks before `syn`, and `syn` fixed the waste without raising the
+ceiling). Copying the *numbers* without the machinery costs more than it buys —
+and iteration 87 already ruled out the "our games are too short to show it"
+defence, since the economy advantage is flat across every game-length bucket.
+
+So the ladder gap is architectural. Closing it is a rewrite of the mining loop,
+not a constant, and not something to attempt at the end of a session by pushing
+`_ROLES` upward.
+
+**Local work stops here.** Everything since iteration 66 has been level, refuted,
+or — twice — a correction of my own overclaim. The remaining moves are all
+Lucas's: the queue order, the promotion margin, `b61aaac`'s uploadability, or
+authorising unrated challenges.
