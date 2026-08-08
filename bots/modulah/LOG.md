@@ -72,8 +72,34 @@ repeat run reproduced 823.33 collected to the decimal).
 | opening turret, zero walk | 305 | 4/45 | 0 |
 | opening turret + Launcher economy | 213 | 2/45 | 0 |
 | workforce capped at 4 builders | 763 | 6/45 | 0 |
+| scouts round-robin sightings | 660 | 5/45 | 0 |
+| scouts, idle Builders only | 691 | 4/45 | 0 |
 | walking counter-battery | — | — | worse |
 | Sentinels in standing ring | — | — | worse |
+
+### The team's scouting proposal, measured
+
+Implemented from the thread: Lucas's round-robin precise coordinates plus
+Viktor's periodicity, as one mode bit in the Builder word — a Builder reports
+its own destination most rounds and an enemy sighting every 4th, staggered by
+slot so the team sweeps continuously. No extra store slot, which matters
+because slots are the scarce resource (one writer each, forced by the engine).
+
+The conditional it enabled was the right shape: buy a turret when a SCOUT sees
+a Gunner going up, rather than when our own hp starts falling. That is not
+building on a timer — five timer variants each lost 300–700 titanium — because
+nothing is bought unless something was actually seen.
+
+It still lost: **660 collected, 0 wins** against the 823/1 baseline. The first
+version also displaced the ferry target (the Launcher routes by reading
+published targets), blinding it a quarter of the time and pushing the first
+Gunner from round 72 to 84. Restricting sightings to Builders with no
+destination fixed the ferry and recovered only 691.
+
+Worth knowing for the group: the idea is sound and the encoding works, but
+this bot cannot convert early warning into anything, because it still cannot
+AFFORD the turret when the warning arrives. Warning is not the missing
+ingredient — spare titanium at round 30 is. Reverted rather than left in.
 
 **What worked were the two structural additions** — a Launcher (the only way
 to move a Builder faster than walking) and a Barrier screen (3 Ti soaking five
