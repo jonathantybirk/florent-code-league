@@ -620,3 +620,19 @@ from round 4) is a separate unaddressed failure mode.
   miner 0 places one Gunner on the enemy-facing approach to our Core, returns to
   mining, escalates via the existing HOME_TURRET machinery on alarm. That plus
   byggvir's boom is the full Pivot profile.
+
+## Iteration 36 — 2026-08-08 ~21:15
+
+- **Proactive guard v1: measured harmful.** 0.211 total vs the naked boom's 0.311; the
+  Gunner eats opening titanium and a miner's rounds without stopping the rush, and the
+  boom shrinks (4.1 → 3.28 Harvesters). Flag off, code and result kept.
+- Standing question for the byggvir line (open, needs real study not another knob):
+  **how does Pivot actually survive rushes?** Candidates: body count as soak (10
+  Builders), belt/wall geometry, or the rushes at their rating simply being weaker than
+  our lineage's. The answer is in Pivot-vs-rusher replays — downloadable; that study is
+  the right next step before any further byggvir tuning.
+- Day-end state of the line: vor and fulla remain the practical tips (live 1717/1687 on
+  small samples, incumbent shr ~1820); byggvir is the honest architecture experiment in
+  progress; the live-map instrument (`maps/lv_*`, `tools/extract_maps.py`) is the day's
+  most durable artifact, alongside eleven diagnosed-and-fixed mechanisms and both
+  agents' converged meta picture.
