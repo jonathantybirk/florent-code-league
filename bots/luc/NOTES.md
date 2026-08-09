@@ -1634,3 +1634,95 @@ miners peak at two, claim slots at four.
 computes. 131 promotions; six in one hour with margins of 1.8-23 Elo against
 standard errors of 43-80. Until that is fixed, live A/B results cannot
 accumulate.
+
+## 2026-08-09 (later) — thirty-five candidates, one survivor, and a map set that was lying
+
+A long session on `snotra_h`/`nott`/`vidarr`. One change shipped, and most of
+the value is in what the measurements ruled out. Read the four rules first;
+they each cost a wrong conclusion.
+
+### The four rules for measuring anything here
+
+1. **Build map sets from live terrain statistics, and check placement, not just
+   density.** `maps/offpool_long` carries 19.0 ore per 1000 tiles against the
+   ladder's 47.0, so every titanium-dependent result measured on it was measured
+   with no titanium. Matching density is still not enough: `maps/orerich`
+   matches live on density, area, wall fraction *and* Core separation, and
+   misses on **where the ore sits relative to the Core** — nearest visible ore
+   median 2 tiles against live's 4.0, 42% of sides beyond 2 tiles against live's
+   92%. Use `maps/livelike2` (69 maps, nearest ore 4.0) and `maps/livelike`;
+   `tools/mapstat.py` reads any `.map26`'s terrain.
+2. **Pair every comparison** — same run, opponent, map and seat — and report
+   McNemar z on the discordant pairs. Unmatched pooling produced two spurious
+   headlines in one session: a "-0.1 sd" that was really +0.78, and a "+15pp
+   long-game advantage" that was really +0.9pp overall.
+3. **Read the identity column before the win rate.** `tools/suite_compare.py`
+   prints how many games came out bit-identical. Seventeen constants that read
+   "0.0 sd, no improvement" turned out to be **code that never executed**. An
+   accidental unmodified copy read exactly 138/138, which validates the method.
+   When a change looks dead, **bisect** — strip every precondition, keep the cap
+   — rather than guessing which guard blocks it. That answered in one run what
+   two rounds of guessing did not.
+4. **Never measure on a map set selected from results.** `maps/longgame` was
+   built by ranking maps by median game length using the games that then
+   produced a +2.2 sd result. It survived on no independently built set, and the
+   build (`sunna`) had to be withdrawn from the farm queue.
+
+### What shipped
+
+**`nott`** = `snotra_h` with `AMMO_TARGET` 120 -> 60 and `COMBAT_AMMO_FLOOR`
+80 -> 30 (both in `core.py`, not `constants.py`). Live replays showed we convert
+147-195 titanium to ammunition by round 30 against opponents' 28-140, because
+the target fires on **round 0** — 120 of a 500-Ti bank locked into a resource
+only turrets spend, before any turret exists. Worth +0.4 to +1.0 sd across four
+independently built map sets and two unrelated bases; the optimum is flat
+between 45 and 60 and falls away at 30 and 90.
+
+### The bot, ablated
+
+Removing each behaviour in turn, 276 paired cells:
+
+| removed | cost |
+|---|---|
+| `_heal_core` | **-18.8pp (-4.5 sd)** |
+| `_harass` | -6.2pp |
+| `_defend_core` | -4.3pp |
+| `_patrol_core`, `_trap_enemy_builder` | **0 games changed — dead** |
+| `_repair_network`, `_build_siege_sentinel` | mildly *positive* to delete |
+
+**This bot is three behaviours.** That is why twenty-odd mechanisms measured
+null: they were changes to the part that barely runs. Healing is also
+*saturated* — removing it costs 18.8pp, widening it to every non-attacker costs
+3.8 (harvesters fall 2.68 -> 2.42 as miners get pinned), which the code already
+warned about ten lines above the gate.
+
+### Closed, with numbers
+
+- **Turrets.** The top of the ladder builds 4-5x our rate (Jython 1983: 19.44
+  Gunners per 100 rounds against our 3.76). Unreachable: `HOME_TURRET_STEP`,
+  `HOME_TURRET_MAX` and `ATTACK_TURRET_CAP` are all dead; `_FIELD_GUNNERS` on
+  RUSH fires at **-5.3 sd**; pre-emptive fortification fires at **-18pp**.
+- **Barriers.** They build 10x ours on a 3 Ti, +1% item. We build **0.00 a
+  game** and no reserve changes it.
+- **Our round-3 Launcher**, which nobody else builds, is load-bearing:
+  removing it is -0.5 to -2.7 sd.
+- **Economy.** More miners, more claim slots, earlier expansion: all null or
+  negative on live-placement maps. `CLAIM_SLOTS = (1, 8)` is a real cap of two
+  Harvesters but lifting it buys nothing.
+- **The round-1000 tiebreak** is a pure bank comparison — higher bank won 47 of
+  47, lower lost **490 of 490** — and we lose 176 of 199 with a median bank of
+  16 against 68. `bots/luc/hodr_bank` recovers 18 -> 41, not enough.
+- **Stacking six near-misses** (+0.1 to +0.4 sd each) is **-1.96 sd**. The small
+  positives were noise around zero.
+
+### Instruments
+
+- **`vanguard` is the best local opponent** — best balanced at 0.575, and the
+  only fixture whose ranking of our builds matches the live raw records.
+  `spar_sentinel` is a `snotra_h` derivative and ranks by kinship: it put the
+  live flagship 6.7 sd last.
+- **Local games run 82-105 rounds against the ladder's 300-435**, and no
+  opponent or terrain fixes that — balance does not produce length, and a
+  purpose-built survivor fixture (`spar_grind`) still ended in 101.
+- Our win rate is ~0.72 under 200 rounds and ~0.52 past 300. That gap is the
+  distance to the top of the ladder and it is a design question, not a constant.
