@@ -6890,3 +6890,42 @@ luck and wrong by construction.
 
 Eight data points, one line of code, and it sits in
 `farm_promotion_margin.patch` waiting for Lucas.
+
+## Iteration 146 — claim slots on the live build: null, and not queued
+
+Lucas reaffirmed the loop after I argued for stopping, so that is his call and
+the loop continues; my reservations stay in iterations 143-145 where they
+belong.
+
+The one untried combination worth a run: `snotra_h` — the build on the ladder
+and the best we own by live record — plus the claim-slot widening. `dellingr`
+put that on `e55aab5` and `bil2` put the turret hold on `snotra_h`, but this
+pair had not been tested. It is also the cheapest of the economy changes: two
+integers, no role changes, no new state.
+
+| | result |
+|---|---|
+| `eir2` vs `snotra_h` head to head | **305/600 = 0.5083 ±0.0400 (+0.4 sd)** |
+| `eir2` vs `undertow` | 427/600 = 0.7117 ±0.0362 |
+| `snotra_h` vs `undertow` (same 300 maps) | 436/600 = **0.7267 ±0.0357** |
+| Harvesters | 2.09 |
+
+**+0.8 points head to head, -1.5 against the opponent that discriminates.** Null
+on one instrument, mildly negative on the other, exactly like the eleven
+mechanisms before it.
+
+Not queued: the loop's rule is to queue what beats the current best, and this
+does not. Deleted.
+
+**Tally of the economy fix across four bases now:**
+
+| base | claim slots worth |
+|---|---|
+| `vili` → `freyja` | +0.4 local, +1.8 live (both inside noise) |
+| `steward_hardened_reinforced` → `bragi` | -1.7 |
+| `steward@e55aab5` → `dellingr` | -1.6 |
+| `snotra_h` → `eir2` | -1.5 against `undertow`, +0.8 head to head |
+
+Four bases, one positive-but-noise, three mildly negative. That is a cleaner
+refutation of the change than any single measurement gave, and it is the twelfth
+mechanism tonight to land in the same place.
