@@ -7760,3 +7760,65 @@ is not the live state. Checking that before writing it up is the only reason it
 is not in this log as a phantom defect.
 
 Team 20/113, rating 1698.
+
+## Iteration 163 — the same sweep on the better base, and one flag proved dead
+
+Swept all twelve of `vidarr@bbfaa9c`'s disabled flags, 300 games each against
+`undertow` (external code, so no sibling bias), baseline in the same run.
+
+| flag ON | rate | vs base | identical |
+|---|---|---|---|
+| `SEAT_B_SKIPS_DUEL` | 0.6533 | 0.000 | **300/300** |
+| `SEAT_B_PREFERS_RANGE` | 0.6533 | 0.000 | **300/300** |
+| `SEAT_B_MENDS_HARDER` | 0.6533 | 0.000 | **300/300** |
+| `SEAT_AWARE_DEFENCE` | 0.6533 | 0.000 | **300/300** |
+| **`vidarr@bbfaa9c`** | **0.6533** | — | — |
+| `FERRY_ON_INFERENCE` | 0.6467 | -0.007 | 73/300 |
+| `AVOID_THREAT_FOR_LOGISTICS` | 0.6467 | -0.007 | 267/300 |
+| `LATE_BUILDERS_MINE` | 0.6200 | -0.033 | 238/300 |
+| `SEAT_B_YIELDS_ORE` | 0.6167 | -0.037 | 163/300 |
+| `BOT_STANDOFF` | 0.5933 | -0.060 | 77/300 |
+| `TRAP_ENEMY_BUILDERS` | 0.5900 | -0.063 | 67/300 |
+| `PAD_FIRST_ORDER` | 0.5833 | -0.070 | 3/300 |
+| `SEAL_EVERY_DOCTRINE` | 0.5767 | -0.077 | 46/300 |
+
+Nothing improves here either, and `vidarr`'s flag space is a local optimum the
+same way `snotra_h`'s is.
+
+**My prediction was wrong, and the way it was wrong is the useful part.** I
+expected `SEAT_B_PREFERS_RANGE` to come alive on this base: it is gated on
+`get_global_ammo() >= MIN_AMMO_FOR_SENTINEL`, which is 40 on `snotra_h` and
+**12** on `vidarr`. It is still a pure no-op, 300/300 identical. So the ammo
+bar was never what blocked it.
+
+Reading `_turret_kind` instead of measuring it gives the real answer, and it is
+a proof rather than a null:
+
+```
+if (SEAT_B_PREFERS_RANGE and seat_b
+        and resources >= sentinel_cost and ammo >= MIN_AMMO_FOR_SENTINEL):
+    return SENTINEL
+if (prefer_sentinel
+        and resources >= sentinel_cost and ammo >= MIN_AMMO_FOR_SENTINEL):
+    return SENTINEL
+```
+
+Both callers pass `prefer_sentinel = DEFEND_TURRET_SENTINEL`, which is `True`.
+The second condition is a strict superset of the first, so it returns SENTINEL
+in every case the first would. **`SEAT_B_PREFERS_RANGE` cannot change the
+return value while `DEFEND_TURRET_SENTINEL` is on** — on either lineage,
+regardless of map, opponent or ammunition. It is not a mechanism that measures
+zero; it is unreachable code.
+
+The other three are effectively dead for ordinary reasons rather than logical
+ones: `SEAT_AWARE_DEFENCE` only bites once our own Core has taken 90 damage
+(`1 + damage // 90` against `// 180`), `SEAT_B_MENDS_HARDER` widens a mender
+leash from 10 to 18 behind a critical-HP test, and `SEAT_B_SKIPS_DUEL` sits in
+a branch that is barely reached (298/300 on `snotra_h`, 300/300 here).
+
+So the honest size of this search is **eight flags, not twelve**, on each of
+two bases — and I have twice reported the four dead ones as measured nulls.
+`tools/suite_compare.py` caught it this time; reading the code caught *why*.
+
+Nothing beat the base, so nothing new was queued. `ran@0eca95f:10` from
+iteration 162 is still pending. Team 20/113, rating 1688.
