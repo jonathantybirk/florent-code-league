@@ -475,20 +475,20 @@ def test_array_chunks_respect_the_lsf_cap():
     assert [i for chunk in chunks for i in chunk] == indices
 
 
-@pytest.mark.parametrize("total", [225, 300, 449, 450, 8184, 23562])
+@pytest.mark.parametrize("total", [300, 400, 599, 600, 8184, 23562])
 def test_balanced_batches_cover_every_worklist_entry_exactly_once(total):
     """Balanced slices must cover every entry once without creating a short final job."""
     from tournament.hpc import balanced_batches
 
     worklist = list(range(1, total + 1))
-    batches = balanced_batches(total, target=300, minimum=225)
+    batches = balanced_batches(total, target=400, minimum=300)
     covered: list[int] = []
     sizes: list[int] = []
     for first, last in batches:
         covered.extend(worklist[first - 1 : last])  # sed -n 'first,last p', 1-based inclusive
         sizes.append(last - first + 1)
     assert covered == worklist
-    assert min(sizes) >= 225
+    assert min(sizes) >= 300
     assert max(sizes) - min(sizes) <= 1
 
 
@@ -518,7 +518,7 @@ def test_too_little_work_is_refused_instead_of_creating_a_short_cluster_job():
     from tournament.hpc import InsufficientWorkError, balanced_batches
 
     with pytest.raises(InsufficientWorkError, match="15-minute cluster job"):
-        balanced_batches(224, target=300, minimum=225)
+        balanced_batches(299, target=400, minimum=300)
 
 
 def test_shipped_remote_root_is_inside_the_assigned_scratch_directory():

@@ -344,8 +344,8 @@ def submit(
     """
     settings = settings or config()
     host = settings["host"]
-    chunk = settings.get("chunk", 300) if chunk is None else chunk
-    minimum = settings.get("minimum_matches_per_job", 225)
+    chunk = settings.get("chunk", 400) if chunk is None else chunk
+    minimum = settings.get("minimum_matches_per_job", 300)
     check_connection(host)
 
     local = run_dir(tid)
