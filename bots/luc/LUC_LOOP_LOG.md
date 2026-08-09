@@ -6741,3 +6741,37 @@ tonight, and they agree on the bot that was already running before I started.
 `nanna2` not queued: +1.1 sd head to head on a mechanism that changes 96% of
 ferry calls and moves nothing against a real opponent is not worth a live slot
 ahead of `lofn` and `hlin`.
+
+## Iteration 142 — combining the two best builds: also nothing
+
+`snotra_h` (0.7267 vs `undertow`, best live record) and `hoenir` (0.7333 vs
+`undertow`) are the two builds the agreeing instruments favour, and they come
+from different lineages — `snotra_h` has none of the cost-scale ordering work.
+`bil2` ports `hoenir`'s turret hold onto `snotra_h`: hold the field-Gunner
+budget until two Harvesters exist or round 60, with the Core-under-fire
+exception kept (removing it measured 0.167 on the other lineage).
+
+| | result |
+|---|---|
+| `bil2` vs `snotra_h` head to head | **297/600 = 0.4950 ±0.0400 (-0.2 sd)** |
+| `bil2` vs `undertow` | 438/600 = 0.7300 ±0.0355 |
+| `snotra_h` vs `undertow` (same 300 maps) | 436/600 = 0.7267 ±0.0357 |
+
+**+0.3 points against `undertow`, -0.5 head to head.** The turret hold is worth
+0.023 points a game here, where on its own lineage it was worth 2.3.
+
+**That completes the pattern.** Every mechanism this session has produced —
+ferry slot cleared, turrets held, ring held, claim slots widened, leak fixed,
+done-mask, claim expiry, replacement threshold — behaves the same way:
+
+- it fires, verified by instrumentation, often dramatically (96% of ferry calls,
+  228 slot jams, 100% of wasted arrivals);
+- it moves the composition metrics it predicts;
+- and it changes the win rate by less than one standard error against any
+  opponent that can be measured.
+
+The only exception was `bifrost` on its own lineage, and even that is now
+ambiguous: the same fix on `snotra_h` is worth -0.1 sd.
+
+Both experimental builds deleted. Neither queued: `nanna2` at +1.1 sd and `bil2`
+at -0.2 sd have no case against `lofn` and `hlin`, which are already in line.
