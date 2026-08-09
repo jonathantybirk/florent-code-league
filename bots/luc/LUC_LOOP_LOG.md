@@ -7008,3 +7008,47 @@ to a better instrument, and the most expensive: everything from `vili` onward �
 `freyja`, `lofn`, `hlin`, `syn`, `gefn`, `nanna`, `mani` — inherits the ring
 hold. **The entire economy line is built on a base carrying an 8-point
 regression.**
+
+## Iteration 149 — the economy line rebuilt on hoenir: recovers 7 points, still behind
+
+`verdandi` = `lofn` with `RING_AFTER_ECONOMY = False`, i.e. the economy work
+(four claim slots, second opening miner) on `hoenir` instead of the handicapped
+`vili`.
+
+| build | vs `undertow` |
+|---|---|
+| `hoenir` | **0.7333** |
+| `snotra_h` | 0.7267 |
+| **`verdandi`** | **0.6700 ±0.0376** |
+| `vili` | 0.6500 |
+| `lofn` | 0.6000 |
+
+| head to head | |
+|---|---|
+| `verdandi` vs `hoenir` | 257/529 = 0.4858 ±0.0426 (-0.7 sd) |
+| `verdandi` vs `lofn` | 288/600 = 0.4800 ±0.0400 (-1.0 sd) |
+
+**+7.0 points over `lofn`** — so the ring hold was most of the economy line's
+deficit, as iteration 148 predicted. And still **6.3 points below plain
+`hoenir`**, which is the part the prediction got wrong: removing the handicap
+does not make the economy work positive, it makes it less negative.
+
+The oddity worth flagging: `verdandi` beats `lofn` by 7 points against
+`undertow` but **loses to it head to head** (0.480). Two builds one flag apart,
+and their ordering flips depending on who is asking. That is the same
+non-transitivity as iteration 103, now inside a single pair.
+
+**So the economy work costs about 6 points on any base**, and the base matters
+more than the work: `hoenir` 0.7333 → `verdandi` 0.6700, `vili` 0.6500 → `lofn`
+0.6000. Two bases, the same ~6-point penalty for adding four claim slots and a
+second miner.
+
+Deleted, not queued: it beats `lofn` on one instrument and loses to it on
+another, and it is clearly behind `hoenir` on the one that discriminates.
+
+**Where the evidence now points, plainly:** the best builds we own are `hoenir`
+(0.7333) and `snotra_h` (0.7267, live now). Everything I added tonight —
+the ring hold, the claim slots, the second miner, the leak fix, the done-mask,
+the claim expiry, the replacement threshold — is worth between -8 and 0 points.
+The session's net contribution to the bot is negative, and its contribution to
+knowing that is the diagnostics.
