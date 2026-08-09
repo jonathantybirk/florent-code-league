@@ -6701,3 +6701,43 @@ fine, the bot currently running is the best we have, tonight produced no
 improvement on it, and the two things worth fixing are in the farm rather than
 the bot — the promotion rule that swapped flagships seven times on noise, and
 the build it cannot see.
+
+## Iteration 141 — the ferry fix on the live build: dramatic mechanically, worth nothing
+
+`snotra_h@6951e03` is the build on the ladder and the best we own by live record,
+and it **has the bug `bifrost` fixed** — `_consume_launch_rejection` returns True
+without clearing the pad's reply. Instrumented over three games:
+
+| | ferry blocked | ferry available |
+|---|---|---|
+| `snotra_h` (live now) | **2,771** | 117 |
+| `nanna2` (fixed) | 30 | **2,154** |
+
+The live bot's ferry is blocked on **96% of calls**. Fixed, 1.4%. That is the
+largest mechanical effect measured all session.
+
+**And it is worth nothing.**
+
+| | |
+|---|---|
+| `nanna2` vs `snotra_h`, head to head | 314/600 = 0.5233 ±0.0400 (+1.1 sd) |
+| `snotra_h` vs `undertow` | 436/600 = **0.7267 ±0.0357** |
+| `nanna2` vs `undertow` | 434/600 = **0.7233 ±0.0358** |
+| **the fix, against undertow** | **-0.0033 (-0.1 sd)** |
+
+**A near-miss worth recording.** I first read `nanna2`'s 0.7233 against
+`undertow` beside `hlin`/`lofn`/`syn`'s 0.600 and wrote "+12 points" into the
+draft — but those are different bots from a different lineage, not the fix's
+baseline. Measuring the actual baseline took one run and turned +12 into -0.3.
+Six hours ago I would have shipped that number.
+
+**And an incidental finding that matters more than the fix.** `snotra_h` scores
+**0.7267 against `undertow`** — better than `vili` (0.650) and far better than
+the economy line (0.600), level with `hoenir` (0.7333). So the build that leads
+on live evidence is also near the top on the one local opponent that
+discriminates. That is the first time two instruments have agreed about anything
+tonight, and they agree on the bot that was already running before I started.
+
+`nanna2` not queued: +1.1 sd head to head on a mechanism that changes 96% of
+ferry calls and moves nothing against a real opponent is not worth a live slot
+ahead of `lofn` and `hlin`.
