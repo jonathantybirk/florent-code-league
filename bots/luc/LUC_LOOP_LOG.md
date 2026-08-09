@@ -9117,3 +9117,49 @@ the best live number among our builds (`snotra_h` 0.550), though the intervals
 still overlap. `nott` is still not in the feed.
 
 Team 24/114, rating 1638.
+
+## Iteration 188 — an ablation map of the whole bot, and one more candidate that did not survive
+
+Every composition difference is closed and most constants are dead, so instead
+of guessing at another one I removed each major behaviour in turn and measured
+what the loss costs. That is a map of what this bot actually *is*.
+
+276 strictly paired cells on `maps/livelike2`, `vanguard` + `spar_sentinel`:
+
+| behaviour removed | rate | cost of removing it | games changed |
+|---|---|---|---|
+| **`_heal_core`** | 0.453 | **-0.188 (-4.5 sd) z=-6.60** | 62 |
+| **`_harass`** | 0.580 | -0.062 (-1.5 sd) z=-2.96 | 33 |
+| **`_defend_core`** | 0.598 | -0.043 (-1.1 sd) z=-2.27 | 28 |
+| `_engage_with_turret` | 0.638 | -0.1 sd | 3 |
+| `_patrol_core` | 0.641 | 0.000 | **0 — dead** |
+| `_trap_enemy_builder` | 0.641 | 0.000 | **0 — dead** |
+| `_cut_enemy_belt` | 0.645 | +0.1 sd | 3 |
+| `_build_siege_sentinel` | 0.649 | +0.2 sd | 12 |
+| `_repair_network` | 0.656 | +0.4 sd | 10 |
+| **`nott` intact** | **0.641** | — | — |
+
+**This bot is three behaviours.** Healing the Core is worth **18.8 percentage
+points on its own** — four times the next largest — followed by harassing their
+economy and defending the Core. Everything else is inside noise, two subsystems
+are outright dead, and the two most complex ones (`_repair_network`, the siege
+Sentinel) are *mildly positive to delete*.
+
+That explains the whole session in one table. Twenty-odd mechanisms measured
+null because they were changes to the 5% of the bot that barely runs, and the
+three that matter are already tuned. It also confirms the lineage's own
+judgement from a different direction: `constants.py` prices the Core mender at
+11.0pp of mean, and an independent ablation puts it at 18.8.
+
+**Then I tested the most promising row properly and it died.** Removing
+`_repair_network` read +0.4 sd twice — on 276 cells and again on 648 across
+three opponents. Extended to **seven opponents and 1,512 paired cells** it is
+**+0.0013 (+0.09 sd), McNemar z = +0.38**, and per opponent it is positive on
+two and negative on five. The earlier +0.4 sd was noise from a narrow opponent
+set, and it is exactly the trap that cost `sunna` two iterations ago — a
+promising number on a narrow slice, gone when the slice widens.
+
+Nothing queued. `nott@0ac1faa` is still the only change that has survived every
+independent test, and it is still waiting in the farm queue behind `ran`.
+
+Team 23/114, rating 1657.
