@@ -8790,15 +8790,24 @@ seen a Harvester stops laying conveyor.
 
 **The guard barely fires** — conveyors move 10.8 to 10.5, and on
 `maps/livelike2` not at all (17.1 to 17.1, 276 of 276 games identical). The
-predicate is wrong: `p.harvester_seen` is populated from *any* Harvester a
-Builder sees, including the enemy's, so it is almost never empty. The +0.5 sd
-`belt` shows is inherited from its `hodr_bank` base, not earned by the change.
++0.5 sd `belt` shows is inherited from its `hodr_bank` base, not earned by the
+change.
 
-That is the second time this session a guard has been written against a
-variable that does not mean what its name suggests — `SEAT_B_PREFERS_RANGE` was
-subsumed by a broader condition, and this one reads a set that includes the
-opponent's buildings. Both were caught by the identity column rather than by
-reading the code first, which is the cheaper order.
+**Corrected below.** My first explanation here was that `p.harvester_seen`
+counts any Harvester including the enemy's, so the predicate is never empty.
+That is wrong — `builder.py:625` reads `if not enemy and kind ==
+EntityType.HARVESTER`, so it does filter to our own. The real reason is the
+threshold. Setting `BELT_ABANDON_ROUND` to 1 instead of 200 drops conveyors
+from **9.48 to 0.05**, so the guard works exactly as written: **essentially all
+belt is laid before round 200**, and a cutoff there saves nothing.
+
+That also closes the line rather than opening it. A threshold early enough to
+save the titanium is early enough to destroy a normal economy — at round 1 the
+bot builds 0.05 conveyors a game. And a Builder laying belt at round 20 cannot
+yet know it will never reach that deposit, so the decision cannot be made on
+elapsed rounds at all. It would need a failure signal — repeated pathing
+failures against the same deposit — which is a different mechanism from the one
+tested here.
 
 No new candidate clears the bar. `hodr_bank` remains the best of this line at
 +0.6 sd on a map set selected for the mechanism, which by the standard set in
