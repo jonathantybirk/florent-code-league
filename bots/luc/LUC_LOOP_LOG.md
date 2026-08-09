@@ -6628,3 +6628,39 @@ work had not instrumented. There is no cheap second win of that kind waiting.
 Which means the honest summary of the local work has not changed since iteration
 137, and I have now confirmed it from the one remaining angle: **no more free
 bug fixes, and tuning changes cannot be ranked by any instrument I can build.**
+
+## Iteration 139 — four builds live, and the ladder keeps saying vili
+
+`vili` has finished its six rounds and `freyja` is three from done. Seven shared
+opponents:
+
+| build | shared record | rate |
+|---|---|---|
+| **`vili`** | 32/60 | **0.533 ±0.126** |
+| `freyja` | 17/35 | 0.486 ±0.166 |
+| `hoenir` | 29/65 | 0.446 ±0.121 |
+| `bifrost` | 24/55 | 0.436 ±0.131 |
+
+Every interval overlaps every other; nothing here is separated. But the ordering
+has now been read twice on different opponent sets — iteration 129 gave `vili`
+0.564, `bifrost` 0.475, `hoenir` 0.467 — and **`vili` has led both times**, with
+`bifrost` and `hoenir` behind it both times.
+
+**That is the third instrument to put `vili` first**, after the official 21 maps
+and now two live readings. It is also the build that `undertow` puts fourth and
+the generated maps put last. The disagreement I documented in iteration 136 has
+not resolved; what has changed is that the *live* instrument has now spoken
+twice and said the same thing.
+
+**Weighing that properly:** live is the instrument whose opponents and maps are
+the ones we are scored on, and it is the only one whose verdict I cannot check
+against anything better. When it disagrees with a local proxy, it should win —
+that is the whole argument of iterations 115 and 122. On that basis the ordering
+of tonight's four builds is `vili` first, and `freyja` — the first of the economy
+line — behind it.
+
+**Still not enough to act on.** ±0.13 on 60 games means `vili`'s lead over
+`bifrost` is 0.75 sd. Two consistent readings of a weak signal is still a weak
+signal, and I have retracted enough tonight to be careful about the difference.
+What would settle it is `lofn` and `hlin`, which are next and next-but-one, at
+eight rounds each — 200 games apiece, enough to halve these intervals.
