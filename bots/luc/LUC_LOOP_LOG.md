@@ -8343,3 +8343,42 @@ absent from the feed — the farm is working through roughly thirty earlier
 entries and has not reached either.
 
 Team 18/113, rating 1734.
+
+## Iteration 173 — the queue is fine, one entry is broken, and nott is smaller than I said
+
+**Correcting iteration 169.** I reported the ammunition change at **+0.030
+(+1.85 sd), 6 of 6 cells positive**. Measured again on an independent map
+sample (`maps/orerich2`, seed 777001, same live-terrain filter), it does not
+hold up as cleanly:
+
+| map set | opponent | `snotra_h` | `nott` | |
+|---|---|---|---|---|
+| orerich | `vanguard` | 0.7033 | 0.7100 | +0.2 sd |
+| orerich | `undertow` | 0.6767 | 0.7133 | +1.0 sd |
+| orerich2 | `vanguard` | 0.7533 | 0.7733 | +0.6 sd |
+| orerich2 | `undertow` | 0.6733 | 0.6500 | **-0.6 sd** |
+
+On this base the pooled effect is now **+0.54 sd over 1200 games a side**,
+against the +0.78 sd I claimed on 600. Across both bases and all seven cells:
+**+0.024 (+1.62 sd), 5 of 7 positive** — not the 6 of 6 I wrote up.
+
+The change is still the best thing I have found and it is still worth its live
+test: it is positive on both bases, clearly so on `vidarr` (+1.82 sd), and the
+live replays give it an independent mechanism. But it is a **one-point effect
+that a single map sample flattered**, not a three-point one, and the honest
+version belongs in the log next to the original claim. Committed
+`maps/orerich2` so any future close call gets a second sample by default.
+
+**The farm is not stuck, it is just slow.** Of the 33 queue entries, 29 are
+consumed and 4 are outstanding. New builds enter roughly every 90 minutes in
+queue order — `lofn` 03:38, `hlin` 05:17, `nanna` 06:49, `byggvir` 08:51,
+`mani` 09:49 local — so `ran` (queued 07:23) is next, then `f1f2bda`, and
+`nott` lands around 14:00. Nothing needs fixing.
+
+**One entry can never work.** `aegis@00d5940` references a commit that predates
+the bot: `bots/luc/aegis/main.py` was added in `5709fbf9` and does not exist at
+`00d5940`, so the upload must fail every time it is tried. It is not an entry I
+added and it is skipped harmlessly, so I have left it alone rather than
+guessing at the intended commit — but whoever queued it should re-point it.
+
+Team 18/113, rating 1734.
