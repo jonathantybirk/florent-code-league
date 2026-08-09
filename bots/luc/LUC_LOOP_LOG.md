@@ -9426,3 +9426,54 @@ Still far too few games to read.
 
 That is the axis that produced the session's only surviving change, now closed
 from the second side as well.
+
+## Iteration 195 — built the long-game instrument that was missing, and it works
+
+The largest unclosed gap was that local games run 82-105 rounds against the
+ladder's 300-435, so nothing that acts late could be tested. `spar_grind`
+(iteration 168) failed at that because I built it passive, and passive is not
+durable.
+
+`spar_wall` inverts the session's biggest measurement instead. The ablation map
+prices `_heal_core` at **18.8pp**, and widening the mender role to every
+non-attacker costs *us* 1.7 sd because it pins miners (iteration 189) — which is
+exactly what makes a bot hard to kill. So: no attacker, every non-attacker
+mends, leash 10 -> 20, turrets never retire, four claim slots, never leaves
+home.
+
+| fixture | median rounds | past 300 | balance |
+|---|---|---|---|
+| `undertow` / `vanguard` / `spar_sentinel` | 82-105 | 4-8% | — |
+| `spar_grind` | 101 | 8% | 0.533 |
+| **`spar_wall`** | **136-138** | **16-20%** | `nott` 0.536, `snotra_h` 0.478 |
+
+Two to four times the long games, and still a fair fight. Unlike
+`maps/longgame` it is an *opponent* rather than a map selection, so it carries
+none of the post-hoc selection problem that got `sunna` withdrawn.
+
+**And it immediately made a dead constant measurable.** Re-testing the
+late-acting candidates against it, 216 strictly paired cells:
+
+| build | rate | vs `nott` | games changed |
+|---|---|---|---|
+| four claim slots | 0.5926 | +0.39 sd | 18 |
+| **`nott`** | 0.5741 | — | — |
+| `hodr_bank` (late banking) | 0.5741 | 0.00 | **0** |
+| `_repair_network` removed | 0.5741 | 0.00 | 8 |
+| **`TURRET_QUIET_ROUNDS` 60 -> 20** | 0.5093 | **-1.35 sd** | **94** |
+
+`TURRET_QUIET_ROUNDS` changed **zero** games on every short-game fixture in
+iteration 167 — all four settings scored an identical 196/300 — and here it
+changes **94 of 216**. The retirement path finally runs, and retiring turrets
+sooner is clearly harmful: the idle turret you scrapped is the one that was
+holding a lane. That is a real mechanism recovered from the "dead code" pile,
+and it says the shipped 60 is not merely untested but defended on the low side.
+
+`hodr_bank` still cannot fire — it acts past round 880 and the median here is
+136 — so the round-1000 tiebreak remains beyond every instrument I have.
+
+The four-claim-slot reading of +0.39 sd is exactly the size that has been noise
+every previous time, and by the standard set in iteration 193 it needs a wide
+opponent panel before it means anything. Not queued.
+
+Live: rank 21/116, rating 1680. `nott` is playing.
