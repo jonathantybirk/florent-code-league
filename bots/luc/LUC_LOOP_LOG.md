@@ -8914,3 +8914,56 @@ session's record with speculative fixes I am not writing another one without a
 way to show the path is actually blocked first.
 
 Team 22/113, rating 1658.
+
+## Iteration 184 — I proved the path was blocked, then found the fix already written
+
+Held to the standard I set in iteration 183: before writing a fix for
+`_counter_sentinels`, show the path is actually blocked. The clean test is an
+ablation — make it always decline and read the identity column.
+
+| opponent | games changed by disabling it | effect |
+|---|---|---|
+| `spar_sentinel` | **6 of 138** | -0.2 sd |
+| `vanguard` | 0 of 138 | 0.0 sd |
+
+And the opponent it is meant to answer builds **2.21 Sentinels in 97% of
+games**. So the counter fires in about 4% of the games that contain a target:
+the path really is blocked, and where it does fire it is worth something.
+
+**Then I read the code instead of writing more of it, and the answer was
+already there.** Three separate comments in `builder.py` state the constraint
+and its consequences:
+
+- *"a Builder sees r^2=20 and a Sentinel shoots from r^2=32, so the turret
+  killing our Core is routinely invisible to the Builder standing on it"*;
+- *"it is never entered in `enemy_turrets`, and the threat map that pathfinding
+  consults is empty exactly where the danger is. No amount of care about
+  *known* firing lines helps against a shooter we are structurally unable to
+  see"*;
+- and the answer chosen: **healing, because healing needs no sight of the
+  shooter**, priced at 4 HP for a flat 1 Ti against a Gunner's 4 Ti for 7
+  damage.
+
+Plus two more mechanisms I had not connected: damage-on-a-tile is used as a
+sensor to fill the threat map where vision cannot, and when no turret is
+visible the guard walks toward a **beacon the Core publishes** through the
+alarm slot — the Core sees r^2=36, wider than a Sentinel's r^2=32 reach, so it
+can name a shooter the guard cannot. Once the guard arrives, the ordinary
+answers including `_counter_sentinels` take over.
+
+So the fix I was going to write is already implemented, three ways, and the 4%
+firing rate is the constraint rather than a defect. That is the right outcome
+for the discipline: the ablation cost 276 games and stopped me building
+something redundant.
+
+**The rating is sliding and I should say so plainly.** 1735 at iteration 171,
+**1636 now**, rank 22 -> 24. It is not one bad build in the seat: the seat holds
+`shr@f1f2bda`, our best-sampled build, and *every* build's estimate is drifting
+down together (`f1f2bda` 1763 -> 1746, `e55aab5` 1715 -> 1649), which is what
+happens when the team rating they are anchored to falls. The ladder above us is
+a long way up — sporks 2097, Pantheon 2051, against our 1636 — so this looks
+like the field improving rather than us breaking. I cannot diagnose the rating
+mechanics from here without touching the harness, which is another agent's.
+
+Nothing to queue. `nott@0ac1faa` — the one change that has survived every
+independent test — is still waiting behind `ran` in the farm queue.
