@@ -8967,3 +8967,53 @@ mechanics from here without touching the harness, which is another agent's.
 
 Nothing to queue. `nott@0ac1faa` — the one change that has survived every
 independent test — is still waiting behind `ran` in the farm queue.
+
+## Iteration 185 — the top of the ladder builds five times our turrets, and we cannot copy it
+
+We have played two opponents rated 1900+: **Jython (1983), which we beat 3-2**,
+and **not adgato (1900), which beat us 4-1**. Decoded both, normalised per 100
+rounds because raw counts confound with game length. We are TEAM_A in both, on
+two independent signatures — the 145-150 titanium converted to ammunition by
+round 30, and the presence of Launchers, which no opponent builds.
+
+| | builders | conveyor | harvest | **gunner** | **barrier** | launcher |
+|---|---|---|---|---|---|---|
+| us (vs Jython) | 3.90 | 17.74 | 2.66 | **3.76** | 0.19 | 0.42 |
+| **Jython 1983** | 3.86 | 10.23 | 2.73 | **19.44** | **3.34** | 0.00 |
+| us (vs adgato) | 2.60 | 13.14 | 2.06 | **2.25** | 0.44 | 0.52 |
+| **not adgato 1900** | 3.31 | 10.97 | 2.09 | **8.54** | **2.23** | 0.00 |
+
+Same Builders, same Harvesters, *fewer* conveyors — and **four to five times our
+turret rate**, plus real barrier counts, plus no Launchers at all. This also
+corrects iteration 165, which concluded from the Coreflood games that we
+over-spend on turrets. Against the strongest opponents the opposite is true.
+
+**So I tried to build more turrets, and every route is either dead or
+catastrophic.**
+
+| change | rate | vs `nott` | gunners built |
+|---|---|---|---|
+| `HOME_TURRET_STEP` 180 -> 90 / 60 / 30 | 0.652 | 0.000 | **3.31** (identical) |
+| the same plus `HOME_TURRET_MAX` 4 -> 8 | 0.652 | 0.000 | **3.31** (identical) |
+| `ATTACK_TURRET_CAP` 5 -> 10 / 20 | 0.657 | +0.1 sd | **3.31** (identical) |
+| **`_FIELD_GUNNERS` RUSH 0 -> 2** | **0.471** | **-5.3 sd** | 5.54 |
+
+The home-defence path is simply not reached — the step and the cap are both
+dead, so it contributes essentially none of our 3.31 Gunners. The attack cap is
+not binding either: 5, 10 and 20 produce the same count. The only lever that
+*does* move the number is the field path doctrine closes on RUSH maps, and
+opening it is **the strongest negative measured this session**.
+
+That retroactively settles `bragi` from iteration 156. I read
+`_FIELD_GUNNERS = {RUSH: 0}` then as a gate that accidentally disabled my
+change; it is a deliberate and correct choice, now measured at -5.3 sd if
+reversed.
+
+So the turret gap against the top of the ladder is real and is **not reachable
+by any cap in this bot**. Our count is set by how many firing solutions the
+Builders actually find, and forcing more by opening the one unrestricted path
+loses five standard deviations. Copying Jython's composition would need
+different code for *seating* turrets, not different limits on them.
+
+That is roughly the fifteenth constant proven inert this session. Nothing to
+queue. Team 24/113, rating 1636.
