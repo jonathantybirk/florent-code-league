@@ -7089,3 +7089,50 @@ what is running.
 The queue will test them anyway over the next few hours, which is fine: it costs
 unrated games and will produce live numbers on builds I now expect to
 underperform. That is a prediction worth having on the record.
+
+## Iteration 151 — the audit closes: nothing tonight improved on the starting point
+
+The last unmeasured link. `bifrost` and `hoenir` are +1.3 and +2.3 over
+`steward_hardened_reinforced` against `undertow`, both under 1 sd, so the direct
+comparison decides whether *anything* tonight was a gain:
+
+    hoenir vs steward_hardened_reinforced: 412/800 = 0.5150 +-0.0346  (+0.8 sd)
+
+**Level.** The best build of the session does not beat the build the session
+started from.
+
+**The complete audit, all at 800 games or 600 against `undertow`:**
+
+| comparison | result |
+|---|---|
+| `hoenir` vs the starting point | 0.5150 ±0.0346 — level |
+| `hoenir` vs `snotra_h` (live) | 0.5138 ±0.0346 — level |
+| `vili` vs `hoenir` | **-8.3 points** (ring hold) |
+| economy line vs its base | **-6 points**, on either base |
+| twelve individual mechanisms | all within 1 sd of zero |
+
+**So the session's net effect on the bot is: nothing gained, and seven builds
+that would have lost ground had they been promoted.** The two builds I would
+have kept — `bifrost` and `hoenir` — are level with what already existed.
+
+That is worth stating without softening, because it was not knowable at the
+start and it is knowable now, and only because the loop kept going long enough
+to build an instrument that could see it. The measurements that said otherwise
+— `bifrost` 0.610, `hoenir` 0.633, `vili` 0.657, `lofn` 0.690 against the live
+flagship — were all taken on the 21 maps this lineage was tuned on, and every
+one of them was wrong by 6 to 19 points.
+
+**What the session actually produced**, and this part is real:
+
+- the replay-decoding workflow and the first composition data on the ladder's
+  top (rank 1: 9.9 Harvesters, 75 conveyors, 8.5 turrets against our 2.7, 24,
+  22.8);
+- `tools/live_matchups.py --compare`, model-free and commit-exact;
+- 168 off-pool maps in four sets, and the demonstration that four instruments
+  rank our builds four ways;
+- the external opponent registry, which makes `undertow` available as the one
+  local opponent that discriminates;
+- two farm defects with eight promotions of evidence;
+- and the finding that **`RING_AFTER_ECONOMY` costs 8.3 points**, which is the
+  one thing here that would improve the bot if reverted — except it only exists
+  in builds made tonight, so reverting it returns us exactly to `hoenir`.
