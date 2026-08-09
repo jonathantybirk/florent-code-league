@@ -7170,3 +7170,41 @@ stopped advancing.
 The finding survives the sloppiness — six flags, none of them a regression — but
 it is weaker than it should be, and the fix is mechanical: background the run,
 poll the log.
+
+## Iteration 153 — lofn live: the prediction holds, and the instruments finally agree
+
+`lofn` has finished five of eight rounds, 125 games. Six shared opponents:
+
+| build | shared record | rate |
+|---|---|---|
+| **`snotra_h@6951e03`** (live) | 42/70 | **0.600 ±0.115** |
+| `vili@419bf08` (its parent) | 27/55 | 0.491 ±0.132 |
+| **`lofn@86287ec`** | 21/45 | **0.467 ±0.146** |
+
+**Below its own parent, 13 points below the incumbent.** Iteration 150 predicted
+exactly this ordering from `undertow` — `snotra_h` 0.7267 > `vili` 0.650 >
+`lofn` 0.600 — and the ladder has now reproduced it on a completely different
+opponent set.
+
+**That is the first time a local instrument has predicted a live ordering in
+advance**, and it is the one I spent iterations 133-136 doubting. The
+disagreement documented in 136 was real, but it is now resolvable: of the four
+instruments, `undertow` and the live ladder agree with each other and the two
+map-based panels do not.
+
+| instrument | `snotra_h` / `vili` / `lofn` ordering | matches live? |
+|---|---|---|
+| **`undertow`, 600 games** | 0.727 > 0.650 > 0.600 | **yes** |
+| **live, shared opponents** | 0.600 > 0.491 > 0.467 | — |
+| official 21 maps | `vili` first | no |
+| 1,000 generated maps | all within 2 points | no |
+
+**Why that makes sense in hindsight:** `undertow` is a strong opponent that can
+punish a mistake, and so are the ladder's teams. The map panels average over
+opponents that mostly lose to us regardless, so they measure how we beat weak
+bots — which is not what the ladder scores.
+
+**The practical conclusion, now with live confirmation:** the economy line is a
+regression, `vili`'s ring hold is most of it, and the builds still queued
+(`hlin`, `nanna`, `mani`) all inherit both. I expect them to land at or below
+`lofn`. `snotra_h` should stay live.
