@@ -7822,3 +7822,66 @@ two bases — and I have twice reported the four dead ones as measured nulls.
 
 Nothing beat the base, so nothing new was queued. `ran@0eca95f:10` from
 iteration 162 is still pending. Team 20/113, rating 1688.
+
+## Iteration 164 — found the economy ceiling, lifted it, and it was not the problem
+
+The clearest live signal yet. Harvesters **alive** at round 50 -> 400, decoded
+from the five worst matchups:
+
+| matchup | us | them |
+|---|---|---|
+| Besvikomat | 3.2 -> **0.3** | 2.2 -> **6.3** |
+| Coreflood | 1.6 -> 1.5 | 1.6 -> **6.2** |
+| O(1) | 2.4 -> 2.7 | 1.6 -> 3.0 |
+| 0033 (our best of these) | 2.2 -> 1.5 | 1.8 -> 0.5 |
+
+Their economy compounds to six; ours is flat at two, every game. The single
+matchup where the opponent's Harvesters also decline is the one we score best
+in.
+
+And the cause is not subtle: **`CLAIM_SLOTS = (1, 8)`** — two claim slots, so
+two claimable deposits, so about two Harvesters, permanently. `_pick` already
+carried a comment saying "an economy that never grows" and blamed claim
+staleness; staleness was real, but two slots is a ceiling no freshness policy
+can lift. `freyja` and `hlin` had already widened it to four, and both carry
+`RING_AFTER_ECONOMY` (-8.3), so it had never been measured alone.
+
+`idun` is that change on `vidarr@bbfaa9c`, our best live base.
+
+| vs | | Harvesters | conveyors | win rate |
+|---|---|---|---|---|
+| `undertow` | vidarr -> idun | 3.45 -> **3.97** | 20.28 -> **24.15** | -0.5 sd |
+| `spar_sentinel` | vidarr -> idun | 2.93 -> **3.24** | 15.45 -> **19.17** | -0.1 sd |
+
+The mechanism fires hard — +15% Harvesters, +19% conveyors, three games in four
+changed — and buys nothing.
+
+**I was about to queue it anyway** on the argument that local games are too
+short to show compounding, which is true on its face: the median local game is
+**103** rounds against `undertow` and **82** against `spar_sentinel`, where the
+ladder runs 300-435. So I tested that argument before using it, and it is
+false:
+
+| rounds | vs `undertow` | vs `spar_sentinel` |
+|---|---|---|
+| 0-100 | +0.4 sd | +0.5 sd |
+| 100-200 | -0.5 sd | -0.5 sd |
+| 200+ | **-1.5 sd** | **-0.6 sd** |
+
+`idun` is better in short games and worse in long ones — the exact opposite of
+what a compounding economy would do. The story was a rationalisation, and the
+data I gathered to support it refused it. Not queued.
+
+The likely reason is the tax: each Harvester adds +5% to Harvester prices and
+each conveyor +1% to everything, and a Builder laying belt is not defending.
+That is the same shape as `saga` (+1 economy Builder, -1.2 sd) and `tyr` (+1
+attacker, -3.1 sd) — **this architecture converts extra bodies and extra
+infrastructure into cost scaling rather than into wins**, and it has now said
+so three times through three different mechanisms.
+
+Also recorded honestly: the earlier split of `saga` by game length was
+inconclusive and contradicted between opponents (+1.0 sd on one, -1.2 on the
+other, n=36 and 26), so it supports nothing either way.
+
+Nothing queued this iteration. `ran@0eca95f:10` is still pending. Team 19/113,
+rating 1698.
