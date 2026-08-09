@@ -8382,3 +8382,51 @@ added and it is skipped harmlessly, so I have left it alone rather than
 guessing at the intended commit — but whoever queued it should re-point it.
 
 Team 18/113, rating 1734.
+
+## Iteration 174 — six of ten tuning constants never execute
+
+Screened the ten genuinely tunable policy constants I had not touched — the
+other 66 integers in `constants.py` are engine facts (`GUNNER_DAMAGE = 7`,
+`SLOT_*`, `*_BITS`) or already swept. One meaningful step each, 120 games
+against `vanguard`:
+
+| change | rate | vs `nott` | games changed |
+|---|---|---|---|
+| `REPLACEMENT_BANK_THRESHOLD` 260->130 | 0.7083 | +0.1 sd | 69 |
+| `ATTACK_TURRET_CAP` 5->3 | 0.7083 | +0.1 sd | 52 |
+| **`nott`** | **0.7000** | — | — |
+| `SIEGE_STALL_ROUNDS` 12->24 | 0.7000 | 0.000 | **0** |
+| `REPAIR_ATTEMPT_LIMIT` 3->6 | 0.7000 | 0.000 | **0** |
+| `PATH_SAFETY_MARGIN` 7->3 | 0.7000 | 0.000 | **0** |
+| `HARVESTER_RECHECK_ROUNDS` 90->40 | 0.7000 | 0.000 | **0** |
+| `MENDER_LEASH` 10->16 | 0.7000 | 0.000 | 1 |
+| `ECON_EXPAND_RESERVE` 60->30 | 0.7000 | 0.000 | 1 |
+| `ECON_BUILDER_ROUND` 120->70 | 0.7000 | 0.000 | 5 |
+| `IDLE_BEFORE_FLANK` 25->12 | 0.6833 | -0.3 sd | 19 |
+
+Nothing improves. But **six of the ten changed one game or fewer out of 120**,
+and four changed none at all.
+
+That is the same time-horizon problem from iteration 167, now measured on the
+tuning surface rather than on a single mechanism. Every one of the four dead
+constants governs a state a hundred-round game does not reach:
+`SIEGE_STALL_ROUNDS` needs a siege that has already stalled twelve rounds,
+`HARVESTER_RECHECK_ROUNDS` needs a claim to go ninety rounds stale,
+`REPAIR_ATTEMPT_LIMIT` needs a belt attacked repeatedly, `PATH_SAFETY_MARGIN`
+needs threat-laden routes. Local games run a median of about a hundred rounds;
+these are constants for the three-hundred-round game.
+
+Counting the three seat-B flags from iteration 163, **seven constants are now
+demonstrably inert** in the games this panel plays. The honest conclusion is
+that the local instrument exercises a fraction of this bot's decision surface,
+and further sweeping of it has low expected value — not because the bot is
+optimal everywhere, but because the panel cannot see most of where it is not.
+
+`tools/suite_compare.py`'s identity column is what makes this visible at a
+glance; without it all ten of these rows read "0.0 sd, no improvement" and look
+like evidence of optimality rather than evidence of absence.
+
+Nothing to queue. `nott@0ac1faa` and `ran@0eca95f` are still not in the feed;
+on the observed ~90-minute cadence `nott` is due around 14:00.
+
+Team 16/113, rating 1732 — the best rank of the session.
