@@ -9511,3 +9511,51 @@ executes (seventeen of them), executes but is subsumed
 (`SEAT_B_PREFERS_RANGE`), and now executes only past a cliff on the wrong side.
 
 Live: `nott@0ac1faa` is accumulating games. Rank 21/116, rating 1692.
+
+## Iteration 197 — the dead constants are dead everywhere, and I stopped guessing why
+
+Iteration 195's fixture made one dead constant measurable, so the systematic
+move was to re-test the rest. Six of them against `spar_wall`, 216 paired
+cells, median 136 rounds, 18% past 300:
+
+| change | vs `nott` | games changed |
+|---|---|---|
+| `MENDER_LEASH` 10 -> 16 | +0.19 sd | 2 |
+| `SIEGE_STALL_ROUNDS` 12 -> 24 / 6 | 0.000 | **0** / **0** |
+| `REPAIR_ATTEMPT_LIMIT` 3 -> 6 | 0.000 | **0** |
+| `HARVESTER_RECHECK_ROUNDS` 90 -> 40 | 0.000 | **0** |
+| `PATH_SAFETY_MARGIN` 7 -> 3 | -0.10 sd | 1 |
+
+Still dead — but that run could not have shown otherwise, and the fault was
+mine: `spar_wall` has `CUT_ENEMY_BELT` and `STEAL_ENEMY_HARVESTER` **off**, so
+it never attacks our economy at all. `REPAIR_ATTEMPT_LIMIT` counts rebuilds of
+a belt under attack and `PATH_SAFETY_MARGIN` prices routes through threat; a
+fixture that never threatens anything cannot exercise either. I built an
+instrument that tests duration and not aggression, and then read its silence as
+evidence.
+
+So I built `spar_wall2` — the same survivor with the attacker restored and both
+economy-attack flags back on — and re-ran. Median 109 rounds, **23% past
+300**, the most long games of any fixture so far, and a harder opponent
+(`nott` scores 0.514 against it, against 0.574 on `spar_wall`):
+
+| change | vs `nott` | games changed |
+|---|---|---|
+| `REPAIR_ATTEMPT_LIMIT` 3 -> 6 | 0.000 | **0** |
+| `HARVESTER_RECHECK_ROUNDS` 90 -> 40 | 0.000 | **0** |
+| `SIEGE_STALL_ROUNDS` 12 -> 24 | 0.000 | **0** |
+| `PATH_SAFETY_MARGIN` 7 -> 3 | 0.000 | 2 |
+
+**Dead against a long, aggressive opponent too.** That closes the line
+properly. These four are not waiting for the right game length or the right
+opponent — whatever gates them is upstream of both, and the honest answer is
+that I do not know what it is and have stopped guessing. The bisect method from
+iteration 186 is the way to find out, one constant at a time, and it is worth
+doing only if one of them ever looks like it would matter.
+
+What the fixture did buy: `TURRET_QUIET_ROUNDS` went from invisible to
+measurable and turned out to be a one-sided cliff, and `spar_wall2` is now the
+best long-game opponent available at 23% of games past 300 against 4-8% for the
+original zoo.
+
+Live: rank 22/116, rating 1678. `nott` is accumulating games.
