@@ -8290,3 +8290,56 @@ targeting and affordability all measured null or negative.
 
 `nott@0ac1faa:12` remains queued and remains our best local build. Team 18/113,
 rating 1735 — up 51 from the session low.
+
+## Iteration 172 — the turret gates do not bind, and the opening ledger is closed
+
+Two follow-ups to `nott`, both negative, and together they close the opening.
+
+**The turret ammunition gates.** `nott` halves the ammunition pool, so
+`MIN_AMMO_FOR_SENTINEL = 40` went from a third of a 120 pool to two thirds of a
+60 pool — an obvious interaction with the change I had just shipped. Swept it
+on `nott` against `vanguard`:
+
+| gate | rate | vs `nott` | games changed |
+|---|---|---|---|
+| 30 | 0.7100 | 0.000 | 2 |
+| 20 | 0.7100 | 0.000 | 5 |
+| 12 | 0.7100 | 0.000 | 5 |
+| **40** (shipped) | **0.7100** | — | — |
+| 12 + Gunner gate 10 | 0.7067 | -0.003 | 105 |
+
+Still inert — two to five games in three hundred, Sentinels per game unchanged
+at 0.36. The predicted interaction is not there, and lowering the Gunner gate
+as well moves 105 games for -0.1 sd. This is the second time I have expected
+this constant to bind and been wrong (iteration 160 was the first, on a
+different base).
+
+**The opening ledger.** Base-cost titanium spent in the first 30 rounds, over
+30 live sides:
+
+| | conveyor | harvester | builders | gunner | launcher | sentinel | ammo | total |
+|---|---|---|---|---|---|---|---|---|
+| us | 34 | 44 | 103 | **71** | 16 | 2 | **172** | **444** |
+| them | 25 | 38 | **144** | 31 | 1 | 23 | 74 | 338 |
+
+We commit **106 titanium more than our opponents** inside the compounding
+window, and **98 of that gap is ammunition** — which is exactly the defect
+`nott` fixes, and it closes about half of it.
+
+Every other line in that table is something already measured:
+
+- more early Gunners (71 against 31) — capping turret spend was -0.6 to -2.6 sd;
+- fewer early Builders (103 against 144) — `saga` -1.2 sd, `tyr` -3.1 sd;
+- fewer Sentinels (2 against 23) — closed from four sides in iterations 158-160;
+- the round-3 Launcher (16 against 1) — `dagr` -0.5 to -2.7 sd.
+
+So the opening ledger is fully accounted for: one real defect, found and fixed,
+and four differences that are either load-bearing or already refuted. The
+replay-comparison method has now been run to exhaustion on the opening, which
+is the phase it can see best.
+
+Nothing new to queue. `nott@0ac1faa:12` and `ran@0eca95f:10` are both still
+absent from the feed — the farm is working through roughly thirty earlier
+entries and has not reached either.
+
+Team 18/113, rating 1734.
