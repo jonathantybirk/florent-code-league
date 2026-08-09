@@ -1,0 +1,1184 @@
+{
+  "tournament_id": "auto-9c02687766c5",
+  "map_set": "all_official",
+  "maps": [
+    "antler",
+    "archipelago",
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "drumlin",
+    "duel",
+    "eider",
+    "fjord",
+    "fjordgate",
+    "heart",
+    "hive",
+    "jackpot",
+    "lighthouse",
+    "longship",
+    "meander",
+    "moonrise",
+    "nordkap",
+    "pinch",
+    "quarry",
+    "runestone",
+    "saga",
+    "showdown",
+    "skerry",
+    "snowflake",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 7821,
+  "rating_matches": 7788,
+  "mode": "challenger",
+  "challengers": [
+    "spar_grind@d9529a7"
+  ],
+  "bots": [
+    {
+      "bot_id": "spar_grind@d9529a7",
+      "name": "spar_grind",
+      "commit": "d9529a70d56f26acd7f31fe9f7967ca082207567",
+      "path": "bots/luc/spar_grind",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "aegis@e55aab5",
+      "name": "aegis",
+      "commit": "e55aab5a09db5a66427006b3a598d10211632218",
+      "path": "bots/luc/aegis",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "audhumla@a7faecd",
+      "name": "audhumla",
+      "commit": "a7faecddbd939c30b225fd9bbbd6df87d4e634ce",
+      "path": "bots/luc/audhumla",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "bastion@840a180",
+      "name": "bastion",
+      "commit": "840a180d63cf90b17701af41ce07980afee64a3c",
+      "path": "bots/luc/bastion",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "bifrost@c70c467",
+      "name": "bifrost",
+      "commit": "c70c467254ee70c231aaaeb87e04b3fb5c3eda05",
+      "path": "bots/luc/bifrost",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "bil@6b5d86e",
+      "name": "bil",
+      "commit": "6b5d86ed3bf706ee590e61476f7bd340ad76672a",
+      "path": "bots/luc/bil",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "bragi@db77268",
+      "name": "bragi",
+      "commit": "db772683d2786b9459a72b28aed1c1ebb908c02d",
+      "path": "bots/luc/bragi",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "byggvir@55df097",
+      "name": "byggvir",
+      "commit": "55df0972d58ad9a99bfa3df904a4d83b973bbd3c",
+      "path": "bots/luc/byggvir",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "byggvir@5bf798e",
+      "name": "byggvir",
+      "commit": "5bf798e6abb414110433dc54248f48b1083c7197",
+      "path": "bots/luc/byggvir",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "byggvir@6b5d86e",
+      "name": "byggvir",
+      "commit": "6b5d86ed3bf706ee590e61476f7bd340ad76672a",
+      "path": "bots/luc/byggvir",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "casemate_oracle@90fc9f3",
+      "name": "casemate_oracle",
+      "commit": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+      "path": "bots/jon/unfair/casemate_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "e_t4l7@9e77076",
+      "name": "e_t4l7",
+      "commit": "9e770763b877ff276547204173fb0ee4c9a06df1",
+      "path": "bots/cand/T4L7",
+      "tags": [
+        "elias",
+        "cand",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "eir@5d43b95",
+      "name": "eir",
+      "commit": "5d43b95a9924fd4bd799cc5ad4287f1c19b179f7",
+      "path": "bots/luc/eir",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "fenrir2@6b39ebb",
+      "name": "fenrir2",
+      "commit": "6b39ebbe3553107f232884e7e8870b93686e6aa4",
+      "path": "bots/luc/fenrir2",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "forseti@37dc858",
+      "name": "forseti",
+      "commit": "37dc85820fbad4cec95b57a4991f8c1ee1fae518",
+      "path": "bots/luc/forseti",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "freyja@6a8a5f7",
+      "name": "freyja",
+      "commit": "6a8a5f753d25a3724ea4b585ccb81516f48ffbf5",
+      "path": "bots/luc/freyja",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "freyr@c2c0d3d",
+      "name": "freyr",
+      "commit": "c2c0d3d8bbab335c4b869ac8da566b5f4c1cf391",
+      "path": "bots/luc/freyr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "frigg@55df097",
+      "name": "frigg",
+      "commit": "55df0972d58ad9a99bfa3df904a4d83b973bbd3c",
+      "path": "bots/luc/frigg",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "fulla@ec5aa19",
+      "name": "fulla",
+      "commit": "ec5aa19d41ce5a62975df59ff0657d4b25f2758d",
+      "path": "bots/luc/fulla",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "gefjon@f66a427",
+      "name": "gefjon",
+      "commit": "f66a427229ef2a218d63ff1cea7730667ac7853f",
+      "path": "bots/luc/gefjon",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "gefn@46ac5e6",
+      "name": "gefn",
+      "commit": "46ac5e672ab7478bfc3a0fbce312cee058ad9fd3",
+      "path": "bots/luc/gefn",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "gefn@60ae5f1",
+      "name": "gefn",
+      "commit": "60ae5f1b8ff432379aa686e0a18eee0eb7333556",
+      "path": "bots/luc/gefn",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "gobbleglitch@6cdc440",
+      "name": "gobbleglitch",
+      "commit": "6cdc4409dc3944ad658b07880933800e4a80f902",
+      "path": "bots/elias/unfair/gobbleglitch",
+      "tags": [
+        "elias",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "heimdall@daf0de0",
+      "name": "heimdall",
+      "commit": "daf0de03d9b99fb7759587195d903bb262adadd5",
+      "path": "bots/luc/heimdall",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "hlin@6b5d86e",
+      "name": "hlin",
+      "commit": "6b5d86ed3bf706ee590e61476f7bd340ad76672a",
+      "path": "bots/luc/hlin",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "hodr@ea88247",
+      "name": "hodr",
+      "commit": "ea88247451622919a9acb798a6274d36c51e9949",
+      "path": "bots/luc/hodr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "hoenir@5907a3b",
+      "name": "hoenir",
+      "commit": "5907a3bdc65aa97dcbd2c3e6a3a5c1e1248e619a",
+      "path": "bots/luc/hoenir",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "idun@11e47ca",
+      "name": "idun",
+      "commit": "11e47cadc8aadbf3d71421c6bcf5cfa22944331f",
+      "path": "bots/luc/idun",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "janus@8a1e7a1",
+      "name": "janus",
+      "commit": "8a1e7a1eceaa9adc2f0ff0bb40586f7179210982",
+      "path": "bots/luc/janus",
+      "tags": [
+        "luc",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "jonbot@90fc9f3",
+      "name": "jonbot",
+      "commit": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+      "path": "bots/jon/fair/jonbot",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "jonbot_190003d@90fc9f3",
+      "name": "jonbot_190003d",
+      "commit": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+      "path": "bots/jon/versions/jonbot_190003d",
+      "tags": [
+        "jon",
+        "versions"
+      ]
+    },
+    {
+      "bot_id": "jotunn@6b39ebb",
+      "name": "jotunn",
+      "commit": "6b39ebbe3553107f232884e7e8870b93686e6aa4",
+      "path": "bots/luc/jotunn",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "lockin@90fc9f3",
+      "name": "lockin",
+      "commit": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+      "path": "bots/jon/unfair/lockin",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "lofn@c8d0165",
+      "name": "lofn",
+      "commit": "c8d0165185c02ccb802a2efe154b85161b6b9770",
+      "path": "bots/luc/lofn",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "loki@832c68a",
+      "name": "loki",
+      "commit": "832c68a3a54573945ac4230b69e288ae4482bfcf",
+      "path": "bots/luc/loki",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "loki@9ac8974",
+      "name": "loki",
+      "commit": "9ac89744b45d812053a330e5f443b090324ab149",
+      "path": "bots/luc/loki",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "magni@3677a66",
+      "name": "magni",
+      "commit": "3677a664876b6adc2ef9aeeb9df95c08a64d8823",
+      "path": "bots/luc/magni",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "mani@11aec08",
+      "name": "mani",
+      "commit": "11aec088e84e70bc186dae67fc05652eb69b2a1e",
+      "path": "bots/luc/mani",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "maporacle@38e1456",
+      "name": "maporacle",
+      "commit": "38e145629dbe917ca86ccf8d3e4fd38e5e96bfc2",
+      "path": "bots/luc/maporacle",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "mimir@cfc1ec4",
+      "name": "mimir",
+      "commit": "cfc1ec4d84835d407b80d977dc543841214e8012",
+      "path": "bots/luc/mimir",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "mistral@90fc9f3",
+      "name": "mistral",
+      "commit": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+      "path": "bots/jon/fair/mistral",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "mjolnir@2e6c876",
+      "name": "mjolnir",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/mjolnir",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "nanna@55df097",
+      "name": "nanna",
+      "commit": "55df0972d58ad9a99bfa3df904a4d83b973bbd3c",
+      "path": "bots/luc/nanna",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "njord@f66a427",
+      "name": "njord",
+      "commit": "f66a427229ef2a218d63ff1cea7730667ac7853f",
+      "path": "bots/luc/njord",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "odin@38e1456",
+      "name": "odin",
+      "commit": "38e145629dbe917ca86ccf8d3e4fd38e5e96bfc2",
+      "path": "bots/luc/odin",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "odin@93e46da",
+      "name": "odin",
+      "commit": "93e46da3dd0c40aa5a8622a109845ee8db5e7561",
+      "path": "bots/luc/odin",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "ostara@832c68a",
+      "name": "ostara",
+      "commit": "832c68a3a54573945ac4230b69e288ae4482bfcf",
+      "path": "bots/luc/ostara",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "pantheon_replica_day3@aa8bae0",
+      "name": "pantheon_replica_day3",
+      "commit": "aa8bae0d8fc9bb5a1b2c83cc65e2128f4c35c6c1",
+      "path": "bots/luc/pantheon_replica_day3",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "prospect@bf9b3e3",
+      "name": "prospect",
+      "commit": "bf9b3e37484490d179d08c376dc6d9bb2d1f997f",
+      "path": "bots/luc/prospect",
+      "tags": [
+        "luc",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "prospect_rushonly@bf9b3e3",
+      "name": "prospect_rushonly",
+      "commit": "bf9b3e37484490d179d08c376dc6d9bb2d1f997f",
+      "path": "bots/luc/prospect_rushonly",
+      "tags": [
+        "luc",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "ragnarok_fair@79582fc",
+      "name": "ragnarok_fair",
+      "commit": "79582fccd9dde1f7e58153880d5c20a768297c4e",
+      "path": "bots/luc/ragnarok_fair",
+      "tags": [
+        "luc",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "ran@0eca95f",
+      "name": "ran",
+      "commit": "0eca95fb4490fe2ffd19aa66db861e2d8ea2154b",
+      "path": "bots/luc/ran",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "saga@db77268",
+      "name": "saga",
+      "commit": "db772683d2786b9459a72b28aed1c1ebb908c02d",
+      "path": "bots/luc/saga",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "sif@3fc5cd8",
+      "name": "sif",
+      "commit": "3fc5cd80f622de12ac523884ce7c5f8c31a37268",
+      "path": "bots/luc/sif",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "skadi@1e4eddf",
+      "name": "skadi",
+      "commit": "1e4eddffc35e3943a5caa54eeebba99b9e915003",
+      "path": "bots/jon/skadi",
+      "tags": [
+        "jon"
+      ]
+    },
+    {
+      "bot_id": "skadi@6a2af02",
+      "name": "skadi",
+      "commit": "6a2af02a9d07ed943bf730e686b34e71c633b3c5",
+      "path": "bots/jon/skadi",
+      "tags": [
+        "jon"
+      ]
+    },
+    {
+      "bot_id": "skadi@821d792",
+      "name": "skadi",
+      "commit": "821d79249bc73325b8893e385146ae68957aab14",
+      "path": "bots/jon/skadi",
+      "tags": [
+        "jon"
+      ]
+    },
+    {
+      "bot_id": "skadi@aad5f44",
+      "name": "skadi",
+      "commit": "aad5f44dbb38d42648dbc6fabba29001ef2423a9",
+      "path": "bots/jon/skadi",
+      "tags": [
+        "jon"
+      ]
+    },
+    {
+      "bot_id": "snotra@34b0ce8",
+      "name": "snotra",
+      "commit": "34b0ce8d1af0087d30b39aa4b70678cf4d3ebf3a",
+      "path": "bots/luc/snotra",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "snotra_h@4437c29",
+      "name": "snotra_h",
+      "commit": "4437c292499950587a83c90d5a745a941fdcdfb0",
+      "path": "bots/luc/snotra_h",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "spar_mender@7ed1acc",
+      "name": "spar_mender",
+      "commit": "7ed1acc2f46d60000179abc98be8a55c5c4d19ed",
+      "path": "bots/luc/spar_mender",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "spar_mender@d5b46bc",
+      "name": "spar_mender",
+      "commit": "d5b46bcadd0fdf29f31a8afdae50ac82e7266a89",
+      "path": "bots/luc/spar_mender",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "spar_sentinel@213b430",
+      "name": "spar_sentinel",
+      "commit": "213b43020240eb6cae282422f1b23db6286e0942",
+      "path": "bots/luc/spar_sentinel",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "spar_sniper@aa24129",
+      "name": "spar_sniper",
+      "commit": "aa24129590bf3ac14fa7d5e3b79e814fb84aa6d4",
+      "path": "bots/luc/spar_sniper",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "spork@05ab6a2",
+      "name": "spork",
+      "commit": "05ab6a28656b27c4681b3b8071b1cbdbdab64349",
+      "path": "bots/luc/spork",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_hardened_reinforced@04300bf",
+      "name": "steward_hardened_reinforced",
+      "commit": "04300bf90f34c96691c702531ab4b4016fe6bc87",
+      "path": "bots/luc/steward_hardened_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_hardened_reinforced@366cd1b",
+      "name": "steward_hardened_reinforced",
+      "commit": "366cd1b96f80ab63c439ae87fa255a7645d9f06c",
+      "path": "bots/luc/steward_hardened_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_hardened_reinforced@672ee02",
+      "name": "steward_hardened_reinforced",
+      "commit": "672ee02262fc2a4fcb731cc34183dc26870cdfbd",
+      "path": "bots/luc/steward_hardened_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_hardened_reinforced@a994296",
+      "name": "steward_hardened_reinforced",
+      "commit": "a9942965f5861a447e5cc418f65e36705b1576cb",
+      "path": "bots/luc/steward_hardened_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_hardened_reinforced@c04e46e",
+      "name": "steward_hardened_reinforced",
+      "commit": "c04e46e39d6c6766b352ecc1011514176ef5527b",
+      "path": "bots/luc/steward_hardened_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_hardened_reinforced@cdc552f",
+      "name": "steward_hardened_reinforced",
+      "commit": "cdc552fc07953647177fd78389c202b58c082567",
+      "path": "bots/luc/steward_hardened_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_hardened_reinforced@deba9ec",
+      "name": "steward_hardened_reinforced",
+      "commit": "deba9ec2f8e64e69682710daac88687c225d6d98",
+      "path": "bots/luc/steward_hardened_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_hardened_reinforced@f1f2bda",
+      "name": "steward_hardened_reinforced",
+      "commit": "f1f2bdad53c4f0a40ccadc507c4857e8c0ea570b",
+      "path": "bots/luc/steward_hardened_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_hardened_reinforced@f61245f",
+      "name": "steward_hardened_reinforced",
+      "commit": "f61245f056bf40080d13f720a76c179568987049",
+      "path": "bots/luc/steward_hardened_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_reinforced@a8dc58a",
+      "name": "steward_reinforced",
+      "commit": "a8dc58a3ffac80e35b3459facbb8039bf3d8b453",
+      "path": "bots/luc/steward_reinforced",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "steward_relent@7ed1acc",
+      "name": "steward_relent",
+      "commit": "7ed1acc2f46d60000179abc98be8a55c5c4d19ed",
+      "path": "bots/luc/steward_relent",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "strategist@2a19238",
+      "name": "strategist",
+      "commit": "2a19238868400e6f955206c69fc4a7317de954ee",
+      "path": "bots/strategist",
+      "tags": []
+    },
+    {
+      "bot_id": "strategist@2e6eca5",
+      "name": "strategist",
+      "commit": "2e6eca5e8418a65608ed2fb531fb07c7e7535cb7",
+      "path": "bots/strategist",
+      "tags": []
+    },
+    {
+      "bot_id": "syn@5bf798e",
+      "name": "syn",
+      "commit": "5bf798e6abb414110433dc54248f48b1083c7197",
+      "path": "bots/luc/syn",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tempest@90fc9f3",
+      "name": "tempest",
+      "commit": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+      "path": "bots/jon/fair/tempest",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@025dd51",
+      "name": "tempest_reinforcements",
+      "commit": "025dd519fdfe28d18b38e2f9a4f02c8f9e3bcc4a",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "tempest_reinforcements@38f9c23",
+      "name": "tempest_reinforcements",
+      "commit": "38f9c239f5e5b1cb1937c528cc2306f07a64696c",
+      "path": "bots/luc/tempest_reinforcements",
+      "tags": [
+        "luc",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "tyr@2e6c876",
+      "name": "tyr",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/tyr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "tyr@a41cf22",
+      "name": "tyr",
+      "commit": "a41cf2206042aa29966134a4fb0795a3d3dcba1c",
+      "path": "bots/luc/tyr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "ullr@7d1ab4e",
+      "name": "ullr",
+      "commit": "7d1ab4e620e0e7787e30007bc29b6472bb376406",
+      "path": "bots/luc/ullr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "undertow@fdc1e1f",
+      "name": "undertow",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/fair/undertow",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "undertow_oracle@fdc1e1f",
+      "name": "undertow_oracle",
+      "commit": "fdc1e1fde63bc57a29012f4b19c5ef7f49fe15f4",
+      "path": "bots/jon/unfair/undertow_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "v233_i@902be71",
+      "name": "v233_i",
+      "commit": "902be71c12fe64badadf6b77103b3059399b7f8a",
+      "path": "bots/jon/versions/probes/v233_i",
+      "tags": [
+        "jon",
+        "versions",
+        "probes",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vali@7bc75e8",
+      "name": "vali",
+      "commit": "7bc75e8d211438cce9a92d6bc64f829626f6d337",
+      "path": "bots/luc/vali",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "valkyrie_atk2@7227061",
+      "name": "valkyrie_atk2",
+      "commit": "7227061c4722aadb2af1af4aa369164f0d28d865",
+      "path": "bots/luc/valkyrie_atk2",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "valkyrie_econ2@7227061",
+      "name": "valkyrie_econ2",
+      "commit": "7227061c4722aadb2af1af4aa369164f0d28d865",
+      "path": "bots/luc/valkyrie_econ2",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vanguard_1e88ae8@90fc9f3",
+      "name": "vanguard_1e88ae8",
+      "commit": "90fc9f397377ea364cdcd9053517edeb58cb3ff0",
+      "path": "bots/jon/versions/vanguard_1e88ae8",
+      "tags": [
+        "jon",
+        "versions"
+      ]
+    },
+    {
+      "bot_id": "vidar2@544eeb3",
+      "name": "vidar2",
+      "commit": "544eeb3db1d9577347f943ee81f24885aaeb4c4e",
+      "path": "bots/luc/vidar2",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar@1b7a73a",
+      "name": "vidar",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar@544eeb3",
+      "name": "vidar",
+      "commit": "544eeb3db1d9577347f943ee81f24885aaeb4c4e",
+      "path": "bots/luc/vidar",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar@561800a",
+      "name": "vidar",
+      "commit": "561800a7e51acdbd8b975fc710873bade96b490d",
+      "path": "bots/luc/vidar",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar@8b87da5",
+      "name": "vidar",
+      "commit": "8b87da5295d83fc8a731223f859a83a1743a0eaf",
+      "path": "bots/luc/vidar",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar@ee47958",
+      "name": "vidar",
+      "commit": "ee4795887da1789da10063dcf987b12a1bff0e90",
+      "path": "bots/luc/vidar",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_g_cap6@8b87da5",
+      "name": "vidar_g_cap6",
+      "commit": "8b87da5295d83fc8a731223f859a83a1743a0eaf",
+      "path": "bots/luc/vidar_g_cap6",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_g_relay2@8b87da5",
+      "name": "vidar_g_relay2",
+      "commit": "8b87da5295d83fc8a731223f859a83a1743a0eaf",
+      "path": "bots/luc/vidar_g_relay2",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_ggng@1b7a73a",
+      "name": "vidar_ggng",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar_ggng",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_guard1@1b7a73a",
+      "name": "vidar_guard1",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar_guard1",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_guardgun@1b7a73a",
+      "name": "vidar_guardgun",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar_guardgun",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_nodenial@1b7a73a",
+      "name": "vidar_nodenial",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar_nodenial",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_nogun@1b7a73a",
+      "name": "vidar_nogun",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar_nogun",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_nolaunch@1b7a73a",
+      "name": "vidar_nolaunch",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar_nolaunch",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_norelay@1b7a73a",
+      "name": "vidar_norelay",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar_norelay",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_noring@1b7a73a",
+      "name": "vidar_noring",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar_noring",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_png@1b7a73a",
+      "name": "vidar_png",
+      "commit": "1b7a73a3bee5206f9a0639eeb2eb30509aab2422",
+      "path": "bots/luc/vidar_png",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_r1@c8b850e",
+      "name": "vidar_r1",
+      "commit": "c8b850eee49c1a17083057462bab1c8ddd66ea5e",
+      "path": "bots/luc/vidar_r1",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_r2@c8b850e",
+      "name": "vidar_r2",
+      "commit": "c8b850eee49c1a17083057462bab1c8ddd66ea5e",
+      "path": "bots/luc/vidar_r2",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidar_r3@c8b850e",
+      "name": "vidar_r3",
+      "commit": "c8b850eee49c1a17083057462bab1c8ddd66ea5e",
+      "path": "bots/luc/vidar_r3",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vidarr@c9193be",
+      "name": "vidarr",
+      "commit": "c9193beebfc41e16bf561c800eeb1e185f3140e0",
+      "path": "bots/luc/vidarr",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vigil@e267eeb",
+      "name": "vigil",
+      "commit": "e267eeb419825e12262d3b358f0205c8ae62c022",
+      "path": "bots/luc/vigil",
+      "tags": [
+        "luc",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "vigil_reinforcements@2e6c876",
+      "name": "vigil_reinforcements",
+      "commit": "2e6c876abd7b4b496ee7803641e2b853e49c7f92",
+      "path": "bots/luc/vigil_reinforcements",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vili@1a0c1ad",
+      "name": "vili",
+      "commit": "1a0c1ada45aa7d79156cfc38ff5a5c2014cdfdd4",
+      "path": "bots/luc/vili",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "vor@c32539f",
+      "name": "vor",
+      "commit": "c32539fc9ebf58449fa20cdf7568c4d350b51388",
+      "path": "bots/luc/vor",
+      "tags": [
+        "luc"
+      ]
+    },
+    {
+      "bot_id": "warden_@d142ef0",
+      "name": "warden_",
+      "commit": "d142ef07df7ff6bd81f6857c8de9309e9cfcaff9",
+      "path": "bots/warden_",
+      "tags": []
+    },
+    {
+      "bot_id": "warden_walk@e55aab5",
+      "name": "warden_walk",
+      "commit": "e55aab5a09db5a66427006b3a598d10211632218",
+      "path": "bots/luc/warden_walk",
+      "tags": [
+        "luc"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 5,
+    "targets": [
+      "spar_grind@d9529a7"
+    ],
+    "maps": [
+      "antler",
+      "archipelago",
+      "atoll",
+      "aurora",
+      "bridge",
+      "crossfire",
+      "drumlin",
+      "duel",
+      "eider",
+      "fjord",
+      "fjordgate",
+      "heart",
+      "hive",
+      "jackpot",
+      "lighthouse",
+      "longship",
+      "meander",
+      "moonrise",
+      "nordkap",
+      "pinch",
+      "quarry",
+      "runestone",
+      "saga",
+      "showdown",
+      "skerry",
+      "snowflake",
+      "sprint",
+      "strait",
+      "string",
+      "sweden",
+      "twins",
+      "vase",
+      "vault"
+    ],
+    "matches_per_bot": 33,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}
