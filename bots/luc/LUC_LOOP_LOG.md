@@ -6508,3 +6508,53 @@ evidence I would rather the queue tested `vili` further, but `vili` has already
 had its six rounds. If the live results come back level or worse for `lofn` and
 `hlin`, the honest conclusion will be that tonight's economy line should not
 ship at all.
+
+## Iteration 136 — a fourth ordering, and it contradicts the other three
+
+Ran the earlier lineage against `undertow` at the same precision:
+
+| build | vs `undertow` | position in my development order |
+|---|---|---|
+| **`hoenir`** | **440/600 = 0.7333 ±0.0354** | 3rd |
+| `bifrost` | 434/600 = 0.7233 ±0.0358 | 2nd |
+| `steward_hardened_reinforced` | 361/508 = 0.7106 ±0.0394 | the starting point |
+| `vili` | 494/760 = 0.6500 ±0.0339 | 4th |
+| `syn` | 361/600 = 0.6017 ±0.0392 | 6th |
+| `lofn` | 360/600 = 0.6000 ±0.0392 | 5th |
+| `hlin` | 360/600 = 0.6000 ±0.0392 | 7th |
+
+On this opponent the lineage rises to `hoenir` and then falls **13 points**
+across everything I built afterwards. That is a clean, well-sampled,
+monotone-after-the-peak result.
+
+**And it contradicts the live data.** On ten shared live opponents: `vili` 0.564,
+`bifrost` 0.475, `hoenir` 0.467 — `hoenir` last where `undertow` puts it first,
+`vili` first where `undertow` puts it fourth.
+
+**Four instruments, four orderings of the same seven builds:**
+
+| instrument | ordering |
+|---|---|
+| official 21 maps | `vili` > `hoenir` > `bifrost` |
+| 1,000 generated maps | `bifrost` > `hoenir` > `vili` |
+| `undertow`, 600+ games | `hoenir` > `bifrost` > `shr` > `vili` > economy line |
+| **live, shared opponents** | **`vili` > `bifrost` ≈ `hoenir`** |
+
+No two agree. Every one of them is internally consistent, adequately sampled,
+and confident. I spent iterations 133-135 treating `undertow` as the instrument
+that finally resolved things, on the grounds that it was the only opponent
+strong enough to pressure us — and it produces an ordering as idiosyncratic as
+the rest.
+
+**The correct conclusion is not that one of these is right.** It is that a single
+opponent, or a single map set, measures *the matchup*, not the build. The ladder
+averages over 112 opponents and a held-out pool; nothing I can assemble locally
+approximates that, and each local proxy I build has ranked our bots differently
+from every other.
+
+So iteration 135's "the economy line is a regression" was overstated in the same
+way iteration 133's "the instrument is saturated" was: both took one panel's
+verdict as the truth. What I can say is narrower: **against `undertow`
+specifically, the economy line is 13 points behind `hoenir`; against the ladder
+so far, `vili` leads its ancestors; and these two facts do not combine into a
+ranking.**
