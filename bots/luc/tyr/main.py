@@ -1,20 +1,14 @@
-"""Heimdall: warden_walk, atlas-free, with a home guard.
+"""Valkyrie: ragnarok with the throw pad spawned first.
 
-The Builder standing at our own Core answers an enemy that walks up to it on
-*sighting* rather than waiting for the Core to lose 50 HP and raise the damage
-alarm. Their whole attack is one Builder, their Core will not replace it while
-any of their Builders lives, and a Gunner kills a 40 HP Builder in four rounds
--- so the cheapest game to win is the one where their attacker never emplaces.
-Measured at 145/168 against valkyrie, vigil, ragnarok and vanguard where the
-same chassis without it takes 118. See README.md.
+The pad Builder spawns before the attacker instead of after it, and the
+opening ferry is gated on knowing where the enemy Core is rather than on
+having looked it up, so the relay still runs on a map outside the pool.
+Everything below is inherited unchanged.
 
-No map oracle: there is no atlas module and no import of one, so this plays a
-generated map, the held-out set and the final the way it plays the pool.
-
-Inherited below: vigil's turret meta and economy planner, Prospect's corner
-doctrine, Casemate's walled piercing-Sentinel siege as the no-lane fallback,
-GobbleGlitch's mender defence and cost-scale hygiene, and the capped Launcher
-relay that warden_walk measured.
+Vigil's turret meta and economy planner, Prospect's corner doctrine,
+Casemate's walled piercing-Sentinel siege as the no-lane fallback,
+GobbleGlitch's mender defence and cost-scale hygiene, and the
+farthest-first symmetry guess measured on the published pool.
 """
 
 import builder

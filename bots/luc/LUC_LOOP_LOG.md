@@ -7364,3 +7364,64 @@ Two things found along the way that outlast both candidates:
 `lofn` also finished its eight rounds live: **0.494 over 85 shared games**,
 against `vili` 0.491, `freyja` 0.509 and `snotra_h` 0.600 — the iteration-150
 prediction from `undertow` held. Team 19/113, rating 1700.
+
+## Iteration 157 — the healing race, and what "delivery" actually meant
+
+Asked the 300 games from iteration 156 what separates a win from a loss against
+`spar_sentinel`. The answer is not composition:
+
+- median loss runs **284 rounds**, median win **200**;
+- in the games we **lose** we deal **more** Core damage than in the ones we win
+  — 1408 against 1290;
+- and their Core still ends at 322 of 500.
+
+So roughly **1230 HP is healed back** in a losing game, about 4.3 a round,
+which is one Builder standing on the Core mending it without interruption.
+Against that, attrition is arithmetically hopeless:
+
+| action | cost per point |
+|---|---|
+| Builder attack | 2 Ti -> 2 dmg = 1.00 Ti/dmg |
+| Gunner / Sentinel | ammo 1:1 -> ~0.57 Ti/dmg |
+| Builder heal | 1 Ti -> 4 HP = **0.25 Ti/HP** |
+
+Healing is four times cheaper than the attack we grind with. We are not losing
+these games on skill, we are losing them on exchange rate.
+
+`constants.py` had already been here. `SIEGE_SENTINEL_TARGET` was swept to 2, 3
+and 4 — all 0.581 against a cap of one at 0.590 — with the conclusion *"the
+attacker does not survive long enough, or stay solvent enough, to seat a second
+one. **The ceiling is delivery, not permission.**"* Since
+`p.siege_sentinels_built` is per-Builder, a second attacker is precisely the
+change that raises delivery. And `saga` had just tested the other direction,
+`(2, 1)`, so `(1, 2)` was the one untested cell in the role table.
+
+`tyr` is that cell, and it is **worse on both instruments**:
+
+| vs | `snotra_h` | `tyr` | |
+|---|---|---|---|
+| `spar_sentinel` | 0.4300 | 0.3967 | -0.033 (-0.8 sd) |
+| `undertow` | 0.6000 | 0.5467 | -0.053 (-1.3 sd) |
+
+The diagnostic is worth more than the score. Siege Sentinels seated per game
+went **down**, 0.28 to 0.16, with twice the attackers. "Delivery" was never a
+shortage of bodies: every Builder levies +20% on every later price, so a second
+attacker makes *both* attackers poorer, and the 30 Ti Sentinel neither can now
+afford is the exact thing that was supposed to break the healing equilibrium.
+Adding bodies moves the binding constraint the wrong way.
+
+**With `saga`, the role table is now bounded in both directions**: `(2, 1)`
+null, `(1, 2)` -1.3 sd, `(1, 1)` ships. That is the same verdict the flag space
+gave over fourteen changes in iterations 152 and 155.
+
+One methodological result worth keeping: the `snotra_h` baseline reproduced
+**exactly** across independent runs — 129/300 against `spar_sentinel` and
+180/300 against `undertow`, the same integers as iteration 156 on the same map
+set. On a fixed map list the engine is deterministic enough that a baseline can
+be reused across runs rather than re-measured, which is 600 games an iteration
+I have been spending out of caution since the iteration-141 mix-up. Caution was
+right to check; it does not have to be paid twice.
+
+Nothing beat `snotra_h`, so nothing was queued. Team 20/113, rating 1694 — down
+6 points while the farm works through the weak queue (`lofn`, `hlin`, `nanna`,
+`mani`), all of which carry `RING_AFTER_ECONOMY`.

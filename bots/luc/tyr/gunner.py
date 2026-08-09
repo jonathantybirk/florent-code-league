@@ -15,8 +15,9 @@ from typing import TYPE_CHECKING
 
 from fcode import Controller, EntityType, GameError, Position
 
-from constants import (D8, HOME_GUARD_RADIUS_SQ, ROTATE_TITANIUM_RESERVE,
-                       SLOT_OWN_CORE, TURRET_QUIET_ROUNDS)
+from constants import (D8, HOLD_FIRE_ON_TENDED_BARRIER, HOME_GUARD_RADIUS_SQ,
+                       ROTATE_TITANIUM_RESERVE, SLOT_OWN_CORE,
+                       TURRET_QUIET_ROUNDS)
 from utils import unpack_core
 
 if TYPE_CHECKING:
@@ -50,8 +51,29 @@ def _run(player: "Player", ct: Controller) -> None:
         _rotate_towards(ct, enemies)
         return
 
+    if _enemy_on_the_line(ct):
+        # Covering something it cannot currently shoot -- no ammunition, or
+        # reloading. Not idle, and not a candidate for retirement: destroying a
+        # turret because the team ran out of ammunition answers the shortage by
+        # removing the thing that was waiting on it.
+        player.quiet_rounds = 0
+        return
     player.quiet_rounds += 1
     _stand_down_if_pointless(player, ct)
+
+
+def _enemy_on_the_line(ct: Controller) -> bool:
+    """Anything of theirs inside the raw attack pattern, ammo and cooldown aside."""
+    try:
+        tiles = ct.get_attackable_tiles()
+    except GameError:
+        return False
+    for tile in tiles:
+        for lookup in (ct.get_tile_builder_bot_id, ct.get_tile_building_id):
+            entity_id = lookup(tile)
+            if entity_id is not None and ct.get_team(entity_id) != ct.get_team():
+                return True
+    return False
 
 
 def _fire_at_ray_target(ct: Controller) -> bool:
@@ -66,10 +88,42 @@ def _fire_at_ray_target(ct: Controller) -> bool:
         # One of our own bots walking across the ray is the ordinary case and
         # not worth a diagnostic line every round.
         return False
+    if _is_tended_barrier(ct, target, target_id):
+        return False
     if not ct.can_fire(target):
         return False
     ct.fire(target)
     return True
+
+
+def _is_tended_barrier(ct: Controller, target: Position, target_id: int) -> bool:
+    """A barrier with its Builder still beside it is a trade we lose.
+
+    Firing is an explicit call, so holding fire is something this turret can
+    actually choose. It should: a barrier is 30 HP for 3 Ti, the cheapest object
+    on the board, and this Gunner needs five shots and 20 Ti of ammunition to
+    break one. If the Builder that laid it is still standing next to it, the
+    barrier is back up for 3 Ti the round after we finish -- we buy nothing and
+    hand them a 17 Ti profit on every cycle.
+
+    Hold instead, and take the same wall once its Builder has walked away. The
+    wall is not going anywhere, and every round it stands is a round that Builder
+    is laying barriers instead of carrying a turret towards our Core.
+
+    Only barriers. A conveyor is worth breaking whoever is standing over it,
+    because the income stops the moment the tile does, and a turret is worth
+    breaking always.
+    """
+    if not HOLD_FIRE_ON_TENDED_BARRIER:
+        return False
+    if ct.get_entity_type(target_id) != EntityType.BARRIER:
+        return False
+    for direction in D8:
+        neighbour = target.add(direction)
+        bot_id = ct.get_tile_builder_bot_id(neighbour)
+        if bot_id is not None and ct.get_team(bot_id) != ct.get_team():
+            return True
+    return False
 
 
 def _visible_enemies(ct: Controller) -> list[int]:
