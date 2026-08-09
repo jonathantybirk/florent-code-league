@@ -7285,3 +7285,82 @@ The rule I should have written into the log the first time, and am writing now:
 **never delete maps in the same command that reads results, because the run may
 still be using them.** Copy in, run, read, and only clean up when the log shows
 the run finished.
+
+## Iteration 156 — the losses have two shapes, and neither answer moves
+
+Stopped sweeping the bot and went to the replays for the opponents that are
+actually costing us rank. The live table is unambiguous about where the points
+are: Big O 0.23, O(1) 0.29, 0033 0.30, Besvikomat 0.30, Coreflood 0.36, against
+gsxWins 0.70 and Ouroboros 0.72. We beat the bottom of the field and get taken
+apart by the top. `undertow`, my one validated instrument, sits at 0.71 — which
+is *gsxWins territory*. That is why fourteen flags moved nothing: every one was
+tuned on an opponent we already beat.
+
+Decoded 25 games across the five worst matchups. They split into two shapes.
+
+**Shape 1 — Big O, and only Big O.** 84-turn games, exactly two Sentinels every
+game, we answer with Gunners every game. Sentinel r^2=32 and unblockable
+against Gunner r^2=13 and blocked by anything in the line, our own conveyors
+included. Two games ended holding **72–76 unspent ammunition**: shots bought
+and never taken, which is what being out-ranged looks like in the economy.
+
+**Shape 2 — everyone else.** 300–435 turn games, and they run our workforce
+into the ground. Live Builders averaged over the game, not cumulative builds:
+
+| opponent | them | us | turns |
+|---|---|---|---|
+| Coreflood | 6.1 | 3.1 | 435 |
+| O(1) | 5.0 | 3.0 | 300 |
+| 0033 | 5.3 | 4.0 | 336 |
+| Besvikomat | 5.2 | 3.8 | 392 |
+| Big O | 3.6 | 3.7 | 84 |
+
+Built one candidate for each shape.
+
+`bragi` — Sentinel preference extended to the field turret path. **+0.4 sd**
+against a Sentinel opponent, 0.0 against `undertow`. And the reason is a trap I
+walked into for the third time: `_FIELD_GUNNERS = {RUSH: 0, FORTIFY: 2,
+BLITZ: 0}`, so `_engage_with_turret` returns immediately on RUSH and BLITZ and
+`bragi` is byte-identical to its parent on most of the panel. I caught it
+before reading the result rather than after, which is the only improvement
+here. The number is not evidence about Sentinels; it is evidence the code did
+not run.
+
+`saga` — the fourth Builder, and worth more for what it disentangles than for
+its score. `lofn` tested this exact change and read 0.494 live against
+`snotra_h`'s 0.600, which looks like a refutation. It is not: `lofn` descends
+from `vili` and carries `RING_AFTER_ECONOMY`, measured separately at **-8.3
+points (+3.1 sd)**. The Builder had never been measured clean. On `snotra_h`,
+which lacks the constant entirely:
+
+| vs | `snotra_h` | `saga` | |
+|---|---|---|---|
+| `spar_sentinel` | 0.4300 | 0.4367 | +0.007 (+0.2 sd) |
+| `undertow` | 0.6000 | 0.5933 | -0.007 (-0.2 sd) |
+
+The mechanism fires hard — 4.6 Builders against 3.7, 12.3 conveyors against
+8.6, 1.16 Harvesters against 1.04 — and the result does not move. So:
+
+1. **`lofn`'s live deficit belongs to `RING_AFTER_ECONOMY`, not the Builder.**
+   That confound was mine and it is now removed.
+2. **Builder count is a correlate of winning, not a cause.** We can reach the
+   leaders' workforce and buy nothing with it. Whatever Coreflood does with six
+   Builders, this architecture does not do with four.
+
+Neither build beats `snotra_h`, so neither is queued.
+
+Two things found along the way that outlast both candidates:
+
+- **`benchmarks/suite.py` already records per-game composition** —
+  `builders_spawned`, `gunners_built`, `sentinels_built`, `conveyors_built`,
+  `core_damage_dealt`, `stalled_builders` and more, per side, in every result
+  JSON. I was about to hand-roll stderr instrumentation to get numbers that
+  were already being written to disk on every run I have done all session.
+- **`spar_sentinel` is a real instrument, not the wrong-opponent fixture its
+  README claims.** We score **0.43** against it, against 0.60 on `undertow` and
+  0.73–1.00 on everything else in the zoo. It is the only local opponent that
+  reproduces a live losing matchup, and it models Big O closely.
+
+`lofn` also finished its eight rounds live: **0.494 over 85 shared games**,
+against `vili` 0.491, `freyja` 0.509 and `snotra_h` 0.600 — the iteration-150
+prediction from `undertow` held. Team 19/113, rating 1700.
