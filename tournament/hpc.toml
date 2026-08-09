@@ -13,11 +13,12 @@ queue = "hpc"
 throttle = 100
 
 # Matches per array element. The fastest elements in the 2026-08-09 support trace ran 10 matches
-# in 41s. A hard minimum of 225 therefore budgets 922s (15.4 min) even at that observed rate.
-# Work is balanced across elements instead of leaving a short ragged tail; 300 is the normal
-# target. A remainder below 225 is finished locally and is never submitted as a short HPC job.
-chunk = 300
-minimum_matches_per_job = 225
+# in 41s. A hard minimum of 300 therefore budgets 1,230s (20.5 min) even at that observed rate,
+# leaving more than five minutes of margin over support's requirement. Work is balanced across
+# elements instead of leaving a short ragged tail; 400 is the normal target. A remainder below
+# 300 is finished locally and is never submitted as a short HPC job.
+chunk = 400
+minimum_matches_per_job = 300
 
 # Walltime is a HARD KILL and must cover a whole element. It is now budgeted on the p99 of a real
 # batch, not on chunk x the slowest match ever seen -- the old rule assumed every match in an
@@ -28,8 +29,8 @@ minimum_matches_per_job = 225
 # 33-map v3 pool, with spar_econ retired:
 #   batch of 10:  median 81s   p95 216s   p99 315s   p99.9 450s   max 502s
 # The per-match budget is the observed MAXIMUM plus 10%: 502s x 1.1 / 10, rounded up to 56s.
-# Balanced batches can be as large as 449 around the one-element/two-element boundary, requiring
-# 420 minutes under that deliberately conservative linear bound; 480 minutes leaves headroom.
+# Balanced batches can be as large as 599 around the one-element/two-element boundary, requiring
+# 560 minutes under that deliberately conservative linear bound; 600 minutes leaves headroom.
 # The previous constants (mean 8.8s, max 64s) were
 # measured on a bot population that no longer exists and were wrong by 19x at the tail; that is
 # what killed 108 elements in v3-newmaps-20260806 alone.
@@ -42,7 +43,7 @@ minimum_matches_per_job = 225
 # file, `hpc submit` re-queues exactly those, resubmit_abandoned_runs() does it automatically, and
 # each retry now escalates the walltime (see RESUBMIT_WALLTIME_FACTOR) so a batch that outgrew
 # this budget gets room rather than dying at the same wall three times.
-walltime = "480"
+walltime = "600"
 memory = "2GB"        # per core; measured max RSS is 193 MB, so this is ample headroom.
 
 # One core, and only one. A match cannot use more: the engine runs both bots in CPython

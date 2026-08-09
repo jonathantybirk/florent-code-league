@@ -373,19 +373,19 @@ needed. Arrays run concurrently against the same per-user slot limit, so splitti
 in throughput — but `bsub` takes ~90s to accept a 1000-element array, so submitting many of them
 is slow in itself.
 
-**Each array element plays a balanced batch near 300 matches** (`chunk` in `hpc.toml`), with a
-hard minimum of 225. DTU support requires jobs longer than 15 minutes; the fastest production
-element they reported ran 10 matches in 41 seconds, so 225 matches budget 15.4 minutes even at
+**Each array element plays a balanced batch near 400 matches** (`chunk` in `hpc.toml`), with a
+hard minimum of 300. DTU support requires jobs longer than 15 minutes; the fastest production
+element they reported ran 10 matches in 41 seconds, so 300 matches budget 20.5 minutes even at
 that observed rate. Batch boundaries are balanced across the whole worklist, avoiding a short
-ragged final element. For a 23,562-match tournament this produces about 79 elements instead of
+ragged final element. For a 23,562-match tournament this produces about 59 elements instead of
 23,562 short jobs.
 
 ```sh
-uv run python -m tournament hpc submit --tid jon-full              # target 300
-uv run python -m tournament hpc submit --tid jon-full --chunk 350  # larger long jobs
+uv run python -m tournament hpc submit --tid jon-full              # target 400
+uv run python -m tournament hpc submit --tid jon-full --chunk 500  # larger long jobs
 ```
 
-Values below `minimum_matches_per_job` are rejected. If a killed element leaves fewer than 225
+Values below `minimum_matches_per_job` are rejected. If a killed element leaves fewer than 300
 matches outstanding, the automated evaluator fetches the completed results and finishes the tail
 locally rather than creating a prohibited short cluster job.
 
@@ -413,8 +413,8 @@ timestamped files, so re-submitting never disturbs an array that is still runnin
 ### Walltime is a hard kill
 
 `walltime` must cover a whole element. The current conservative budget is 56 seconds per match,
-derived from the slowest observed batch plus 10%. A balanced batch can reach 449 matches at the
-one-element/two-element boundary, so the configured walltime is 480 minutes.
+derived from the slowest observed batch plus 10%. A balanced batch can reach 599 matches at the
+one-element/two-element boundary, so the configured walltime is 600 minutes.
 
 | | mean | median | p90 | p99 | max |
 |---|---|---|---|---|---|
