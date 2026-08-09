@@ -684,3 +684,32 @@ from round 4) is a separate unaddressed failure mode.
   live; the separator at the top is something neither agent has built yet, and the
   local instrument cannot see it. The next lever is likely the door-on-boom synthesis
   done properly, or the farm's promotion bar (still the cheapest +Elo available).
+
+## Morning summary — 2026-08-09 ~10:00 (for Lucas)
+
+**Where we are**: rank 18 at 1733 (loop started rank 14/1756; low point 21/1668 during
+the flagship-churn afternoon). Incumbent shr@f1f2bda active at 1787 on a big sample.
+
+**byggvir final: 1719 [1657,1770] over 25 series** — the Pivot-style boom (3 miners, no
+Launchers, 2× Harvesters) plays level with every tip we own despite losing 0.21–0.31 to
+our own rushers locally. Six of my builds live-priced this session: freyr 1754, vor
+1717, byggvir 1719, mimir ~1730, fulla ~1720, vali 1601. Nothing beats the incumbent's
+sample-size 1800.
+
+**What would actually move rank, in order of expected value**:
+1. **The farm's promotion bar** (≥25-game qualification or hysteresis) — the churn cost
+   ~60–85 rating twice; this is config-level and owner's call.
+2. **The door Sentinel on a chassis with an economy** — loki's door killed 11 of 12
+   enemy Builders in-game; the blocker is delivering construction into contested ground
+   (three failed attempts). Pantheon demonstrably solves escorted forward barriers —
+   their replays are the study.
+3. **Your sabotage doctrine** — mechanically implemented (belt-cut walling, wall-in,
+   door sniper with the never-touch-Core constraint) and one delivery problem away from
+   live.
+
+**Durable artifacts**: `tools/extract_maps.py` + `maps/live/` (the live pool rebuilt
+from replays — local testing was on the wrong maps for two days), the mend-pin and
+Sentinel-first bug fixes in every current build, and the joint finding with the other
+loop that self-play panels do not price this ladder.
+
+Loop continues in monitoring mode (hourly); builds resume on new evidence or your say.
