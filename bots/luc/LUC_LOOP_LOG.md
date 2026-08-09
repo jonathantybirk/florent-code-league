@@ -7708,3 +7708,55 @@ has been the wrong bar. Team 20/113, rating 1692.
 **Next**: work the `steward_hardened_reinforced@f1f2bda` lineage (1776 over 387
 games, the best-sampled high rating we have) rather than `snotra_h`, and
 validate on the ladder rather than against a sibling fixture.
+
+## Iteration 162 — first candidate on the right base, and the first queue in six iterations
+
+Acted on iteration 161: stopped working `snotra_h` and moved to the lineage the
+ladder actually rates. `vidarr@bbfaa9c` is the pick — highest live estimate
+(1777), and the composition that matches the meta the ladder wins with:
+
+| | builders | gunners | sentinels | harvesters | conveyors |
+|---|---|---|---|---|---|
+| `vidarr@bbfaa9c` | **4.70** | 2.28 | **0.83** | **3.45** | **20.28** |
+| `snotra_h` | 4.23 | 3.25 | 0.43 | 3.00 | 13.79 |
+
+It also still carries `BUILDER_PRIORITY_RADIUS_SQ = 20`, the defect `eir`
+fixed. `eir` was inert on `snotra_h` because that base seats 0.32 Sentinels a
+game and three games in four have none. This base seats 0.83, so `ran` is the
+same one-constant fix where it has more than twice the opportunity to fire.
+
+| vs | `vidarr@bbfaa9c` | `ran` | | identical |
+|---|---|---|---|---|
+| `undertow` | 0.6533 | 0.6500 | -0.1 sd | 278/300 |
+| `spar_sentinel` | 0.4333 | 0.4300 | -0.1 sd | 294/300 |
+
+**Level.** Twice the Sentinels was still not enough — the fix alters 22 games
+in 300 and nets zero. That constant is now inert on two separate lineages,
+which is as settled as a local result gets.
+
+**Queued it anyway, and the reason is not that it won.** Two things that do not
+depend on the local panel:
+
+1. `vidarr@bbfaa9c` is our **highest live estimate on the thinnest sample** —
+   1777 over 45 games against `e55aab5`'s 1771 over 289, with `e55aab5` holding
+   the seat. Six Elo on 45 games is noise, and only live games settle it.
+2. `vidarr@bbfaa9c` **cannot be re-queued.** `farm.py:603` partitions the spec
+   on `:` and dedupes on `name@commit` alone, so the round count does not make
+   a new entry. My earlier note that changing rounds re-queues a build was
+   wrong. A new commit is the only route to more sample on this composition,
+   and `ran` is that commit.
+
+Queued `ran@0eca95f:10` on `x/ladderfarm`; verified the JSON parses, `enabled`
+and `yield_until` untouched, and `ran@0eca95f:bots/luc/ran/main.py` resolves in
+git so the farm can upload it.
+
+One thing I nearly reported as a bug and should not have. The local
+`~/projects/ladderfarm/state.json` shows an empty queue and no
+`test_next_done` key, which would mean every config entry is re-queued forever.
+It is a **stale copy** — last written 2026-08-07 03:52, no farm timer and no
+`farm.py` process on this host — because the farm moved to the desktop's WSL
+that same day. `config.json` in git is the real interface; the local state file
+is not the live state. Checking that before writing it up is the only reason it
+is not in this log as a phantom defect.
+
+Team 20/113, rating 1698.
