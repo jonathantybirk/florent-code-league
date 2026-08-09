@@ -6308,3 +6308,45 @@ are the ones that beat what is live, on the pool that has matched live twice.
 
 No new build this iteration — measuring against the actual current flagship was
 the missing piece, and it turns out nobody had done it.
+
+## Iteration 131 — an external panel did exist, and it refutes the mirror hypothesis
+
+**Correction to iteration 126.** I said there was no external opponent set in
+this repo and closed the mirror-match hypothesis as untestable. Wrong:
+`benchmarks/suite.py` carries a registry that pulls opponents from
+`origin/x/jon` — `jonbot`, `vanguard`, `undertow`, `tempest_jon` are **Jon's
+bots**, another person's code, available by name. I had been running
+`--opponents` with our own builds all session without ever reading the registry
+that lists the alternatives.
+
+The test, both lineages against that panel, 21 official maps, 42 games a cell:
+
+| opponent | `base_e55` | `lofn` |
+|---|---|---|
+| `jonbot` | 0.86 | **0.93** |
+| `vanguard` | 0.76 | **0.86** |
+| `undertow` | 0.60 | **0.76** |
+| `tempest_jon` | 0.81 | **0.98** |
+| **overall** | **127/168 = 0.756 ±0.065** | **148/168 = 0.881 ±0.049** |
+
+**The hypothesis is refuted.** `lofn` beats `base_e55` head to head (0.667) *and*
+beats it against every external opponent, by 12.5 points overall. There is no
+family-resemblance effect: my panel is not rating `e55aab5` low because its
+opponents are relatives — it rates it low against strangers too.
+
+**So the divergence is sharper, not softer.** On every measurement I can make —
+our bots, Jon's bots, official maps, generated maps — `lofn` is clearly better
+than `e55aab5`. On the ladder, `e55aab5` has 1,425 games at 0.581 and `lofn`'s
+ancestors have 90-135 games at 0.47-0.53. Four hypotheses have now been tested
+and failed: game length (confounded), map shape (no effect), opponent mix
+(confounded), and mirror matches (refuted).
+
+**What remains untested** is the one thing I cannot touch: the ladder's own map
+pool, which is held out, and its 112 opponents, of whom I have four. It is
+entirely possible that the answer is simply "the live pool is different from
+both of mine and Jon's bots are not the ladder", and that no local instrument
+could ever have settled this.
+
+That is a better place to end than the one I was in three iterations ago, when
+I had declared the question closed on the strength of not having looked for the
+opponents.
