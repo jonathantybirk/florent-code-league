@@ -8862,3 +8862,55 @@ against 0.52 in long ones — is a design question about what the bot does
 between round 100 and round 400, and it will not fall to another constant.
 
 Team 22/113, rating 1658.
+
+## Iteration 183 — the seat moved, a prediction held, and the defensive constants are dead too
+
+**The iteration-167 queue action worked.** The live seat has moved from
+`steward@e55aab5` to `steward_hardened_reinforced@f1f2bda`, which now has 102
+rated games at elo 1763. `e55aab5`, which held the seat on an estimate of 1771
+while its raw record was 0.528, has since fallen to **1715** — the regression
+that `project_live_estimate_regression` predicts, arriving on schedule. Queueing
+the better-recorded build for fresh evidence was the right lever and it landed.
+
+**`ran` is live, and the local prediction held.** 90 shared games:
+
+| build | shared record | rate |
+|---|---|---|
+| `ran@0eca95f` | 52/90 | 0.578 |
+| `vidarr@bbfaa9c` | 43/75 | 0.573 |
+| `shr@f1f2bda` | 96/175 | 0.549 |
+| `snotra_h@6951e03` | 52/95 | 0.547 |
+
+`ran` against its own base is +0.005 live, against -0.1 sd measured locally.
+The mender-radius change is null in both places, which is a prediction
+confirmed rather than a result. It also shows the ceiling of what live can
+resolve: all four builds sit inside ±0.10, so the one-point differences I chase
+locally are below the live sample's resolution too.
+
+**Defensive constants, against the Sentinel opponent** on `maps/livelike2`, 138
+paired cells:
+
+| change | rate | games changed |
+|---|---|---|
+| `HOME_TURRET_MAX` 4->6 | 0.6304 | **0** |
+| `PATROL_RADIUS` 3->5 | 0.6304 | **0** |
+| `SECOND_MENDER_ALARM` 2->1 | 0.6304 | **0** |
+| `HOME_GUARD_RADIUS_SQ` 36->64 | 0.6304 | 2 |
+| **`nott`** | **0.6304** | — |
+| `CORE_THREAT_RADIUS_SQ` 13->32 | 0.6232 | 2 |
+
+Four more dead constants. `HOME_TURRET_MAX` changing nothing is the
+informative one: `desired = 1 + damage // HOME_TURRET_STEP` with the step at
+180, so the cap of 4 is never approached — home defence builds **one** turret
+whatever the cap says.
+
+Worth noting what I did *not* build. `_counter_sentinels` reads
+`ct.get_nearby_entities()`, the Builder's vision at r^2=20, while a Sentinel
+fires from r^2=32 — so an enemy Sentinel can shoot from outside the range at
+which our guard can see it to answer, the same shape as the
+`BUILDER_PRIORITY_RADIUS_SQ` defect. The Core does publish the nearest shooter
+for the guard to walk to, so the machinery may already cover it, and after this
+session's record with speculative fixes I am not writing another one without a
+way to show the path is actually blocked first.
+
+Team 22/113, rating 1658.
