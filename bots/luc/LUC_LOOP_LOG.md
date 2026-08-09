@@ -7208,3 +7208,42 @@ bots — which is not what the ladder scores.
 regression, `vili`'s ring hold is most of it, and the builds still queued
 (`hlin`, `nanna`, `mani`) all inherit both. I expect them to land at or below
 `lofn`. `snotra_h` should stay live.
+
+## Iteration 154 — the loss profile against the validated opponent, and why I am not building on it
+
+With `undertow` established as the instrument that tracks the ladder, the
+obvious next move is to study the 27% of games we lose to it. 874 wins, 326
+losses across `hoenir` and `bifrost`:
+
+| metric | won | lost | delta |
+|---|---|---|---|
+| turns | 167 | **313** | **-146** |
+| Harvesters | 2.34 | 1.53 | +0.81 |
+| conveyors | 12.80 | 10.07 | +2.72 |
+| Core HP at end | 402 | 61 | +341 |
+| **their** Gunners | 2.38 | 3.27 | -0.89 |
+| first damage taken | 23.4 | 32.0 | -8.7 |
+
+**We win fast and lose slow**, and in the losses we hold fewer Harvesters while
+they hold more Gunners.
+
+**I am not building on this, and the reason is the session's most repeated
+lesson.** Every one of those columns is measured *after* the game diverged. A
+game we fail to close runs long by definition; a long game gives them time to
+build the third Gunner and gives us fewer Harvesters per round survived. I have
+been caught by this exact shape four times tonight — iteration 51 (Harvesters),
+56 (turret timing), 58 (the win/loss split), 59 (my own summary table) — and
+each time the experiment refuted the story the correlation told.
+
+The only column here that is not downstream of the outcome is `first damage
+taken`, and it points the wrong way for a rush narrative: we take our first
+damage **later** in the games we lose.
+
+**What would be exogenous** is map identity, and iteration 63 already tested
+that properly: a controlled experiment matching maps on size and Core distance
+found the axis effect vanished. Map features do not predict our losses.
+
+So the loss profile tells me what losing looks like, not what causes it, and I
+have no lever it points at. Recording it because the numbers are worth having in
+the log, and recording the refusal because building on it is the mistake I have
+already made four times.
