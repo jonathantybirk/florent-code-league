@@ -8614,3 +8614,48 @@ only +0.7 sd. If live behaves like `livelike` rather than `longgame` this is a
 small gain. The ladder settles it.
 
 Team 21/113, rating 1702.
+
+## Iteration 178 — I queued a result found on a map set I had selected from results
+
+Iteration 177 said `maps/orerich` was the wrong regime, so the honest next step
+was to re-check what I had already shipped and queued against a set built the
+right way. Generated `maps/livelike2` — 30,000 draws filtered to the live
+terrain profile *including* ore placement, giving 69 maps whose nearest visible
+ore is a median **4.0 tiles, matching live exactly**.
+
+552 strictly paired cells, four opponents:
+
+| build | rate | harvesters | vs `snotra_h` |
+|---|---|---|---|
+| `nott` | **0.721** | 2.68 | +0.011 (+0.4 sd) |
+| `snotra_h` | 0.710 | 2.78 | — |
+| `sunna` | 0.710 | 3.29 | **0.000 (McNemar z = 0.00)** |
+
+**`sunna` is exactly level**, and -0.4 sd against `nott`, in the regime I had
+just argued was the one that wanted it. Game length is not the hidden moderator
+either — split inside that set it reads +0.1, -1.0 and +0.3 sd for games under
+100, 100-200 and 200+ rounds.
+
+**The error is mine and it is a methodological one.** The +2.2 sd came from
+`maps/longgame`, which I built in iteration 175 by taking **the top 15 of 150
+maps by median game length, ranked using the very games that later produced the
+result**. A large effect on a subset chosen from the same data is the textbook
+shape of a spurious finding, and the dose-response I read across three sets —
+-1.2 sd at 2 tiles, +0.7 at 3, +2.2 at 4 — is better explained as three points
+lining up by chance than as a mechanism. It does not survive anywhere the maps
+were built independently: **0.0 sd on `livelike2`, -0.3 on the wider 48-map
+set, -1.2 on `orerich`.**
+
+**Withdrew `sunna@82553b1` from the farm queue** and marked the build
+WITHDRAWN. `nott@0ac1faa` and `ran@0eca95f` stay queued — `nott` is now
++0.4 sd on `livelike2` as well, which is its fourth independently built set and
+consistent with the modest positive it has shown throughout.
+
+The rule this leaves behind, which is worth more than the build: **a map set
+selected from results cannot then be used to measure them.** `maps/orerich`,
+`maps/orerich2`, `maps/livelike` and `maps/livelike2` are all constructed from
+live terrain statistics alone and are safe. `maps/longgame` is not — it is fit
+for asking what happens in long games, and unfit for deciding what to ship.
+Its README now says so.
+
+Team 21/113, rating 1691.
