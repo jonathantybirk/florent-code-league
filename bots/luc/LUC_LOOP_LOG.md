@@ -8003,3 +8003,68 @@ read them before reading the results, which is the only reason 1,200 games of
 "three identical bots tie with their base" did not get written up as a finding.
 
 Nothing queued. `ran@0eca95f:10` is still not in the feed. Team 18/113, 1704.
+
+## Iteration 167 — queued the seat challenger, and hit the instrument's time horizon
+
+**The action that matters this iteration is a queue, not a build.** The live
+seat is held by `steward@e55aab5` at 0.528 over 125 games while
+`steward_hardened_reinforced@f1f2bda` is 0.681 over 310. Checked the farm's own
+promotion rule before assuming what was blocking it:
+
+| build | faced of the 10 closest-rated opponents | |
+|---|---|---|
+| `steward@e55aab5` | 9/10 | qualifies |
+| `steward_hardened_reinforced@f1f2bda` | 9/10 | qualifies |
+| `vidarr@bbfaa9c` | 9/10 | qualifies |
+| `snotra_h@6951e03` | 8/10 | qualifies |
+
+`QUALIFY_MIN` is 7, so **qualification is not the blocker** — every candidate
+clears it. The blocker is the estimate: `e55aab5` holds the seat on 1771
+against `f1f2bda`'s 1776, and promotion turns on those numbers rather than on
+the records above.
+
+`f1f2bda` had never been in `test_next` at all; its 387 games came from UCB
+selection. Queued `steward_hardened_reinforced@f1f2bda:12` — fresh evidence for
+our best-recorded build is the one lever here that does not touch the farm's
+promotion logic, which belongs to another agent.
+
+**Local candidate: turret retirement.** Iteration 165 showed a build-side
+turret ceiling is harmful because the turrets are load-bearing. Retirement is
+the complement and a genuinely different mechanism: `_stand_down_if_pointless`
+self-destructs a turret that has seen nothing for `TURRET_QUIET_ROUNDS = 60`,
+handing its +20% scale back, and it can only ever remove *provably idle*
+turrets. Swept 20 / 30 / 45 against 60:
+
+| quiet rounds | record | rate | identical |
+|---|---|---|---|
+| 45 | 196/300 | 0.6533 | 291/300 |
+| 30 | 196/300 | 0.6533 | 291/300 |
+| 20 | 196/300 | 0.6533 | 288/300 |
+| **60** (shipped) | **196/300** | **0.6533** | — |
+
+Four identical integers. Retirement essentially never fires locally, because a
+turret needs 20-60 quiet rounds and **the median local game is 103 rounds**.
+
+Also checked and found no lever: Gunner target choice. A Gunner fires down a
+fixed ray at whatever `get_gunner_target()` returns, so there is no priority to
+tune — only facing, which is decided at build time, and rotation, which already
+exists behind `ROTATE_TITANIUM_RESERVE`.
+
+**The instrument has a time horizon, and I have now hit it three times.** Local
+games run a median of 103 rounds against `undertow` and 82 against
+`spar_sentinel`; the ladder runs 300-435. Anything whose timescale is longer
+than about a hundred rounds is weakly tested or untestable here:
+
+- `idun`'s compounding economy — testable only in the 200+ bucket, n=33;
+- the turret ceiling — only binds past round 200, where it measured -0.6 to
+  -2.6 sd on thin samples;
+- turret retirement — never fires at all.
+
+That is not a reason to trust these nulls less in the regime they cover, but it
+does mean the local panel cannot answer the long-game questions the ladder is
+actually deciding. Getting a stronger, more evenly matched sparring opponent —
+one that produces 300-round games — would do more for the loop than another
+constant sweep.
+
+Nothing beat the base, so nothing new was built. Queued
+`steward_hardened_reinforced@f1f2bda:12`. Team 18/113, rating 1699.
