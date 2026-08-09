@@ -6775,3 +6775,52 @@ ambiguous: the same fix on `snotra_h` is worth -0.1 sd.
 
 Both experimental builds deleted. Neither queued: `nanna2` at +1.1 sd and `bil2`
 at -0.2 sd have no case against `lofn` and `hlin`, which are already in line.
+
+## Iteration 143 — stopping the build loop, and why
+
+`lofn` is at the head of the farm queue and has not fired its first round; there
+will be no new live data for about ninety minutes. Rather than fill that with a
+143rd candidate, recording the decision to stop building and the evidence for
+it, because the reasoning matters more than another null.
+
+**Two findings make further local candidates dishonest work.**
+
+**1. Mechanisms do not transfer.** Every change this session fires exactly as
+instrumented — 96% of ferry calls unblocked, 228 slot jams cleared, 100% of
+wasted mining arrivals eliminated, Harvesters 1.50 → 2.97 — and none moves the
+win rate by more than a standard error against any measurable opponent. The
+apparent exception, `bifrost`, is **-0.1 sd** when the same fix is applied to
+`snotra_h`. A mechanism's measured value is a property of the base it was tuned
+on, not of the mechanism.
+
+**2. Local instruments cannot rank builds.** Four of them — the official 21
+maps, 1,000 generated maps, `undertow` at 600 games, and live shared opponents —
+produce **four different orderings** of the same seven builds. Each is
+internally consistent and adequately sampled. `hoenir` is first on one and last
+on another.
+
+Producing another candidate means measuring it on instruments demonstrated
+unable to distinguish it, and reporting a number I would have to retract. I have
+made **eight corrections tonight** — iterations 52, 89, 99, 115, 122, 124, 128,
+136 — and every one ran in the direction that flattered the result I wanted. The
+ninth is avoidable by not generating it.
+
+**What the session produced, stated without inflation:**
+
+- **No better bot.** `snotra_h`, already live before I started, is the best we
+  own on both instruments that agree (0.600 live shared, 0.7267 vs `undertow`).
+- **A measurement methodology**: off-pool map sets, `--compare` (model-free,
+  commit-exact, degrades gracefully), cells-not-games, and the demonstration
+  that four proxies disagree.
+- **The replay workflow** and the first composition data on the ladder's top:
+  rank 1 runs 9.9 Harvesters, 75 conveyors and 8.5 turrets against our 2.7, 24
+  and 22.8.
+- **Two farm defects with numbers**: seven promotions tonight on margins of 1-29
+  Elo against half-widths of 43-83, one of them onto a build measuring 0.273
+  locally; and `b61aaac`, 300 live games, structurally unpromotable.
+- **Every `_pick` exit instrumented**, so the next person does not re-derive the
+  claim-slot cap, the leak, or the expiry.
+
+**What remains, none of it mine to do:** `lofn`, `hlin`, `nanna` and `mani`
+reporting from the queue; the margin patch at `farm_promotion_margin.patch`; and
+`b61aaac`'s uploadability.
