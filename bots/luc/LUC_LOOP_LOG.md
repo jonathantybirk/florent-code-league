@@ -8485,3 +8485,71 @@ measurable local fact rather than an inference from replays, and
 
 Nothing to queue. `nott@0ac1faa` and `ran@0eca95f` still pending. Team 19/113,
 rating 1709.
+
+## Iteration 176 — why we lose long games, and a real effect behind a broken detector
+
+Chased the one weakness iteration 175 established: we score about 0.52 past 300
+rounds against 0.68 under 200.
+
+**Long games happen where ore is distant.** `maps/longgame` is not ore-poor
+(45.0 per 1000 tiles against `maps/orerich`'s 46.1 and live's 47.0) but the
+nearest deposit to a Core sits a median of **4 tiles out against 2**, with 3.5
+deposits inside six tiles against 5.0. Both economies start slow, neither side
+can afford a kill, and the game runs long. On those maps we build **1.23
+Harvesters a game**, and win rate tracks that count hard:
+
+| Harvesters built | share of games | win rate |
+|---|---|---|
+| 0 | 7% | 0.298 |
+| 1 | **59%** | 0.561 |
+| 2 | 21% | **0.770** |
+| 3+ | 13% | 0.761 |
+
+**The second miner is the intervention that moves it.** Every economy change I
+had tested was measured on `orerich`, where ore is two tiles away and economy is
+not the constraint. Tested where it is:
+
+| change on `maps/longgame` | harvesters | vs `nott` |
+|---|---|---|
+| four claim slots | 1.14 -> 1.18 | -0.2 sd |
+| `ECON_BUILDER_ROUND` 120->70 | 1.14 -> 1.14 | +0.2 sd |
+| `ECON_EXPAND_RESERVE` 60->30 | 1.14 -> 1.14 | 0.0 sd |
+| **second economy Builder** | **1.23 -> 1.77** | **+2.2 sd** |
+
+Over **240 strictly paired cells against eight opponents**: 0.725 -> 0.808, and
+McNemar on the discordant pairs gives **z = +2.89** — 34 cells won that `nott`
+loses against 14 the other way. The same change on `orerich` is **-1.2 sd**
+(`saga`) and on a wider 48-map set -0.3 sd, so it is genuinely map-conditional,
+and the regime it helps in is the one the ladder decides in.
+
+**And the detector I built for it does not work.** `var` sets a `FAR_ORE`
+doctrine bit when the nearest ore in the Core's vision is more than three tiles
+out. The bit itself is sound — it rides in the doctrine word so every unit
+agrees, composes with all three openings, excludes BLITZ, and the accessors are
+verified. But no threshold separates the regimes:
+
+| threshold | fires on long-game sides | fires on `orerich` sides |
+|---|---|---|
+| > 2 | 80% | 42% |
+| > 3 | 57% | 21% |
+| > 4 | 27% | 8% |
+
+So `var` gets **+0.2 sd** on long maps where the unconditional version gets
++1.8, and **-0.5 sd** on `orerich` — it fires on barely half the maps that want
+it and a fifth of the maps that do not. Not queued.
+
+Two bugs caught while building it, both before any measurement: I used
+`get_vision_tiles()`, which is not the API (`get_nearby_tiles()` is), and
+`core.py` indexes `doctrine.NAMES[...]` directly, so a doctrine value with the
+new bit set would have raised `KeyError` inside the Core's own turn.
+
+**Where this leaves the loop.** The mechanism is the strongest local result of
+the session — larger and better-evidenced than `nott`'s ammunition change — and
+it is blocked on one missing piece: a round-0 reading that identifies
+distant-ore maps. Chebyshev distance to the nearest visible deposit is not it.
+Worth trying next: ore *count* inside the Core's vision rather than distance,
+or walking distance rather than straight-line, since walls are what make a
+deposit expensive.
+
+Team 20/113, rating 1706. `nott@0ac1faa` and `ran@0eca95f` still pending on the
+farm.
