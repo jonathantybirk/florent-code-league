@@ -6967,3 +6967,44 @@ tonight has measured each of those additions individually at zero.
 
 No build this iteration: there was a candidate to look for, I looked, and the
 thing I would have ported is already there. `lofn` reports in ~75 minutes.
+
+## Iteration 148 — vili's signature change is an 8-point regression
+
+Diffed the two lineages properly and found they are far closer than I assumed:
+**zero differing shared constants**. `vili` is `snotra_h` plus exactly four
+additions — the turret hold (`ECONOMY_BEFORE_TURRETS`, `TURRET_HOLD_ROUNDS`,
+`TURRET_HOLD_MIN_HARVESTERS`) and `RING_AFTER_ECONOMY`.
+
+That makes the arithmetic against `undertow` sharp:
+
+| build | vs `undertow` |
+|---|---|
+| `snotra_h` | 0.7267 |
+| `snotra_h` + turret hold (`bil2`) | 0.7300 |
+| **`vili`** = + ring hold | **0.6500** |
+
+The turret hold is free; something in `vili` costs eight points. Tested it
+directly — `vili` with `RING_AFTER_ECONOMY = False`:
+
+    0.7333 +-0.0354 against undertow, against vili's 0.6500
+    +8.3 points, +3.1 sd
+
+**`RING_AFTER_ECONOMY` — the change that defines `vili` — costs 8.3 points
+against the one opponent that discriminates.**
+
+The build is not new: with the flag off it is functionally `hoenir`, and both
+scored *exactly* 440/600, which is the confirmation. Deleted. Iteration 136
+already showed `hoenir` > `vili` by this margin; what this adds is the
+attribution — it is the ring hold specifically, not the ferry fix (-0.3), not
+the turret hold (+0.3), and not anything else.
+
+**And it indicts my own iteration 49.** I shipped `vili` as "the best build of
+the session" on 0.657 across the official 21 maps, queued it, and built five
+further bots on top of it. On the discriminating opponent it is the worst of the
+pre-economy line, and the change I was proudest of is why.
+
+That is now the third time an on-pool measurement has pointed the opposite way
+to a better instrument, and the most expensive: everything from `vili` onward —
+`freyja`, `lofn`, `hlin`, `syn`, `gefn`, `nanna`, `mani` — inherits the ring
+hold. **The entire economy line is built on a base carrying an 8-point
+regression.**
