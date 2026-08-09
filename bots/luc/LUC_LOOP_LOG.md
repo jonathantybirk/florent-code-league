@@ -8659,3 +8659,51 @@ for asking what happens in long games, and unfit for deciding what to ship.
 Its README now says so.
 
 Team 21/113, rating 1691.
+
+## Iteration 179 — the logistics constants are null in the live regime too
+
+Re-screened the constants most likely to interact with distant ore, on
+`maps/livelike2` (nearest visible ore median 4.0, matching live), 138 paired
+cells against `vanguard`:
+
+| change | rate | vs `nott` | games changed |
+|---|---|---|---|
+| `HARVESTER_FINISH_STEPS` 2->4 | 0.6594 | +0.1 sd | 7 |
+| four claim slots | 0.6594 | +0.1 sd | 29 |
+| **`nott`** | **0.6522** | — | — |
+| `ECON_EXPAND_ROUND` 80->40 | 0.6522 | 0.000 | **0** |
+| `NETWORK_CAP` 6/12 -> 3/6 | 0.6449 | -0.1 sd | 32 |
+| `BELT_TILE_WEIGHT` 3->8 | 0.6449 | -0.1 sd | 6 |
+| `BELT_SCORE_CANDIDATES` 4->8 | 0.6449 | -0.1 sd | 3 |
+
+Nothing moves. Notably the four-claim-slot change is +0.1 sd here, against
+-0.5 sd on `orerich` and -0.2 sd on `maps/longgame` — consistent with it simply
+being null everywhere rather than regime-dependent.
+
+**An accidental control worth keeping.** One variant failed to patch —
+`ANCHOR_ORE_ON_NETWORK` exists in `vidarr` but not in this base, and the
+assertion caught it — so `anchor` ran as an unmodified copy of `nott`. It reads
+**138/138 identical**, exactly as a true no-op must.
+
+That is a real validation of the method this session has leaned on. When
+iteration 163 reported three seat-B flags at 300/300 identical, and iteration
+175 reported six constants at 30/30, the reading was "this code never ran". The
+control confirms the instrument produces exactly N/N for a genuine no-op, so
+those readings mean what I said they meant. `ECON_EXPAND_ROUND` at 0/138 here
+is another: that constant only switches `_network_cap`, which never binds.
+
+Where the loop stands after the corrections of the last two iterations:
+
+- **Shipped and queued**: `nott` (ammunition 120 -> 60), the only change that
+  has replicated — +0.4 to +1.0 sd across four independently built map sets and
+  two bases, worth about one point.
+- **Withdrawn**: `sunna`, on my own re-test.
+- **Exhausted, in both map regimes**: the flag space on two bases, the role
+  table in both directions, the siege from four sides, economy expansion,
+  turret spend and retirement, the opening ledger, and now logistics.
+- **Open and unanswered**: our win rate falls from about 0.72 in short games to
+  about 0.52 past 300 rounds, and no intervention tested moves it. That is the
+  gap to the top of the ladder, and it is a design question rather than a
+  constant.
+
+Team 21/113, rating 1685. `nott@0ac1faa` and `ran@0eca95f` remain queued.
