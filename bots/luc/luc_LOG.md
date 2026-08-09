@@ -663,3 +663,24 @@ from round 4) is a separate unaddressed failure mode.
   farm's promotion bar, owner's call.
 - Loop settles to hourly checks overnight; byggvir's verdict is tomorrow's first
   decision point.
+
+## Iteration ~45 — 2026-08-09 ~09:20 — byggvir's verdict and the sigyn attempt
+
+- **byggvir live (first 10 series): 5W–5L, est 1730 [1637,1830] — level with vor and
+  fulla — including 5–0 over I Stone.** A bot our own line crushes 0.21–0.31 locally
+  performs identically live. The self-play panel inversion is now beyond doubt; the
+  other agent's iterations 166–168 reached the same conclusion independently (the local
+  instrument cannot produce the 300+-round grinding regime; balance ≠ length; a
+  survivable sparring partner cannot be built from weaker parts).
+- **Built and held `sigyn`** = byggvir + loki's door Sentinel. The mechanism doesn't arm:
+  the door needs a live attacker past round 90 and the boom's lone attacker dies first —
+  loki's version rode vor's rush pressure. The synthesis needs a door seated by a body
+  that survives on a boom chassis (miner-seated, or a home-staying attacker). Design
+  question, deliberately not smashed through with another knob; committed as held.
+- Overnight ledger: the other agent ran to iteration 168, tested ~12 builds (all
+  1651–1762, none beating the incumbent's sample-size 1800), pruned dead bots
+  (incl. vor, loki), and queued more incumbent volume. Team ~1721, rank 19.
+- The honest cross-agent picture after ~36 hours: every architecture lands 1690–1810
+  live; the separator at the top is something neither agent has built yet, and the
+  local instrument cannot see it. The next lever is likely the door-on-boom synthesis
+  done properly, or the farm's promotion bar (still the cheapest +Elo available).
