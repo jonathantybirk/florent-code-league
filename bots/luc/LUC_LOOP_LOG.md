@@ -8430,3 +8430,58 @@ Nothing to queue. `nott@0ac1faa` and `ran@0eca95f` are still not in the feed;
 on the observed ~90-minute cadence `nott` is due around 14:00.
 
 Team 16/113, rating 1732 — the best rank of the session.
+
+## Iteration 175 — built the long-game instrument, and it refuted my last explanation
+
+Iteration 174 said six tuning constants were inert because local games are too
+short for the states they govern. That was a hypothesis stated as a conclusion,
+so I built the instrument to test it.
+
+Core distance does not drive length — median rounds run 83-124 across every
+Chebyshev separation from 5 to 22, with no trend. But **individual maps do**:
+over 36,240 recorded games, `or_o054` runs a median of 385 rounds and `or_o148`
+375, while `or_o000` and `or_o082` run 59. So I selected empirically rather than
+generating: every map with 20+ games and a median of 140 rounds or more.
+
+`maps/longgame` — 15 maps, and in use it delivers **median 184 rounds with 40%
+of games past 300**, against 96 and 8% for `maps/orerich`. That is a real
+instrument, and it lands in the ladder's own range.
+
+**And all six constants are still pure no-ops on it — 30 of 30 games
+identical.** So iteration 174's explanation was wrong. The cause is not
+duration, it is opponent behaviour: `vanguard` never cuts our belts so
+`REPAIR_ATTEMPT_LIMIT` cannot fire, never threatens our routes so
+`PATH_SAFETY_MARGIN` never binds, and never stalls our siege so
+`SIEGE_STALL_ROUNDS` never trips. Testing them needs an opponent that does
+those things, and none is available.
+
+**A trap I nearly walked into.** Splitting by game length across all runs
+suggested `snotra_h` collapses to 0.381 past 300 rounds while `nott` holds
+0.534 — a +15pp long-game advantage, which would have been the headline of the
+session. It is an artifact: `snotra_h` appears as baseline in six runs and
+`nott` in three, over different map sets and opponent mixes, so the buckets
+were not comparable. Redone on **1,800 strictly paired cells** — same run, same
+opponent, same map, same seat:
+
+| rounds | `snotra_h` | `nott` | |
+|---|---|---|---|
+| <200 | 0.682 | 0.693 | +0.6 sd |
+| 200-300 | 0.673 | 0.622 | -0.7 sd |
+| 300+ | 0.516 | 0.554 | +0.7 sd |
+| **all** | **0.667** | **0.677** | **+0.009 (+0.6 sd)** |
+
+No long-game advantage, and `nott` overall is **+0.9 points at +0.6 sd** — in
+line with iteration 173's corrected figure, not the dramatic version. This is
+the second time this session unmatched pooling has produced a spurious headline
+(iteration 169 was the first), and both times the fix was the same: pair the
+cells.
+
+**What survived and is real:** our win rate against `vanguard` falls from about
+0.68 under 200 rounds to about **0.52 past 300**, on paired data. The long game
+is where this lineage is weakest, and that matches the ladder exactly — our
+losses to Coreflood and Besvikomat run 392 and 435 rounds. That is now a
+measurable local fact rather than an inference from replays, and
+`maps/longgame` is where to work on it.
+
+Nothing to queue. `nott@0ac1faa` and `ran@0eca95f` still pending. Team 19/113,
+rating 1709.
