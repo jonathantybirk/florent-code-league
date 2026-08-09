@@ -7947,3 +7947,59 @@ directions — all firing, all null or negative. The allocation this bot already
 runs is a local optimum in every direction I can push it.
 
 `ran@0eca95f:10` still pending on the farm. Team 18/113, rating 1704.
+
+## Iteration 166 — a correction, a live-seat problem, and the opening is flat too
+
+**Correcting iteration 161.** I claimed "`snotra_h` is not our best build" and
+redirected the whole loop onto the `steward`/`vidarr` lineages on the strength
+of the feed's Elo estimates. That was the wrong evidence — my own
+`tools/live_matchups.py` docstring says those estimates moved 1776 to 1709 on
+the *same 300 games*, which is why `--compare` exists. On raw records against
+current-build opponents:
+
+| build | record | rate |
+|---|---|---|
+| `steward_hardened_reinforced@f1f2bda` | 211/310 | **0.681** |
+| `snotra_h@6951e03` | 74/110 | **0.673** |
+| `vidarr@bbfaa9c` | 95/155 | 0.613 |
+| `steward@e55aab5` | 66/125 | **0.528** |
+
+`snotra_h` is second of five, not fourth. The twelve iterations spent on it
+were not misdirected; the redirection was.
+
+**And the live seat is held by our weakest build.** `steward@e55aab5` plays our
+rated games at 0.528 while `f1f2bda` scores 0.681 over three times the sample —
+about 15 percentage points. On the four opponents both have faced it is worse
+still: **8/35 (0.229) against `snotra_h`'s 42/60 (0.700)**, and against
+Banminary and gsxWins specifically it is 0.13 and 0.20. The farm keeps it there
+because its *estimate* reads 1771, near the top; the raw record does not agree.
+This is the promotion-estimator problem already recorded in
+`project_farm_promotion_churn` and `project_live_estimate_regression`, now
+costing the seat rather than a queue slot. I have not touched the farm's
+promotion logic — it is another agent's system — but the seat is the single
+largest gap I can see, worth more than anything measured locally tonight.
+
+**The opening.** Decoded, we turn far more titanium into ammunition than
+anyone: by round 30 we convert 147-195 Ti against opponents' 28-140, because
+`AMMO_TARGET = 120` fires on round 0 — 24% of the starting bank locked up
+before a single turret exists. Swept the pair `(AMMO_TARGET, COMBAT_AMMO_FLOOR)`
+on `vidarr`:
+
+| setting | rate | vs base | first gunner | harvesters |
+|---|---|---|---|---|
+| 60 / 30 | 0.6633 | +0.3 sd | 42.9 | 3.35 |
+| **120 / 80** (shipped) | **0.6533** | — | 49.7 | 3.45 |
+| 40 / 20 | 0.6500 | -0.1 sd | 41.1 | 3.32 |
+| 80 / 40 | 0.6433 | -0.3 sd | 46.2 | 3.37 |
+
+Flat. Converting less does get the first Gunner out seven rounds sooner and
+costs a fraction of a Harvester, and the two cancel. So the opening's
+titanium/ammunition split is a local optimum as well — the fifth axis in a row.
+
+One process note: the first attempt at this sweep patched `constants.py`, but
+`AMMO_TARGET` and `COMBAT_AMMO_FLOOR` live in `core.py`. All three variants
+were unmodified copies and the run was void. The asserts fired loudly and I
+read them before reading the results, which is the only reason 1,200 games of
+"three identical bots tie with their base" did not get written up as a finding.
+
+Nothing queued. `ran@0eca95f:10` is still not in the feed. Team 18/113, 1704.
