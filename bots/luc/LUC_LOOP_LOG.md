@@ -6858,3 +6858,35 @@ tonight, every one in the direction I wanted the answer to go.
 
 What I will keep doing is this: read each build as it reports, with the tool
 built for it, and say plainly what it shows. `lofn` is next.
+
+## Iteration 145 — eight promotions in two hours, all of them noise
+
+`lofn` has still not fired. In the two hours of waiting, the farm promoted eight
+times, cycling between three builds:
+
+| time | promoted | margin | half-width | `est - half` vs incumbent |
+|---|---|---|---|---|
+| 01:42 | `a994296` | 27 | ±47 | 1767 < 1787 |
+| 01:52 | `vidarr` | 26 | ±83 | 1746 < 1803 |
+| 02:12 | `a994296` | **3** | ±48 | 1755 < 1800 |
+| 02:22 | `vidarr` | 9 | ±77 | 1730 < 1798 |
+| 02:32 | `a994296` | 14 | ±46 | 1752 < 1784 |
+| 02:42 | `snotra_h` | **4** | ±61 | 1736 < 1793 |
+| 03:02 | `a994296` | 14 | ±46 | 1742 < 1774 |
+| 03:32 | `vidarr` | 15 | ±65 | 1734 < 1784 |
+
+**Every margin is a fraction of its own half-width, and the margin test rejects
+all eight.** Two of them are 3 and 4 Elo. The flagship has changed eight times
+in two hours between builds that my own 150-map screen puts at 0.487
+(`vidarr`), 0.503 (`a994296`) and 0.517 (`snotra_h`) — a 3-point spread.
+
+**This is the clearest case the session has produced for the one fix I cannot
+apply.** Not because the churn is catastrophic — these three builds are close
+enough that swapping between them costs little — but because the same rule
+promoted `steward@e55aab5` twice earlier tonight, and the only reason that was
+harmless is that `e55aab5` turned out to be good live despite measuring 0.273
+locally. The rule has no way to tell those cases apart. It is currently right by
+luck and wrong by construction.
+
+Eight data points, one line of code, and it sits in
+`farm_promotion_margin.patch` waiting for Lucas.
