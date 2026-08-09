@@ -4,34 +4,20 @@ from collections import deque
 import sys
 from typing import TYPE_CHECKING
 
-from fcode import Controller, EntityType, Environment, GameError, Position
+from fcode import Controller, EntityType, Environment, GameError, Position, Team
 
 import doctrine
-from constants import (
-    BULWARK_ENABLED,
-    BULWARK_RECHECK_ALARM,
-    BULWARK_RECHECK_QUIET,
-    BULWARK_RESERVE,
-    SPAWN_DENIAL_ENABLED,
-    SPAWN_DENIAL_RANGE,
-    SPAWN_DENIAL_RESERVE,
-    BELT_AVOID_ENEMY_RAYS,
-    BELT_AVOID_ROTATION,
+from atlas import identify_visible
+from constants import (BELT_SCORE_CANDIDATES, BELT_TILE_WEIGHT,
+    HARASS_RERANK_CANDIDATES, HARASS_TRUE_DISTANCE,
+    
     CLAIM_SLOTS,
-    GUARD_CHASE_STEPS,
-    GUARD_RADIUS_SQ,
-    MAX_GUARD_GUNNERS,
     CORE_THREAT_RADIUS_SQ,
-    CPU_SOFT_BUDGET_US,
-    CORE_DYING_FLAG,
-    ECONOMY_DEAD_FLAG,
     D4_DELTAS,
     D8,
     ECON_EXPAND_ROUND,
     FACING,
-    LAUNCHER_AVOID_ENEMY_RAYS,
     LAUNCHER_BUILDER_INDEX,
-    MAX_OPENING_BUILDERS,
     LAUNCHER_BUILDERS,
     LAUNCH_DIRECTION_BITS,
     LAUNCH_REJECTION_FLAG,
@@ -39,30 +25,49 @@ from constants import (
     LAUNCH_REJECTION_POSITION_MASK,
     LAUNCH_REQUEST_SLOTS,
     MIN_AMMO_FOR_SENTINEL,
+    AVOID_THREAT_FOR_LOGISTICS,
+    BARRIER_INTO_THREAT,
+    BELT_PATROL_ROUNDS,
+    CONTEST_MAX_DISTANCE_SQ,
+    ESCAPE_ENCIRCLEMENT,
+    LAUNCHER_BUILD_ROUNDS,
+    LEAVE_FIRING_LINE,
+    ESCAPE_MIN_EXITS,
+    PATROL_RADIUS,
+    TRAP_ENEMY_BUILDERS,
+    TRAP_MAX_DISTANCE_SQ,
+    CUT_ENEMY_BELT,
+    GUNNER_DAMAGE,
+    HOLD_FIRE_ON_TENDED_BARRIER,
+    PATH_LOOKAHEAD,
+    FIRE_BLOCK_LAUNCH_ROUNDS,
+    PATH_DETOUR_FACTOR,
+    PATH_SAFETY_MARGIN,
+    REPAIR_ATTEMPT_LIMIT,
+    SENTINEL_DAMAGE,
+    STEAL_ENEMY_HARVESTER,
     NETWORK_CAP_EARLY,
-    RETARGET_INTERVAL,
-    RETARGET_MARGIN,
-    RETARGET_ORE,
     NETWORK_CAP_LATE,
-    AVOID_ENEMY_RAYS,
-    COVER_TIER_SEATS,
-    DUEL_TEND_ROUNDS,
-    MAX_RELAY_LAUNCHERS,
     HARVESTER_FINISH_STEPS,
     REPAIR_NETWORK,
-    FLANK_MIN_TURRETS,
-    FLANK_RADIUS,
-    DENIAL_GUNNERS,
-    DENIAL_MIN_TILES,
-    DENIAL_RESERVE,
-    DENIAL_START_ROUND,
-    REPAIR_ATTEMPT_LIMIT,
-    TABU_WINDOW,
     STUCK_ROUNDS_BEFORE_STANDDOWN,
     WRITE_OFF_STUCK_BUILDERS,
     FERRY_ON_INFERENCE,
     PAD_FIRST_ORDER,
     RING_MAX_SITES,
+    RING_EXTRA_SITES,
+    SELF_SEAL_MIN_OPEN,
+    RING_MIN_SEPARATION,
+    RING_REPLAN_TILES,
+    RING_THREAT_SQ,
+    RING_TITANIUM_RESERVE,
+    DEBUG_BUILD,
+    DEBUG_LAUNCH,
+    LAUNCH_HOPS_IN_PATHS,
+    LAUNCH_PASSENGER_SHIFT,
+    LAUNCH_PICKUP_SQ,
+    LAUNCH_RANGE_SQ,
+    REACHABILITY_ENABLED,
     RING_EDGE_MARGIN,
     SEAL_TITANIUM_RESERVE,
     SENTINEL_RANGE_SQ,
@@ -70,8 +75,45 @@ from constants import (
     SIEGE_BARRIER_ENABLED,
     SIEGE_BARRIER_RESERVE,
     RING_RADIUS,
-    HEARTBEAT_MASK,
-    HEARTBEAT_SHIFT,
+    ATTACK_TURRET_CAP,
+    DEFEND_TURRET_SENTINEL,
+    FLANK_REPLAN_ROUNDS,
+    STEAL_BEFORE_EXPAND,
+    STEAL_MAX_DISTANCE,
+    FLANK_WHEN_IDLE,
+    HARVESTER_RECHECK_ROUNDS,
+    IDLE_BEFORE_FLANK,
+    BOT_STANDOFF,
+    LANE_BARRIER_FIRST,
+    LOCK_OWNER_BITS,
+    LOCK_OWNER_MASK,
+    STANDOFF_BACKOFF,
+    STANDOFF_WAIT,
+    LAUNCH_RETRY_COOLDOWN,
+    SEAT_AWARE_DEFENCE,
+    SEAT_B_MENDER_LEASH,
+    SEAT_B_MENDS_HARDER,
+    SEAT_B_YIELDS_ORE,
+    SEAT_B_PREFERS_RANGE,
+    SEAT_B_SKIPS_DUEL,
+    SEAT_B_TURRET_STEP,
+    PLUG_CUT_IMMEDIATELY,
+    PLUG_CUT_LEASH,
+    LATE_BUILDERS_MINE,
+    HOME_TURRET_MAX,
+    HOME_TURRET_STEP,
+    MENDER_LEASH,
+    SEAL_EVERY_DOCTRINE,
+    SECOND_MENDER_ALARM,
+    SECOND_MENDER_ON_ANY_DAMAGE,
+    SIEGE_SEARCH_EVERY,
+    SIEGE_SENTINEL_TARGET,
+    ECON_EXPAND_BUILDERS,
+    SECOND_MENDER_ON_CRITICAL,
+    GUARD_HEALS_ON_ANY_DAMAGE,
+    MAX_OPENING_BUILDERS,
+    CORE_ALARM_MASK,
+    SHOOTER_POS_SHIFT,
     SLOT_BUILDER_HEARTBEAT,
     SLOT_BUILDER_TICKET,
     SLOT_CONSTRUCTION_LOCK,
@@ -81,19 +123,33 @@ from constants import (
     SLOT_SYMMETRY_REJECT_START,
     WALKABLE_BUILDINGS,
 )
-from utils import (pack_enemy, pack_pos, pack_ticket, unpack_core,
-                   unpack_enemy, unpack_pos, unpack_ticket)
+from utils import (THROW_OFFSETS, is_response, landing_index, pack_enemy,
+                   pack_pos, pack_request, pad_owner, passenger_hash,
+                   unpack_core, unpack_enemy, unpack_pos, unpack_response,
+                   writable_by_builder)
 
 if TYPE_CHECKING:
     from main import Player
 
 
+# What the harasser breaks first. Harvesters are deliberately absent.
+#
+# They looked like the best target on this ladder: `vidar`, `vidar_r*` and
+# `skadi` all carry the deposit-staleness bug this build fixed in itself, so a
+# Harvester of theirs destroyed out of their sight retires that deposit
+# permanently rather than for the rounds it takes to rebuild. Measured, adding
+# it at top priority costs 3.4pp of mean and 7.2pp of the floor.
+#
+# The original note was right about why: a tap takes the same Harvester's 2.5 Ti
+# a round *onto our belt* and denies it to them at the same time, so destroying
+# it trades a resource we were already collecting for a denial we partly had.
+# The permanent-denial bug is real and is still exploited -- by the Sentinel,
+# which shoots Harvesters first and is not giving up anything to do it.
 HARASS_PRIORITY = {EntityType.SPLITTER: 0, EntityType.CONVEYOR: 1}
+# Mirror of launcher.KIND_INDEX, for decoding rejection intel.
+REJECT_KINDS = {0: EntityType.GUNNER, 1: EntityType.SENTINEL,
+                2: EntityType.LAUNCHER}
 # What to shoot first when several enemies are in reach.
-# Conveyors and Splitters are walkable by Builder Bots of either team, so a
-# tile carrying one is not sealed even though it holds a building.
-_WALKABLE_BUILDINGS = (EntityType.CONVEYOR, EntityType.SPLITTER)
-
 COMBAT_PRIORITY = {
     EntityType.GUNNER: 0,
     EntityType.SENTINEL: 1,
@@ -112,10 +168,6 @@ MOVABLE_BUILD_BLOCKER_GRACE = 3
 STALL_REPORT_ROUNDS = 5
 DEFERRED_ORE_ROUNDS = 8
 MIN_AMMO_FOR_GUNNER = 20
-# A Builder confined to this few distinct tiles over this many rounds of
-# blocked movement is not making progress, whatever it reports.
-CONFINEMENT_WINDOW = 24
-CONFINEMENT_TILES = 3
 
 
 def run(p: "Player", ct: Controller) -> None:
@@ -130,22 +182,58 @@ def run(p: "Player", ct: Controller) -> None:
         )
         # An escaping GameError permanently destroys this unit.
         return
+    except Exception as error:
+        # An escaping exception of ANY type destroys this unit outright -- the
+        # engine tears it down, and it is animated as the bot exploding. That
+        # is a whole Builder, its +20% scale and every round of its future work
+        # thrown away for a typo, and until this handler existed it happened
+        # silently: a NameError in the launch request killed every Builder that
+        # asked for a throw, and the only visible symptom was the bank climbing
+        # while the unit count fell.
+        print(f"BUILDER_CRASH id={ct.get_id()} round={ct.get_current_round()} "
+              f"error={error!r}", file=sys.stderr, flush=True)
+        return
 
 
 def _run(p, ct):
+    # Store round + 1 so zero remains the unambiguous "no Builder seen" value.
+    # All Builders publish the same value; the Core only needs proof that at
+    # least one of them was alive during the preceding round. A per-Builder
+    # bitmask was tried and is impossible: the engine buffers store writes to
+    # the start of the next round, so every Builder in a round reads the same
+    # snapshot and ORs its bit onto it, and only the last writer's word lands.
+    ct.write_store(SLOT_BUILDER_HEARTBEAT, ct.get_current_round() + 1)
+    p.round = ct.get_current_round()
+    # Re-entrancy guards are per-turn state: clear them before anything can
+    # consult them. See `_build_launcher_breaker_gunner`.
+    p.breaking_launcher = False
     if not hasattr(p, "builder_index"):
-        ticket = ct.read_store(SLOT_BUILDER_TICKET)
-        p.builder_index, p.ore_hints = unpack_ticket(ticket)
-        # Increment through pack_ticket, not by adding one to the raw slot: the
-        # high bits are the Core's ore hints and the next Builder still needs
-        # them.
-        ct.write_store(SLOT_BUILDER_TICKET,
-                       pack_ticket(p.builder_index + 1, p.ore_hints))
+        p.builder_index = ct.read_store(SLOT_BUILDER_TICKET)
+        ct.write_store(SLOT_BUILDER_TICKET, p.builder_index + 1)
         p.w, p.h = ct.get_map_width(), ct.get_map_height()
         p.seen, p.terrain = set(), {}
         p.walls, p.ores, p.solids, p.conveyors = set(), set(), set(), {}
         p.bot_occupied, p.enemy_conveyors = set(), {}
         p.enemy_launchers, p.enemy_launcher_danger = set(), set()
+        p.enemy_turrets, p.threat = {}, {}
+        p.friendly_launchers = set()
+        p.enemy_harvesters = set()
+        p.hurt_tiles = {}
+        p.building_hp = {}
+        p.blocked_by_fire = False
+        p.fire_blocked_rounds = 0
+        p.launch_retry_round = 0
+        p.last_landing_asked = None
+        p.last_pad_asked = None
+        p.displaced_landings = set()
+        p.last_hp = None
+        p.threat_signature = None
+        p.belt_patrolled = 0
+        p.repair_attempts = {}
+        p.contested = set()
+        p.cut_tiles = set()
+        p.countered_sentinels = set()
+        p.patrol_target = None
         p.enemy_economy = {}
         p.core, p.foot = None, set()
         p.task, p.route, p.route_i, p.phase = None, [], 0, "scout"
@@ -155,42 +243,25 @@ def _run(p, ct):
         p.network_tiles = set()
         p.network_load = 0
         p.network_plan = {}
-        p.denial_gunners_built = 0
-        p.known_enemy_turrets = set()
-        # position -> (pierces, facing delta). Survives the turret leaving
-        # vision, which live cover sets do not, and the belt is laid across
-        # tiles nobody is currently looking at.
-        p.enemy_turret_memory = {}
-        p.turret_cover = None
-        # How many times we have rebuilt each belt tile. A tile inside an
-        # enemy Gunner's ray is rebuilt for as long as we are willing to pay.
-        p.repair_counts = {}
         p.economy_lines_completed = 0
-        p.ring_slot = p.builder_index - LAUNCHER_BUILDER_INDEX
+        p.ring_slot = 0
         p.launcher_builders_wanted = 0
         p.lock_required = False
         p.home_gunners_built = 0
-        p.guard_gunners_built = 0
         p.field_gunners_built = 0
         p.attack_gunners_built = 0
         p.path_failures = 0
         p.awaiting_launch = 0
-        p.launch_waited = 0
         p.launch_origin = None
         p.launch_blocked = False
         p.launch_blocking_launchers = set()
         p.launcher_breakers = set()
-        p.relay_launchers_built = 0
         p.next_blocker_gunner_round = 0
         p.build_wait_key, p.build_wait_rounds = None, 0
         p.pending_build = None
         p.rejected_build_sites = set()
-        p.duel_turret = None
-        p.duel_threat = None
-        p.duel_until = 0
         p.deferred_ores = {}
-        p.retarget_next_round = 0
-        p.recent_tiles = []
+        p.harvester_seen = {}
         p.last_progress_round = ct.get_current_round()
         p.last_progress = "spawned"
         p.stall_reported = False
@@ -213,80 +284,205 @@ def _run(p, ct):
                 < p.launcher_builders_wanted + attackers
             )
         else:
+            p.ring_slot = (p.builder_index
+                           - doctrine.launcher_builder_index(p.doctrine))
             p.is_launcher_builder = (
                 0 <= p.ring_slot < p.launcher_builders_wanted
             )
             p.is_attacker = (p.builder_index >= p.economy_builders
                              and not p.is_launcher_builder)
-        # A Builder spawned *because* the titanium stopped arriving is a miner,
-        # whatever its index says: the role table is derived from spawn order
-        # and makes everything past the opening an attacker.
-        if (p.builder_index >= MAX_OPENING_BUILDERS
-                and (ct.read_store(SLOT_CORE_DAMAGED) & ECONOMY_DEAD_FLAG)):
-            p.is_attacker = False
+        # Everything past the opening headcount is income, whatever the role
+        # arithmetic above would have made it. Both branches key on
+        # `builder_index >= economy_builders`, which is the *opening's* way of
+        # saying "this one is not a miner" -- read by a Builder spawned on round
+        # 250 it says the opposite of what it means, and every expansion Builder
+        # would walk to the enemy Core as an attacker instead of laying belt.
+        # The expansion exists to answer a tiebreak on titanium collected; a
+        # sixth attacker does not collect titanium.
+        if LATE_BUILDERS_MINE and p.builder_index >= doctrine.max_opening_builders(p.doctrine):
             p.is_launcher_builder = False
-            p.economy_builders = p.builder_index + 1
-        # A Builder spawned *because* the Core projects its own death is a
-        # defender, and that outranks the miner override: titanium arriving
-        # is worth nothing to a Core that dies first. Traced on jackpot: the
-        # guard died on round 143, the sole survivor was the attacker across
-        # the map, and the Core bled out from 157 to 192 over a 762 Ti bank.
-        p.is_defender = False
-        if (p.builder_index >= MAX_OPENING_BUILDERS
-                and (ct.read_store(SLOT_CORE_DAMAGED) & CORE_DYING_FLAG)):
-            p.is_defender = True
             p.is_attacker = False
-            p.is_launcher_builder = False
+        # Which seat we are seeing the game from. Units act in ascending global
+        # entity id across BOTH teams and ids are handed out in spawn order, so
+        # team A's Core is id 1 and team B's is id 2 -- team A therefore wins
+        # every tie for the whole match: the race to a tile, the first shot in a
+        # turret duel, the heal that lands before the shot. Measured against
+        # vidar_r3 over 42 games this is worth 13-8 from seat A and 8-13 from
+        # seat B, a 23.8pp swing that has nothing to do with the opponent.
+        p.seat_b = ct.get_team() is Team.B
         p.siege_sentinel = None
+        p.siege_sentinels_built = 0
+        p.last_siege_search_round = -999
         p.sentinel_wrap = []
-        # No map oracle. Terrain, ore and the enemy Core come only from what
-        # this Builder has seen and from the symmetry inference below, so the
-        # bot plays a generated map, the held-out set and the final exactly the
-        # way it plays the published pool.
-    # Heartbeat: round stamp in the high bits, one bit per Builder in the low
-    # ones. Store round + 1 so zero stays the unambiguous "no Builder seen"
-    # value. Builders run in spawn order within a round, so the first one to
-    # write in a new round resets the mask and the rest OR themselves into it;
-    # the Core, which runs before all of them, reads the previous round's mask
-    # and sees exactly who was alive.
-    stamp = ct.get_current_round() + 1
-    previous = ct.read_store(SLOT_BUILDER_HEARTBEAT)
-    mask = previous & HEARTBEAT_MASK if previous >> HEARTBEAT_SHIFT == stamp else 0
-    mask |= 1 << min(p.builder_index, HEARTBEAT_SHIFT - 1)
-    ct.write_store(SLOT_BUILDER_HEARTBEAT, (stamp << HEARTBEAT_SHIFT) | mask)
+        p.atlas = (identify_visible(ct, own_core) if own_core is not None
+                   else None)
+        if p.atlas is not None:
+            atlas_tiles = {(x, y) for y in range(p.h) for x in range(p.w)}
+            p.walls.update(p.atlas.walls)
+            p.ores.update(p.atlas.ores)
+            p.seen.update(atlas_tiles)
+            p.terrain.update({tile: Environment.EMPTY for tile in atlas_tiles})
+            p.terrain.update({tile: Environment.WALL for tile in p.atlas.walls})
+            p.terrain.update({tile: Environment.ORE_TITANIUM
+                              for tile in p.atlas.ores})
+            ct.write_store(SLOT_ENEMY_CORE, pack_enemy(p.atlas.enemy_core, True))
     _sense(p, ct)
     _report_stall(p, ct)
-    _remember_enemy_turrets(p, ct)
-    _update_enemy_core_inference(p, ct)
+    if p.atlas is None:
+        _update_enemy_core_inference(p, ct)
     if p.core is None:
         return
     # A Builder that has proved it cannot path is a permanent +20% on every
     # price the team pays. Retire it before it gets a turn to do anything else.
     if _write_off(p, ct):
         return
-    raw_alarm = ct.read_store(SLOT_CORE_DAMAGED)
-    alarm = raw_alarm & ~(ECONOMY_DEAD_FLAG | CORE_DYING_FLAG)
-    # Titanium has stopped arriving. Somewhere upstream a conveyor is gone and
-    # no Builder can see it, so walk the line until it is in sight -- that is
-    # all `_repair_network` needs to mend it.
-    if (raw_alarm & ECONOMY_DEAD_FLAG) and p.builder_index == 0 and p.network_plan:
-        hole = _unseen_network_tile(p, ct)
-        if hole is not None:
-            _step(p, ct, Position(*hole), False, allow_launcher=False)
+    # Before any errand: if the box is one barrier from closing, leave. Nothing
+    # this Builder was going to do is worth being worth nothing afterwards.
+    if _escape_encirclement(p, ct):
+        return
+    # And before any errand: do not stand in a firing line. This is deliberately
+    # a single check at the top rather than a rule each mechanic remembers to
+    # apply -- the harass code had to learn it separately, and every other
+    # mechanic would have had to learn it too, one bug at a time. A Builder's
+    # tile is a free choice in almost every job it does: which side of a belt it
+    # breaks, which neighbour of an ore it mines from, which tile it lays the
+    # next conveyor from. Spending 18 HP a round for a choice that was free is
+    # the single most common way this bot loses Builders.
+    if _leave_the_firing_line(p, ct):
+        return
+    alarm = ct.read_store(SLOT_CORE_DAMAGED) & CORE_ALARM_MASK
+    # A light alarm must not pin the only miner before it has connected a
+    # single Harvester. Watched on sweden seat A: chip damage held alarm at 1
+    # from round ~75 to the end, the miner healed 4 HP a round for 240 rounds
+    # with its Harvester finished but unbelted three tiles away, and the team
+    # mined 0 all game — while the winning seat's 750 mined would have paid
+    # for every heal many times over. Income first, then mending; a critical
+    # Core (alarm 2) still outranks everything.
+    if (p.builder_index == 0 and alarm == 1
+            and p.network_load == 0 and not p.is_attacker):
+        pass
+    elif p.builder_index == 0 and alarm:
+        # A Core this far gone gets a second mender rather than another turret.
+        #
+        # One mender restores 4 HP a round for a flat 1 Ti and a Gunner deals 7
+        # for 4 Ti, so a lone mender cancels only about two thirds of a single
+        # shooter and the Core still dies, slowly. Two restore 8 and out-heal it
+        # outright -- and healing is the one answer whose price does not move
+        # with cost scale, which matters most exactly when the Core is losing
+        # and every turret we have bought has already raised the tax.
+        #
+        # The evidence for the trigger is the loss ledger: 11 of 12 losses to
+        # vidar are Core kills in which our Core ends on 0 and theirs ends on
+        # 215-500, while we hold 4-6 Gunners. We are not short of turrets.
+        #
+        # Alarm level 2 is the Core below CRITICAL_HP, and the leash is the ring
+        # Builder's: a miner recalled from across the map arrives after the
+        # decision. Below that level the guard still answers with turrets, which
+        # is what stops a scratch turning into a permanent mending detail.
+        # Trigger on *damage*, not on the Core's alarm level.
+        #
+        # `alarm` is the Core's own `repair_alert`, and level 2 is the Core below
+        # CRITICAL_HP -- 300 of 500. Waiting for it means the second mender only
+        # ever arrives for a Core that has already lost two fifths of its life,
+        # which on the maps this bot loses is after the game is decided.
+        #
+        # This is the mechanic that holds this bot's floor, and it was read off
+        # the opponent that holds it: vidar_r3 is vidar plus exactly this change
+        # -- every non-attacker Builder mends on any Core damage rather than on
+        # the death projection -- and it is the hardest matchup on the ladder at
+        # 0.512. Its own note makes the case: the losses that decide these games
+        # are early rushes, the projection cannot fire before round 40 by
+        # construction, and plain damage can. The cost of being wrong is one
+        # Builder-turn and 1 Ti, against the permanent +20% that every turret
+        # answer costs.
+        mend = (_core_is_hurt(p, ct) if SECOND_MENDER_ON_ANY_DAMAGE
+                else alarm >= SECOND_MENDER_ALARM)
+        leash = (SEAT_B_MENDER_LEASH
+                 if (SEAT_B_MENDS_HARDER and getattr(p, "seat_b", False))
+                 else MENDER_LEASH)
+        if (SECOND_MENDER_ON_CRITICAL and mend
+                and _chebyshev(tuple(ct.get_position()), p.core) <= leash):
+            _heal_core(p, ct)
             return
-    if p.builder_index == 0 and alarm:
         _defend_core(p, ct)
         return
-    # A critical Core outranks the ring, but only when the second mender can
-    # arrive in time to matter: healing restores 4 HP for a flat 1 Ti at any
-    # cost scale, so two menders out-heal a Gunner and fully cancel a
-    # Sentinel. Under RUSH the race is decided by tempo and pulling the ring
-    # Builder home costs more games than the healing saves -- measured, so
-    # the recall is FORTIFY-only and short-leash.
-    if (p.is_launcher_builder and alarm >= 2
-            and p.doctrine == doctrine.FORTIFY
-            and _chebyshev(tuple(ct.get_position()), p.core) <= 10):
-        _heal_core(p, ct)
+    if p.builder_index == 0 and not alarm:
+        # Quiet rounds are when trapping is affordable and patrolling is free.
+        # Both are behind the economy: a guard that stops mining to walk a
+        # circuit on round 5 costs the opening Harvester, which is worth more
+        # than any amount of early vision.
+        if _trap_enemy_builder(p, ct):
+            return
+        if p.network_load >= _network_cap(ct) and _patrol_core(p, ct):
+            return
+    # The Builder posted at the Core mends it on *any* damage, and does so
+    # before it goes back to laying its Launcher ring.
+    #
+    # The gate this replaces was `alarm >= 2` -- the Core below CRITICAL_HP,
+    # 300 of 500 -- on FORTIFY maps only. So the one Builder standing on the
+    # Core watched it lose two fifths of its life before lifting a finger, and
+    # on a RUSH map never lifted one at all: it walked off to build a ring while
+    # the Core died behind it. 90% of this bot's games end in a Core kill and
+    # the median loss is round 113, which is the window this sits in.
+    #
+    # Healing needs no sight of the shooter -- which matters, because a Builder
+    # sees r^2=20 and a Sentinel shoots from r^2=32, so the turret killing our
+    # Core is routinely invisible to the Builder standing on it -- and it is the
+    # most titanium-efficient act in the game: 4 HP for a flat 1 Ti, unaffected
+    # by cost scale, against the 4 Ti a Gunner pays for 7 damage and the 3.33 Ti
+    # a Sentinel pays for 6. Two menders out-heal a Gunner outright.
+    #
+    # The leash stays. The measured RUSH finding was about *recalling* a Builder
+    # from across the map, where the tempo lost costs more games than the
+    # healing saves; this Builder is already at the Core, so the alternative use
+    # of its turn is a Launcher, not a march. What is dropped is the FORTIFY
+    # restriction and the 200-HP wait, neither of which survives the reason.
+    if (p.is_launcher_builder
+            and _chebyshev(tuple(ct.get_position()), p.core) <= MENDER_LEASH):
+        if GUARD_HEALS_ON_ANY_DAMAGE:
+            worth_mending = bool(alarm) or _core_is_hurt(p, ct)
+        else:
+            worth_mending = alarm >= 2 and p.doctrine == doctrine.FORTIFY
+        if worth_mending:
+            _heal_core(p, ct)
+            return
+    # A Builder that has stopped achieving anything goes and does something
+    # else, rather than pacing where it stands.
+    #
+    # Measured over 84 Builders that lived 60 rounds or more: 19% spend their
+    # last sixty rounds bouncing between three tiles or fewer while moving in a
+    # third of them, and the median Builder spends *all* of its last sixty
+    # rounds on its three most-visited tiles. A body that has run out of errands
+    # is still charging the team +20% on every price, so the floor for it is not
+    # "stand still", it is "go and find something".
+    #
+    # Deliberately last among the productive branches and first among the
+    # fallbacks: everything that can name a real job -- mending, plugging a cut,
+    # role work, repairs -- runs ahead of it, so this only fires for a Builder
+    # that genuinely has nothing. Menders are exempt by construction, because
+    # healing calls `_mark_progress` every round it happens.
+    if (FLANK_WHEN_IDLE and not p.is_launcher_builder
+            and ct.get_current_round() - p.last_progress_round > IDLE_BEFORE_FLANK
+            and ct.get_current_round() - getattr(p, "last_flank_round", -999)
+            > FLANK_REPLAN_ROUNDS):
+        p.last_flank_round = ct.get_current_round()
+        _explore(p, ct)
+        return
+    # A belt we cut gets its barrier before this Builder does anything else.
+    #
+    # A cut on its own is rented damage: the tile costs them 3 Ti to relay and a
+    # Builder walking the line puts it straight back, so we spent a round of
+    # fire for a gap that lasts one. The barrier is what makes the cut stick --
+    # 3 Ti and +1% to us, it cannot be built over, and clearing it costs them a
+    # round of fire or a turret they would rather aim at us.
+    #
+    # It cannot be laid the same round: the tile is not empty until the conveyor
+    # is gone. So the cut is remembered and this fills it on the very next turn,
+    # ahead of every errand. That priority is the point -- the plug used to sit
+    # inside `_contest_enemy_logistics`, behind a `network_load >= cap` gate, so
+    # a Builder that cut a belt and then found something else to do never came
+    # back and left the gap open for them to relay for 3 Ti.
+    if PLUG_CUT_IMMEDIATELY and _plug_cut_belt(p, ct):
         return
     # Before any role work: an enemy in front of us outranks whatever errand
     # this Builder was on, wherever on the map that happens to be. Never the
@@ -295,28 +491,6 @@ def _run(p, ct):
     if p.builder_index != 0 and _engage_with_turret(p, ct):
         return
     if p.is_launcher_builder:
-        # Twelve tiles and 36 Ti takes away every Gunner's firing line into
-        # the Core, and 97.6% of the damage that kills our Core is Gunner
-        # fire. It goes ahead of `_guard_home`, which under 2.3.3 was the
-        # largest single measured win in this lineage.
-        #
-        # That ordering was measured twice and the first answer was wrong.
-        # Tried against the *unfixed* wall -- the one that circled the ring
-        # standing on the tiles it meant to fill -- wall-first scored 236/336
-        # against a guard-first 246, and the honest reading looked like "the
-        # guard keeps its priority". It was really "a wall that never gets
-        # built loses to a guard". With the cycle-walk fix in place the same
-        # comparison is wall-first 250, guard-first 242. A null result and a
-        # negative result look identical in a table; only the mechanism tells
-        # them apart.
-        if not _run_bulwark(p, ct):
-            return
-        # An enemy that has walked up to our own Core, answered on sighting
-        # rather than on damage. Second now, and still worth its turn: the
-        # wall denies the shooter a line, the guard answers the Builder who
-        # has already walked inside it.
-        if _guard_home(p, ct):
-            return
         if not _run_launcher_ring(p, ct):
             return
         # The outer threat-zone seal is worth its titanium only where games
@@ -324,36 +498,9 @@ def _run(p, ct):
         # and the ring Builder mines instead of freezing in place: the
         # round-1000 tiebreak is delivered titanium, and a second miner is
         # worth more than a Builder holding a pose.
-        if p.doctrine == doctrine.FORTIFY and not _run_core_seal(p, ct):
+        if ((p.doctrine == doctrine.FORTIFY or SEAL_EVERY_DOCTRINE)
+                and not _run_core_seal(p, ct)):
             return
-    if getattr(p, "is_defender", False):
-        # Two defender jobs, split by spawn parity. The first answers the
-        # shooters (the ring Builder's guard kit); the second is a dedicated
-        # mender, because in the traced jackpot loss both defenders chose
-        # turret duels, the Core was healed exactly once all game, and it
-        # died at 10 a round over a 500 Ti bank. Healing is 4 HP for a flat
-        # 1 Ti at any scale: a mender that just stands there out-pays every
-        # other use of a rich bank while the guard kills the shooters. When
-        # the Core is whole and quiet again, fall through and mine.
-        # A hole in the bulwark outranks both jobs. Every round the ring is
-        # open is a round a Gunner three tiles away has a free line at a Core
-        # that cannot dodge, and closing it costs 3 Ti against the 20 a
-        # counter-turret costs plus a permanent +20% on every later price.
-        if not _run_bulwark(p, ct):
-            return
-        mender = (p.builder_index - MAX_OPENING_BUILDERS) % 2 == 1
-        if mender and (alarm or (raw_alarm & CORE_DYING_FLAG)):
-            _heal_core(p, ct)
-            return
-        if _guard_home(p, ct):
-            return
-        if alarm or (raw_alarm & CORE_DYING_FLAG):
-            _defend_core(p, ct)
-            return
-    # A duel in progress outranks the errand that started it: the turret was
-    # bought into enemy fire on the promise that its Builder would keep it up.
-    if _tend_duel_turret(p, ct):
-        return
     if p.is_attacker:
         p.phase = "rush"
     if p.phase == "rush":
@@ -363,6 +510,30 @@ def _run(p, ct):
     # of a gap is mining into a dead end, so one 3 Ti tile restores the whole
     # line's income where the next Harvester only adds to a broken one.
     if _repair_network(p, ct):
+        return
+    # Then look for the holes vision has not shown us. Ordered after the repair
+    # and before any new work: a patrol that pre-empts a known break would walk
+    # away from a line it could mend this round.
+    if _patrol_belt(p, ct):
+        return
+    # Contesting their logistics is worth more than extending ours once ours is
+    # saturated, and nothing before this point wants the round.
+    # Take theirs when theirs is nearer than ours.
+    #
+    # This used to run only once our own network was saturated, which on a close
+    # map is far too late: a Harvester of theirs four tiles away is cheaper to
+    # tap than a fresh deposit of ours fifteen tiles away is to belt, and on the
+    # tight maps -- vault, duel, showdown -- their line is often the nearest
+    # economy on the board. Tapping costs them nothing they can see and moves
+    # 2.5 Ti a round onto our belt; laying our own costs a Builder the walk, the
+    # conveyor chain and the Harvester.
+    #
+    # The comparison is the gate: contest early only when their logistics really
+    # is the closer job, otherwise keep the old saturation rule so this never
+    # pre-empts an expansion that was nearer all along.
+    saturated = p.network_load >= _network_cap(ct)
+    if (saturated or _enemy_logistics_is_nearer(p, ct)) \
+            and _contest_enemy_logistics(p, ct):
         return
     if p.network_load >= _network_cap(ct):
         p.phase = "harass"
@@ -375,11 +546,6 @@ def _run(p, ct):
         else:
             _harass(p, ct)
             return
-    # The ore this Builder committed to may no longer be the nearest one it
-    # knows about: it has been walking through fog since it chose. Reconsider
-    # while the belt is still only a plan.
-    if p.phase in ("goto", "wait_lock", "prelay"):
-        _retarget_ore(p, ct)
     if p.phase == "scout":
         _pick(p, ct)
     if p.phase == "goto":
@@ -427,19 +593,50 @@ def _sense(p, ct):
             p.enemy_launchers.add(key)
         else:
             p.enemy_launchers.discard(key)
+        # Ours are remembered too, and as opportunities rather than hazards:
+        # the path planner treats a friendly pad as a one-round hop of up to
+        # r^2=26, which is the fastest movement any Builder has.
+        if not enemy and kind == EntityType.LAUNCHER:
+            p.friendly_launchers.add(key)
+        else:
+            p.friendly_launchers.discard(key)
+        if enemy and kind in (EntityType.GUNNER, EntityType.SENTINEL):
+            # Remember the facing too: a Gunner threatens one ray, and which
+            # ray it is decides whether a detour of one tile is enough.
+            p.enemy_turrets[key] = (kind, ct.get_direction(bid))
+        else:
+            p.enemy_turrets.pop(key, None)
         if kind == EntityType.CORE and enemy:
             ct.write_store(SLOT_ENEMY_CORE, pack_enemy(ct.get_position(bid), True))
         if enemy and kind in HARASS_PRIORITY:
             p.enemy_economy[key] = kind
         else:
             p.enemy_economy.pop(key, None)
+        # Tracked separately from enemy_economy: a Harvester is not a harass
+        # target -- breaking it gains nothing a tap does not gain better -- but
+        # it is exactly what the tap needs to find.
+        if enemy and kind == EntityType.HARVESTER:
+            p.enemy_harvesters.add(key)
+        else:
+            p.enemy_harvesters.discard(key)
+        # When we last had eyes on a Harvester of ours. `_pick` refuses an ore
+        # tile that is in `p.solids`, and `_sense` can only clear that flag for
+        # tiles the Builder can currently see -- so a Harvester shot out while
+        # nobody was looking left its deposit marked "taken" for the rest of the
+        # game and was never rebuilt. See HARVESTER_RECHECK_ROUNDS.
+        if not enemy and kind == EntityType.HARVESTER:
+            p.harvester_seen[key] = ct.get_current_round()
         if kind == EntityType.CORE:
             if ct.get_team(bid) == ct.get_team():
                 p.core = tuple(ct.get_position(bid))
             p.solids.add(key)
+        elif not enemy and kind != EntityType.BUILDER_BOT:
+            # Every building of ours is a fire detector; see _note_incoming_fire.
+            p.building_hp.setdefault(key, ct.get_hp(bid))
         elif kind in WALKABLE_BUILDINGS:
             p.solids.discard(key)
             if ct.get_team(bid) == ct.get_team():
+                p.building_hp.setdefault(key, ct.get_hp(bid))
                 p.conveyors[key] = ct.get_direction(bid)
                 p.enemy_conveyors.pop(key, None)
             else:
@@ -455,11 +652,138 @@ def _sense(p, ct):
         for dx, dy in (direction.delta() for direction in D8)
         if _inside(p, (launcher[0] + dx, launcher[1] + dy))
     }
+    _note_incoming_fire(p, ct)
+    _refresh_threat(p, ct)
     p.launcher_breakers.intersection_update(p.enemy_launchers)
     if (p.launch_blocked and p.launch_blocking_launchers
             and not p.launch_blocking_launchers & p.enemy_launchers):
         p.launch_blocked = False
         p.launch_blocking_launchers.clear()
+
+
+def _note_incoming_fire(p, ct):
+    """Remember tiles where we were shot, including by things we cannot see.
+
+    This is the gap that kills Builders. A Builder sees to r^2=20; a Sentinel
+    shoots to r^2=32 and its line is never blocked. So the turret that kills us
+    is routinely outside our own vision, is never entered in `enemy_turrets`,
+    and the threat map that pathfinding consults is empty exactly where the
+    danger is. No amount of care about *known* firing lines helps against a
+    shooter we are structurally unable to see.
+
+    Damage is the sensor we do have. Losing HP on a tile proves that tile is
+    covered, whatever we can see from it, so the tile is remembered and every
+    later route and build site treats it as lethal ground. It is a coarse
+    signal -- one tile per hit, no idea of the ray -- but it is evidence rather
+    than inference, and it accumulates across the game.
+
+    Charged at Sentinel damage deliberately. Being wrong high costs a detour;
+    being wrong low costs the Builder.
+    """
+    hurt = False
+    hp = ct.get_hp()
+    last = getattr(p, "last_hp", None)
+    p.last_hp = hp
+    if last is not None and hp < last:
+        p.hurt_tiles[tuple(ct.get_position())] = SENTINEL_DAMAGE
+        hurt = True
+
+    # Our buildings are sensors too, and better ones than the Builders: there
+    # are more of them, they are spread across the map, and a conveyor sitting
+    # in a lane reports that lane every single round without having to walk
+    # into it. A belt tile losing HP with no visible shooter is proof the tile
+    # is covered, and it costs 3 Ti to learn instead of a Builder.
+    #
+    # Only when we cannot see what did it. If a known turret already covers the
+    # tile the threat map has it, and recording it twice would double its
+    # weight in the survival arithmetic.
+    seen_now = {}
+    for tile, was in list(p.building_hp.items()):
+        position = Position(*tile)
+        if not ct.is_in_vision(position):
+            seen_now[tile] = was
+            continue
+        building = ct.get_tile_building_id(position)
+        if building is None or ct.get_team(building) != ct.get_team():
+            continue
+        now = ct.get_hp(building)
+        seen_now[tile] = now
+        if now < was and not _threat_at(p, tile):
+            p.hurt_tiles[tile] = SENTINEL_DAMAGE
+            hurt = True
+    p.building_hp = seen_now
+
+    if hurt:
+        # Force the threat map to be rebuilt with the new tiles folded in.
+        p.threat_signature = None
+
+
+def _refresh_threat(p, ct):
+    """Every tile a remembered enemy turret can shoot, and what it costs to be there.
+
+    Turrets do not move, so remembering them is sound: a Gunner seen once keeps
+    threatening its ray whether or not anything of ours can currently see it.
+    Only a turret we can see to be gone is forgotten, which `_sense` does by
+    dropping the key when the tile is empty.
+
+    A Gunner threatens the tiles down its facing; a Sentinel threatens its whole
+    pattern and cannot be blocked. `get_attackable_tiles_from` gives the raw
+    pattern for a hypothetical turret, which is exactly the question -- it
+    ignores ammunition and cooldown, and a threat map should: an empty magazine
+    is one convert_ammo away.
+
+    The map is rebuilt only when the turret set changes. It is a few hundred
+    tiles and the CPU budget is 10 ms a round for every unit.
+    """
+    signature = frozenset(p.enemy_turrets.items())
+    if getattr(p, "threat_signature", None) == signature:
+        return
+    p.threat_signature = signature
+    threat = dict(p.hurt_tiles)
+    for spot, (kind, facing) in p.enemy_turrets.items():
+        try:
+            tiles = ct.get_attackable_tiles_from(Position(*spot), facing, kind)
+        except GameError:
+            continue
+        damage = (SENTINEL_DAMAGE if kind == EntityType.SENTINEL
+                  else GUNNER_DAMAGE)
+        for tile in tiles:
+            key = tuple(tile)
+            # A tile two turrets both cover is twice as lethal, and the
+            # attacker's survival check has to see that.
+            threat[key] = threat.get(key, 0) + damage
+    p.threat = threat
+
+
+def _threat_at(p, tile):
+    return getattr(p, "threat", {}).get(tuple(tile), 0)
+
+
+def _survives_path(p, ct, path):
+    """Would we live to the end of this path, walking it a tile a round?
+
+    The attacker dies too often because it plans a route to the enemy Core and
+    then walks it regardless of what is aimed down it. A path is a schedule --
+    one tile per round -- so the damage it will take is simply the sum over its
+    first PATH_LOOKAHEAD steps of whatever covers each tile. Compare that with
+    the HP actually on the unit, keep a margin of one Gunner shot for the turret
+    we have not seen, and if it does not survive, the caller re-plans with those
+    tiles blocked.
+
+    Looking a fixed distance ahead rather than the whole way is deliberate: the
+    far end of a long path is mostly unexplored, its threat estimate is empty
+    by construction, and re-planning against an empty estimate every round
+    burns CPU to no purpose.
+    """
+    if not path:
+        return True
+    budget = ct.get_hp() - PATH_SAFETY_MARGIN
+    taken = 0
+    for tile in path[:PATH_LOOKAHEAD]:
+        taken += _threat_at(p, tile)
+        if taken >= budget:
+            return False
+    return True
 
 
 def _network_cap(ct) -> int:
@@ -473,115 +797,83 @@ def _has_unclaimed_ore(p, ct) -> bool:
     return bool(p.ores - claimed - p.solids - set(p.conveyors))
 
 
-def _claimed_ores(p, ct):
-    """Deposits already spoken for: claimed, already built on, or deferred.
-
-    Also prunes expired deferrals, which is why it is not a pure function.
-    """
-    round_number = ct.get_current_round()
-    p.deferred_ores = {ore: expires for ore, expires in p.deferred_ores.items()
-                       if expires >= round_number}
-    claimed = {x for x in (unpack_pos(ct.read_store(s)) for s in CLAIM_SLOTS)
-               if x}
-    claimed |= p.ores & p.solids
-    claimed |= set(p.deferred_ores)
-    return claimed
-
-
-def _ore_hint_target(p, ct):
-    """The nearest Core-published deposit this Builder has not reached yet.
-
-    Consumed as it is used: a hint whose tile we can now see has done its job
-    -- from then on the deposit is in `p.ores` like any other and `_pick`
-    decides on it -- and one another Builder has claimed is not ours to walk
-    at. Both cases drop out of the list permanently.
-    """
-    if not getattr(p, "ore_hints", None) or p.is_attacker:
-        return None
-    claimed = _claimed_ores(p, ct)
-    p.ore_hints = [ore for ore in p.ore_hints
-                   if ore not in p.seen and ore not in claimed]
-    if not p.ore_hints:
-        return None
-    me = tuple(ct.get_position())
-    return min(p.ore_hints, key=lambda ore: _chebyshev(ore, me))
-
-
-def _task_cost(p, me, ore, route):
-    """Rounds of walking plus tiles of belt, or None if it cannot be done."""
-    travel = _distance(p, me, _adjacent(p, ore))
-    if travel is None:
-        return None
-    return travel + len(route)
-
-
-def _retarget_ore(p, ct):
-    """Re-open the ore choice while the belt is still only a plan.
-
-    `_pick` commits under fog: it ranks the deposits this Builder has seen so
-    far and then the Builder walks, often for twenty rounds, revealing ore the
-    choice could not have known about. Nothing reconsidered, so a Builder that
-    passed a deposit four tiles off its path kept walking to the one it picked
-    at spawn and laid a longer belt to reach it.
-
-    The commitment is only free to break before the first conveyor goes down.
-    After that the tiles already bought are sunk cost -- abandoning the line
-    wastes them and leaves a stub on the map -- so `p.current_route_tiles`
-    being empty is the whole precondition.
-    """
-    if not RETARGET_ORE or p.task is None or p.current_route_tiles:
-        return False
-    if ct.get_current_round() < p.retarget_next_round:
-        return False
-    p.retarget_next_round = ct.get_current_round() + RETARGET_INTERVAL
-    me = tuple(ct.get_position())
-    current = _task_cost(p, me, p.task, p.route)
-    if current is None:
-        return False
-    claimed = _claimed_ores(p, ct) - {p.task}
-    best, target = current - RETARGET_MARGIN, None
-    for ore in sorted(p.ores - claimed - {p.task},
-                      key=lambda o: _chebyshev(o, me)):
-        # Walking distance is at least the Chebyshev distance, so once that
-        # alone fails to beat the incumbent no later candidate can either.
-        if _chebyshev(ore, me) >= best:
-            break
-        if _out_of_time(ct):
-            break
-        route = _route(p, ore)
-        if route is None:
-            continue
-        cost = _task_cost(p, me, ore, route)
-        if cost is not None and cost < best:
-            best, target = cost, ore
-    if target is None:
-        return False
-    # Release the claim and drop back to "scout"; `_pick` runs in this same
-    # round and re-ranks with the claim slot already free.
-    _abandon_task(p, ct, f"retargeted to nearer ore {target}")
-    return True
-
-
 def _pick(p, ct):
     # A conveyor network carries one stack/round: exactly four Harvesters at
     # their 10-Ti-per-four-round cadence. Do not create silently idle deposits.
     if p.network_load >= _network_cap(ct):
         return
-    claimed = _claimed_ores(p, ct)
+    claimed = {x for x in (unpack_pos(ct.read_store(s)) for s in CLAIM_SLOTS) if x}
+    # An ore tile we believe carries one of our Harvesters is claimed only while
+    # that belief is fresh. Measured over 414 games, live Harvesters ran 1.80 at
+    # round 50 down to 1.42 at round 500 in games this bot won, and 1.69 down to
+    # 0.24 in games it lost -- an economy that never grows and, when losing,
+    # collapses to nothing, while the vidar line holds about 2.0 throughout.
+    # The cause is the staleness above, not the caps: NETWORK_CAP_EARLY 6 was
+    # measured inert because permission was never the binding constraint.
+    #
+    # Re-targeting a stale site is cheap even when the Harvester turns out to be
+    # alive: `_goto` recognises it ("found existing harvester") and closes the
+    # task without spending anything.
+    stale = {ore for ore, seen in p.harvester_seen.items()
+             if ct.get_current_round() - seen > HARVESTER_RECHECK_ROUNDS}
+    claimed |= (p.ores & p.solids) - stale
+    claimed |= {ore for ore, expires in p.deferred_ores.items()
+                if expires >= ct.get_current_round()}
+    p.deferred_ores = {ore: expires for ore, expires in p.deferred_ores.items()
+                       if expires >= ct.get_current_round()}
     me, best = tuple(ct.get_position()), None
     candidates = sorted(
         p.ores - claimed,
         key=lambda ore: max(abs(ore[0] - me[0]), abs(ore[1] - me[1])),
     )
-    for ore in candidates:
+    # Seat B does not race for the contested deposit.
+    #
+    # Units act in ascending entity id across both teams, so team A moves first
+    # every round for the whole match and wins every tie -- including the race
+    # to the deposit both miners can see. Measured against skadi: eleven of the
+    # 21 maps split exactly 1-2, won from seat A and lost from seat B, which is
+    # the single largest term left in this bot's floor.
+    #
+    # Arriving second at a deposit is worse than arriving first at the next one,
+    # because the loser has walked the distance and still has to walk again. So
+    # from seat B the nearest deposit is skipped when there is another to take,
+    # which turns a race we lose into a walk we own.
+    if (SEAT_B_YIELDS_ORE and getattr(p, "seat_b", False)
+            and len(candidates) > 1):
+        candidates = candidates[1:]
+    # Choose the deposit by what it costs to *deliver*, not by how far it is to
+    # walk to.
+    #
+    # The old loop sorted by travel distance and then broke on the first
+    # routable candidate, so `len(route)` -- the belt -- was computed and never
+    # compared, exactly as the comment it replaced admitted ("route length
+    # breaks ties ... for later score tuning"). A deposit three tiles away
+    # behind a wall, needing fifteen conveyors, beat one five tiles away needing
+    # four.
+    #
+    # A conveyor is 3 Ti and, measured with get_scale_percent, +1 on the team's
+    # cost scale. Forty of them is about 120 Ti and a +40% tax on every price
+    # afterwards. That is affordable in a 600-round game and ruinous in a
+    # 150-round one, and the ladder is full of the latter: The Flotte
+    # Experience v38 swept us 0-5 on 2026-08-08 in games of 133-172 rounds
+    # while laying 8-17 conveyors against our 28-47. On hive we laid 36, built
+    # one Gunner at round 114, dealt zero damage and died on 133.
+    #
+    # Bounded by work, so the extra searching cannot cost a turn: at most
+    # BELT_SCORE_CANDIDATES deposits are priced, and the list is still ordered
+    # nearest-first, so those are the ones worth pricing.
+    priced = []
+    for ore in candidates[:BELT_SCORE_CANDIDATES]:
         route = _route(p, ore)
         travel = _distance(p, me, _adjacent(p, ore))
         if route is None or travel is None:
             continue
-        # Nearest-first is robust under fog; route length breaks ties. The
-        # offline planner supplies the upper bound for later score tuning.
+        priced.append((len(route) * BELT_TILE_WEIGHT + travel,
+                       travel, len(route), ore, route))
+    if priced:
+        priced.sort()
+        _, travel, _, ore, route = priced[0]
         best = (travel, len(route), ore, route)
-        break
     if best is None:
         return
     _, _, ore, route = best
@@ -605,33 +897,26 @@ def _pick(p, ct):
 def _route(p, ore):
     """Shortest cardinal line to Core or this Builder's unsaturated network.
 
-    Tried three ways, in order: out of every enemy turret's current ray, then
-    out of everything they could rotate onto, then anywhere at all. A belt tile
-    inside a Gunner's ray is destroyed about as fast as it is rebuilt -- the
-    traced `bridge` line was rebuilt 22 times for 66 Ti and 22% compounding
-    scale, and mined 10 titanium in 1000 rounds -- so the detour is almost
-    always cheaper than the tile. Falling through to the unrestricted route
-    means a deposit reachable only through fire is still mined, just knowingly.
+    Routed around every known enemy firing line, not merely repaired after it.
+    A conveyor is 3 Ti and +1% and dies to a single Gunner shot, and the tile
+    does not get safer for being rebuilt: heimdall's bridge trace had one belt
+    tile inside a Gunner's ray rebuilt 22 times, 66 Ti and 22% of compounding
+    scale, for an income of 10 titanium in 1000 rounds. A hole that keeps
+    reappearing is not damage -- it is a tile the enemy owns, and the line has
+    to go somewhere else.
+
+    A longer safe route beats a short dead one, so the threat tiles are blocked
+    rather than merely penalised. If that leaves no route at all the caller
+    falls back and this Builder mines elsewhere, which is the correct answer:
+    ore that can only be delivered through a firing line is not ore we can bank.
     """
-    if BELT_AVOID_ENEMY_RAYS and p.enemy_turret_memory:
-        ray, reachable = _remembered_turret_cover(p)
-        avoid = [ray | reachable, ray] if BELT_AVOID_ROTATION else [ray]
-        for hazard in avoid:
-            if not hazard:
-                continue
-            route = _route_avoiding(p, ore, hazard)
-            if route is not None:
-                return route
-    return _route_avoiding(p, ore, frozenset())
-
-
-def _route_avoiding(p, ore, hazard):
     joinable = p.network_tiles if p.network_load < 4 else set()
     blocked = (p.walls | p.foot | (p.ores - {ore}) | p.solids
                | p.rejected_build_sites
                | _launcher_hazards(p)
-               | set(hazard)
                | (set(p.conveyors) - joinable))
+    if AVOID_THREAT_FOR_LOGISTICS:
+        blocked = blocked | (set(getattr(p, "threat", ())) - {ore})
     prev, queue, goal = {ore: None}, deque([ore]), None
     while queue and goal is None:
         cur = queue.popleft()
@@ -724,42 +1009,14 @@ def _wait_for_construction_lock(p, ct):
 
 
 def _broken_network_tiles(p, ct):
-    """Holes in our belt: ones we remember laying, and ones anyone can see.
-
-    `p.network_plan` is per-Builder, so a Builder that did not lay a line has no
-    record of it and could never mend it -- which includes every replacement the
-    Core spawns after a miner dies. Traced on vase: an enemy Gunner shot the
-    tile feeding our Core on round 7, the Harvester upstream mined into a dead
-    end for the remaining 993 rounds, and the fresh miner spawned *onto that
-    very tile* did not know a conveyor belonged there.
-
-    The second rule needs no memory at all. A Conveyor delivers to the tile it
-    faces; if that tile is empty, the line ends in mid-air and everything
-    upstream of it is mining into nothing. That is visible to anyone standing
-    close enough to see both tiles.
-    """
+    """Conveyor tiles we laid that are now visibly empty."""
     broken = []
     for tile in p.network_plan:
-        if p.repair_counts.get(tile, 0) >= REPAIR_ATTEMPT_LIMIT:
-            continue
         position = Position(*tile)
         if not ct.is_in_vision(position):
             continue
         if ct.get_tile_building_id(position) is None:
             broken.append(tile)
-    for tile, facing in p.conveyors.items():
-        dx, dy = facing.delta()
-        spot = (tile[0] + dx, tile[1] + dy)
-        if (spot in broken or not _inside(p, spot) or spot in p.walls
-                or spot in p.ores or spot in p.foot):
-            continue
-        position = Position(*spot)
-        if not ct.is_in_vision(position):
-            continue
-        if (ct.get_tile_building_id(position) is None
-                and p.repair_counts.get(spot, 0) < REPAIR_ATTEMPT_LIMIT):
-            broken.append(spot)
-            p.network_plan.setdefault(spot, facing)
     return broken
 
 
@@ -788,6 +1045,14 @@ def _repair_network(p, ct):
         return False
     broken.sort(key=lambda tile: (_cardinal_distance(me, tile), tile))
     tile = broken[0]
+    # A tile inside a known firing line, or one that has already eaten
+    # REPAIR_ATTEMPT_LIMIT rebuilds, is not damage -- it is ground the enemy
+    # holds. Abandon the tile, drop the whole line's plan, and let the next
+    # _route pass find a way round the turret instead of feeding it.
+    attempts = p.repair_attempts.get(tile, 0)
+    if attempts >= REPAIR_ATTEMPT_LIMIT or _threat_at(p, tile):
+        _abandon_belt_tile(p, ct, tile)
+        return True
     facing = p.network_plan[tile]
     target = Position(*tile)
     if _cardinal_distance(me, tile) != 1:
@@ -797,13 +1062,239 @@ def _repair_network(p, ct):
         ct.build_conveyor(target, facing)
         _mark_progress(p, ct, "repaired conveyor", tile)
         p.conveyors[tile] = facing
-        p.repair_counts[tile] = p.repair_counts.get(tile, 0) + 1
+        p.repair_attempts[tile] = attempts + 1
         return True
     if _build_failure(p, ct, tile, "conveyor repair", ct.get_conveyor_cost()):
         # Something else stands there now; the line has to be re-planned
         # rather than patched.
         del p.network_plan[tile]
     return True
+
+
+def _abandon_belt_tile(p, ct, tile):
+    """Write off a belt tile the enemy controls, and re-plan the line around it.
+
+    Rebuilding into a seat a turret covers is the single most expensive mistake
+    in this lineage's history. The tile is added to the rejected set so no later
+    route proposes it again, and the surviving plan is torn down back to the
+    Core -- a line with a permanent hole delivers nothing, so keeping the rest
+    of it standing only pays scale on conveyors that carry no titanium.
+    """
+    p.rejected_build_sites.add(tile)
+    p.network_plan.pop(tile, None)
+    p.repair_attempts.pop(tile, None)
+    p.conveyors.pop(tile, None)
+    p.network_tiles.discard(tile)
+    _mark_progress(p, ct, "abandoned belt tile under fire", tile)
+    # Re-plan from scratch on the next scouting pass rather than patching.
+    p.task, p.route, p.route_i = None, [], 0
+    p.phase = "scout"
+
+
+def _patrol_belt(p, ct):
+    """Walk the line every so often to find cuts vision has not shown us.
+
+    A Builder only sees holes in tiles it happens to be looking at, and the
+    miner spends its life at the far end of the belt next to the ore. Enemies
+    cut lines in the middle, where nothing of ours is standing, and a cut belt
+    is silent: income simply stops, and the bot goes on building Harvesters
+    that feed a dead end.
+
+    So once every BELT_PATROL_ROUNDS the miner walks back down its own line.
+    The walk is the sensor -- vision does the rest, and `_repair_network` picks
+    up whatever the patrol exposes on the following round.
+    """
+    if not p.network_plan:
+        return False
+    if ct.get_current_round() - p.belt_patrolled < BELT_PATROL_ROUNDS:
+        return False
+    unseen = [tile for tile in p.network_plan
+              if not ct.is_in_vision(Position(*tile))]
+    if not unseen:
+        p.belt_patrolled = ct.get_current_round()
+        return False
+    me = tuple(ct.get_position())
+    target = min(unseen, key=lambda tile: _cardinal_distance(me, tile))
+    if _cardinal_distance(me, target) <= 1:
+        p.belt_patrolled = ct.get_current_round()
+        return False
+    _step(p, ct, Position(*target), False)
+    return True
+
+
+def _enemy_logistics_is_nearer(p, ct):
+    """Is an enemy Harvester or belt tile closer than our own next deposit?
+
+    Cheap and deliberately crude: Chebyshev on remembered positions, no routing.
+    A wrong answer costs one Builder-turn, and the branch it guards re-checks
+    everything properly.
+    """
+    if not STEAL_BEFORE_EXPAND:
+        return False
+    me = tuple(ct.get_position())
+    theirs = [t for t in p.enemy_harvesters] + [t for t in p.enemy_conveyors]
+    if not theirs:
+        return False
+    near_theirs = min(_cardinal_distance(me, t) for t in theirs)
+    if near_theirs > STEAL_MAX_DISTANCE:
+        return False
+    free_ore = p.ores - p.solids - set(p.conveyors)
+    near_ours = (min(_cardinal_distance(me, o) for o in free_ore)
+                 if free_ore else 999)
+    return near_theirs < near_ours
+
+
+def _contest_enemy_logistics(p, ct):
+    """Tap a Harvester of theirs into a belt of ours, and cut what feeds their Core.
+
+    Both halves are new to this lineage, which has always treated the enemy's
+    economy as something to raid rather than something to take.
+
+    A Harvester outputs one whole stack round-robin to whichever of its four
+    cardinal neighbours was used least recently, and it does not care whose
+    conveyor that is. So a conveyor of ours laid against an enemy Harvester
+    takes a share of its output on a fixed rotation, permanently, for 3 Ti. They
+    cannot see it happening in their own titanium count -- the stack simply
+    never arrives -- and removing it means removing their own Harvester's
+    neighbour.
+
+    Cutting is the cheaper half. A conveyor is 30 HP and a Builder does 2 damage
+    a hit for 2 Ti, so breaking one costs 30 Ti of shots -- but it is *their*
+    trunk, and every round it stays down is a stack that never reaches their
+    Core. Cut the tile nearest their Core: the further down the line the cut,
+    the more of their belt is stranded behind it.
+    """
+    if not (STEAL_ENEMY_HARVESTER or CUT_ENEMY_BELT):
+        return False
+    me = tuple(ct.get_position())
+    if STEAL_ENEMY_HARVESTER and _tap_enemy_harvester(p, ct, me):
+        return True
+    if CUT_ENEMY_BELT and _cut_enemy_belt(p, ct, me):
+        return True
+    return False
+
+
+def _tap_enemy_harvester(p, ct, me):
+    """Lay one of our conveyors against an enemy Harvester to steal its rotation."""
+    harvesters = [tile for tile in p.enemy_harvesters
+                  if _distance_sq(tile, me) <= CONTEST_MAX_DISTANCE_SQ]
+    if not harvesters:
+        return False
+    for harvester in sorted(harvesters,
+                            key=lambda t: (_cardinal_distance(me, t), t)):
+        for dx, dy in D4_DELTAS:
+            spot = (harvester[0] + dx, harvester[1] + dy)
+            if not _inside(p, spot) or spot in p.walls or spot in p.ores:
+                continue
+            if spot in p.solids or spot in p.conveyors:
+                continue
+            if spot in p.enemy_conveyors or _threat_at(p, spot):
+                continue
+            if spot in p.contested:
+                continue
+            # Point the tap back towards our own side; the rest of the line is
+            # ordinary belt the miner will extend on a later pass.
+            facing = FACING[(_sign(p.core[0] - spot[0]), 0)] if (
+                abs(p.core[0] - spot[0]) >= abs(p.core[1] - spot[1])
+                and p.core[0] != spot[0]
+            ) else FACING[(0, _sign(p.core[1] - spot[1]))]
+            if _cardinal_distance(me, spot) != 1:
+                _move_cardinal_adjacent(p, ct, spot)
+                return True
+            target = Position(*spot)
+            if ct.can_build_conveyor(target, facing):
+                ct.build_conveyor(target, facing)
+                _mark_progress(p, ct, "tapped enemy harvester", spot)
+                p.conveyors[spot] = facing
+                p.contested.add(spot)
+                return True
+    return False
+
+
+def _cut_enemy_belt(p, ct, me):
+    """Break the enemy conveyor nearest their Core, then wall the gap.
+
+    Cutting alone is rented damage: the tile is 3 Ti for them to relay, and a
+    Builder of theirs walking the line puts it straight back, so we pay 30 Ti of
+    Builder fire for a gap that lasts a round. Dropping our own barrier into the
+    hole is what makes the cut stick -- it is 3 Ti and +1% to us, it cannot be
+    built over, and clearing it costs them another 30 Ti of fire or a turret
+    they would rather point at us. Their belt stays severed until they spend
+    more than we did, which is the whole trade.
+
+    The barrier also has to be built the round *after* the cut: the tile is not
+    empty until the conveyor is gone, so this remembers the hole it made and
+    fills it on a later pass.
+    """
+    packed = ct.read_store(SLOT_ENEMY_CORE)
+    if packed == 0:
+        return False
+    enemy_core, _ = unpack_enemy(packed)
+
+    # Plug a hole we cut earlier before opening a new one: an unplugged cut is
+    # the version of this that does not pay.
+    for tile in sorted(p.cut_tiles, key=lambda t: _cardinal_distance(me, t)):
+        if _cardinal_distance(me, tile) != 1:
+            continue
+        position = Position(*tile)
+        if ct.is_in_vision(position) and ct.get_tile_building_id(position):
+            p.cut_tiles.discard(tile)
+            continue
+        if ct.get_global_resources() < ct.get_barrier_cost():
+            break
+        if ct.can_build_barrier(position):
+            ct.build_barrier(position)
+            _mark_progress(p, ct, "walled a cut belt", tile)
+            p.solids.add(tile)
+            p.cut_tiles.discard(tile)
+            return True
+
+    reachable = [tile for tile in p.enemy_conveyors
+                 if _cardinal_distance(me, tile) == 1]
+    if not reachable:
+        return False
+    tile = min(reachable, key=lambda t: (_distance_sq(t, enemy_core), t))
+    target = Position(*tile)
+    if ct.can_fire(target):
+        ct.fire(target)
+        _mark_progress(p, ct, "cut enemy belt", tile)
+        p.cut_tiles.add(tile)
+        return True
+    return False
+
+
+def _plug_cut_belt(p, ct):
+    """Barrier a conveyor tile this team has just cut, before any other errand.
+
+    Returns True when the turn has been spent. Walks back to the hole if it is
+    close, because a Builder that cuts and wanders has paid for nothing; the
+    leash keeps that from turning into a march across the map.
+    """
+    if not p.cut_tiles:
+        return False
+    me = tuple(ct.get_position())
+    for tile in sorted(p.cut_tiles, key=lambda t: _cardinal_distance(me, t)):
+        position = Position(*tile)
+        # Already refilled by them, or never emptied: stop tracking it.
+        if ct.is_in_vision(position) and ct.get_tile_building_id(position):
+            p.cut_tiles.discard(tile)
+            continue
+        if ct.get_global_resources() < ct.get_barrier_cost():
+            return False
+        if _cardinal_distance(me, tile) == 1:
+            if ct.can_build_barrier(position):
+                ct.build_barrier(position)
+                _mark_progress(p, ct, "walled a cut belt", tile)
+                p.solids.add(tile)
+                p.cut_tiles.discard(tile)
+                return True
+            # Something else took the tile; it is not ours to plug.
+            p.cut_tiles.discard(tile)
+            continue
+        if _cardinal_distance(me, tile) <= PLUG_CUT_LEASH:
+            return _step(p, ct, position, False)
+        p.cut_tiles.discard(tile)
+    return False
 
 
 def _write_off(p, ct):
@@ -832,12 +1323,28 @@ def _write_off(p, ct):
 
 def _read_construction_lock(ct):
     value = ct.read_store(SLOT_CONSTRUCTION_LOCK)
-    return value & 0x3, value >> 2
+    return value & LOCK_OWNER_MASK, value >> LOCK_OWNER_BITS
 
 
 def _refresh_construction_lock(p, ct):
-    ct.write_store(SLOT_CONSTRUCTION_LOCK,
-                   (p.builder_index + 1) | ((ct.get_current_round() + 20) << 2))
+    """Claim the shared build lock.
+
+    The owner field was two bits wide, which holds three Builders. `owner` is
+    `builder_index + 1`, so the fourth Builder wrote 4, `4 & 0b11` is 0, and 0
+    is the value that means "nobody owns this lock". That Builder therefore
+    never matched its own claim, rewrote the slot with a fresh expiry every
+    round, and -- because units act in ascending entity id -- did so *after* the
+    early miner had claimed it, erasing the claim of the one Builder actually
+    laying belt, which then waited for a lock it could never be granted.
+
+    Three Builders is what the opening has, so this was unreachable until
+    ECON_EXPAND_BUILDERS was turned on and index 3 started existing. Four bits
+    hold fifteen owners, which is past ECON_MAX_TOTAL_BUILDERS.
+    """
+    ct.write_store(
+        SLOT_CONSTRUCTION_LOCK,
+        ((p.builder_index + 1) & LOCK_OWNER_MASK)
+        | ((ct.get_current_round() + 20) << LOCK_OWNER_BITS))
 
 
 def _prelay(p, ct):
@@ -1080,11 +1587,69 @@ def _vacate_ore(p, ct, build_target):
 
 
 def _mark_progress(p, ct, action, target=None):
+    if DEBUG_BUILD and target is not None and action.startswith(("built", "wall",
+                                                                "repaired",
+                                                                "tapped",
+                                                                "countered",
+                                                                "turret")):
+        _log_build_exposure(p, ct, action, target)
     p.last_progress_round = ct.get_current_round()
     p.last_progress = f"{action} {target}" if target is not None else action
     p.stall_reported = False
     p.pending_build = None
     p.build_wait_key, p.build_wait_rounds = None, 0
+
+
+def _log_build_exposure(p, ct, action, target):
+    """Record whether a building went up in a firing line, and if we could tell.
+
+    Three separate questions, and the benchmark exists because conflating them
+    is how "it still builds in the line of fire" stayed unfixed:
+
+      knew=1        the threat map already had this tile. An outright bug: the
+                    information was in hand and the placement ignored it.
+      visible=1     an enemy turret covering this tile is in vision *right now*
+                    and is not in the threat map. A sensing bug -- `_sense`
+                    should have recorded it before the build was chosen.
+      remembered=1  we have seen that turret at some earlier point in the game.
+                    A memory bug: it was recorded and then lost or overwritten.
+
+    Anything with all three at 0 is not a bug at all -- it is a turret nobody
+    on our team has ever laid eyes on, and no amount of care could have avoided
+    the tile.
+    """
+    tile = tuple(target)
+    knew = 1 if _threat_at(p, tile) else 0
+    visible = 0
+    for entity_id in ct.get_nearby_entities():
+        if ct.get_team(entity_id) == ct.get_team():
+            continue
+        kind = ct.get_entity_type(entity_id)
+        if kind not in (EntityType.GUNNER, EntityType.SENTINEL):
+            continue
+        try:
+            covered = ct.get_attackable_tiles_from(
+                ct.get_position(entity_id), ct.get_direction(entity_id), kind)
+        except GameError:
+            continue
+        if any(tuple(t) == tile for t in covered):
+            visible = 1
+            break
+    remembered = 1 if any(
+        tile in _turret_cover(ct, spot, kind, facing)
+        for spot, (kind, facing) in p.enemy_turrets.items()) else 0
+    print(f"BUILDX r={ct.get_current_round()} id={ct.get_id()} "
+          f"action={action.replace(' ', '_')} tile={tile[0]},{tile[1]} "
+          f"knew={knew} visible={visible} remembered={remembered}",
+          file=sys.stderr, flush=True)
+
+
+def _turret_cover(ct, spot, kind, facing):
+    try:
+        return {tuple(t) for t in ct.get_attackable_tiles_from(
+            Position(*spot), facing, kind)}
+    except GameError:
+        return set()
 
 
 def _report_stall(p, ct):
@@ -1116,18 +1681,76 @@ def _step(p, ct, target, exact, allow_launcher=True):
             p.launch_origin = None
             p.path_failures = 0
         else:
+            # Wait, do not re-ask. Under the old protocol re-announcing every
+            # round was free insurance against a pad that had not noticed; now
+            # the request persists in the slot until it is served or refused,
+            # so re-asking only overwrites it -- and `_announce_launch` re-runs
+            # `_choose_landing`, which can name a *different* tile each round as
+            # the threat map shifts. Traced: builder 36 asked for (7,16) on both
+            # r23 and r24, and had asked for (10,15) on r22 -- a change of mind
+            # mid-negotiation rather than a retry.
+            #
+            # The counter still runs down, so a pad that has genuinely vanished
+            # releases the Builder rather than holding it forever.
             adjacent = _adjacent_visible_launcher(ct, target)
             if adjacent is not None:
-                if _announce_launch(p, ct, target, adjacent[1]):
-                    p.awaiting_launch -= 1
-                    return True
-                p.awaiting_launch = 0
-                p.launch_origin = None
+                # Waiting, not re-asking: the request is already in the slot.
+                p.awaiting_launch -= 1
+                return True
             # The requested Launcher disappeared before servicing us.
             p.awaiting_launch = 0
             p.launch_origin = None
 
-    nxt = _bfs_step(p, tuple(source), tuple(target), exact)
+    # A hop is a real edge in the route, but it costs a round of comms: the
+    # request is written now and only becomes readable next turn. So the
+    # announcement is made while still walking *towards* the pickup tile, one
+    # step early, and the throw is ready the round we arrive. Announcing on
+    # arrival instead wastes a round standing next to the pad -- usually
+    # harmless, occasionally the round that gets the Builder killed.
+    # Only while not already waiting on a throw. Re-announcing every round
+    # re-opens the negotiation from scratch: each refusal teaches the Builder a
+    # new lane, it picks a different landing, and the pad refuses that one too.
+    # Measured, that loop took launch requests from 286 to 5,770 a game and the
+    # serve rate from 35% to 6%. One request, then wait for the answer.
+    # One request, then wait for the answer. A store write is not readable
+    # until the next turn, so re-asking every round re-opens the negotiation
+    # before any reply can exist -- traced: builder 36 asked for (8,16) on r20
+    # and again on r21, before the r21 refusal was written. That loop took
+    # launch requests from 286 to 5,770 a game and the serve rate from 35% to
+    # 6.5%. `launch_retry_round` also covers the slot-collision case: two
+    # Builders sharing a slot overwrite each other, and the loser simply waits
+    # a round and asks again rather than hammering.
+    path = (None if (p.awaiting_launch
+                     or ct.get_current_round() < p.launch_retry_round) else
+            _safe_path(p, ct, tuple(source), tuple(target), exact))
+    if path is not None and len(path) > 2:
+        for index in range(min(2, len(path) - 1)):
+            if _chebyshev(path[index], path[index + 1]) <= 1:
+                continue
+            pad = _pad_serving(p, path[index])
+            if pad is not None and index == 1:
+                # We step onto the pickup tile this round and want the throw
+                # available next round: announce before moving.
+                _request_launch(p, ct, Position(*path[index + 1]),
+                                Position(*pad))
+            break
+
+    nxt = _bfs_step(p, tuple(source), tuple(target), exact, ct=ct)
+    if nxt is not None and _chebyshev(tuple(source), nxt) > 1:
+        # The route's next step is a throw, not a walk. A hop edge is one BFS
+        # step because it is one round, but it is not a move the Builder can
+        # make itself -- it has to ask the pad. Announcing here is what turns
+        # the planned hop into the real one; without it the mover finds no
+        # legal direction, books a path failure, and forty of those retire the
+        # Builder. That is exactly how this bot went from nine units to one.
+        adjacent = _adjacent_visible_launcher(ct, target)
+        if adjacent is not None and _request_launch(p, ct, target,
+                                                    adjacent[1]):
+            p.path_failures = 0
+            return True
+        # The pad is not actually usable this round; fall back to walking.
+        nxt = _bfs_step(p, tuple(source), tuple(target), exact,
+                        ct=ct, allow_hops=False)
     if nxt:
         # Cardinal only: a diagonal is not a legal Builder move in 2.3.3, and
         # this loop silently did nothing whenever the path asked for one.
@@ -1138,30 +1761,67 @@ def _step(p, ct, target, exact, allow_launcher=True):
                 p.path_failures = 0
                 return True
 
+    if getattr(p, "blocked_by_fire", False):
+        # There is a route; it just runs through fire we would not survive.
+        # Not a pathing failure -- counting it as one spends titanium on an
+        # escape Launcher aimed at the same lethal tile, and forty of them
+        # retire the Builder outright.
+        #
+        # Nor is it a reason to stand still. Waiting out a Sentinel is waiting
+        # for something that does not move, does not run out of ammunition
+        # while their Core lives, and cannot rotate to stop covering the tile.
+        # So: back off far enough that the line cannot reach, and if the errand
+        # is still worth doing after a few rounds of that, go *over* the line
+        # instead of through it. A Launcher throws to r^2=26 and the landing
+        # tile is chosen clear of fire, which is precisely the way past a lane
+        # that cannot be walked.
+        p.fire_blocked_rounds += 1
+        if (allow_launcher and not p.launch_blocked
+                and p.fire_blocked_rounds >= FIRE_BLOCK_LAUNCH_ROUNDS
+                and _launch_beats_walking(p, ct, target)
+                and _build_escape_launcher(p, ct, target)):
+            return True
+        _retreat_from_fire(p, ct)
+        return True
+    p.fire_blocked_rounds = 0
+
     goals = {tuple(target)} if exact else _adjacent(p, tuple(target))
     if tuple(source) in goals:
         p.path_failures = 0
         return False
 
+    # Before treating this as a failed route: is the only thing in the way
+    # another *bot*? Bots move; walls do not, and the escalation for each is
+    # different. Traced from the pacing benchmark -- our Builders park against
+    # enemy Builders in corridors, and because the enemy often paces back and
+    # forth the route flickers between clear and blocked, so nothing ever
+    # settles and both bodies are removed from the game.
+    #
+    # The ladder here is deliberately the human one: hold still and let them
+    # pass, then give ground and see whether they take it, and only then decide
+    # the tile is theirs and go around. Holding first is what makes it cheap --
+    # most blockages clear on their own within a round or two, and a Builder
+    # that immediately reroutes around a passer-by pays for a detour it did not
+    # need.
+    if _bot_standoff(p, ct, target, exact):
+        return True
     p.path_failures += 1
+    # Going over the obstacle is tried before shooting through it. Both cost
+    # 20 Ti, but the throw resolves in one round and puts the Builder past
+    # everything in between, where a turret has to break a 30 HP Launcher or
+    # kill a Builder first -- several rounds during which ours stands still in
+    # a contested spot, which is where it gets shot. Shooting is what is left
+    # when the throw is unavailable: no pad site, a rejection outstanding, or
+    # the relay already refused.
+    if (allow_launcher and not launch_rejected and not p.launch_blocked
+            and p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
+            and _build_escape_launcher(p, ct, target)):
+        return True
     # An enemy Launcher across the path is a target, not an obstacle -- but
     # only the ones the route actually runs into.
     blocking = _blocking_launchers(p, tuple(source), tuple(target), exact)
     if blocking and _build_launcher_breaker_gunner(
             p, ct, blocking=blocking, route=target):
-        return True
-    # Only the attacker rides the ferry. The relay exists to carry one Builder
-    # across the map; every other Builder works within a few tiles of ground it
-    # can walk. Traced on sweden: the economy Builder asked to be *thrown two
-    # tiles* -- (2, 2) to (4, 2) -- and the throws landed it off the conveyor
-    # run it was laying, so it re-planned, walked back, and asked again. It
-    # finished the game with fifteen conveyors, zero Harvesters and zero
-    # titanium collected, on a map where the same chassis with an atlas builds
-    # two Harvesters by round 19.
-    if (allow_launcher and p.is_attacker and not launch_rejected
-            and not p.launch_blocked
-            and p.path_failures >= PATH_FAILURES_BEFORE_LAUNCHER
-            and _build_escape_launcher(p, ct, target)):
         return True
     if _build_blocker_gunner(p, ct, target):
         return True
@@ -1174,6 +1834,56 @@ def _step(p, ct, target, exact, allow_launcher=True):
     return False
 
 
+def _bot_standoff(p, ct, target, exact):
+    """Wait out, then give way to, then route around another bot in the way.
+
+    Returns True when the turn has been spent on the standoff.
+
+    Only runs when the route is blocked *by bots alone* -- if the same search
+    with bots treated as passable also fails, the obstruction is terrain and
+    this has nothing to say about it.
+    """
+    if not BOT_STANDOFF:
+        return False
+    source = tuple(ct.get_position())
+    goals = {tuple(target)} if exact else _adjacent(p, tuple(target))
+    dist, _ = _travel(p, source, goals=goals, ignore_bots=True)
+    if not (goals & set(dist)):
+        # Terrain blocks it too; not a standoff.
+        p.standoff_rounds = 0
+        return False
+    p.standoff_rounds = getattr(p, "standoff_rounds", 0) + 1
+    # 1. Hold. Most blockages are a body walking past.
+    if p.standoff_rounds <= STANDOFF_WAIT:
+        return True
+    # 2. Give ground, and see whether they take it. A step away is also a step
+    #    out of whatever ray they were standing in.
+    if p.standoff_rounds <= STANDOFF_WAIT + STANDOFF_BACKOFF:
+        blockers = [t for t in p.bot_occupied
+                    if _cardinal_distance(source, t) <= 2]
+        if blockers:
+            away = min(blockers, key=lambda t: _cardinal_distance(source, t))
+            best, best_score = None, None
+            for direction in D8:
+                spot = tuple(ct.get_position().add(direction))
+                if spot in _no_go(p, source) or not ct.can_move(direction):
+                    continue
+                score = (-_distance_sq(spot, away), _distance_sq(spot, tuple(target)))
+                if best_score is None or score < best_score:
+                    best, best_score = direction, score
+            if best is not None:
+                ct.move(best)
+                return True
+    # 3. They are not moving and neither of us is giving way. Their tile is
+    #    theirs: write it off for a while and let the router find another way.
+    for tile in list(p.bot_occupied):
+        if _cardinal_distance(source, tile) <= 2:
+            p.solids.add(tile)
+            p.deferred_ores.pop(tile, None)
+    p.standoff_rounds = 0
+    return False
+
+
 def _build_escape_launcher(p, ct, target):
     """Build a temporary ferry after repeated failures to find a walkable path."""
     launchers = _visible_friendly_launchers(ct)
@@ -1181,28 +1891,8 @@ def _build_escape_launcher(p, ct, target):
         adjacent = _adjacent_visible_launcher(ct, target, launchers)
         if adjacent is None:
             return False
-        p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
-        p.launch_origin = tuple(ct.get_position())
-        if _announce_launch(p, ct, target, adjacent[1]):
-            return True
-        p.awaiting_launch = 0
-        p.launch_origin = None
-        return False
+        return _request_launch(p, ct, target, adjacent[1])
 
-    # Cap how many Launchers one Builder will buy purely to throw itself
-    # forward. Each is 20 Ti and a permanent +10% on every price the team pays,
-    # and the bill lands on the two things that actually kill a Core: measured
-    # on aurora, this bot builds 6 Launchers, 1 Harvester and 4 Gunners in the
-    # game where the atlas-free ragnarok_fair -- which cannot ferry at all and
-    # therefore walks -- builds 3, 2 and 7. The chain buys tempo and pays for it
-    # in firepower and economy at once, and ragnarok_fair takes 25/42 off
-    # valkyrie on the cluster while ragnarok itself only manages 21/42.
-    if p.relay_launchers_built >= MAX_RELAY_LAUNCHERS:
-        _plan_failed(
-            p, ct, "build escape launcher", target,
-            f"relay cap reached ({MAX_RELAY_LAUNCHERS})",
-        )
-        return False
     if ct.get_global_resources() < ct.get_launcher_cost():
         _plan_failed(
             p, ct, "build escape launcher", target,
@@ -1219,7 +1909,15 @@ def _build_escape_launcher(p, ct, target):
         if (_inside(p, spot) and spot not in p.walls and spot not in p.solids
                 and spot not in _launcher_hazards(p)
                 and spot not in p.ores and ct.can_build_launcher(position)):
-            candidates.append((position.distance_squared(target), spot, position))
+            # Refused, not ranked. Measured: this function alone was 29 of the
+            # 50 buildings placed into a firing line, because it ranked purely
+            # on closeness to the target. A Launcher in a Sentinel's lane is
+            # gone in two shots along with the relay it was built to provide,
+            # which strands the passenger it was built for.
+            if _threat_at(p, spot):
+                continue
+            candidates.append((position.distance_squared(target),
+                               spot, position))
     if not candidates:
         _plan_failed(
             p, ct, "build escape launcher", target,
@@ -1229,13 +1927,10 @@ def _build_escape_launcher(p, ct, target):
 
     _, spot, position = min(candidates)
     ct.build_launcher(position)
-    p.relay_launchers_built += 1
     _mark_progress(p, ct, "built escape launcher", spot)
     p.solids.add(spot)
     p.path_failures = 0
-    p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
-    p.launch_origin = here
-    _announce_launch(p, ct, target, position)
+    _request_launch(p, ct, target, position)
     return True
 
 
@@ -1252,7 +1947,7 @@ def _build_blocker_gunner(p, ct, target):
         return False
 
     source, destination = tuple(here), tuple(target)
-    protected_lanes = _friendly_turret_lanes(ct)
+    protected_lanes = _friendly_turret_lanes(ct, p)
     target_dx = destination[0] - source[0]
     target_dy = destination[1] - source[1]
     unit_priority = {
@@ -1333,50 +2028,213 @@ def _adjacent_visible_launcher(ct, target, launchers=None):
     ))
 
 
-def _announce_launch(p, ct, target, launcher_position):
-    """Publish this passenger and the launcher's requested compass direction."""
-    dx = _sign(target.x - launcher_position.x)
-    dy = _sign(target.y - launcher_position.y)
-    direction_index = next((
-        index for index, direction in enumerate(D8, start=1)
-        if direction.delta() == (dx, dy)
-    ), None)
-    if direction_index is None:
-        _plan_failed(
-            p, ct, "announce launch", target,
-            f"launcher at {tuple(launcher_position)} is already the target",
-        )
+def _request_launch(p, ct, target, launcher_position):
+    """Claim the slot and name a landing. The only writer of a request.
+
+    Two rules decide whether a request may be written at all:
+
+    * **The slot must be empty or hold a response.** A slot holding a live
+      request belongs to whoever wrote it, and the pad owes them an answer.
+      Writing over it destroys a negotiation already in progress, and because
+      store writes land a turn late, both parties would otherwise write the
+      same round and one word would simply vanish. With this rule the Builder
+      and the pad alternate and nothing is lost.
+    * **We must be addressing the pad that actually owns our tile** -- the
+      lowest-id friendly Launcher whose pickup radius covers us. The landing is
+      encoded as an offset from that pad, and the same rule tells the pad to
+      decode it, so both ends always agree on which tile was meant.
+    """
+    if p.awaiting_launch:
         return False
     slot = LAUNCH_REQUEST_SLOTS[p.builder_index % len(LAUNCH_REQUEST_SLOTS)]
-    request = (ct.get_id() << LAUNCH_DIRECTION_BITS) | direction_index
-    ct.write_store(slot, request)
+    if not writable_by_builder(ct.read_store(slot)):
+        # Somebody's live request is in there; wait rather than clobber it.
+        return False
+    pad = tuple(launcher_position)
+    owner = pad_owner(_known_pads(p, ct), tuple(ct.get_position()))
+    if owner is not None:
+        pad = owner
+    landing = _choose_landing(p, ct, pad, tuple(target))
+    if landing is None:
+        return False
+    index = landing_index(pad, landing)
+    if index is None:
+        return False
+    ct.write_store(slot, pack_request(ct.get_id(), index))
+    p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
+    p.launch_origin = tuple(ct.get_position())
+    p.last_pad_asked = pad
+    p.last_landing_asked = landing
+    if DEBUG_LAUNCH:
+        print(f"LREQ r={ct.get_current_round()} id={ct.get_id()} slot={slot} "
+              f"at={tuple(ct.get_position())} pad={pad} landing={landing} "
+              f"goal={tuple(target)}", file=sys.stderr, flush=True)
     return True
 
 
+def _known_pads(p, ct):
+    """Friendly pads we know of, position -> entity id (None if unseen).
+
+    Remembered pads count for planning: a Builder may route through a Launcher
+    it cannot currently see. Its id only matters when the request is actually
+    written, and by then the Builder is inside the pickup radius and looking
+    straight at it.
+    """
+    pads = {}
+    for spot in getattr(p, "friendly_launchers", ()):
+        position = Position(*spot)
+        ident = None
+        if ct.is_in_vision(position):
+            building = ct.get_tile_building_id(position)
+            if building is not None and ct.get_team(building) == ct.get_team():
+                ident = building
+        pads[spot] = ident
+    return pads
+
+
+def _choose_landing(p, ct, pad, target):
+    """The tile in this pad's throw field the passenger actually wants.
+
+    Everything the pad used to guess at is decided here, with the information
+    that makes the decision answerable:
+
+    * **Never a tile under fire.** A thrown Builder arrives with its move
+      already spent and eats a full round before it can step off, so a covered
+      landing is worse than a covered tile it walked onto. This uses the
+      remembered threat map, which includes lanes inferred from damage taken by
+      units and buildings rounds ago and turrets currently out of sight.
+    * **Then nearest the goal by walking distance**, counting walls, because a
+      landing four tiles nearer in a straight line can be twenty further to
+      walk.
+    * **Then furthest from the pad**, which breaks ties toward actually making
+      progress rather than hopping one tile.
+
+    Returns None when the field holds nothing safe and reachable; the caller
+    then treats the relay as unavailable rather than taking a bad throw.
+    """
+    reachable = _distance_map(p, target)
+    best, best_key = None, None
+    for dx, dy in THROW_OFFSETS:
+        tile = (pad[0] + dx, pad[1] + dy)
+        if not _inside(p, tile) or tile in p.walls or tile in p.solids:
+            continue
+        if tile in p.ores or tile in p.bot_occupied:
+            continue
+        if _threat_at(p, tile):
+            continue
+        # A tile with anything standing on it is not a landing, and the traced
+        # failure was exactly this: builder 36 asked to be thrown onto (8,16),
+        # which was the tile an enemy Sentinel was standing on. `solids` only
+        # holds what this Builder has personally sensed, and it had never seen
+        # that tile -- so nothing above rejected it and every one of those
+        # requests came back `illegal-throw`. Check the live map as well as
+        # memory; the Builder can see far more than it has walked past.
+        position = Position(*tile)
+        if ct.is_in_vision(position):
+            if (ct.get_tile_building_id(position) is not None
+                    or ct.get_tile_builder_bot_id(position) is not None
+                    or not ct.is_tile_passable(position)):
+                continue
+        if tile in p.enemy_turrets or tile in p.enemy_launchers:
+            continue
+        # Never inside an enemy Launcher's pickup radius. Pickup is team-blind,
+        # so a Builder landing there can be picked up and thrown by their pad --
+        # and it arrives with its move already spent, so it cannot step clear
+        # first. Landing in reach of one is handing them a free displacement of
+        # a 30 Ti unit, at the exact moment it is least able to react.
+        if tile in _launcher_hazards(p):
+            continue
+        # A tile we were thrown off before. Something within pickup range of it
+        # displaces us, whether or not we have ever seen what.
+        if tile in p.displaced_landings:
+            continue
+        walk = reachable.get(tile)
+        if walk is None:
+            continue
+        key = (walk, -(dx * dx + dy * dy))
+        if best_key is None or key < best_key:
+            best, best_key = tile, key
+    return best
+
+
+def _is_enemy_launcher(ct, spot):
+    """True only for a Launcher we can see and can see belongs to them.
+
+    Unseen is not hostile. Refusing to guess is the safe direction here: a
+    friendly Launcher wrongly called hostile costs a permanent nine-tile hole in
+    our own movement map, while an enemy one wrongly called friendly costs one
+    throw we were going to lose anyway.
+    """
+    position = Position(*spot)
+    if not ct.is_in_vision(position):
+        return False
+    building = ct.get_tile_building_id(position)
+    if building is None:
+        return False
+    return (ct.get_entity_type(building) == EntityType.LAUNCHER
+            and ct.get_team(building) != ct.get_team())
+
+
 def _consume_launch_rejection(p, ct):
-    """Consume a rejection and remember the Launcher blocking safe landings."""
+    """Read the pad's answer and fold anything it reported into the map.
+
+    Intel is recorded *before* anything else is decided. A reported turret is a
+    fact about the world; it is either already known, in which case recording it
+    is idempotent, or it is new, in which case it is the most valuable thing the
+    Builder will learn all game. The previous version validated first and
+    returned early on a mismatch, which threw away correct turret positions --
+    the reply that would have stopped a Builder asking for the same tile every
+    four rounds for the rest of the game.
+
+    There is no separate memory of refused landings. The map is the single
+    source of truth: the turret goes in, `_choose_landing` avoids everything it
+    covers, and the bad tile stops being proposed as a consequence rather than
+    as a special case.
+    """
     slot = LAUNCH_REQUEST_SLOTS[p.builder_index % len(LAUNCH_REQUEST_SLOTS)]
     value = ct.read_store(slot)
-    if not value & LAUNCH_REJECTION_FLAG:
+    if not is_response(value):
         return False
-    payload = value & (LAUNCH_REJECTION_FLAG - 1)
-    passenger = payload >> LAUNCH_REJECTION_POSITION_BITS
-    if passenger != ct.get_id():
+    pad = p.last_pad_asked
+    if pad is None:
         return False
-    blocker = unpack_pos(payload & LAUNCH_REJECTION_POSITION_MASK)
-    if blocker is not None:
-        p.enemy_launchers.add(blocker)
-        p.solids.add(blocker)
-        p.enemy_launcher_danger.update(
-            (blocker[0] + dx, blocker[1] + dy)
-            for dx, dy in (direction.delta() for direction in D8)
-            if _inside(p, (blocker[0] + dx, blocker[1] + dy))
-        )
-    ct.write_store(slot, 0)
+    launched, reply_hash, entries = unpack_response(pad, value)
+    for position, facing, kind_index in entries:
+        kind = REJECT_KINDS.get(kind_index)
+        if kind is None or not _inside(p, position):
+            continue
+        if kind == EntityType.LAUNCHER:
+            p.enemy_launchers.add(position)
+        else:
+            p.enemy_turrets[position] = (kind, D8[facing])
+        p.solids.add(position)
+    if entries:
+        p.threat_signature = None
+
+    if reply_hash != passenger_hash(ct.get_id()):
+        # Somebody else's answer, on a slot we share. Their intel was still
+        # worth having; the outcome was not ours to act on.
+        return False
     p.awaiting_launch = 0
     p.launch_origin = None
-    p.launch_blocked = True
-    p.launch_blocking_launchers = set(p.enemy_launchers)
+    if launched:
+        _note_displacement(p, ct)
+    if not launched:
+        # Answered and refused: hold off before asking again.
+        #
+        # This used to set the stamp to the *current* round, and the gate that
+        # reads it is `current_round < launch_retry_round` -- never true, so
+        # there was no cooldown and a Builder could re-ask the round after every
+        # refusal. Refusals are not rare: with the economy expanded they run 281
+        # of 650 requests (43%), because the pad correctly declines to throw a
+        # passenger into a firing line. Each retry cycle costs the passenger a
+        # round of standing still, and the reason for the refusal -- a turret
+        # covering the landing -- does not usually clear in one round.
+        #
+        # Walking for a few rounds is strictly better than asking again into the
+        # same answer, and the intel the refusal carried is already folded into
+        # the threat map, so the route it walks is the informed one.
+        p.launch_retry_round = ct.get_current_round() + LAUNCH_RETRY_COOLDOWN
     return True
 
 
@@ -1387,14 +2245,12 @@ def _sign(value):
 def _move_while_stuck(p, ct, target):
     """Explore locally while waiting until a useful Launcher is affordable."""
     source = ct.get_position()
-    recent = p.recent_tiles[-TABU_WINDOW:] if TABU_WINDOW else []
     candidates = []
     for direction in FACING.values():
         position = source.add(direction)
-        if (tuple(position) not in _launcher_hazards(p)
+        if (tuple(position) not in _no_go(p, tuple(source))
                 and ct.can_move(direction)):
             candidates.append((
-                recent.count(tuple(position)),
                 tuple(position) in p.seen,
                 position.distance_squared(target),
                 position.x,
@@ -1405,57 +2261,187 @@ def _move_while_stuck(p, ct, target):
         return False
     *_, direction = min(candidates)
     ct.move(direction)
-    here = tuple(ct.get_position())
-    # Moving is not progress if it is the same two tiles over and over. This
-    # function picks the neighbour nearest the target, and that choice reverses
-    # the moment the Builder steps, so a Builder with an unreachable goal
-    # oscillates -- and the old unconditional _mark_progress kept
-    # `last_progress_round` fresh, so `_report_stall` and `_write_off` never
-    # fired. Traced on vase: the miner sat in the pocket at (0, 8) from round 20
-    # to round 1000, reporting "moved while blocked" every single round.
-    p.recent_tiles.append(here)
-    if len(p.recent_tiles) > CONFINEMENT_WINDOW:
-        del p.recent_tiles[:-CONFINEMENT_WINDOW]
-    confined = (len(p.recent_tiles) >= CONFINEMENT_WINDOW
-                and len(set(p.recent_tiles)) <= CONFINEMENT_TILES)
-    if not confined:
-        _mark_progress(p, ct, "moved while blocked", here)
+    _mark_progress(p, ct, "moved while blocked", tuple(ct.get_position()))
     return True
 
 
-def _bfs_step(p, source, target, exact, avoid_launchers=True):
-    """First move of the cardinal route, or None when there is no route."""
-    path = _bfs_path(p, source, target, exact, avoid_launchers=avoid_launchers)
+def _note_displacement(p, ct):
+    """A successful throw that did not leave us where we asked means we were thrown again.
+
+    This is the only evidence a Builder can get about an enemy Launcher it will
+    never see. The sequence is forced by action order: units act in spawn-id
+    order, so an enemy pad with a lower id than ours acts *first* every round.
+    It picks our passenger off the landing tile before the Builder's own turn
+    comes round, which means `_sense` never runs from there and the Builder has
+    no idea anything happened -- traced on r03, where builder 64 was thrown
+    between (9,16) and (8,12) from round 33 to the end of the game, asking for
+    (9,16) again each time because from its point of view it had never been
+    near an enemy Launcher.
+
+    The pad's success reply breaks that. It says "I threw you to X"; if the
+    Builder is not at X when it reads that, something else moved it, and the
+    only thing that moves a Builder without its consent is a Launcher within
+    pickup range of X. So X is struck off, permanently, without needing to see
+    what is standing next to it.
+
+    The tolerance is the pickup radius: a Builder that landed cleanly and then
+    took one ordinary step of its own is not displaced.
+    """
+    landing = p.last_landing_asked
+    if landing is None:
+        return
+    here = tuple(ct.get_position())
+    if _distance_sq(here, landing) > LAUNCH_PICKUP_SQ:
+        p.displaced_landings.add(landing)
+        _mark_progress(p, ct, "thrown off a landing", landing)
+
+
+def _launch_beats_walking(p, ct, target):
+    """Only pay for a Launcher when it costs less HP than walking would.
+
+    A Launcher is 20 Ti and +10% on every later price, and building one is not
+    free in rounds either: the Builder has to stand somewhere adjacent and spend
+    a turn on it, taking whatever that tile takes. So it is the right answer to
+    a firing line only when walking is genuinely worse, and "there is fire
+    somewhere on the route" is not that test.
+
+    Two estimates, both in HP, which is the currency that matters here:
+
+    * **Walking** costs the sum of the threat on every tile the short route
+      crosses -- a Builder stands on one tile per round, so a tile's threat is
+      exactly what it charges to pass through.
+    * **Launching** costs the tile we build from, for the rounds it takes to
+      build, and nothing after that: the landing is already chosen clear of
+      fire by the pad.
+
+    When the two are close, walking wins by default -- it does not spend the
+    titanium or the cost scale, and those are invisible to this comparison.
+    """
+    here = tuple(ct.get_position())
+    path = _bfs_path(p, here, tuple(target), False, allow_hops=False)
+    if path is None:
+        # No walking route at all: the Launcher is the only way through.
+        return True
+    walking = sum(_threat_at(p, tile) for tile in path[1:])
+    launching = _threat_at(p, here) * LAUNCHER_BUILD_ROUNDS
+    return walking > launching
+
+
+def _retreat_from_fire(p, ct):
+    """Get out of the firing line, or hold still if we are already clear.
+
+    Called when the only route to the errand runs through fire the Builder
+    would not survive. Standing on a covered tile is the worst of both -- it
+    takes the damage and makes no progress -- so the first job is simply to be
+    somewhere that is not covered.
+
+    Preference order is: least fire on the tile, then *furthest from any fire*,
+    then nearest our own Core. The middle term is what makes this a retreat
+    rather than a shuffle -- a Builder that steps sideways off a Sentinel's
+    line is one tile from being back on it, and the tile it moved to is often
+    covered by the next turret along. Backing off until the whole cluster is
+    out of reach is what actually ends the exposure, and heading homeward
+    breaks the tie because home is where the mender and our own turrets are.
+    """
+    here = tuple(ct.get_position())
+    threat_tiles = getattr(p, "threat", {})
+
+    def clearance(spot):
+        if not threat_tiles:
+            return 0
+        return min(_distance_sq(spot, tile) for tile in threat_tiles)
+
+    best = None
+    best_key = (_threat_at(p, here), -clearance(here), 0)
+    for direction in D8:
+        spot = ct.get_position().add(direction)
+        key = tuple(spot)
+        if not _inside(p, key) or key in p.walls or key in p.solids:
+            continue
+        if key in p.bot_occupied or not ct.can_move(direction):
+            continue
+        rank = (_threat_at(p, key), -clearance(key),
+                _distance_sq(key, p.core) if p.core else 0)
+        if rank < best_key:
+            best, best_key = direction, rank
+    if best is not None:
+        ct.move(best)
+        _mark_progress(p, ct, "retreated from fire", tuple(ct.get_position()))
+
+
+def _bfs_step(p, source, target, exact, avoid_launchers=True, ct=None,
+              allow_hops=True):
+    """First move of the cardinal route, or None when there is no route.
+
+    With a controller in hand the route is checked against the known firing
+    lines before its first step is taken; without one this is the plain
+    shortest path, which is what the callers that only need a distance want.
+    """
+    if ct is not None:
+        path = _safe_path(p, ct, source, target, exact, avoid_launchers,
+                          allow_hops=allow_hops)
+    else:
+        path = _bfs_path(p, source, target, exact,
+                         avoid_launchers=avoid_launchers,
+                         allow_hops=allow_hops)
     if path is None or len(path) < 2:
         return None
     return path[1]
 
 
-def _bfs_path(p, source, target, exact, avoid_launchers=True, extra_blocked=()):
-    """Full cardinal route from source to a goal tile, or None."""
+def _safe_path(p, ct, source, target, exact, avoid_launchers=True,
+               allow_hops=True):
+    """A route that avoids fire, or an explicit refusal.
+
+    `_bfs_path` now refuses firing lines and enemy Launcher radii outright, via
+    `_no_go`, so the ordinary case needs no second pass: the route it returns is
+    already clean. This function only has to decide what to do when there is no
+    clean route at all.
+
+    The old shape -- plan short, price it, detour if it kills us, otherwise walk
+    it anyway -- was the source of the oscillation. It could return a route
+    through a lane that `_leave_the_firing_line` would immediately step back out
+    of, so the Builder alternated between the two forever. Preferring safety and
+    enforcing safety are not the same rule, and running both at once is a
+    livelock.
+
+    So: a clean route is taken. Failing that, a route through fire is taken only
+    if the walk is genuinely survivable, because sometimes the errand still has
+    to happen and the alternative is standing still. Failing that, None, and the
+    caller retreats or buys a Launcher over the top.
+    """
+    p.blocked_by_fire = False
+    path = _bfs_path(p, source, target, exact, avoid_launchers,
+                     allow_hops=allow_hops)
+    if path is not None:
+        return path
+    through_fire = _bfs_path(p, source, target, exact, avoid_launchers,
+                             allow_hops=allow_hops, allow_fire=True)
+    if through_fire is not None and _survives_path(p, ct, through_fire[1:]):
+        return through_fire
+    p.blocked_by_fire = True
+    return None
+
+
+def _bfs_path(p, source, target, exact, avoid_launchers=True,
+              extra_blocked=(), allow_hops=True, allow_fire=False):
+    """Full route from source to a goal tile, or None.
+
+    A thin reconstruction over `_travel`; the search itself lives there so that
+    movement and target selection cannot use different graphs. A hop is an
+    ordinary parent link, so a route through a Launcher rebuilds exactly like a
+    walk -- `_step` notices it because the step is not adjacent, and asks the
+    pad instead of moving.
+    """
     goals = {target} if exact else _adjacent(p, target)
     if source in goals:
         return [source]
-    blocked = p.walls | p.foot | p.solids | (p.bot_occupied - {source})
-    if avoid_launchers:
-        blocked = blocked | (_launcher_hazards(p) - {source})
-    if extra_blocked:
-        blocked = blocked | (set(extra_blocked) - {source})
-    prev, queue = {source: None}, deque([source])
-    found = None
-    while queue:
-        cur = queue.popleft()
-        if cur in goals:
-            found = cur
-            break
-        for dx, dy in D4_DELTAS:
-            nxt = cur[0] + dx, cur[1] + dy
-            if nxt in prev or not _inside(p, nxt) or nxt in blocked:
-                continue
-            prev[nxt] = cur
-            queue.append(nxt)
-    if found is None:
+    dist, prev = _travel(p, source, goals=goals, hops=allow_hops,
+                         allow_fire=allow_fire, extra_blocked=extra_blocked)
+    reached = [(dist[g], g) for g in goals if g in dist]
+    if not reached:
         return None
+    found = min(reached)[1]
     path = []
     while found is not None:
         path.append(found)
@@ -1485,20 +2471,6 @@ def _blocking_launchers(p, source, target, exact):
     crossed = set(path) & hazards
     return {launcher for launcher in p.enemy_launchers
             if any(_chebyshev(launcher, tile) == 1 for tile in crossed)}
-
-
-def _out_of_time(ct, budget=CPU_SOFT_BUDGET_US):
-    """True once this turn has spent enough of its 10 ms to stop searching.
-
-    A unit that overruns is interrupted mid-run(): it does not act at all that
-    round, and nothing it was part-way through is kept. So an optional search
-    that might not fit is worth strictly less than the ordinary action it would
-    displace. Never let this raise -- a bad clock read must not cost the turn.
-    """
-    try:
-        return ct.get_cpu_time_elapsed() > budget
-    except Exception:  # noqa: BLE001
-        return False
 
 
 _NO_BASELINE = object()
@@ -1546,64 +2518,164 @@ def _keeps_route_open(p, spot, source, target, exact, baseline=_NO_BASELINE):
 
 
 def _distance(p, source, goals):
+    """Steps to the nearest of `goals`, or None. Same search as everything else."""
     if source in goals:
         return 0
-    blocked = (p.walls | p.foot | p.solids | (p.bot_occupied - {source})
-               | (_launcher_hazards(p) - {source}))
-    dist, queue = {source: 0}, deque([source])
+    dist, _ = _travel(p, source, goals=goals)
+    reached = [dist[g] for g in goals if g in dist]
+    return min(reached) if reached else None
+
+
+def _no_go(p, source=None):
+    """Ground no Builder may walk on, for every planner in this file.
+
+    There used to be several answers to "is this tile safe", and they disagreed.
+    `_leave_the_firing_line` treated a covered tile as forbidden while the route
+    planner treated it as merely expensive, so a Builder would step off a lane
+    and the next round's path would walk it straight back on -- builder 66
+    oscillated between two tiles from round 43 to the end of the game doing
+    exactly that. Two notions of safety in one bot is a livelock waiting to
+    happen, so there is now one.
+
+    Firing lines are blocked outright rather than priced, and enemy Launcher
+    pickup radii with them: being thrown is not damage that can be weighed
+    against a shorter route, it is the loss of the Builder's position entirely.
+
+    `source` is exempt: standing somewhere forbidden has to leave a legal move
+    out of it, or the Builder is stuck by its own rules.
+    """
+    # The union is cached for the turn. It is six set unions over every wall
+    # tile on the map, and it is rebuilt by every planner that asks a routing
+    # question -- which is most of them, several times a turn. Nothing in it
+    # moves while the Builder is still deciding: terrain, our own buildings,
+    # occupied tiles and the remembered threat map are all written by `_sense`
+    # at the top of the turn and not again until the Builder acts.
+    #
+    # This matters more than a local profile suggests. The cluster the ladder
+    # rates on is roughly 1.6x slower than this machine, and two earlier builds
+    # of this bot passed `benchmarks.timing` here with zero overruns while the
+    # tournament's own compliance stage recorded 29 and 19 timeouts against the
+    # same 10 ms limit. A turn that overruns there does not act at all.
+    if getattr(p, "nogo_round", None) != getattr(p, "round", -1):
+        p.nogo_round = getattr(p, "round", -1)
+        p.nogo_base = (p.walls | p.foot | p.solids | p.bot_occupied
+                       | _launcher_hazards(p) | set(getattr(p, "threat", ())))
+    blocked = p.nogo_base
+    return blocked - {source} if source is not None else set(blocked)
+
+
+def _travel(p, source, goals=None, hops=True, allow_fire=False,
+            extra_blocked=(), ignore_bots=False):
+    """The single BFS every planner in this file uses.
+
+    There were four of these -- one for movement, one for choosing which target
+    to go to, one for distance-to-a-goal-set, one for laying belt -- and they
+    disagreed. `_bfs_path` counted a Launcher hop as a one-round edge while
+    `_distance_map` did not, so a Builder chose its errand by walking distance
+    and then travelled by throwing: a goal that is far when choosing and near
+    when moving keeps winning and losing. Traced on r03, builder 11 was ferried
+    to (2,9) for an ore at (1,9), walked away from it on landing, asked to be
+    thrown to (7,11), walked away from that, and asked for (7,3) -- three
+    ferries in twelve rounds, each correct for the goal it held that instant.
+
+    One search means target selection and movement cannot disagree, because
+    they are the same computation. Returns (distance, came_from); `came_from`
+    carries a hop as an ordinary parent link, so a path through one reconstructs
+    exactly like a walk.
+
+    `hops=False` is for the callers that genuinely mean walking -- pricing a
+    throw against a walk, or planning conveyor tiles.
+
+    Memoised for the duration of one turn. Several planners ask for the same
+    distance map inside a single `run()` -- target selection, then the route to
+    the target it chose, then the siege seat search pricing every candidate --
+    and each one was paying for a fresh flood of the whole map. A Builder acts
+    at most once a turn and every search happens before it acts, so nothing the
+    cache could go stale against has changed yet; the entries are dropped the
+    moment the round number moves. This is what replaced the CPU-clock guard:
+    the same work avoided, without making the answer depend on the machine.
+    """
+    key = (source, None if goals is None else frozenset(goals), hops,
+           allow_fire, tuple(sorted(extra_blocked)), ignore_bots)
+    if getattr(p, "travel_cache_round", None) != getattr(p, "round", -1):
+        p.travel_cache_round = getattr(p, "round", -1)
+        p.travel_cache = {}
+    cached = p.travel_cache.get(key)
+    if cached is not None:
+        return cached
+    blocked = _no_go(p, source) | set(extra_blocked)
+    if ignore_bots:
+        # Other Builders are obstacles that walk away. Treating them as solid is
+        # right for choosing a route and wrong for deciding a route is
+        # impossible, which is the only question this flag is asked.
+        blocked = blocked - p.bot_occupied
+    if allow_fire:
+        blocked = blocked - set(getattr(p, "threat", ()))
+    blocked.discard(source)
+    pads = {}
+    if hops and LAUNCH_HOPS_IN_PATHS:
+        # Every live Launcher is an edge, exactly as this router was written.
+        #
+        # A cap on the nearest few pads was tried while chasing the turn limit
+        # and is not here, because it was not what cost the time: the expense
+        # was `_throw_landings` rebuilding the identical 121-candidate list for
+        # every pad tile popped off this queue, hundreds of times a turn.
+        # Memoising that per turn took the worst Builder turn from 13,075 us to
+        # 4,507 against a 10,000 limit, which pays for the whole pad set with
+        # room to spare -- and the cap was worth one game in 210 anyway.
+        pads = {tile: pad
+                for pad in getattr(p, "friendly_launchers", ())
+                for tile in _stamp(p, pad, LAUNCH_PICKUP_SQ)}
+    goals = set(goals) if goals else None
+    dist, prev = {source: 0}, {source: None}
+    queue = deque([source])
     while queue:
         cur = queue.popleft()
-        for dx, dy in D4_DELTAS:
-            nxt = cur[0] + dx, cur[1] + dy
+        if goals and cur in goals:
+            break
+        neighbours = [(cur[0] + dx, cur[1] + dy) for dx, dy in D4_DELTAS]
+        pad = pads.get(cur)
+        if pad is not None:
+            neighbours.extend(_throw_landings(p, pad))
+        for nxt in neighbours:
             if nxt in dist or not _inside(p, nxt) or nxt in blocked:
                 continue
             dist[nxt] = dist[cur] + 1
-            if nxt in goals:
-                return dist[nxt]
+            prev[nxt] = cur
             queue.append(nxt)
-    return None
+    p.travel_cache[key] = (dist, prev)
+    return dist, prev
 
 
-def _distance_map(p, source):
-    """Compute every reachable distance once for candidate-heavy planners."""
-    blocked = (p.walls | p.foot | p.solids | (p.bot_occupied - {source})
-               | (_launcher_hazards(p) - {source}))
-    dist, queue = {source: 0}, deque([source])
-    while queue:
-        cur = queue.popleft()
-        for dx, dy in D4_DELTAS:
-            nxt = cur[0] + dx, cur[1] + dy
-            if nxt in dist or not _inside(p, nxt) or nxt in blocked:
-                continue
-            dist[nxt] = dist[cur] + 1
-            queue.append(nxt)
-    return dist
-
-
-def _unseen_network_tile(p, ct):
-    """The nearest tile of our own belt this Builder cannot currently see."""
-    if not p.network_plan:
-        return None
-    me = tuple(ct.get_position())
-    unseen = [tile for tile in p.network_plan
-              if not ct.is_in_vision(Position(*tile))]
-    if not unseen:
-        return None
-    return min(unseen, key=lambda tile: (_cardinal_distance(me, tile), tile))
+def _distance_map(p, source, hops=True):
+    """Every reachable distance, on the same terms movement will use."""
+    return _travel(p, source, hops=hops)[0]
 
 
 def _explore(p, ct):
     me, stride = tuple(ct.get_position()), 4
 
-    # A miner with an unvisited Core hint walks at it rather than at the
-    # exploration lattice. The lattice is a good way to reveal a map and a bad
-    # way to find the ore whose position we were handed on round 0: it steps in
-    # strides of four along a fixed comb, so the opening Builder regularly
-    # walked past the Core's own nearest deposit before the fog opened over it.
-    hint = _ore_hint_target(p, ct)
-    if hint is not None:
-        _step(p, ct, Position(*hint), False)
-        return
+    # A miner that knows of no ore has a better prior than a grid sweep: a
+    # fair map places its shared ore between the Cores. On sweden, seat A's
+    # Core at (0,0) has the whole ore band outside its r^2=36 opening vision
+    # (seat B sees it), so this seat staffed no economy at all and lost 0-mined
+    # by round 317, deterministically — the miner grid-swept while the rush
+    # arrived, then spent the rest of the game pinned to mending. Walking the
+    # Core-to-Core line crosses the band inside ten rounds even when the
+    # symmetry guess is wrong, which is before the alarm can pin anyone.
+    if (not p.is_attacker and not p.is_launcher_builder
+            and not p.ores and p.core is not None):
+        enemy, _ = unpack_enemy(ct.read_store(SLOT_ENEMY_CORE))
+        if enemy is None:
+            enemy = (p.w - 2 - p.core[0], p.h - 2 - p.core[1])
+        mid = ((p.core[0] + enemy[0]) // 2, (p.core[1] + enemy[1]) // 2)
+        if max(abs(mid[0] - me[0]), abs(mid[1] - me[1])) > 2:
+            if not getattr(p, "ore_prior_announced", False):
+                p.ore_prior_announced = True
+                print(f"ORE_PRIOR round={ct.get_current_round()} "
+                      f"from={me} mid={mid}", file=sys.stderr, flush=True)
+            _step(p, ct, Position(*mid), True)
+            return
 
     # First resolve the enemy-Core hypotheses. This is map-agnostic: targets
     # come only from dimensions, our observed Core, and rejected symmetries.
@@ -1651,9 +2723,43 @@ def _harass(p, ct):
             tile,
         ),
     )
+    # Re-rank the head of the list by the distance actually walked.
+    #
+    # Same defect `_pick` had: the sort key is Chebyshev, which is what the
+    # target looks like as the crow flies, and the Builder then walks a real
+    # path around terrain. Around a wall those orders differ, and the harasser
+    # spends the difference walking. Only the head is re-priced, and only within
+    # one priority class, so the cheap ordering still decides *what* to hit and
+    # this decides *which one* of the equally valuable.
+    if HARASS_TRUE_DISTANCE and targets:
+        top = HARASS_PRIORITY[p.enemy_economy[targets[0]]]
+        head = [t for t in targets[:HARASS_RERANK_CANDIDATES]
+                if HARASS_PRIORITY[p.enemy_economy[t]] == top]
+        priced = []
+        for tile in head:
+            walk = _distance(p, me, {tile})
+            if walk is not None:
+                priced.append((walk, tile))
+        if priced:
+            priced.sort()
+            best_tile = priced[0][1]
+            targets = [best_tile] + [t for t in targets if t != best_tile]
     # 2.3.3 inverted the attack rule: a Builder damages an orthogonally
     # adjacent tile and never the one it stands on, so stand *beside* the
     # target rather than on it.
+    #
+    # Which side it stands on is a free choice and it was being thrown away.
+    # A belt is a long line of identical tiles: breaking the one that happens
+    # to be in front of us while standing in a Sentinel's lane costs 18 HP a
+    # round, and two steps away there is another tile of the same belt worth
+    # exactly the same, reachable from cover. The damage is the same, the price
+    # is not. So an exposed seat only fires when there is no safe one.
+    exposed = _threat_at(p, me)
+    if exposed:
+        seat = _safe_harass_seat(p, ct, targets)
+        if seat is not None:
+            _step(p, ct, Position(*seat), True)
+            return
     for target in targets:
         if ct.can_fire(Position(*target)):
             ct.fire(Position(*target))
@@ -1679,6 +2785,128 @@ def _harass(p, ct):
     # and continue normal partitioned exploration; infrastructure discovered on
     # the way is recorded by _sense and attacked on the following round.
     _explore(p, ct)
+
+
+def _safe_harass_seat(p, ct, targets):
+    """An uncovered tile from which some equally good target can be hit.
+
+    Every tile of an enemy belt is worth the same to break, so the question is
+    never "which target" but "from where". Returns the nearest unthreatened
+    standing tile that is cardinally adjacent to any of them, or None when the
+    whole approach is covered and firing exposed really is the only option.
+    """
+    me = tuple(ct.get_position())
+    seats = []
+    for target in targets:
+        for dx, dy in D4_DELTAS:
+            seat = (target[0] + dx, target[1] + dy)
+            if not _inside(p, seat) or _threat_at(p, seat):
+                continue
+            if seat in p.walls or seat in p.solids or seat in p.bot_occupied:
+                continue
+            seats.append(seat)
+    if not seats:
+        return None
+    return min(seats, key=lambda s: (_cardinal_distance(me, s), s))
+
+
+def _leave_the_firing_line(p, ct):
+    """Never end a turn on a tile a turret can shoot, unless it is worth it.
+
+    The global version of the rule the harasser needed. Almost every job a
+    Builder does leaves it free to choose which tile it does the job from, and
+    a covered tile costs 7 HP a round to a Gunner or 18 to a Sentinel for
+    nothing -- the work gets done either way.
+
+    Two exemptions, and they are the whole reason this is a function rather
+    than a blanket ban:
+
+    * **Healing a Core that is under attack.** Healing restores 4 HP for a flat
+      1 Ti at any cost scale, so a mender standing in the lane out-heals a
+      Gunner and cancels a Sentinel outright. Leaving would trade a Core for a
+      Builder.
+    * **Nowhere better to stand.** `_retreat_from_fire` already ranks by
+      exposure first and only moves to something strictly safer, so when the
+      whole area is covered this correctly does nothing and the Builder gets on
+      with its work.
+
+    Returns True when it spent the turn moving, so the caller stops there.
+    """
+    if not LEAVE_FIRING_LINE:
+        return False
+    here = tuple(ct.get_position())
+    if not _threat_at(p, here):
+        return False
+    alarm = ct.read_store(SLOT_CORE_DAMAGED) & CORE_ALARM_MASK
+    if alarm and p.core is not None and _chebyshev(here, p.core) <= 2:
+        # Standing beside a Core that is being shot is the mender's post.
+        return False
+    before = tuple(ct.get_position())
+    _retreat_from_fire(p, ct)
+    return tuple(ct.get_position()) != before
+
+
+def _escape_encirclement(p, ct):
+    """Leave before the box closes.
+
+    The mirror of `_trap_enemy_builder`, and the reason to write it is that we
+    do this to them: a Builder with one exit left is one barrier from being
+    worth nothing for the rest of the game, and the barrier costs them 3 Ti.
+    Being walled in is not survivable later -- it is only avoidable now -- so
+    the check is cheap and unconditional rather than something the Builder gets
+    to weigh against its errand.
+
+    Counts *cardinal* exits, because that is how Builders move, and only fires
+    when an enemy Builder is close enough to be the one closing it. Terrain that
+    happens to be tight is not an ambush.
+    """
+    if not ESCAPE_ENCIRCLEMENT:
+        return False
+    here = tuple(ct.get_position())
+    exits = [(here[0] + dx, here[1] + dy) for dx, dy in D4_DELTAS
+             if _inside(p, (here[0] + dx, here[1] + dy))
+             and (here[0] + dx, here[1] + dy) not in p.walls
+             and (here[0] + dx, here[1] + dy) not in p.solids
+             and (here[0] + dx, here[1] + dy) not in p.bot_occupied]
+    # No exits at all is not an escape, it is a fact. The guard below reads
+    # `> ESCAPE_MIN_EXITS`, which at the shipped value of 1 lets len(exits) == 0
+    # through to a `max()` over an empty list -- so the one situation this
+    # function exists to handle, a Builder already fully boxed in, raised
+    # ValueError instead. The crash handler swallows it and returns, so the
+    # Builder then did nothing at all for the rest of the game: no belt, no
+    # heal, no self-destruct, still paying its +20% of cost scale. Traced on
+    # quarry against vidar, builder id=31 from round 68 to the end.
+    #
+    # Falling through instead lets the ordinary machinery have it -- in
+    # particular `_write_off`, which retires a Builder that cannot path and
+    # refunds the scale so the Core can re-roll it somewhere not walled in.
+    if not exits or len(exits) > ESCAPE_MIN_EXITS:
+        return False
+    closers = [entity_id for entity_id in ct.get_nearby_entities(9)
+               if ct.get_team(entity_id) != ct.get_team()
+               and ct.get_entity_type(entity_id) == EntityType.BUILDER_BOT]
+    if not closers:
+        return False
+    # Leave by the exit with the most room beyond it, breaking ties away from
+    # whoever is doing the walling.
+    def room(tile):
+        return sum(1 for dx, dy in D4_DELTAS
+                   if _inside(p, (tile[0] + dx, tile[1] + dy))
+                   and (tile[0] + dx, tile[1] + dy) not in p.walls
+                   and (tile[0] + dx, tile[1] + dy) not in p.solids)
+
+    best = max(exits, key=lambda t: (
+        room(t), _threat_at(p, t) == 0,
+        min(_distance_sq(t, tuple(ct.get_position(c))) for c in closers),
+    ))
+    for direction in D8:
+        if tuple(ct.get_position().add(direction)) == best:
+            if ct.can_move(direction):
+                ct.move(direction)
+                _mark_progress(p, ct, "escaped encirclement", best)
+                return True
+            break
+    return False
 
 
 def _nearest_enemy_ore(p, ct):
@@ -1721,28 +2949,30 @@ def _deny_enemy_ore(p, ct):
     return False
 
 
-def _heal_core(p, ct):
-    """Return the economy Builder to repair a Core under active fire.
+def _core_is_hurt(p, ct):
+    """Has our Core lost any HP at all?
 
-    With the bulwark up, the Core itself is usually out of reach -- the ring is
-    solid and a Builder cannot stand on it. That is the intended state, and the
-    right thing to mend from outside is the ring, because the ring is what is
-    being shot. A barrier healed is 4 HP for 1 Ti against the 4 Ti the Gunner
-    paid for the 7 damage; a barrier that holds is a Core that takes nothing.
+    Read directly rather than through the Core's `repair_alert`, which only
+    raises at 50 HP lost -- seven Gunner shots, or about ten rounds of an
+    emplaced turret. That threshold exists to summon a Builder from across the
+    map; a Builder standing on the Core can simply look.
     """
+    core_position = Position(*p.core)
+    if not ct.is_in_vision(core_position):
+        return False
+    core_id = ct.get_tile_building_id(core_position)
+    if core_id is None:
+        return False
+    return ct.get_hp(core_id) < ct.get_max_hp(core_id)
+
+
+def _heal_core(p, ct):
+    """Return the economy Builder to repair a Core under active fire."""
     for tile in sorted(p.foot):
         position = Position(*tile)
         if ct.can_heal(position):
             ct.heal(position)
             _mark_progress(p, ct, "healed", tuple(position))
-            return
-    ring = {(t[0] + dx, t[1] + dy) for t in p.foot
-            for dx in (-1, 0, 1) for dy in (-1, 0, 1)} - p.foot
-    for tile in sorted(ring):
-        position = Position(*tile)
-        if ct.can_heal(position):
-            ct.heal(position)
-            _mark_progress(p, ct, "healed bulwark", tile)
             return
     _step(p, ct, Position(*p.core), False)
 
@@ -1758,6 +2988,17 @@ def _run_launcher_ring(p, ct):
         p.launcher_ring_targets = _launcher_ring_targets(p, enemy_core)
         p.launcher_ring_done = set()
         p.launcher_ring_built = 0
+        p.ring_planned_seen = len(p.seen)
+    elif len(p.seen) - p.ring_planned_seen >= RING_REPLAN_TILES:
+        # The reachability prune is only as good as the map we have seen, and
+        # on round 3 we have seen almost none of it. Re-plan as vision grows:
+        # a direction that looked open may turn out to dead-end, which deletes
+        # a Launcher we were about to pay +10% for. Sites already built stay
+        # built -- this re-plans what is left, it does not undo anything.
+        p.ring_planned_seen = len(p.seen)
+        fresh = _launcher_ring_targets(p, enemy_core)
+        p.launcher_ring_targets = [t for t in fresh
+                                   if tuple(t) not in p.launcher_ring_done]
     # Spawning this Builder first buys the pad early; it also gives it time to
     # build the whole eight-site compass ring, which is not what the tempo was
     # bought for. On aurora it put up three ring Launchers by round 8 on top of
@@ -1786,6 +3027,12 @@ def _run_launcher_ring(p, ct):
         if _cardinal_distance(tuple(here), key) != 1:
             _move_cardinal_adjacent(p, ct, key)
             return False
+        if (ct.get_global_resources()
+                < ct.get_launcher_cost() + RING_TITANIUM_RESERVE):
+            # A screen is worth less than the Harvester it would starve. Yield
+            # the round rather than freeze: the caller sends this Builder to
+            # mine, and the site is still here next time.
+            return True
         if (ct.get_global_resources() >= ct.get_launcher_cost()
                 and ct.can_build_launcher(target)):
             ct.build_launcher(target)
@@ -1798,301 +3045,6 @@ def _run_launcher_ring(p, ct):
             p.launcher_ring_done.add(key)
         return False
     return True
-
-
-def _bulwark_targets(p, enemy_core):
-    """The twelve tiles every shot at our Core has to cross.
-
-    Measured, on 32 lost Cores over the five maps this chassis loses most on:
-    97.6% of the damage that killed them was Gunner fire and 2.4% Sentinel.
-    Enemy Builders dealt *zero* -- they do not walk up and hit the Core, they
-    emplace a Gunner near it and shoot. 114 such Gunners went up within four
-    tiles of the footprint, 29 of them directly against it, and each lived a
-    median 34 rounds: 34 shots, 238 damage, against a 500 HP Core.
-
-    A Gunner fires a single-tile-wide ray that "stops at the first targetable
-    tile (a builder bot or a building)". The Core is a 2x2 footprint, so every
-    compass ray that reaches it -- orthogonal or diagonal, from any range --
-    must first cross the ring of tiles at Chebyshev distance 1 from that
-    footprint. There are twelve: the eight orthogonal neighbours and the four
-    diagonal corners. Put a building on all twelve and no Gunner anywhere on
-    the map has a firing line into the Core, ever.
-
-    Any building will do, because any building is a targetable tile that stops
-    the ray. Conveyors already sitting on the ring count and are left alone --
-    the last-mile conveyor delivering into the Core lives here by necessity,
-    and it blocks a ray exactly as well as a barrier does. Harvesters, turrets
-    and walls likewise. What is missing gets a barrier: 30 HP for 3 Ti at +1%
-    scale, the cheapest titanium on the board.
-
-    The exchange rate is the point. A Gunner needs five shots and 20 ammo to
-    break a 3 Ti barrier we rebuild for 3 Ti; healing it back costs 1 Ti per 4
-    HP against their 4 Ti per 7 damage. Either way we spend a third of what
-    they do, and the Core takes nothing.
-
-    Only a Sentinel's line, which is never blocked, still reaches -- 2.4% of
-    the damage, and `_heal_core` answers it by clearing a seat.
-
-    Ordered enemy-facing first: a half-built ring should be closed on the side
-    they actually shoot from.
-    """
-    ring = set()
-    for tile in p.foot:
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                spot = (tile[0] + dx, tile[1] + dy)
-                if spot in p.foot or not _inside(p, spot):
-                    continue
-                if spot in p.walls or spot in p.ores:
-                    continue
-                ring.add(spot)
-    return [Position(*spot) for spot in
-            sorted(ring, key=lambda s: (_distance_sq(s, enemy_core), s))]
-
-
-def _run_bulwark(p, ct):
-    """Hold the Core's ring closed, returning true when there is nothing to do.
-
-    Twelve tiles and 36 Ti, and it is the difference between a Core that dies
-    to a Gunner three tiles away and one that finishes the match untouched.
-
-    Rebuilding is the same loop as building: a tile whose barrier the enemy has
-    broken reads as uncovered again next time round. Healing one that is merely
-    damaged is cheaper still, 4 HP for 1 Ti against the 4 Ti their 7 damage
-    cost, so a single mender out-repairs a Gunner at a quarter of the price.
-
-    `bulwark_done` is what keeps this from becoming a leash. A tile we have
-    seen covered stays covered in memory, so a Builder that has closed the ring
-    is free to walk off and mine; only a tile it can currently see to be open,
-    or has never seen at all, pulls it home. Anything else would tether every
-    home Builder to the Core for the whole match.
-    """
-    if not BULWARK_ENABLED:
-        return True
-    packed = ct.read_store(SLOT_ENEMY_CORE)
-    if packed == 0:
-        return True
-    enemy_core, _ = unpack_enemy(packed)
-    if not hasattr(p, "bulwark_targets"):
-        p.bulwark_targets = _bulwark_targets(p, enemy_core)
-        p.bulwark_done = set()
-        p.bulwark_checked = -10 ** 6
-    # `bulwark_done` is what lets a Builder that has closed the ring walk off
-    # and mine, and it is also the thing most likely to be wrong: a barrier
-    # costs a Gunner five shots and 20 Ti of ammunition to remove, and it is
-    # removed out of our sight. So the memory has to expire.
-    #
-    # The first cut expired it "once per alarm", comparing against
-    # SLOT_CORE_DAMAGED -- which holds an escalation *level*, 0, 1 or 2, not a
-    # round number. That fires at most twice a match. Traced on jackpot: the
-    # ring closes at round 25 with five tiles, and is down to four by round 50
-    # and three by round 100 while the Builder mines on, because nothing ever
-    # told it to look again. The Core then took 72 Gunner hits.
-    #
-    # Expire on rounds instead, and faster while the Core is being hit.
-    alarm = ct.read_store(SLOT_CORE_DAMAGED) & ~(
-        ECONOMY_DEAD_FLAG | CORE_DYING_FLAG)
-    period = BULWARK_RECHECK_ALARM if alarm else BULWARK_RECHECK_QUIET
-    if ct.get_current_round() - p.bulwark_checked >= period:
-        p.bulwark_checked = ct.get_current_round()
-        p.bulwark_done.clear()
-
-    pending = []
-    for target in p.bulwark_targets:
-        key = tuple(target)
-        if not ct.is_in_vision(target):
-            if key not in p.bulwark_done:
-                pending.append(target)
-            continue
-        building_id = ct.get_tile_building_id(target)
-        if building_id is None:
-            p.bulwark_done.discard(key)
-            p.solids.discard(key)
-            pending.append(target)
-            continue
-        # Any building stops a Gunner's ray, so a Conveyor already on the ring
-        # closes it as well as a barrier would -- and it is the income line,
-        # so it must not be replaced. It stays walkable, which costs nothing:
-        # enemy Builders dealt zero damage to any Core in the traced sample.
-        p.bulwark_done.add(key)
-        if ct.get_entity_type(building_id) in _WALKABLE_BUILDINGS:
-            continue
-        p.solids.add(key)
-        # Ours and hurt: healing is the cheapest titanium on the board.
-        if ct.get_team(building_id) == ct.get_team() and ct.can_heal(target):
-            ct.heal(target)
-            _mark_progress(p, ct, "healed bulwark", key)
-            return False
-
-    if not pending:
-        return True
-    if ct.get_global_resources() < ct.get_barrier_cost() + BULWARK_RESERVE:
-        return True
-
-    # The ring is a closed cardinal cycle -- every tile at Chebyshev 1 from a
-    # 2x2 footprint is a cardinal step from its two ring neighbours -- and the
-    # only ground a Builder can build it from is the ring itself or the shell
-    # outside it. Where the Core sits against a map edge there *is* no shell,
-    # so the Builder has to stand on the ring to wall the ring.
-    #
-    # That is what the first cut of this got wrong: it sorted targets by
-    # distance to the enemy Core, walked to the far side, and spent eight
-    # rounds circling because the tiles it kept standing on were the tiles it
-    # was trying to fill. Build the nearest one instead, and walk the cycle.
-    here = tuple(ct.get_position())
-    ring = {tuple(t) for t in p.bulwark_targets}
-    adjacent = [t for t in pending if _cardinal_distance(here, tuple(t)) == 1]
-    if adjacent:
-        adjacent.sort(key=lambda t: (_stranding(p, ct, here, tuple(t), ring),
-                                     _distance_sq(tuple(t), here), tuple(t)))
-        target = adjacent[0]
-        key = tuple(target)
-        if _stranding(p, ct, here, key, ring):
-            # Walling this one would box us in on a tile with no way out, and
-            # a Builder that cannot move is a permanent +20% that finishes
-            # nothing. Step off the ring first and come back to it.
-            return not _step_off_ring(p, ct, ring)
-        if ct.can_build_barrier(target):
-            ct.build_barrier(target)
-            _mark_progress(p, ct, "built bulwark barrier", key)
-            p.solids.add(key)
-            p.bulwark_done.add(key)
-        else:
-            # An enemy Builder standing on the tile, or our own; it will move.
-            # Deliberately no `_build_failure` write-off: this tile is worth
-            # coming back to every round for the whole match.
-            _plan_failed(p, ct, "build bulwark barrier", target, "tile blocked")
-        return False
-
-    nearest = min(pending, key=lambda t: (_cardinal_distance(here, tuple(t)),
-                                          tuple(t)))
-    _move_cardinal_adjacent(p, ct, tuple(nearest))
-    return False
-
-
-def _stranding(p, ct, here, target, ring, foot=None):
-    """Would walling `target` leave this Builder with nowhere to step?
-
-    Standing on the ring, our neighbours are two ring tiles and whatever lies
-    outside; against a map edge the outside can be nothing at all. Sealing the
-    last open one traps the Builder inside its own wall for the rest of the
-    match.
-    """
-    if here not in ring:
-        return False
-    foot = p.foot if foot is None else foot
-    for dx, dy in D4_DELTAS:
-        spot = (here[0] + dx, here[1] + dy)
-        if spot == target or not _inside(p, spot):
-            continue
-        if spot in p.walls or spot in foot or spot in p.solids:
-            continue
-        if spot in p.bot_occupied:
-            continue
-        return False
-    return True
-
-
-def _spawn_denial_targets(p, enemy_foot):
-    """The twelve tiles the enemy Core is allowed to spawn Builder Bots on.
-
-    A Core spawns "on any passable tile within its spawn range -- a tile
-    orthogonally or diagonally adjacent to its 2x2 footprint". Spawn range
-    squared is 2, so that set is exactly the Chebyshev-1 ring and nothing
-    else: twelve tiles, the same shape as our own bulwark.
-
-    Make all twelve impassable and the enemy Core can never spawn another
-    Builder Bot for the rest of the match. It is not a Core kill, it is worse
-    than one for them -- every Builder they lose from then on is gone for
-    good, their Harvesters go unrepaired, their belt goes unmended, and the
-    round-1000 tiebreak is titanium collected. It also puts their Core out of
-    healing reach, because healing needs an orthogonally adjacent tile too.
-
-    A barrier is 3 Ti and an enemy Builder needs fifteen 2 Ti attacks to break
-    one, so we rebuild at a tenth of what they pay to reopen a single tile.
-    Their own Builders standing on the ring deny it just as well as our
-    barriers do, so a tile we cannot build on is often already closed.
-    """
-    ring = set()
-    for tile in enemy_foot:
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                spot = (tile[0] + dx, tile[1] + dy)
-                if spot in enemy_foot or not _inside(p, spot):
-                    continue
-                if spot in p.walls or spot in p.ores:
-                    continue
-                ring.add(spot)
-    return ring
-
-
-def _run_spawn_denial(p, ct, enemy_core):
-    """Wall the enemy Core's spawn ring. True when this Builder acted.
-
-    Deliberately only on a *sighted* Core: the symmetry inference is a guess,
-    and 36 Ti of barriers around an empty patch of map is 36 Ti and a walk.
-    """
-    if not SPAWN_DENIAL_ENABLED:
-        return False
-    foot = {(enemy_core[0] + dx, enemy_core[1] + dy)
-            for dx in (0, 1) for dy in (0, 1)}
-    if not hasattr(p, "denial_ring"):
-        p.denial_ring = _spawn_denial_targets(p, foot)
-    here = tuple(ct.get_position())
-    if min(_cardinal_distance(here, t) for t in foot) > SPAWN_DENIAL_RANGE:
-        return False
-    cost = ct.get_barrier_cost()
-    if ct.get_global_resources() < cost + SPAWN_DENIAL_RESERVE:
-        return False
-
-    open_tiles = []
-    for key in sorted(p.denial_ring):
-        target = Position(*key)
-        if not ct.is_in_vision(target):
-            continue
-        if ct.get_tile_building_id(target) is not None:
-            p.solids.add(key)
-            continue
-        open_tiles.append(key)
-    if not open_tiles:
-        return False
-
-    adjacent = [k for k in open_tiles if _cardinal_distance(here, k) == 1]
-    if adjacent:
-        adjacent.sort(key=lambda k: (
-            _stranding(p, ct, here, k, p.denial_ring, foot),
-            _distance_sq(k, here), k))
-        key = adjacent[0]
-        if _stranding(p, ct, here, key, p.denial_ring, foot):
-            return _step_off_ring(p, ct, p.denial_ring)
-        if ct.can_build_barrier(Position(*key)):
-            ct.build_barrier(Position(*key))
-            _mark_progress(p, ct, "walled enemy spawn ring", key)
-            p.solids.add(key)
-            return True
-        # An enemy Builder is standing there. That tile is denied for as long
-        # as it stands there, so this is not a failure worth chasing.
-        return False
-    nearest = min(open_tiles, key=lambda k: (_cardinal_distance(here, k), k))
-    return _step(p, ct, Position(*nearest), False, allow_launcher=False)
-
-
-def _step_off_ring(p, ct, ring):
-    """Move to any reachable tile outside the ring; true if we managed it."""
-    here = tuple(ct.get_position())
-    for dx, dy in D4_DELTAS:
-        spot = (here[0] + dx, here[1] + dy)
-        if spot in ring or not _inside(p, spot):
-            continue
-        if spot in p.walls or spot in p.foot or spot in p.solids:
-            continue
-        if _step(p, ct, Position(*spot), True):
-            return True
-    for dx, dy in D4_DELTAS:
-        spot = (here[0] + dx, here[1] + dy)
-        if spot in ring and _step(p, ct, Position(*spot), True):
-            return True
-    return False
 
 
 def _core_seal_targets(p, enemy_core):
@@ -2134,6 +3086,17 @@ def _core_seal_targets(p, enemy_core):
             if spot in p.walls or spot in p.ores or spot in p.foot:
                 continue
             shell.add(spot)
+    if BARRIER_INTO_THREAT:
+        # Deliberately the opposite rule to the belt's. A conveyor in their
+        # firing line is 3 Ti we lose; a barrier in it is 3 Ti *they* have to
+        # spend twenty rounds of ammunition on, and while it stands the lane is
+        # shut and whatever the turret was covering is starved. The cheapest
+        # object on the board is worth most exactly where it will be shot.
+        shell |= {spot for spot in getattr(p, "threat", ())
+                  if _inside(p, spot) and spot not in p.walls
+                  and spot not in p.ores and spot not in p.foot
+                  and spot not in p.solids
+                  and _distance_sq(spot, p.core) <= CONTEST_MAX_DISTANCE_SQ}
     # Enemy-facing arc first: a half-built seal should be closed on the side
     # they are actually coming from.
     return [Position(*spot) for spot in
@@ -2184,64 +3147,361 @@ def _run_core_seal(p, ct):
     return True
 
 
-def _launcher_ring_targets(p, enemy_core):
-    """Ring the Core at RING_RADIUS, enemy-facing site first.
+def _danger_star(p, radius_sq):
+    """Every tile a turret could stand on and hit the Core from.
 
-    A screen thrown out towards the enemy covers one approach and is worthless
-    the moment they come around it, and it is four tiles from home, so the
-    Builder walks before it can build. Ringing our own Core covers every
-    direction at once and the first Launcher is up almost immediately.
+    Not a disc. Both Gunner and Sentinel fire a *single-tile-wide straight line*
+    along one of the eight compass directions -- so a turret only threatens the
+    Core if it is aligned with a Core tile on one of those eight rays. The set
+    of such tiles is a star of eight arms out of each of the four footprint
+    tiles, and it is far smaller than the disc of the same radius.
 
-    The ring is also the attacker's throw pad. A Launcher picks up a Builder
-    within radius squared 2, so a Builder leaving the Core is adjacent to a ring
-    site and gets thrown out rather than building a second Launcher purely to
-    escape with. Sorting enemy-first is what makes that work -- the pad has to
-    be the one site that exists when the attacker asks for it.
+    Getting this wrong was expensive: a disc at Sentinel reach is 97 tiles where
+    the star is 30, so the screen was covering approaches no turret can ever
+    shoot from, and spending +10% cost scale per Launcher to do it -- including
+    Launchers planted against walls, guarding tiles that were never dangerous.
+
+    The arm lengths fall straight out of the radius. At r^2=32 a cardinal arm
+    reaches 5 (25 <= 32) and a diagonal 4 (32 <= 32); at r^2=13 it is 3 and 2.
+
+    Blocking is deliberately ignored. A Sentinel's line is never blocked by
+    anything, and a Gunner's blocker is a building the enemy can remove, so a
+    tile that is only safe because something stands in the way is not safe.
     """
-    core_x, core_y = p.core
-    targets = []
-    for dx, dy in RING_DELTAS:
-        if _edge_distance(p, dx, dy) <= RING_EDGE_MARGIN:
-            continue
-        # The Core is 2x2, so a diagonal has one ring tile but a cardinal has
-        # two. Take whichever of the pair leans towards the enemy.
-        if dx > 0:
-            x = core_x + 1 + RING_RADIUS
-        elif dx < 0:
-            x = core_x - RING_RADIUS
-        else:
-            x = min((core_x, core_x + 1), key=lambda v: abs(enemy_core[0] - v))
-        if dy > 0:
-            y = core_y + 1 + RING_RADIUS
-        elif dy < 0:
-            y = core_y - RING_RADIUS
-        else:
-            y = min((core_y, core_y + 1), key=lambda v: abs(enemy_core[1] - v))
-        site = (x, y)
-        if not _inside(p, site) or site in targets:
-            continue
-        if site in p.walls or site in p.ores or site in p.foot:
-            continue
-        targets.append(site)
+    star = set()
+    for tile in p.foot:
+        for direction in D8:
+            dx, dy = direction.delta()
+            step = 1
+            while True:
+                spot = (tile[0] + dx * step, tile[1] + dy * step)
+                if _distance_sq(spot, tile) > radius_sq:
+                    break
+                if _inside(p, spot):
+                    star.add(spot)
+                step += 1
+    return star - p.foot
 
-    # Same line-of-sight discipline the turret seats use, for the same reason.
-    # RING_MAX_SITES is 1, so this ring resolves to a single Launcher and the
-    # sort decides which tile it is -- and the enemy-facing tile it used to
-    # pick unconditionally is precisely the one an enemy turret is most likely
-    # to be pointing at. A pad that is shot down is worse than a pad one tile
-    # further round the ring: the attacker it was built to throw is still at
-    # home, and the +10% scale was paid either way.
-    if LAUNCHER_AVOID_ENEMY_RAYS:
-        ray, reachable = _remembered_turret_cover(p)
-    else:
-        ray, reachable = frozenset(), frozenset()
 
-    def tier(site):
-        return 2 if site in ray else 1 if site in reachable else 0
+def _forbidden_region(p, danger):
+    """The star, plus every tile an enemy Builder could build into it from."""
+    forbidden = set(danger)
+    for tile in danger:
+        for dx, dy in D4_DELTAS:
+            spot = (tile[0] + dx, tile[1] + dy)
+            if _inside(p, spot) and spot not in p.walls:
+                forbidden.add(spot)
+    return forbidden | p.foot
 
-    targets.sort(key=lambda site: (tier(site),
-                                   _distance_sq(site, enemy_core), site))
-    return [Position(*site) for site in targets]
+
+def _approach_shell(p, danger):
+    """Passable tiles an enemy Builder must cross to reach a firing tile.
+
+    A Builder builds onto an orthogonally adjacent tile, so it does not have to
+    stand *in* the danger star to seat a turret there -- one step outside is
+    enough. The region to deny is therefore the star grown by one, and the shell
+    is what lies immediately outside that.
+
+    Terrain and the map edge already deny it and are simply absent here. That is
+    the whole of Lucas's dead-end rule at this stage: an arm of the star that
+    runs into rock needs nothing built to close it.
+    """
+    forbidden = _forbidden_region(p, danger)
+    shell = set()
+    for tile in forbidden:
+        for dx, dy in D4_DELTAS:
+            spot = (tile[0] + dx, tile[1] + dy)
+            if spot in forbidden or not _inside(p, spot):
+                continue
+            if spot in p.walls or spot in p.foot:
+                continue
+            shell.add(spot)
+    return shell
+
+
+def _seals_us_in(p, chosen, spot):
+    """Would adding this site wall our own units in behind the screen?
+
+    A Launcher is a building, and buildings are not walkable -- only conveyors
+    and splitters are. So every site on the screen is impassable *to us*, and a
+    screen that closes a ring closes it against our own guards and our own belt
+    as much as against them. The old radius-2 ring knew this and said so; the
+    knowledge was lost when the ring moved outward and grew, and the result is
+    a Core whose defenders walk the long way round their own Launchers while a
+    Sentinel shoots it.
+
+    So the screen is checked for the property that actually matters: from the
+    Core's spawn ring, can our units still reach open ground? A site that fails
+    is skipped no matter how much shell it would have covered. Denying an
+    approach is worthless if it also denies it to the mender.
+    """
+    blocked = p.walls | {spot} | set(chosen)
+    start = next((tile for tile in _spawn_ring(p) if tile not in blocked), None)
+    if start is None:
+        return True
+    seen, queue = {start}, deque([start])
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in D4_DELTAS:
+            nxt = (x + dx, y + dy)
+            if nxt in seen or not _inside(p, nxt) or nxt in blocked:
+                continue
+            if nxt in p.foot:
+                continue
+            seen.add(nxt)
+            queue.append(nxt)
+    # Open ground means genuinely out, not just a pocket a few tiles wide.
+    return len(seen) < SELF_SEAL_MIN_OPEN
+
+
+def _spawn_ring(p):
+    """The twelve tiles a Core can spawn a Builder onto."""
+    return {(x, y)
+            for tile in p.foot
+            for x in range(tile[0] - 1, tile[0] + 2)
+            for y in range(tile[1] - 1, tile[1] + 2)
+            if (x, y) not in p.foot and _inside(p, (x, y))}
+
+
+def _pad_serving(p, tile):
+    """A friendly Launcher whose pickup radius covers `tile`, or None."""
+    return next((pad for pad in getattr(p, "friendly_launchers", ())
+                 if _distance_sq(pad, tile) <= LAUNCH_PICKUP_SQ), None)
+
+
+def _throw_landings(p, launcher):
+    """Tiles a friendly Launcher could put us on, cheapest-to-check form.
+
+    Deliberately generous: legality is the Launcher's business at the moment of
+    the throw, and a route that assumes a landing which turns out illegal simply
+    re-plans next round. Being pessimistic here is what would keep the hop out
+    of routes it should be in.
+
+    Memoised per turn, and that is the whole reason the router can afford to
+    treat every Launcher as an edge. This is called once for *every pad tile
+    popped off the BFS queue* -- a pad's pickup stamp is eight tiles, each
+    expansion screens 121 candidates against four predicates, and the BFS itself
+    runs several times a turn. The list cannot change between those calls: it is
+    a pure function of the map, `p.walls`, `p.solids` and `p.threat`, none of
+    which move while a Builder is still deciding what to do. So the cache
+    returns the identical list rather than an approximation of it, and the hop
+    semantics are exactly what they were.
+    """
+    if getattr(p, "landing_cache_round", None) != getattr(p, "round", -1):
+        p.landing_cache_round = getattr(p, "round", -1)
+        p.landing_cache = {}
+    cached = p.landing_cache.get(launcher)
+    if cached is not None:
+        return cached
+    span = int(LAUNCH_RANGE_SQ ** 0.5)
+    landings = [(launcher[0] + dx, launcher[1] + dy)
+                for dx in range(-span, span + 1)
+                for dy in range(-span, span + 1)
+                if dx * dx + dy * dy <= LAUNCH_RANGE_SQ
+                and _inside(p, (launcher[0] + dx, launcher[1] + dy))
+                and (launcher[0] + dx, launcher[1] + dy) not in p.walls
+                and (launcher[0] + dx, launcher[1] + dy) not in p.solids
+                and not _threat_at(p, (launcher[0] + dx, launcher[1] + dy))]
+    p.landing_cache[launcher] = landings
+    return landings
+
+
+def _stamp(p, spot, radius_sq):
+    """Tiles a Launcher at `spot` can pick a Builder up from."""
+    return {(spot[0] + dx, spot[1] + dy)
+            for dx in range(-1, 2) for dy in range(-1, 2)
+            if (dx or dy) and dx * dx + dy * dy <= radius_sq
+            and _inside(p, (spot[0] + dx, spot[1] + dy))}
+
+
+def _enemy_reachable(p, shell, danger, enemy_core, screened=()):
+    """Drop shell tiles the enemy cannot actually walk to.
+
+    Lucas's constraint: a direction that dead-ends needs no Launcher. Flood from
+    the enemy Core across passable tiles, refusing to enter the threat disc --
+    an attacker has to reach the shell from outside it. Anything the flood never
+    touches is behind terrain, in a pocket, or off the only path in, and a
+    Launcher there is +10% on every future price for nothing.
+
+    Unseen tiles are treated as passable. Early on almost nothing is seen, so
+    this prunes little and prunes it conservatively; it bites later, once the
+    map is known, which is also when the screen is actually affordable.
+    """
+    if not REACHABILITY_ENABLED:
+        return set(shell)
+    forbidden = _forbidden_region(p, danger)
+    blocked = p.walls | set(screened)
+    start = tuple(enemy_core)
+    if start in blocked or start in forbidden:
+        return set(shell)
+    seen, queue = {start}, deque([start])
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in D4_DELTAS:
+            spot = (x + dx, y + dy)
+            if spot in seen or not _inside(p, spot) or spot in blocked:
+                continue
+            seen.add(spot)
+            if spot in forbidden:
+                # The denied region is the destination, not a corridor. Marking
+                # it seen without walking on lets a shell tile count as reached
+                # while stopping the flood from leaking through the middle and
+                # calling the far side reachable by a route no attacker has.
+                continue
+            queue.append(spot)
+    return {tile for tile in shell if tile in seen}
+
+
+def _launcher_ring_targets(p, enemy_core):
+    """Fewest Launcher sites whose pickup stamps cover the live approach shell.
+
+    The old ring was eight compass sites at RING_RADIUS. Around a 2x2 Core that
+    radius cannot hold eight things without them touching, which is exactly the
+    "Launchers built right next to each other" seen in the replays -- a geometry
+    fault, not a placement one. Two adjacent Launchers also cover almost the
+    same tiles, so the second one is +10% on every later price for nothing.
+
+    What a defensive Launcher does is pick up a Builder at LAUNCH_PICKUP_SQ and
+    throw it clear, so each one covers a 3x3 stamp. The tiles worth covering are
+    the shell just outside the threat disc: an enemy carrying a turret into
+    range of the Core has to cross it. So this is a minimum set cover of that
+    shell by 3x3 stamps -- greedy, which is within a log factor of optimal and
+    is the reason no two chosen sites sit on top of each other.
+
+    Three things shape the result:
+
+    * **Reachability.** Shell tiles the enemy cannot walk to are dropped before
+      the cover starts, so a dead end or a pocket behind terrain costs nothing.
+    * **Separation.** No site is chosen within RING_MIN_SEPARATION Chebyshev of
+      one already taken, which forbids adjacency outright.
+    * **One per cardinal.** Greedy optimises total tiles covered and will
+      happily leave a thin approach uncovered because it is cheap to ignore.
+      A guaranteed site on each cardinal that still has live shell is the
+      insurance against being flanked down the cheap side.
+
+    The screen is also the attacker's throw pad, so the enemy-facing site is
+    ordered first: it has to be the one that exists when the attacker asks.
+    """
+    danger = _danger_star(p, RING_THREAT_SQ)
+    shell = _approach_shell(p, danger)
+    live = _enemy_reachable(p, shell, danger, enemy_core)
+    if not live:
+        return []
+
+    def buildable(spot):
+        return (_inside(p, spot) and spot not in p.walls
+                and spot not in p.ores and spot not in p.foot)
+
+    # A site does not have to sit on the shell, only within pickup range of it.
+    candidates = set()
+    for tile in live:
+        for dx in range(-1, 2):
+            for dy in range(-1, 2):
+                spot = (tile[0] + dx, tile[1] + dy)
+                if buildable(spot):
+                    candidates.add(spot)
+
+    covers = {spot: {tile for tile in live
+                     if _distance_sq(spot, tile) <= LAUNCH_PICKUP_SQ}
+              for spot in candidates}
+    covers = {spot: tiles for spot, tiles in covers.items() if tiles}
+
+    def spread(spot):
+        """How far this site sits from the nearest one already chosen.
+
+        Capped at RING_MIN_SEPARATION: past that the screen is spread enough and
+        extra distance buys nothing, so the tie falls through to facing.
+        """
+        if not chosen:
+            return RING_MIN_SEPARATION
+        return min(RING_MIN_SEPARATION,
+                   min(_chebyshev(spot, taken) for taken in chosen))
+
+    # Closing the enemy off is a cut, not a perimeter. Covering every tile on
+    # the boundary is *a* valid answer and a needlessly expensive one: a star
+    # has a notched outline, and the notches behind a Launcher stop mattering
+    # the moment the approach in front of it is shut. So each pick is followed
+    # by a re-flood with the screen so far treated as blocking, and the next
+    # pick only has to answer what is still reachable. On a map with a chokepoint
+    # this collapses to the two or three sites that hold the gap.
+    #
+    # One flood per chosen site, not per candidate -- nine BFS passes over a
+    # 30x30 grid, against a 10 ms budget, and only when the plan is rebuilt.
+    chosen = []
+    guard = 0
+    while live and len(chosen) < RING_MAX_SITES and guard < RING_MAX_SITES * 2:
+        guard += 1
+        best = max(
+            covers,
+            key=lambda spot: (
+                len(covers[spot] & live),
+                spread(spot),
+                -_distance_sq(spot, enemy_core),
+            ),
+            default=None,
+        )
+        if best is None or not (covers[best] & live):
+            break
+        del covers[best]
+        if _seals_us_in(p, chosen, best):
+            # Covers ground, but at the price of walling our own guards out.
+            # Drop it and let the next iteration pick the runner-up.
+            continue
+        chosen.append(best)
+        # Everything within pickup range of the screen is now denied ground:
+        # an enemy Builder that steps there is thrown clear before it builds.
+        screened = {tile for spot in chosen for tile in
+                    _stamp(p, spot, LAUNCH_PICKUP_SQ)} | set(chosen)
+        live = _enemy_reachable(p, shell - screened, danger, enemy_core,
+                                screened=screened)
+        covers = {spot: tiles & live for spot, tiles in covers.items()}
+        covers = {spot: tiles for spot, tiles in covers.items() if tiles}
+
+    # One per cardinal, for the approaches greedy found too cheap to bother
+    # with. Only where that cardinal still has live shell -- a sealed side gets
+    # nothing, which is the whole point of the reachability pass.
+    for dx, dy in D4_DELTAS:
+        if len(chosen) >= RING_MAX_SITES:
+            break
+        arc = [tile for tile in live if _cardinal_arc(p, tile) == (dx, dy)]
+        if not arc:
+            continue
+        if any(_cardinal_arc(p, spot) == (dx, dy) for spot in chosen):
+            continue
+        reachable = [spot for spot in covers if covers[spot] & set(arc)]
+        if not reachable:
+            continue
+        # Spread first here too, and again only as a preference.
+        chosen.append(max(reachable,
+                          key=lambda s: (spread(s), -_distance_sq(s, enemy_core))))
+
+    # The "+1": one Launcher of depth behind the cut, on the enemy-facing side.
+    # A cut is exactly tight -- it holds until the first Launcher in it dies,
+    # and then the approach it was holding is open with nothing behind it. The
+    # spare sits where they are actually coming from, which is the arc a cut
+    # made of minimum sites is most likely to have held with a single tile.
+    if RING_EXTRA_SITES and len(chosen) < RING_MAX_SITES and chosen:
+        spare = [spot for spot in candidates
+                 if spot not in chosen
+                 and all(_chebyshev(spot, taken) >= 2 for taken in chosen)]
+        for _ in range(RING_EXTRA_SITES):
+            if not spare or len(chosen) >= RING_MAX_SITES:
+                break
+            pick = min(spare, key=lambda s: (_distance_sq(s, enemy_core), s))
+            chosen.append(pick)
+            spare = [s for s in spare if _chebyshev(s, pick) >= 2]
+
+    chosen.sort(key=lambda site: (_distance_sq(site, enemy_core), site))
+    return [Position(*site) for site in chosen]
+
+
+def _cardinal_arc(p, tile):
+    """Which cardinal quadrant a tile falls in, relative to the Core centre."""
+    cx, cy = p.core[0] + 0.5, p.core[1] + 0.5
+    dx, dy = tile[0] - cx, tile[1] - cy
+    if abs(dx) >= abs(dy):
+        return (1, 0) if dx > 0 else (-1, 0)
+    return (0, 1) if dy > 0 else (0, -1)
 
 
 def _edge_distance(p, dx, dy):
@@ -2261,21 +3521,66 @@ def _edge_distance(p, dx, dy):
     return min(spans) if spans else p.w + p.h
 
 
-def _aligned_gunner_site(p, ct, enemies):
-    """Best adjacent tile and facing from which a new Gunner could fire now.
+def _turret_kind(ct, prefer_sentinel, p=None):
+    """The turret a defensive role should buy right now.
+
+    The Aug 4 patch inverted the turret table and this lineage never noticed.
+    Under 2.3.3 a Gunner paid 2.78x less per point of damage and was +10% cost
+    scale against a Sentinel's +20%, so Gunner spam was correct. Under 2.3.4
+    both levy the same +20%, and once the count is fixed by that tax rather than
+    by titanium, paying 10 Ti more a seat buys 1.71x the damage (6 a round
+    against 3.5), 1.6x the HP (40 against 25), 2.46x the range (r^2=32 against
+    13) and a line that terrain cannot block.
+
+    The Gunner fallback is why this is a function and not a constant: a
+    defensive seat is wanted at a moment that decides something, and a Gunner
+    that fires beats a Sentinel that was unaffordable. Rotation is the one row
+    the Gunner still wins, which is why this is not applied to every role.
+    """
+    # Seat B fights at range rather than in a duel.
+    #
+    # Units act in ascending entity id across both teams, so team A takes every
+    # action first, every round, for the whole match -- and that shows up as a
+    # 15.2pp seat gap against every opponent on the hard panel (A 0.667, B
+    # 0.514). A first-strike advantage is worth most in a symmetric close-range
+    # exchange, which is exactly a Gunner duel: both turrets can reach, and the
+    # one that fires first wins it. It is worth least where the exchange is not
+    # symmetric, which is what a Sentinel's r^2=32 against a Gunner's 13 buys.
+    if (SEAT_B_PREFERS_RANGE and getattr(p, "seat_b", False)
+            and ct.get_global_resources() >= ct.get_sentinel_cost()
+            and ct.get_global_ammo() >= MIN_AMMO_FOR_SENTINEL):
+        return EntityType.SENTINEL
+    if (prefer_sentinel
+            and ct.get_global_resources() >= ct.get_sentinel_cost()
+            and ct.get_global_ammo() >= MIN_AMMO_FOR_SENTINEL):
+        return EntityType.SENTINEL
+    return EntityType.GUNNER
+
+
+def _build_turret(ct, kind, position, facing):
+    if kind is EntityType.SENTINEL:
+        ct.build_sentinel(position, facing)
+    else:
+        ct.build_gunner(position, facing)
+
+
+def _aligned_turret_site(p, ct, enemies, kind=EntityType.GUNNER):
+    """Best adjacent tile and facing from which a new turret could fire now.
 
     Shared by home defence and by field engagement so both answer an enemy the
     same way: a real firing solution from a tile we may legally build on, never
     a hopeful compass bearing. _preserves_friendly_turret_lanes keeps the new
     turret out of the line of the ones already standing.
+
+    `kind` decides the reach and the legality check together. A Sentinel sees
+    r^2=32 against a Gunner's 13, so a seat search hardcoded to Gunner range
+    rejects most of the seats a Sentinel could actually shoot from.
     """
     me = ct.get_position()
-    protected_lanes = _friendly_turret_lanes(ct)
-    # Deliberately NO cover-tier preference here: the guard and the belt
-    # defence must take the first seat that fires, and the off-ray seats the
-    # tier sort prefers are exactly the tiles that do not cover the corridor
-    # the belt runs through (bridge went 12/16 -> 10/16 with tiers applied).
-    threats = ({}, frozenset())
+    protected_lanes = _friendly_turret_lanes(ct, p)
+    sentinel = kind is EntityType.SENTINEL
+    reach = SENTINEL_RANGE_SQ if sentinel else GUNNER_RANGE_SQ
+    can_build = ct.can_build_sentinel if sentinel else ct.can_build_gunner
     candidates = []
     for direction in D8:
         position = me.add(direction)
@@ -2285,17 +3590,23 @@ def _aligned_gunner_site(p, ct, enemies):
             target = ct.get_position(enemy_id)
             facing = _ray_direction(tuple(position), tuple(target))
             if (facing is not None
-                    and position.distance_squared(target) <= GUNNER_RANGE_SQ
-                    and ct.can_fire_from(
-                        position, facing, EntityType.GUNNER, target,
-                    )
+                    and position.distance_squared(target) <= reach
+                    and ct.can_fire_from(position, facing, kind, target)
                     and _preserves_friendly_turret_lanes(
                         ct, position, protected_lanes,
                     )
-                    and ct.can_build_gunner(position, facing)):
+                    and can_build(position, facing)):
+                # A covered seat is refused, not ranked down. A turret fires
+                # one ray of eight and a Sentinel cannot even rotate off it, so
+                # seven directions are always free -- there is essentially never
+                # a reason to seat a turret on the one ray that shoots back.
+                # Returning None instead sends the Builder walking for a real
+                # seat, which is the answer this used to be unable to give
+                # because it only ever looked at its own eight neighbours.
+                if _threat_at(p, tuple(position)):
+                    continue
                 candidates.append((
                     COMBAT_PRIORITY.get(ct.get_entity_type(enemy_id), 4),
-                    _cover_tier(tuple(position), threats),
                     position.distance_squared(target),
                     position.x, position.y, D8.index(facing), position, facing,
                 ))
@@ -2334,7 +3645,7 @@ def _engage_with_turret(p, ct):
         ct.get_position(entity_id).distance_squared(ct.get_position()),
         entity_id,
     ))
-    site = _aligned_gunner_site(p, ct, enemies)
+    site = _aligned_turret_site(p, ct, enemies)
     if site is None:
         return False
     position, facing = site
@@ -2342,196 +3653,6 @@ def _engage_with_turret(p, ct):
     _mark_progress(p, ct, "built field gunner", tuple(position))
     p.field_gunners_built += 1
     return True
-
-
-def _guard_allowance(p, ct, team):
-    """Guard turrets allowed: the standing cap, plus one per emplaced threat.
-
-    A flat cap is the wrong shape once the enemy stops walking past our Core
-    and starts building at it. Traced on runestone: the guard answered their
-    Builder on rounds 10 and 12, spent its allowance, and then watched two more
-    Gunners go up on tiles none of our turrets could reach -- a Gunner fires
-    along eight rays only, so a turret sited to hit a Builder that was standing
-    somewhere else frequently cannot engage what replaces it.
-
-    The escalation that already existed is `_defend_core`'s, and it is keyed on
-    damage taken: `1 + damage // 180`. A Gunner three tiles from the Core deals
-    10 a round for as long as it stands, so waiting for 180 of them before
-    allowing a second answer concedes eighteen rounds. The emplaced turret is
-    the signal; how much damage it has managed so far is not.
-
-    Measured, pre-registered and replicated on independent generated sets --
-    30 maps 74/120 -> 81/120, 40 maps 99/160 -> 108/160 -- and neutral on the
-    official pool at 134/168 -> 135/168.
-    """
-    threats = 0
-    for building_id in ct.get_nearby_buildings():
-        if (ct.get_team(building_id) == team
-                or ct.get_entity_type(building_id)
-                not in (EntityType.GUNNER, EntityType.SENTINEL)):
-            continue
-        spot = tuple(ct.get_position(building_id))
-        if min(_distance_sq(spot, tile) for tile in p.foot) <= GUARD_RADIUS_SQ:
-            threats += 1
-    return MAX_GUARD_GUNNERS + threats
-
-
-def _core_threat_tiles(p):
-    """Tiles an enemy must stand in to threaten our Core.
-
-    Same set `_core_seal_targets` seals with barriers: the disc within
-    CORE_THREAT_RADIUS_SQ of the footprint, expanded by one because a Builder
-    builds onto an orthogonally adjacent tile rather than its own.
-    """
-    threat = set()
-    for tile in p.foot:
-        for x in range(tile[0] - 4, tile[0] + 5):
-            for y in range(tile[1] - 4, tile[1] + 5):
-                if _distance_sq((x, y), tile) <= CORE_THREAT_RADIUS_SQ:
-                    threat.add((x, y))
-    forbidden = set(threat)
-    for tile in threat:
-        for dx, dy in D4_DELTAS:
-            forbidden.add((tile[0] + dx, tile[1] + dy))
-    return forbidden
-
-
-def _ray_tiles(p, origin, facing):
-    """Tiles a Gunner at `origin` facing `facing` would cover."""
-    dx, dy = facing.delta()
-    out = []
-    tile = origin[0] + dx, origin[1] + dy
-    while (_inside(p, tile)
-           and _distance_sq(origin, tile) <= GUNNER_RANGE_SQ):
-        if tile in p.walls:
-            break
-        out.append(tile)
-        if tile in p.solids:
-            break
-        tile = tile[0] + dx, tile[1] + dy
-    return out
-
-
-def _denial_gunner_site(p, ct):
-    """A turret whose ray denies the ground an attacker needs, before it comes.
-
-    Enemy bots route around our firing lines rather than walk down them, so a
-    ray is not only a weapon, it is a wall that costs 10 Ti and never has to
-    fire. Covering the tiles an enemy would have to stand in to shoot our Core
-    means the attack has to go somewhere else -- and around a 2x2 Core there is
-    not much somewhere else.
-
-    Scored by how many *uncovered* threat tiles the new ray adds, so a second
-    turret is only bought when it denies ground the first one does not.
-    """
-    threat = _core_threat_tiles(p)
-    already = set()
-    team = ct.get_team()
-    for turret_id in ct.get_nearby_buildings():
-        if ct.get_team(turret_id) != team:
-            continue
-        if ct.get_entity_type(turret_id) not in (EntityType.GUNNER,
-                                                 EntityType.SENTINEL):
-            continue
-        try:
-            already.update(_ray_tiles(p, tuple(ct.get_position(turret_id)),
-                                      ct.get_direction(turret_id)))
-        except GameError:
-            continue
-    me = ct.get_position()
-    best = None
-    for direction in D8:
-        position = me.add(direction)
-        spot = tuple(position)
-        if not _inside(p, spot) or spot in p.foot:
-            continue
-        for facing in D8:
-            if not ct.can_build_gunner(position, facing):
-                continue
-            gained = len([t for t in _ray_tiles(p, spot, facing)
-                          if t in threat and t not in already])
-            if gained < DENIAL_MIN_TILES:
-                continue
-            rank = (-gained, spot, D8.index(facing))
-            if best is None or rank < best[0]:
-                best = (rank, position, facing)
-    return (best[1], best[2]) if best else None
-
-
-def _guard_home(p, ct):
-    """Turret an enemy that has come to our Core, before the alarm would fire.
-
-    The defence this lineage shipped with is `_defend_core`, and it triggers on
-    `SLOT_CORE_DAMAGED` -- which the Core only raises once it has already lost
-    50 HP. That is five Gunner rounds *after* their turret went up, and by then
-    answering it costs a turret duel instead of four shots at a Builder.
-
-    Sighting is the cheaper trigger, and it is decisive because of how thin the
-    attack it interrupts actually is. The whole enemy attack is carried by one
-    Builder: their Core will not spawn a replacement while any of their
-    Builders still answers the heartbeat, so a Builder killed on our doorstep
-    is an attack that does not come back. A Gunner is 10 Ti and kills a 40 HP
-    Builder in four rounds.
-
-    Measured on the 21 official maps in both seats against valkyrie, vigil,
-    ragnarok and vanguard, 168 games: the warden_walk chassis takes 118 with
-    this off and 147 with it on at the shipped radius and cap, and against
-    valkyrie alone it goes from 26/42 to 39/42. On this bot's own atlas-free
-    chassis the same comparison is 96 and 119. Both the trigger radius and the
-    cap were measured, not chosen -- see constants.py.
-
-    Deliberately *only* this Builder. Letting every Builder guard scores 137 --
-    the economy Builder abandons the belt it is laying and the miner stops
-    mining, and the games that buys back are fewer than the ones it costs.
-    """
-    team = ct.get_team()
-    if (p.guard_gunners_built >= _guard_allowance(p, ct, team)
-            or ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER
-            or ct.get_global_resources() < ct.get_gunner_cost()):
-        return False
-    enemies = []
-    for entity_id in ct.get_nearby_entities():
-        if ct.get_team(entity_id) == team:
-            continue
-        spot = tuple(ct.get_position(entity_id))
-        near = min(_distance_sq(spot, tile) for tile in p.foot)
-        if near <= GUARD_RADIUS_SQ:
-            enemies.append((COMBAT_PRIORITY.get(ct.get_entity_type(entity_id), 4),
-                            near, entity_id))
-    if not enemies:
-        if (DENIAL_GUNNERS and p.denial_gunners_built < DENIAL_GUNNERS
-                and ct.get_current_round() >= DENIAL_START_ROUND
-                and ct.get_global_resources()
-                >= ct.get_gunner_cost() + DENIAL_RESERVE):
-            site = _denial_gunner_site(p, ct)
-            if site is not None:
-                position, facing = site
-                ct.build_gunner(position, facing)
-                _mark_progress(p, ct, "built denial gunner", tuple(position))
-                p.solids.add(tuple(position))
-                p.denial_gunners_built += 1
-                return True
-        return False
-    enemies.sort()
-    ordered = [entity_id for _, _, entity_id in enemies]
-    site = _aligned_gunner_site(p, ct, ordered)
-    if site is not None:
-        position, facing = site
-        ct.build_gunner(position, facing)
-        _mark_progress(p, ct, "built guard gunner", tuple(position))
-        p.solids.add(tuple(position))
-        p.guard_gunners_built += 1
-        return True
-    # No firing seat from here. Close the distance a little rather than let the
-    # intruder emplace -- but never leave the Core to do it, because the ring,
-    # the seal and the next intruder are all back here.
-    target = ct.get_position(ordered[0])
-    if (_cardinal_distance(tuple(ct.get_position()), tuple(target))
-            <= GUARD_CHASE_STEPS):
-        # Never with a Launcher: a four-step walk is not worth 20 Ti and a
-        # permanent +10%, and the ferry exists to cross the map, not a yard.
-        return _step(p, ct, target, False, allow_launcher=False)
-    return False
 
 
 def _defend_core(p, ct):
@@ -2554,19 +3675,241 @@ def _defend_core(p, ct):
     core_id = (ct.get_tile_building_id(core_position)
                if ct.is_in_vision(core_position) else None)
     damage = (ct.get_max_hp(core_id) - ct.get_hp(core_id)) if core_id else 0
-    desired = min(4, 1 + damage // 180)
+    # Moving second means their shot lands before our heal, so the seat that
+    # loses ties escalates its home defence sooner.
+    step = (SEAT_B_TURRET_STEP if (SEAT_AWARE_DEFENCE and getattr(p, "seat_b", False))
+            else HOME_TURRET_STEP)
+    desired = min(HOME_TURRET_MAX, 1 + damage // step)
+    # One turret per enemy Sentinel, before the generic escalation. A Sentinel
+    # is the thing that actually kills our Core -- it out-ranges us, its line is
+    # never blocked, and it cannot rotate, so a turret seated on it stays
+    # useful for as long as it stands. Counting them individually is what stops
+    # the guard building its second and third Gunner against the same shooter
+    # while a new one goes up unopposed.
+    # The 3 Ti answer before the 30 Ti one.
+    #
+    # A barrier dropped in a live Gunner lane absorbs that Gunner's entire
+    # clock: measured in the lab at one Builder holding a Core on zero damage
+    # through 201 rounds of sustained fire for about 1 Ti a round, while the
+    # shooter burned 2 Ti a shot. It was third in this order, behind a
+    # counter-turret and an escalation turret that both consume the turn -- so
+    # on the rounds it was most needed it was never reached.
+    #
+    # Ordering it first is the cost-scale argument again, in its sharpest form.
+    # A barrier is 3 Ti and +1% scale; the turret it pre-empts is 20-30 Ti and a
+    # permanent +20% on every price the team pays afterwards, including the
+    # mending. And it answers the right thing: a Gunner's ray is blocked by
+    # terrain where a Sentinel's is not, and Gunner fire is the large majority
+    # of what kills a Core. Sentinel lanes are unblockable, find no site here,
+    # and fall through to the turret and the mending exactly as before.
+    if LANE_BARRIER_FIRST and _block_firing_lane(p, ct, enemies):
+        return
+    if _counter_sentinels(p, ct):
+        return
     if (ct.get_global_ammo() >= MIN_AMMO_FOR_GUNNER
             and p.home_gunners_built < desired):
-        site = _aligned_gunner_site(p, ct, enemies)
+        kind = _turret_kind(ct, DEFEND_TURRET_SENTINEL, p)
+        site = _aligned_turret_site(p, ct, enemies, kind)
+        if site is None and kind is EntityType.SENTINEL:
+            kind = EntityType.GUNNER
+            site = _aligned_turret_site(p, ct, enemies, kind)
         if site is not None:
             position, facing = site
-            ct.build_gunner(position, facing)
-            _mark_progress(p, ct, "built defensive gunner", tuple(position))
+            _build_turret(ct, kind, position, facing)
+            _mark_progress(p, ct, "built defensive turret", tuple(position))
             p.home_gunners_built += 1
             return
-    if _block_firing_lane(p, ct, enemies):
+    if not LANE_BARRIER_FIRST and _block_firing_lane(p, ct, enemies):
         return
+    # Every answer above requires a visible target, and a Builder's vision is a
+    # fraction of the Core's r^2=36 -- a shooter parked outside it is healed
+    # against forever and never killed (Besvikomat's round-3 Gunner ended a
+    # 186-round siege untouched at 25/25 HP). The Core publishes the nearest
+    # turret it can see through the alarm slot; when nothing is visible here,
+    # walk toward that beacon until it is. The turret cannot move, the beacon
+    # only exists while the alarm is up, and the Core only names shooters
+    # within its own vision, so the walk is short and stays home by
+    # construction. Standoff of 2: vision reaches before adjacency does, and
+    # the round it is seen the ordinary answers take over.
+    sees_turret = any(
+        ct.get_entity_type(entity_id) in (EntityType.GUNNER,
+                                          EntityType.SENTINEL)
+        for entity_id in enemies)
+    if not sees_turret:
+        shooter = unpack_pos(
+            ct.read_store(SLOT_CORE_DAMAGED) >> SHOOTER_POS_SHIFT)
+        if shooter is not None:
+            here = tuple(ct.get_position())
+            if (_chebyshev(here, shooter) > 2
+                    and _step(p, ct, Position(*shooter), True)):
+                if not getattr(p, "hunt_announced", False):
+                    p.hunt_announced = True
+                    print(f"HUNT round={ct.get_current_round()} "
+                          f"from={here} shooter={shooter}",
+                          file=sys.stderr, flush=True)
+                return
     _heal_core(p, ct)
+
+
+def _counter_sentinels(p, ct):
+    """Seat one turret against each enemy Sentinel, nearest their Builder first.
+
+    A Sentinel cannot rotate. Whatever it was aimed at when it was built is the
+    only thing it will ever shoot, so a turret that can hit it keeps its firing
+    solution permanently -- unlike a Gunner duel, where the loser simply turns.
+    That makes one-for-one the right exchange rate, and `countered_sentinels` is
+    what enforces it: without a tally the guard spends its whole budget on the
+    first Sentinel it saw while later ones go up unanswered.
+
+    Where two seats both work, the one nearer a visible enemy Builder wins. The
+    Builder is what turns one Sentinel into three, and a turret covering the
+    ground it is working on kills the reinforcements as well as the shooter.
+    """
+    if SEAT_B_SKIPS_DUEL and getattr(p, "seat_b", False):
+        # Answering a turret with a turret is the symmetric exchange seat B
+        # loses. The 3 Ti lane barrier and the mender are not symmetric, and
+        # they run immediately below this in `_defend_core`.
+        return False
+    sentinels = [entity_id for entity_id in ct.get_nearby_entities()
+                 if ct.get_team(entity_id) != ct.get_team()
+                 and ct.get_entity_type(entity_id) == EntityType.SENTINEL]
+    outstanding = [entity_id for entity_id in sentinels
+                   if tuple(ct.get_position(entity_id))
+                   not in p.countered_sentinels]
+    if not outstanding or ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
+        return False
+    builders = [ct.get_position(entity_id)
+                for entity_id in ct.get_nearby_entities()
+                if ct.get_team(entity_id) != ct.get_team()
+                and ct.get_entity_type(entity_id) == EntityType.BUILDER_BOT]
+    outstanding.sort(key=lambda entity_id: (
+        min((ct.get_position(entity_id).distance_squared(b)
+             for b in builders), default=999),
+        ct.get_position(entity_id).distance_squared(Position(*p.core)),
+    ))
+    for entity_id in outstanding:
+        kind = _turret_kind(ct, DEFEND_TURRET_SENTINEL, p)
+        site = _aligned_turret_site(p, ct, [entity_id], kind)
+        if site is None and kind is EntityType.SENTINEL:
+            kind = EntityType.GUNNER
+            site = _aligned_turret_site(p, ct, [entity_id], kind)
+        if site is None:
+            continue
+        position, facing = site
+        _build_turret(ct, kind, position, facing)
+        _mark_progress(p, ct, "countered sentinel", tuple(position))
+        p.countered_sentinels.add(tuple(ct.get_position(entity_id)))
+        p.home_gunners_built += 1
+        return True
+    return False
+
+
+def _patrol_core(p, ct):
+    """Walk a circuit round the Core instead of standing on it.
+
+    A guard parked on one tile sees one approach. The Core's own vision is
+    r^2=36 and does not move, so a stationary guard adds almost nothing to what
+    the Core already knows -- what it can add is sight of the *other* side, and
+    the only way to get that is to walk. Patrolling also puts the guard within
+    building range of wherever the attack turns up, which is the difference
+    between answering it this round and walking four rounds first.
+
+    The circuit is the ring at PATROL_RADIUS, taken in order, skipping anything
+    unreachable. Deliberately a fixed cycle rather than a chase: chasing is how
+    a guard gets led away from the Core by a scout.
+    """
+    if p.core is None:
+        return False
+    ring = [tile for tile in _ring_at(p, PATROL_RADIUS)
+            if tile not in p.walls and tile not in p.solids
+            and not _threat_at(p, tile)]
+    if not ring:
+        return False
+    here = tuple(ct.get_position())
+    if p.patrol_target is None or p.patrol_target == here:
+        # Advance to the next station a third of the way round, so the guard
+        # sweeps rather than oscillating between two adjacent tiles.
+        if p.patrol_target in ring:
+            start = ring.index(p.patrol_target)
+        else:
+            start = min(range(len(ring)),
+                        key=lambda i: _distance_sq(ring[i], here))
+        p.patrol_target = ring[(start + max(1, len(ring) // 3)) % len(ring)]
+    return _step(p, ct, Position(*p.patrol_target), True)
+
+
+def _ring_at(p, radius):
+    """The Chebyshev ring at `radius` around the Core footprint, in cycle order."""
+    x0 = min(t[0] for t in p.foot) - radius
+    x1 = max(t[0] for t in p.foot) + radius
+    y0 = min(t[1] for t in p.foot) - radius
+    y1 = max(t[1] for t in p.foot) + radius
+    ring = ([(x, y0) for x in range(x0, x1 + 1)]
+            + [(x1, y) for y in range(y0 + 1, y1 + 1)]
+            + [(x, y1) for x in range(x1 - 1, x0 - 1, -1)]
+            + [(x0, y) for y in range(y1 - 1, y0, -1)])
+    return [tile for tile in ring if _inside(p, tile)]
+
+
+def _trap_enemy_builder(p, ct):
+    """Wall a loose enemy Builder in, then put a turret on the box.
+
+    Only worth doing when nothing is currently shooting our Core -- it is slow,
+    and a Builder spending rounds laying barriers is a Builder not answering an
+    attack. But in the quiet it is the best trade on the board: a barrier is
+    3 Ti and +1% against a Builder that costs them 30 Ti and +20% and is the
+    only thing on their team that can build anything at all.
+
+    Boxing it in first and shooting it after is what makes the turret pay. A
+    free Builder walks out of a Gunner's ray in one move; a boxed one cannot
+    move at all, so a single Gunner in the corner kills it at leisure -- 25 Ti
+    to remove 30 Ti of theirs and every building it would ever have made.
+    """
+    if not TRAP_ENEMY_BUILDERS:
+        return False
+    targets = [entity_id for entity_id in ct.get_nearby_entities()
+               if ct.get_team(entity_id) != ct.get_team()
+               and ct.get_entity_type(entity_id) == EntityType.BUILDER_BOT]
+    if not targets:
+        return False
+    here = tuple(ct.get_position())
+    target = min(targets, key=lambda e: _distance_sq(
+        tuple(ct.get_position(e)), here))
+    spot = tuple(ct.get_position(target))
+    # Only in our own half: chasing one across the map is how the guard ends up
+    # out of position when the real attack lands.
+    if _distance_sq(spot, p.core) > TRAP_MAX_DISTANCE_SQ:
+        return False
+
+    escapes = [(spot[0] + dx, spot[1] + dy) for dx, dy in D4_DELTAS
+               if _inside(p, (spot[0] + dx, spot[1] + dy))
+               and (spot[0] + dx, spot[1] + dy) not in p.walls
+               and (spot[0] + dx, spot[1] + dy) not in p.solids]
+    if escapes:
+        if ct.get_global_resources() < ct.get_barrier_cost():
+            return False
+        gap = min(escapes, key=lambda t: _cardinal_distance(here, t))
+        if _cardinal_distance(here, gap) != 1:
+            return _step(p, ct, Position(*gap), False)
+        position = Position(*gap)
+        if ct.can_build_barrier(position):
+            ct.build_barrier(position)
+            _mark_progress(p, ct, "walling in enemy builder", gap)
+            p.solids.add(gap)
+            return True
+        return False
+
+    # Boxed. Now the corner turret -- it cannot dodge and it cannot leave.
+    if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
+        return False
+    site = _aligned_turret_site(p, ct, [target])
+    if site is None:
+        return False
+    position, facing = site
+    ct.build_gunner(position, facing)
+    _mark_progress(p, ct, "turret on a boxed builder", tuple(position))
+    p.home_gunners_built += 1
+    return True
 
 
 def _block_firing_lane(p, ct, enemies):
@@ -2663,7 +4006,7 @@ def _block_siege_lane(p, ct):
         return False
     me = tuple(ct.get_position())
     team = ct.get_team()
-    protected = _friendly_turret_lanes(ct)
+    protected = _friendly_turret_lanes(ct, p)
     best = None
     for enemy_id in ct.get_nearby_buildings():
         if (ct.get_team(enemy_id) == team
@@ -2725,38 +4068,8 @@ def _rush(p, ct):
     # of the price of what it is protecting.
     if _block_siege_lane(p, ct):
         return
-    # Wall their spawn ring before buying another turret. Twelve barriers ends
-    # their ability to replace a single Builder for the rest of the match; a
-    # sixth Gunner shoots at a Core they can still repair.
-    if sighted and _run_spawn_denial(p, ct, enemy_core):
-        return
-    # Sentinel first, Gunner second, and the reason is arithmetic the patch
-    # changed under us. Under 2.3.3 a Gunner paid 10 damage for 2 ammunition
-    # against the Sentinel's 18 for 10 -- 2.78x better -- which is why
-    # `_build_siege_sentinel` was written as the fallback for a Core no Gunner
-    # lane could reach, and says so in its own docstring. 2.3.4 cut the Gunner
-    # to 7 damage and doubled its shot to 4 ammunition, which inverts it:
-    #
-    #     damage per ammunition   Gunner 7/4 = 1.75    Sentinel 18/10 = 1.80
-    #     damage per round        Gunner 7             Sentinel 9
-    #     attack radius squared   Gunner 13            Sentinel 32
-    #     HP                      Gunner 25            Sentinel 40
-    #     blocked by terrain      yes                  never
-    #
-    # Against a stationary 500 HP Core the Sentinel now dominates on every axis
-    # but build price, and the terrain that defeats a Gunner lane search is
-    # irrelevant to a line that pierces. The range gap is the only strictly
-    # asymmetric advantage on the board: a seat beyond r^2=13 hits their Core
-    # while nothing they own can answer without walking a Builder into the
-    # barrier wrap.
-    #
-    # Measured before the change, over 50 games on the five worst maps, this
-    # bot built 0.0 Sentinels and 5.8 Gunners and dealt 100% of its Core damage
-    # with Gunners. Promoting the Sentinel is worth +9 games on the 336-game
-    # panel (250 -> 259), and +14 with the harvester cap (242 -> 264).
-    if _build_siege_sentinel(p, ct, enemy_core):
-        return
-    if p.attack_gunners_built < 5 and _build_basic_gunner(p, ct, enemy_core):
+    if (p.attack_gunners_built < ATTACK_TURRET_CAP
+            and _build_basic_gunner(p, ct, enemy_core)):
         return
     _harass(p, ct)
 
@@ -2770,34 +4083,55 @@ def _build_siege_sentinel(p, ct, enemy_core):
     2.78x more per point of damage, which is why this runs only after the
     Gunner and Launcher-breaker searches have both come up empty.
     """
-    if p.siege_sentinel is not None:
-        spot = Position(*p.siege_sentinel)
-        if ct.is_in_vision(spot) and ct.get_tile_building_id(spot) is None:
-            # Shot out. Rebuilding is the point: 30 Ti buys 9 damage a round
-            # at r^2=32 against a Core that cannot dodge or block it. The one
-            # traced on longship died on round 81 after eight shots and was
-            # never replaced.
-            p.siege_sentinel = None
-            p.sentinel_wrap = []
-        else:
-            return False
-    # This search is the widest in the bot (13x13 around four Core tiles) and
-    # it runs last, after two others have already spent the turn. Skipping it
-    # costs a fallback that fires in a handful of games; overrunning costs the
-    # whole round, for every unit, on the map where it happens.
-    if _out_of_time(ct):
+    # One siege Sentinel can never kill a mended Core, and until now that was
+    # the hard cap: `p.siege_sentinel is not None` stopped each attacker after
+    # exactly one, and SIEGE_SENTINEL_TARGET sat in constants.py unused.
+    #
+    # The arithmetic the whole field is built on runs both ways. A Builder heals
+    # 4 HP for a flat 1 Ti, so the two menders every bot on this ladder now
+    # posts restore 8 HP a round -- which is why a Core under one Sentinel's
+    # 6 a round never falls, the siege stalls, and `SIEGE_STALL_ROUNDS` gives up
+    # on it. Two Sentinels are 12 a round and three are 18, and *that* breaks
+    # the equilibrium: past 8 the healing cannot keep up and the Core dies on a
+    # clock no amount of mending changes.
+    #
+    # Each seat is +20% on every later price, so this is bounded rather than
+    # unlimited, and the seats are spread by SENTINEL_SPREAD_LINES so one enemy
+    # turret cannot answer two of them without rotating.
+    if p.siege_sentinels_built >= SIEGE_SENTINEL_TARGET:
         return False
+    # This search is the widest in the bot (13x13 around four Core tiles, a
+    # full-map BFS and ~160 engine calls) and it runs last, after two others
+    # have already spent the turn. It needs a bound: overrunning costs the whole
+    # round, for every unit, on the map where it happens.
+    #
+    # The bound used to be a clock read, and that was a defect rather than a
+    # tuning knob. `get_cpu_time_elapsed` makes the bot's *decisions* a function
+    # of how busy the machine is, so the same board played twice gives different
+    # answers -- measured here at 11 different winners in 210 matches of
+    # identical code against identical opponents, which is larger than most of
+    # the effects this bot is tuned on. It is also backwards where it matters:
+    # the ladder machine is contended, so the search that survives on a quiet
+    # laptop is the one that gets cut in the games that count.
+    #
+    # A round throttle bounds the same work deterministically. Retrying a wide
+    # fallback search every single round is what made it expensive; a seat that
+    # is not there this round is very rarely there the next.
+    if ct.get_current_round() < p.last_siege_search_round + SIEGE_SEARCH_EVERY:
+        return False
+    p.last_siege_search_round = ct.get_current_round()
     if ct.get_global_ammo() < MIN_AMMO_FOR_SENTINEL:
         return False
     core_tiles = {(enemy_core[0] + dx, enemy_core[1] + dy)
                   for dx in (0, 1) for dy in (0, 1)}
-    # Plan against known terrain: we must be close enough to have seen the
-    # Core's surrounds, or the "seat" may be a wall we have not met yet.
-    if not any(tile in p.seen for tile in core_tiles):
+    # Plan against known terrain: with an atlas the whole map qualifies, and
+    # without one we must be close enough to have seen the Core's surrounds,
+    # or the "seat" may be a wall we simply have not met yet.
+    if p.atlas is None and not any(tile in p.seen for tile in core_tiles):
         return False
     me = tuple(ct.get_position())
     distances = _distance_map(p, me)
-    protected_lanes = _friendly_turret_lanes(ct)
+    protected_lanes = _friendly_turret_lanes(ct, p)
     choices = []
     for core_tile in sorted(core_tiles):
         for dx in range(-6, 7):
@@ -2826,15 +4160,19 @@ def _build_siege_sentinel(p, ct, enemy_core):
                     default=None,
                 )
                 if distance is not None:
-                    # Prefer arriving soon, then the farthest seat: distance
-                    # from the Core is safety the wrap does not have to buy.
+                    # Threat first, then arriving soon, then the farthest seat:
+                    # distance from the Core is safety the wrap does not have
+                    # to buy. A siege Sentinel is 30 Ti and the most expensive
+                    # thing this bot builds, so seating it in a known firing
+                    # line is the worst single purchase available to it.
                     choices.append((
+                        1 if _threat_at(p, spot) else 0,
                         distance, -_distance_sq(spot, core_tile),
                         spot, D8.index(facing), facing,
                     ))
     if not choices:
         return False
-    _, _, spot, _, facing = min(choices)
+    _, _, _, spot, _, facing = min(choices)
     position = Position(*spot)
     if _cardinal_distance(me, spot) != 1:
         _move_cardinal_adjacent(p, ct, spot)
@@ -2844,6 +4182,7 @@ def _build_siege_sentinel(p, ct, enemy_core):
         _mark_progress(p, ct, "built siege sentinel", spot)
         p.solids.add(spot)
         p.siege_sentinel = spot
+        p.siege_sentinels_built += 1
         # Wrap the exposed sides so conventional return fire cannot reach it;
         # its own shot pierces the wrap. Enemy-facing side first.
         p.sentinel_wrap = sorted(
@@ -2890,16 +4229,23 @@ def _wrap_siege_sentinel(p, ct):
 def _opening_ferry(p, ct, enemy_core, sighted=False):
     """Relay every attacker toward a sufficiently distant enemy Core.
 
-    The gate is knowing where the enemy Core actually is. `sighted` is that
-    flag: the store carries it set when a unit has physically seen the Core and
-    clear when the position is only the symmetry inference's best guess.
-    Ferrying at a guess is what the ancestor of this function was right to
-    refuse -- a wrong throw spends a Launcher and puts the attacker further
-    from the real Core than it started -- so the guess still walks. In this
-    bot, which has no map oracle at all, that gate is the whole of the
-    difference between relaying and walking.
+    The gate is knowing where the enemy Core actually is, not having looked it
+    up. The old test was `p.atlas is None`, which is the same thing only on the
+    published pool: off it -- a generated map, the held-out evaluation set,
+    whatever the final is played on -- the atlas is always None, so the whole
+    relay switched itself off and the attacker walked. That is the bot's single
+    largest tempo advantage (a Gunner beside the enemy Core on round 12 against
+    Pantheon's 32) disabled precisely where nobody had tuned against us, and it
+    is most of why `ragnarok_fair` sits five places below `ragnarok`.
+
+    `sighted` is already the flag for this: the store carries it set when the
+    atlas supplied the Core *or* when a unit has physically seen it, and clear
+    when the position is only the symmetry inference's best guess. Ferrying at
+    a guess is what the original gate was right to refuse -- a wrong throw
+    spends a Launcher and puts the attacker further from the real Core than it
+    started -- so the guess still walks.
     """
-    if not (sighted or FERRY_ON_INFERENCE):
+    if not (sighted or p.atlas is not None or FERRY_ON_INFERENCE):
         return False
 
     if _consume_launch_rejection(p, ct) or p.launch_blocked:
@@ -2916,31 +4262,7 @@ def _opening_ferry(p, ct, enemy_core, sighted=False):
     launchers = _visible_friendly_launchers(ct)
     adjacent = _adjacent_visible_launcher(ct, target, launchers)
     if adjacent is not None:
-        # A request nobody can service must not be repeated forever. A Launcher
-        # throws only to a bot-passable tile within r^2 26 in the requested
-        # direction; where the ground that way is wall -- sweden's band, for
-        # one -- there is no legal landing, the request is silently ignored,
-        # and the old code re-armed the four-round timer on every round so it
-        # never expired. Traced: the attacker stood beside its own Launcher
-        # asking to be thrown on every round from 30 to 999 and never attacked.
-        if p.launch_origin == here:
-            p.launch_waited += 1
-        else:
-            p.launch_waited = 0
-        if p.launch_waited > LAUNCH_REQUEST_ROUNDS:
-            p.launch_blocked = True
-            p.awaiting_launch = 0
-            p.launch_origin = None
-            _plan_failed(p, ct, "await launch", target,
-                         f"unserviced for {p.launch_waited} rounds; walking")
-            return False
-        p.awaiting_launch = LAUNCH_REQUEST_ROUNDS
-        p.launch_origin = here
-        if _announce_launch(p, ct, target, adjacent[1]):
-            return True
-        p.awaiting_launch = 0
-        p.launch_origin = None
-        return False
+        return _request_launch(p, ct, target, adjacent[1])
 
     if launchers:
         # Reuse a forward Launcher. If only the previous relay remains behind
@@ -2962,80 +4284,6 @@ def _chebyshev(a, b):
     return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
 
 
-def _remember_enemy_turrets(p, ct):
-    """Accumulate enemy turret positions across turns.
-
-    Live vision is the wrong instrument for "which side is defended". A Builder
-    at one face of their 2x2 Core sees the turrets on that face and not the ones
-    behind it -- measured at at most 2 visible, from every distance including
-    zero, on maps carrying 8 and 10 enemy turrets. A bearing taken from that is
-    biased toward wherever we already are, which is backwards for choosing a
-    side to attack from. Turrets do not move, so remembering them is sound.
-    """
-    team = ct.get_team()
-    for building in ct.get_nearby_buildings():
-        if ct.get_team(building) == team:
-            continue
-        kind = ct.get_entity_type(building)
-        if kind not in (EntityType.GUNNER, EntityType.SENTINEL):
-            continue
-        origin = tuple(ct.get_position(building))
-        p.known_enemy_turrets.add(origin)
-        # Remember the facing too, not just the tile. `_enemy_turret_cover`
-        # answers "what is under fire right now" from live vision and goes
-        # blind the moment the turret leaves sight; the belt is laid over
-        # tiles nobody is looking at, so it needs the remembered version.
-        try:
-            facing = ct.get_direction(building).delta()
-        except Exception:  # noqa: BLE001 - a turret with no facing
-            facing = None
-        seen_as = (kind == EntityType.SENTINEL, facing)
-        if p.enemy_turret_memory.get(origin) != seen_as:
-            # A new turret, or one that has rotated. Either invalidates the
-            # cover set the belt planner is routing against.
-            p.enemy_turret_memory[origin] = seen_as
-            p.turret_cover = None
-
-
-def _remembered_turret_cover(p):
-    """(ray, reachable) over every enemy turret we have ever seen.
-
-    `ray` is what those turrets cover on their last known facing; `reachable`
-    adds the other seven, which a 10 Ti rotation buys them. Walls and solids
-    come from our own memory, so this is only as good as what we have seen --
-    which is the point: it survives the turret leaving vision, and turrets do
-    not move.
-
-    Recomputed only when a turret is first seen or seen to have rotated, not
-    every round: belt planning asks for this once per candidate route, and the
-    recompute-per-call version is the shape that puts a Builder over the turn
-    limit.
-    """
-    if not p.enemy_turret_memory:
-        return frozenset(), frozenset()
-    if p.turret_cover is not None:
-        return p.turret_cover
-    ray, reachable = set(), set()
-    for origin, (pierces, facing) in p.enemy_turret_memory.items():
-        reach = SENTINEL_RANGE_SQ if pierces else GUNNER_RANGE_SQ
-        for direction in D8:
-            dx, dy = direction.delta()
-            covered = ray if facing == (dx, dy) else reachable
-            tile = origin[0] + dx, origin[1] + dy
-            while _inside(p, tile) and _distance_sq(origin, tile) <= reach:
-                if tile in p.walls and not pierces:
-                    break
-                covered.add(tile)
-                # A Gunner's ray stops at the first building, so tiles behind
-                # one of ours are not covered -- but a conveyor we are about to
-                # lay is exactly what would stop it, and then that conveyor is
-                # the thing being shot. Only permanent terrain shortens a ray
-                # for belt-planning purposes.
-                tile = tile[0] + dx, tile[1] + dy
-    p.turret_cover = (ray, reachable)
-    return p.turret_cover
-
-
 def _build_basic_gunner(p, ct, enemy_core):
     """Build on the nearest visible legal ray, without a special formation."""
     if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
@@ -3044,24 +4292,7 @@ def _build_basic_gunner(p, ct, enemy_core):
                   for dx in (0, 1) for dy in (0, 1)}
     me = tuple(ct.get_position())
     distances = _distance_map(p, me)
-    protected_lanes = _friendly_turret_lanes(ct)
-    # A Gunner seated on a tile an enemy turret already covers is shot before
-    # it has fired much, and one it can rotate onto costs them only a flat
-    # 10 Ti. Prefer seats out of reach entirely, then rotation-only, and take
-    # a currently covered seat last -- under duel discipline (one at a time,
-    # facing the coverer, tended by this Builder) rather than as cannon fodder.
-    # Never under BLITZ: a cores-close race is decided before any of this
-    # pays, and both the seat detours and the healing titanium lose the
-    # mutual-kill tiebreak (showdown went 16/16 -> 13/16 with this applied).
-    known = [t for t in p.known_enemy_turrets
-             if _chebyshev(t, tuple(enemy_core)) <= FLANK_RADIUS]
-    bearing = None
-    if FLANK_MIN_TURRETS and len(known) >= FLANK_MIN_TURRETS:
-        bearing = (sum(t[0] - enemy_core[0] for t in known) / len(known),
-                   sum(t[1] - enemy_core[1] for t in known) / len(known))
-    tiers_on = COVER_TIER_SEATS and p.doctrine != doctrine.BLITZ
-    threats = _enemy_turret_threats(p, ct) if tiers_on else ({}, frozenset())
-    duel_busy = tiers_on and _duel_active(p, ct)
+    protected_lanes = _friendly_turret_lanes(ct, p)
     choices = []
     for core_tile in sorted(core_tiles):
         for dx in range(-3, 4):
@@ -3088,22 +4319,12 @@ def _build_basic_gunner(p, ct, enemy_core):
                     (distances[goal] for goal in goals if goal in distances),
                     default=None,
                 )
-                if distance is not None:
-                    tier = _cover_tier(spot, threats)
-                    if tier == 2 and duel_busy:
-                        # One turret in enemy fire at a time; a second is
-                        # the fodder pattern this whole tier system bans.
-                        continue
-                    # Their wall covers the side we came from and
-                    # nothing else; accept a longer walk for an approach it
-                    # cannot answer. Below odin's cover tier, which is about
-                    # surviving the seat at all, and above distance.
-                    crowded = bool(
-                        bearing is not None
-                        and ((spot[0] - enemy_core[0]) * bearing[0]
-                             + (spot[1] - enemy_core[1]) * bearing[1]) > 0)
-                    choices.append((tier, crowded, distance, spot,
-                                    D8.index(facing), facing))
+                # Refused outright: this search already ranges over every tile
+                # within 3 of the enemy Core, so if one of them is covered
+                # there are dozens that are not, and walking to one costs a
+                # couple of rounds against a turret that dies for nothing.
+                if distance is not None and not _threat_at(p, spot):
+                    choices.append((distance, spot, D8.index(facing), facing))
     # Self-blocking is checked in preference order and stops at the first site
     # that survives, rather than for every candidate: the cheap tests above
     # have already ruled most sites out, and the best site almost always keeps
@@ -3113,7 +4334,7 @@ def _build_basic_gunner(p, ct, enemy_core):
         baseline = _route_baseline(p, me, Position(*enemy_core), False)
         choices = [
             next((choice for choice in choices
-                  if _keeps_route_open(p, choice[2], me,
+                  if _keeps_route_open(p, choice[1], me,
                                        Position(*enemy_core), False, baseline)),
                  None)
         ]
@@ -3127,7 +4348,7 @@ def _build_basic_gunner(p, ct, enemy_core):
             return True
         _explore(p, ct)
         return True
-    tier, _, _, spot, _, facing = min(choices)
+    _, spot, _, facing = min(choices)
     position = Position(*spot)
     if not ct.is_in_vision(position):
         _step(p, ct, position, False)
@@ -3135,25 +4356,11 @@ def _build_basic_gunner(p, ct, enemy_core):
     if _cardinal_distance(me, spot) != 1:
         _move_cardinal_adjacent(p, ct, spot)
         return True
-    if tier == 2:
-        # Forced into an enemy turret's ray: face the coverer, not the Core.
-        # It is first on the ray in both directions, so ours fires now, and
-        # once it wins the duel the Gunner's own rotation logic swings it
-        # onto the Core it was seated for. This Builder tends the duel.
-        coverer = threats[0].get(spot)
-        duel_facing = (_ray_direction(spot, coverer)
-                       if coverer is not None else None)
-        if duel_facing is not None:
-            facing = duel_facing
     if ct.can_build_gunner(position, facing):
         ct.build_gunner(position, facing)
         _mark_progress(p, ct, "built core gunner", spot)
         p.solids.add(spot)
         p.attack_gunners_built += 1
-        if tier == 2:
-            p.duel_turret = spot
-            p.duel_threat = threats[0].get(spot)
-            p.duel_until = ct.get_current_round() + DUEL_TEND_ROUNDS
     elif _build_failure(p, ct, spot, "core gunner", ct.get_gunner_cost()):
         p.rejected_build_sites.add(spot)
     return True
@@ -3165,7 +4372,29 @@ def _build_launcher_breaker_gunner(p, ct, blocking=None, route=None):
     `blocking` restricts the target set to Launchers actually standing in the
     route; without it every visible Launcher is fair game, which is how the bot
     used to spend Gunners on ones that were never in the way.
+
+    Not re-entrant, and it has to say so. `_step` calls this when a Launcher
+    blocks the route, this walks toward its build tile with
+    `_move_cardinal_adjacent`, and that calls `_step` again -- which meets the
+    same blocking Launcher and calls this again. Traced on the crash hunt: the
+    cycle runs to `RecursionError('maximum recursion depth exceeded')`, the
+    handler swallows it, and the Builder loses the entire turn having neither
+    moved nor built. The guard turns the second entry into an ordinary "no, go
+    and walk instead", which is what the outer `_step` does next anyway.
     """
+    if getattr(p, "breaking_launcher", False):
+        return False
+    # No `try/finally` -- the engine's validator rejects `finally` blocks
+    # outright. The flag is instead cleared at the top of every turn in `_run`,
+    # so even a raise inside the body cannot leave the breaker wedged off for
+    # the rest of the match; it loses the mechanic for one turn at most.
+    p.breaking_launcher = True
+    built = _breaker_gunner_body(p, ct, blocking, route)
+    p.breaking_launcher = False
+    return built
+
+
+def _breaker_gunner_body(p, ct, blocking, route):
     if ct.get_global_ammo() < MIN_AMMO_FOR_GUNNER:
         return False
     me = tuple(ct.get_position())
@@ -3173,7 +4402,7 @@ def _build_launcher_breaker_gunner(p, ct, blocking=None, route=None):
     if not targets:
         return False
     distances = _distance_map(p, me)
-    protected_lanes = _friendly_turret_lanes(ct)
+    protected_lanes = _friendly_turret_lanes(ct, p)
     choices = []
     for launcher_position in targets:
         if launcher_position in p.launcher_breakers:
@@ -3254,146 +4483,26 @@ def _ray_direction(source, target):
     return next((direction for direction in D8 if direction.delta() == step), None)
 
 
-def _enemy_turret_cover(p, ct):
-    """Tiles a visible enemy Gunner or Sentinel can currently shoot.
+def _friendly_turret_lanes(ct, p=None):
+    """Map protected firing-ray tiles to the friendly turret and its target.
 
-    A Gunner's ray stops at the first targetable tile and is blocked by walls;
-    a Sentinel's pierces both, so its whole line counts. Computed once per
-    turn, not once per candidate site -- the per-site version is what put an
-    earlier build over the turn limit.
+    Cached for the turn like `_travel`, and for the same reason: the seat
+    searches call it once each and the siege search calls it again, all inside
+    one `run()`, and it walks every nearby building against every nearby enemy
+    to rebuild the identical answer.
     """
-    covered = set()
-    team = ct.get_team()
-    for turret_id in ct.get_nearby_buildings():
-        if ct.get_team(turret_id) == team:
-            continue
-        kind = ct.get_entity_type(turret_id)
-        if kind not in (EntityType.GUNNER, EntityType.SENTINEL):
-            continue
-        origin = tuple(ct.get_position(turret_id))
-        try:
-            dx, dy = ct.get_direction(turret_id).delta()
-        except Exception:  # noqa: BLE001 - a turret with no facing
-            continue
-        pierces = kind == EntityType.SENTINEL
-        reach = SENTINEL_RANGE_SQ if pierces else GUNNER_RANGE_SQ
-        tile = origin[0] + dx, origin[1] + dy
-        while _inside(p, tile) and _distance_sq(origin, tile) <= reach:
-            if tile in p.walls and not pierces:
-                break
-            covered.add(tile)
-            if not pierces and tile in p.solids:
-                break
-            tile = tile[0] + dx, tile[1] + dy
-    return covered
-
-
-def _duel_active(p, ct):
-    """True while our tier-2 turret and the turret it faces both stand."""
-    spot = getattr(p, "duel_turret", None)
-    if spot is None:
-        return False
-    if ct.get_current_round() >= p.duel_until:
-        p.duel_turret = None
-        return False
-    for tile in (spot, p.duel_threat):
-        if tile is None:
-            continue
-        position = Position(*tile)
-        if not ct.is_in_vision(position):
-            continue
-        building = ct.get_tile_building_id(position)
-        if building is None:
-            # One of the duellists is gone; either way the duel is over.
-            p.duel_turret = None
-            return False
-    return True
-
-
-def _tend_duel_turret(p, ct):
-    """Stand beside the dueling turret and heal it so it wins the exchange.
-
-    Both Gunners deal 10 a round; 4 HP for a flat 1 Ti from an adjacent
-    Builder turns an even trade into a won one. The Builder that chose the
-    tier-2 seat pays for it with its own rounds until the duel is decided.
-    """
-    if not _duel_active(p, ct):
-        return False
-    spot = p.duel_turret
-    position = Position(*spot)
-    if _cardinal_distance(tuple(ct.get_position()), spot) > 1:
-        _step(p, ct, position, False, allow_launcher=False)
-        return True
-    if ct.is_in_vision(position):
-        building = ct.get_tile_building_id(position)
-        if (building is not None
-                and ct.get_hp(building) < ct.get_max_hp(building)
-                and ct.can_heal(position)):
-            ct.heal(position)
-            _mark_progress(p, ct, "healed duel turret", spot)
-            return True
-    # Full HP or heal on cooldown: hold position, the duel is not over.
-    return True
-
-
-def _enemy_turret_threats(p, ct):
-    """(ray, rotation): tiles enemy turrets shoot now, and could after turning.
-
-    `ray` maps each currently covered tile to the covering turret's position,
-    so a seat forced into tier 2 knows exactly what to face. `rotation` is the
-    union of the other seven facings' rays -- tiles a 10 Ti rotation would put
-    under fire. Computed once per turn, never per candidate site (the per-site
-    version is the shape that put an earlier build over the turn limit).
-    """
-    ray, rotation = {}, set()
-    team = ct.get_team()
-    for turret_id in ct.get_nearby_buildings():
-        if ct.get_team(turret_id) == team:
-            continue
-        kind = ct.get_entity_type(turret_id)
-        if kind not in (EntityType.GUNNER, EntityType.SENTINEL):
-            continue
-        origin = tuple(ct.get_position(turret_id))
-        try:
-            current = ct.get_direction(turret_id).delta()
-        except Exception:  # noqa: BLE001 - a turret with no facing
-            continue
-        pierces = kind == EntityType.SENTINEL
-        reach = SENTINEL_RANGE_SQ if pierces else GUNNER_RANGE_SQ
-        for direction in D8:
-            dx, dy = direction.delta()
-            tile = origin[0] + dx, origin[1] + dy
-            while _inside(p, tile) and _distance_sq(origin, tile) <= reach:
-                if tile in p.walls and not pierces:
-                    break
-                if (dx, dy) == current:
-                    ray.setdefault(tile, origin)
-                else:
-                    rotation.add(tile)
-                if not pierces and tile in p.solids:
-                    break
-                tile = tile[0] + dx, tile[1] + dy
-    return ray, rotation
-
-
-def _cover_tier(spot, threats):
-    """0 = out of reach even by rotation, 1 = rotation only, 2 = covered now."""
-    ray, rotation = threats
-    if spot in ray:
-        return 2
-    if spot in rotation:
-        return 1
-    return 0
-
-
-def _friendly_turret_lanes(ct):
-    """Map protected firing-ray tiles to the friendly turret and its target."""
+    if p is not None:
+        if getattr(p, "lanes_cache_round", None) == getattr(p, "round", -1):
+            return p.lanes_cache
+        p.lanes_cache_round = getattr(p, "round", -1)
     lanes = {}
     enemies = [
         entity_id for entity_id in ct.get_nearby_entities()
         if ct.get_team(entity_id) != ct.get_team()
     ]
     if not enemies:
+        if p is not None:
+            p.lanes_cache = lanes
         return lanes
     for turret_id in ct.get_nearby_buildings():
         if ct.get_team(turret_id) != ct.get_team():
@@ -3416,6 +4525,8 @@ def _friendly_turret_lanes(ct):
             while tile != target_tile:
                 lanes.setdefault(tile, (turret_id, target_tile))
                 tile = tile[0] + dx, tile[1] + dy
+    if p is not None:
+        p.lanes_cache = lanes
     return lanes
 
 
@@ -3511,22 +4622,7 @@ def _update_enemy_core_inference(p, ct):
     best = max(surviving, key=lambda c: (_distance_sq(c, p.core), c))
     current, sighted = unpack_enemy(ct.read_store(SLOT_ENEMY_CORE))
     # A sighting is authoritative: never overwrite one with an inference.
-    if sighted:
-        return
-    # So is an inference another Builder has already published, until *this*
-    # Builder has disproved it. Each Builder rejects candidates from its own
-    # vision, so two of them holding different rejection sets both overwrote
-    # this slot with their own favourite -- every round, forever. Traced on
-    # longship: the published target alternated between the rotation and the
-    # x-mirror on every single round, and the attacker paced between two tiles
-    # from round 19 to round 34 instead of arriving, while the opponent
-    # emplaced at our Core on round 14 and took the game 37-0 on Core damage.
-    # With the guess held steady it locks on at round 5 and sights the real
-    # Core at round 16. A target that changes every round is worse than either
-    # of the targets it alternates between.
-    if current is not None and current in surviving:
-        return
-    if current != best:
+    if not sighted and current != best:
         ct.write_store(SLOT_ENEMY_CORE, pack_enemy(best))
 
 

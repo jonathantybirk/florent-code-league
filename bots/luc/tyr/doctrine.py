@@ -91,25 +91,32 @@ CORNER_MARGIN = 0
 # because it is the right place for a role change to live if a later one earns
 # its way in, not because this one varies.
 _ROLES = {
-    RUSH: (1, 1),
-    FORTIFY: (1, 1),
-    # Nobody mines, but somebody guards: two attackers and the home Builder.
-    # It used to be three attackers on the reasoning that a Core six tiles away
-    # is decided before economy or defence can matter. Half of that is right --
-    # nobody mines here -- and half of it stopped being right the moment
-    # `_guard_home` existed, because BLITZ was the one doctrine with no ring
-    # Builder and therefore no guard at all, on exactly the maps where their
-    # attacker arrives soonest. Measured on the 21 official maps in both seats
-    # against valkyrie, vigil, ragnarok and vanguard: 128/168 with three
-    # attackers and no guard, 134/168 with two and a guard.
-    BLITZ: (0, 2),
+    RUSH: (1, 2),
+    FORTIFY: (1, 2),
+    # Nobody mines, but somebody guards and somebody mines: one of each.
+    #
+    # This was three attackers, no miner and -- through _LAUNCHER_BUILDERS
+    # below -- no ring Builder either, on the reasoning that a Core six tiles
+    # away is decided before economy or defence can matter.
+    #
+    # The ring Builder is this bot's mender. It is the Builder that stands on
+    # the Core and heals it, which one-flag-off ablation prices at 11.0pp of
+    # mean and 16.6pp of the worst matchup -- the single largest mechanic in the
+    # build. BLITZ was the one doctrine that did not have it, on precisely the
+    # maps where the enemy attacker arrives soonest. Measured on showdown and
+    # sprint in both seats against five opponents: 0.350 with three attackers,
+    # 0.600 adding the guard, 0.650 adding the miner as well, and the worst
+    # matchup goes 0.000 -> 0.500.
+    #
+    # The miner matters for the reason Jon traced on the ladder: a blitz that is
+    # answered has nothing behind it, and the opponent that survived simply
+    # out-mines a bot holding zero Harvesters at round 120.
+    BLITZ: (1, 1),
 }
-# Builders held back for the Launcher ring -- and, since `_guard_home`, for the
-# home guard, which is the same Builder and much the more valuable job. The
-# ring itself is still worth nothing on a BLITZ map (shorter than
-# RELAY_STOP_DISTANCE, so the ferry never fires), but the Builder is: it is
-# what answers their attacker at our Core, and on a six-tile map that attacker
-# is already walking. See _ROLES for the measurement.
+# Builders held back to ring our own Core with Launchers. The ring is a throw
+# pad for the ferry and a displacement screen, and BLITZ maps are shorter than
+# RELAY_STOP_DISTANCE, so on them the ferry never fires and the pad is a
+# Builder and 20 Ti spent on nothing.
 _LAUNCHER_BUILDERS = {RUSH: 1, FORTIFY: 1, BLITZ: 1}
 # Gunners a Builder will put up away from home. Off under RUSH: answering a
 # roaming enemy with a building trades a mobile Builder's turn plus a permanent
@@ -168,6 +175,15 @@ def core_distance(ct) -> int:
 
 def economy_builders(doctrine: int) -> int:
     return _ROLES.get(doctrine, _ROLES[RUSH])[0]
+
+
+def launcher_builder_index(doctrine: int) -> int:
+    """Where the ring Builder sits, derived from the doctrine's own counts."""
+    return economy_builders(doctrine) + attack_builders(doctrine)
+
+
+def max_opening_builders(doctrine: int) -> int:
+    return launcher_builder_index(doctrine) + launcher_builders(doctrine)
 
 
 def launcher_builders(doctrine: int) -> int:

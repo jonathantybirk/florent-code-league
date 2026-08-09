@@ -39,60 +39,24 @@ MAX_OPENING_BUILDERS = LAUNCHER_BUILDER_INDEX + LAUNCHER_BUILDERS
 # 470 -- a third of the economy, every game, to buy a pad a few rounds earlier.
 # Tempo bought with the opening Harvester is not tempo, it is a loan.
 PAD_FIRST_ORDER = False
-# Ring Launchers one Builder will put up, out of the eight compass sites.
-#
-# The same shape as MAX_RELAY_LAUNCHERS and for the same reason: a Launcher is
-# +10% on every price the team pays thereafter, so the ring is a scale bill as
-# much as a screen. Two was measured on the *warden_walk* chassis, as maps won
-# 2-0 against the two Nash-core agents: cap 8/3/2/1 -> worst matchup
-# 29/29/33/24%. Re-measured here on the full 8-bot pool and 40 generated maps:
-#
-#                 pool                     generated
-#     0      286/336  0.851  min 0.76    129/160  0.806
-#     1      304/336  0.905  min 0.81    134/160  0.838   <- shipped
-#     2      295/336  0.878  min 0.81    122/160  0.762
-#
-# The old number did not survive the chassis it was tuned on, and the reason is
-# MAX_RELAY_LAUNCHERS going to 2. The costs compound: the second ring site is a
-# third Launcher, so it raises the price of both relay Launchers by 10% each,
-# and _run_launcher_ring returns False for every round the Builder spends
-# walking to it -- rounds that Builder owes to the belt and to _guard_home.
-# The relay now buys the forward hop the second ring site used to; paying for
-# both is paying twice.
-#
-# Not zero: one site is the pad, and dropping it costs 5 games on the generated
-# set and 20 on the pool. The falloff at both edges is the shape a real effect
-# has.
-RING_MAX_SITES = 1
+# Ring Launchers one Builder will put up. Superseded: the count now comes from
+# RING_MAX_SITES in the Launcher-screen section at the foot of this file, and
+# the sites come from a set cover of the approach shell rather than a compass.
+# The old value was 8 -- eight compass sites on a radius-2 ring, which is where
+# the touching Launchers in the replays came from.
 
 # Ferry toward the symmetry inference's committed guess as well as toward a
-# Core a unit has actually seen.
+# Core we have actually seen. Measured and OFF: the inference is right on 28 of
+# 42 published map-sides, and the reasoning that the two wrong candidates still
+# lie in the enemy half is simply not worth what a wrong throw costs. Played
+# atlas-free over the 21 official maps in both orders against the same bot with
+# this off, ferrying on the guess scores 17/42 where refusing scores 21/42.
 #
-# This has now been measured three times on three different bots and the answer
-# has changed twice, which is the whole lesson: a flag measured on a chassis is
-# not measured for the chassis it becomes.
-#
-#   atlas-carrying ancestors            17/42 on  against 21/42 off   -> OFF
-#   this bot, before the home guard    128/168 on against 119/168 off -> ON
-#   this bot, as it now stands         282/336 off against 271/336 on -> OFF
-#
-# The third measurement is the one that matters and it is not close. Full
-# 8-bot pool, 21 official maps both seats, and 40 generated maps:
-#
-#                    pool            generated
-#     ferry on     271/336  0.807    109/160  0.681
-#     ferry off    282/336  0.839    115/160  0.719
-#
-# Per opponent the gain is concentrated exactly where this bot was weakest:
-# warden_walk 26/42 -> 32/42, warden 32 -> 34, ragnarok 30 -> 33.
-#
-# The reason is recorded further up this file and was found long before this
-# bot existed: `ragnarok_fair` beats `valkyrie` where `ragnarok` only draws,
-# because the atlas-free twin *cannot* ferry and is therefore forced to walk --
-# and the walking bot ends with more Gunners and Harvesters where the chaining
-# one ends with more Launchers. Every Launcher is +10% on every price the team
-# pays thereafter. Committing the attacker to a guessed Core buys tempo and
-# pays for it in the only two things that win.
+# So the original `p.atlas is None` gate was right to refuse a guess and wrong
+# only about what counts as knowing: a Core a unit has physically seen is not a
+# guess, and that case is now allowed (see `_opening_ferry`). That widening is
+# worth 0 games on the published pool, where the atlas already knew, and is
+# kept because off the pool the atlas knows nothing.
 FERRY_ON_INFERENCE = False
 
 # Drop a ring direction when the map edge is this close behind it: nothing can
@@ -105,61 +69,6 @@ RING_EDGE_MARGIN = 5
 # between the two is still diagonally adjacent to the ring site, so it remains
 # inside the Launcher's pickup radius.
 RING_RADIUS = 2
-
-# --- Enemy spawn denial ----------------------------------------------------
-# A Core spawns Builder Bots only on passable tiles within spawn radius^2 = 2,
-# which is exactly the twelve tiles at Chebyshev distance 1 from its 2x2
-# footprint. Wall all twelve and the enemy Core cannot spawn again, cannot be
-# healed (healing needs an orthogonally adjacent tile too), and every Builder
-# they lose from that point is gone permanently.
-# MEASURED AND OFF, on the mechanism rather than on a win rate. Traced against
-# vigil on jackpot and longship: their Builder Bots spawn on rounds 0, 1 and 2
-# and never again. Every bot on this panel, ours included, buys a fixed opening
-# of three Builders and only spawns more on a damage alarm -- so there are no
-# spawns to deny, and the attacker spent its rounds walking a ring instead of
-# shooting. The code stays because the reasoning is sound and the cost is a
-# constant: against an opponent that does replace its losses this is decisive,
-# and that is a one-line change rather than a rewrite.
-SPAWN_DENIAL_ENABLED = False
-# Only bother once the attacker is actually at their Core; walling a ring from
-# across the map is a walk, not a plan.
-SPAWN_DENIAL_RANGE = 6
-# Leave the siege its ammunition. A ring that goes up instead of the Sentinel
-# that was about to fire is a trade, not a gain.
-SPAWN_DENIAL_RESERVE = 20
-
-# --- Core bulwark ----------------------------------------------------------
-# Measured before it was built, on 32 lost Cores over the five maps this
-# chassis loses most on: 97.6% of the damage that killed them was Gunner fire,
-# 2.4% Sentinel, and enemy Builder Bots dealt exactly zero. They do not walk up
-# and hit the Core; they emplace a Gunner near it and shoot. 114 of those went
-# up within four tiles of the footprint and each lived a median 34 rounds.
-#
-# A Gunner's ray "stops at the first targetable tile (a builder bot or a
-# building)". The Core is 2x2, so every compass ray that reaches it -- from any
-# range, orthogonal or diagonal -- must cross the ring at Chebyshev distance 1.
-# That ring is twelve tiles. Put any building on all twelve and no Gunner
-# anywhere on the map has a firing line into the Core, ever. Only a Sentinel,
-# whose line is never blocked, still reaches: 2.4% of the damage.
-#
-# Twelve barriers is 36 Ti and +12% scale. It is not the same thing as
-# `_run_core_seal` below, which walls the whole threat *disc* -- dozens of
-# tiles, FORTIFY-only, and usually unfinished when the game ends.
-#
-# The first cut of this walled only the eight orthogonal neighbours, on the
-# theory that those are the tiles an enemy Builder must stand on to attack. It
-# scored 246/336 against a 242 baseline, which is what a correct answer to a
-# problem you do not have looks like. The twelve-tile ring, walked as a cycle
-# so it actually gets built, scores 250.
-BULWARK_ENABLED = False
-# Barriers are 3 Ti; there is no scenario in which holding a reserve above
-# that is worth leaving the Core's doorstep open.
-BULWARK_RESERVE = 0
-# How often a Builder re-verifies a ring it remembers as closed. Barriers are
-# shot out of our sight, so the memory that lets a Builder leave and mine has
-# to expire -- fast while the Core is being hit, slowly when it is quiet.
-BULWARK_RECHECK_ALARM = 15
-BULWARK_RECHECK_QUIET = 60
 
 # --- Core seal -------------------------------------------------------------
 # A Gunner's attack radius squared. Any tile this close to the Core footprint
@@ -183,62 +92,6 @@ HOME_GUARD_RADIUS_SQ = 36
 # Rotation costs a flat 10 Ti. Hold back more than that so a turret turning to
 # face a scout cannot spend the titanium a Harvester was waiting on.
 ROTATE_TITANIUM_RESERVE = 40
-# --- Home guard -------------------------------------------------------------
-# How close to our own Core footprint an enemy has to come before the Builder
-# already standing there answers it with a turret, rather than waiting for the
-# Core to lose 50 HP and raise the damage alarm. Measured on the 21 official
-# maps in both seats against valkyrie, vigil, ragnarok and vanguard:
-#
-#   off      118/168
-#   r^2 64   142/168
-#   r^2 36   145/168
-#
-# ...on the chassis of the day. Re-measured after the opening ferry was turned
-# off, on the full 8-bot pool and 40 generated maps, the order reverses:
-#
-#                 pool            generated
-#     r^2 25    (worse)           --
-#     r^2 36    282/336  0.839    115/160  0.719
-#     r^2 64    288/336  0.857    117/160  0.731   <- shipped
-#     r^2 81    287/336  0.854    (worse)
-#     r^2 100   287/336  0.854
-#
-# Which follows: with no ferry the attacker walks, so enemy attackers arrive on
-# foot and are in sight for longer before they emplace, and eight tiles of
-# warning is now worth what six was when both sides were being thrown across
-# the map. Past r^2 64 it starts paying turrets for scouts again.
-GUARD_RADIUS_SQ = 64
-# Turrets this Builder will put up for that job.
-#
-# This is the one constant chosen to maximise the *worst* matchup rather than
-# the total, because that is what the goal asks for. On the full 8-bot pool,
-# with the ferry off and the chase at six:
-#
-#     cap 2   294/336  0.875   but warden_walk 32/42 = 0.76
-#     cap 3   291/336  0.866   but warden_walk 33/42 = 0.79
-#     cap 4   290/336  0.863   and every opponent >= 0.81
-#
-# Four games of total buy the minimum going from 0.76 to 0.83. On 40 generated
-# maps the two are level (120/160 against 121/160). If the objective ever
-# becomes mean win rate rather than worst-case, cap 2 is the better answer and
-# this comment is the reason to change it back.
-MAX_GUARD_GUNNERS = 4
-# Steps it will take toward an intruder to find a firing seat.
-#
-# Four was chosen when the attacker was ferried across the map and the guard's
-# other jobs were all at home. With the ferry off both sides walk, so an
-# intruder is in sight far longer before it emplaces and there is time to close
-# on it. Re-measured on the full 8-bot pool and 40 generated maps:
-#
-#              pool            generated
-#     2      (worse)           --
-#     4    288/336  0.857    117/160  0.731
-#     6    294/336  0.875    121/160  0.756   <- shipped
-#
-# It is worth +2 games against valkyrie and +1 against vigil, ragnarok, warden
-# and gobbleglitch each -- a broad gain, not one map.
-GUARD_CHASE_STEPS = 6
-
 # Field Gunners are now set per doctrine in doctrine.py: 0 on open ground
 # (measured: a roaming enemy walks away from the turret), 2 under FORTIFY
 # where the enemy has to come down a lane.
@@ -246,11 +99,17 @@ GUARD_CHASE_STEPS = 6
 # --- CPU budget -------------------------------------------------------------
 # Each unit gets 10 ms of CPU per round, plus a 5% bank. Overrunning does not
 # truncate the work -- the unit is interrupted and does not act at all that
-# round -- so optional searches stop here and leave the rest of the turn for
-# the ordinary action. Deliberately well under the limit: the ladder runs on
-# AWS Graviton3 rather than this machine, and the measurement that set this
-# number is a local one.
-CPU_SOFT_BUDGET_US = 4000
+# round -- so optional searches have to be bounded.
+#
+# They are bounded by *work*, never by a clock. A guard that reads
+# `get_cpu_time_elapsed` makes the bot's decisions a function of how loaded the
+# machine is: identical code on identical boards produced 11 different winners
+# in 210 matches, which is larger than most effects measured here, and it cuts
+# hardest on the contended machine the ladder actually runs on. See
+# SIEGE_SEARCH_EVERY for the deterministic bound that
+# replaced it.
+# Rounds between attempts at the siege-seat search, the widest in the bot.
+SIEGE_SEARCH_EVERY = 10
 
 # --- Sentinel siege ---------------------------------------------------------
 # When the attacker can find no Gunner lane onto the enemy Core -- walls,
@@ -277,124 +136,51 @@ SENTINEL_WRAP_RESERVE = 20
 # this many rounds, refunding its +20% scale and letting the Core respawn it
 # somewhere not walled in. ragnarok never calls self_destruct.
 REPAIR_NETWORK = True
-# Times one belt tile will be rebuilt before we stop paying for it.
-# Traced on bridge: the Harvester at (5,4) is walled in on three sides,
-# so its only route home runs through (5,3) -- which lies on row 3, the
-# map's one shared corridor, inside an enemy Gunner's ray. We rebuilt
-# that single tile 22 times for 66 Ti and +22% scale, and mined 10
-# titanium in 1000 rounds. A hole that keeps reappearing is not damage,
-# it is a tile the enemy controls, and the belt has to go somewhere else.
-# --- Flanking a defended Core ------------------------------------------------
-# Remembered enemy turrets within FLANK_RADIUS of their Core, and how many
-# before the attacker prefers a seat on the far side of it. 0 disables.
-#
-# A Gunner fires along one fixed compass ray and rotating costs a flat 10 Ti, so
-# a wall built to meet our approach covers that approach and nothing else.
-# Ranked *below* the cover tier -- which is about surviving the seat at all --
-# and above distance.
-#
-# Live vision cannot see a wall: a Builder at one face of a 2x2 Core sees the
-# turrets on that face only, measured at at most 2 visible from every distance
-# including zero, on maps carrying 8 and 10 enemy turrets. Two earlier versions
-# read live vision, never fired once, and scored as clean rejections. Turrets do
-# not move, so remembering them across turns is sound and it then fires 7-15
-# times a game.
-FLANK_MIN_TURRETS = 4
-FLANK_RADIUS = 8
-# Turrets bought purely to deny ground rather than to shoot anyone.
-# --- Denial turrets ----------------------------------------------------------
-# A turret bought to deny ground rather than to shoot anyone.
-#
-# Enemy bots route around our firing lines instead of walking down them, so a
-# ray is a wall that costs 10 Ti and never has to fire. `_denial_gunner_site`
-# scores a seat by how many *uncovered* Core-threat tiles its ray adds -- the
-# same disc `_core_seal_targets` seals with barriers -- so a turret is bought
-# only when it denies ground no existing one does.
-#
-# Measured on this chassis, with odin's own baseline taken in the same runs:
-#
-#                    pool          generated      pantheon   vigil_reinf
-#     odin      313/336 0.932   135/160 0.844      33/42       29/42
-#     +denial   314/336 0.935   142/160 0.887      33/42       31/42
-#     +both     315/336 0.938   139/160 0.869      34/42       32/42  <- shipped
-#
-# Denial alone is the best generated-map score by a wide margin; with the flank
-# it gives back three of those and takes the pool, Pantheon and the worst
-# matchup instead. Shipped together because the binding constraint is the tail:
-# this is the first build with Pantheon above 0.80, and warden_walk goes
-# 0.81 -> 0.88 on the pool.
-#
-# Traced on quarry against the day3 Pantheon replica: 14 turrets, 69 rounds and
-# a loss becomes 10 turrets, 59 rounds and a win. Fewer guns, sooner, because
-# the ray does the work of a wall.
-#
-# The grace round matters for the usual reason -- before round 12 the guard's
-# titanium belongs to the opening, and a turret there is a scale bill levied on
-# the first Harvester.
-DENIAL_GUNNERS = 1
-DENIAL_MIN_TILES = 3
-DENIAL_RESERVE = 30
-DENIAL_START_ROUND = 12
-REPAIR_ATTEMPT_LIMIT = 3
-# How many of the Builder's own last tiles make a step less attractive in
-# _move_while_stuck. 0 restores the memoryless greedy step, which oscillates
-# forever on an unreachable goal. Ported from heimdall 4c0d92eb2 on the
-# parallel session's measured handoff: on odin it is pool -1 / generated +2,
-# and pacing falls 3.3% -> 0.4% of Builder-rounds (benchmarks/pathology.py).
-TABU_WINDOW = 4
 WRITE_OFF_STUCK_BUILDERS = True
 STUCK_ROUNDS_BEFORE_STANDDOWN = 40
 # A Harvester this close is worth finishing before turning back to repairs, so
 # four ores in a cluster do not each trigger a trip back down the line.
 HARVESTER_FINISH_STEPS = 2
 
-# --- Relay cap ---------------------------------------------------------------
-# Escape Launchers one Builder will buy to throw itself forward. 0 disables the
-# relay chain entirely and the attacker walks, which is what the atlas-free
-# ragnarok_fair is forced to do -- and ragnarok_fair takes 25/42 off valkyrie
-# where ragnarok itself only draws 21/42. On aurora the chaining bot ends with
-# 6 Launchers, 1 Harvester and 4 Gunners against the walking bot's 3, 2 and 7.
-#
-# One, from warden_walk, chosen when the relay fired from round 2 on a guessed
-# Core. With FERRY_ON_INFERENCE off the relay only runs once a unit has
-# physically *seen* the enemy Core -- so it fires late, when the attacker is
-# already close and a hop is worth more than the walk it replaces. Re-measured
-# on the current chassis, full 8-bot pool and 40 generated maps:
-#
-#                 pool                     generated
-#     0        (much worse)                --
-#     1      290/336  0.863  min 0.81    120/160  0.750
-#     2      295/336  0.878  min 0.81    122/160  0.762   <- shipped
-#     3      291/336  0.866  min 0.81    (level)
-#
-# Better on both arms without giving anything back on the worst matchup.
-MAX_RELAY_LAUNCHERS = 2
+# --- Replacing losses -------------------------------------------------------
+# Bank above which the Core replaces a Builder even though one is still alive.
+# A working three-Builder team spends its income as it arrives; a bank this
+# large means the workforce is too small to spend it, which is the only signal
+# available -- the comms store cannot carry a live headcount because writes are
+# invisible to other units until the next round.
+REPLACEMENT_BANK_THRESHOLD = 260
+REPLACEMENT_COOLDOWN_ROUNDS = 12
 
-# Prefer Gunner seats outside every visible enemy turret's firing ray. A turret
-# built where an enemy turret already points is shot before it has fired much,
-# and the seat one tile off the ray usually reaches the same Core tile.
-# Measured on the 21 official maps in both seats: against vigil@e267eeb it is
-# 26/42 and 8 maps won 2-0, against 24/42 and 7 with it off; against
-# ragnarok@79582fc it is unchanged at 26/42.
-AVOID_ENEMY_RAYS = False
-# --- Line-of-sight discipline -----------------------------------------------
-# Lucas's constraint, 2026-08-04: never seat a turret where an enemy turret
-# can already shoot it (tier 2), and prefer seats it cannot reach even by
-# rotating (tier 0) over ones it could rotate onto (tier 1). Tier 2 is taken
-# only when no tier 0/1 seat exists, and then under duel discipline: one such
-# turret at a time, built *facing the covering turret* so it kills the threat
-# before rotating on, with its Builder standing by healing it (4 HP for a
-# flat 1 Ti out-paces the 10 dmg/round it takes) until the duel is decided.
-COVER_TIER_SEATS = True
-# Rounds the Builder will tend the duel before writing the position off.
-DUEL_TEND_ROUNDS = 40
+# --- Income watchdog ---------------------------------------------------------
+# REPLACEMENT_BANK_THRESHOLD assumes a starved workforce still banks income it
+# cannot spend. A team whose Harvesters are all dead has no income at all, so
+# the bank never reaches the threshold and the deadlock is total: no miners ->
+# no income -> no replacement trigger -> no miners. The heartbeat cannot break
+# it either, because one parked attacker keeps it warm forever. Watched happen
+# against Besvikomat (match 3eab9d19, antler): zero Harvesters from round 150
+# of 320, three Builders decayed to one, Core killed at 319 without a fourth
+# Builder ever spawning.
+#
+# The watchdog reads the only signal the Core actually has: the bank stopped
+# growing. If no round in the last ECON_WATCHDOG_ROUNDS saw the bank increase,
+# income is dead, and a miner is worth any price the bank can still pay.
+ECON_WATCHDOG_ENABLED = True
+ECON_WATCHDOG_ROUNDS = 30
+# Not before the opening has had time to build its first economy: the opening
+# spends income as it arrives, so flat-bank rounds are normal there, and the
+# opening already staffs its miners.
+ECON_WATCHDOG_MIN_ROUND = 60
+# Revives per game. The watchdog only helps when there is ore to mine and a
+# Builder that can reach it; past this many attempts the economy is not coming
+# back and further +20%-scale bodies are pure waste.
+ECON_WATCHDOG_MAX_SPAWNS = 6
 
 # --- Siege barriers ---------------------------------------------------------
 # Barriers soaking enemy Gunner lanes aimed at our forward battery, out at the
 # enemy Core. 3 Ti and +1% scale for 30 HP absorbs three Gunner rounds and six
 # of their ammunition, which is titanium 1:1 -- the cheapest trade on the board
 # and the one thing Pantheon does with barriers (31 of 33 across twenty games).
-SIEGE_BARRIER_ENABLED = False
+SIEGE_BARRIER_ENABLED = True
 # Held back so soaking never eats the Gunner that the soaking is protecting.
 SIEGE_BARRIER_RESERVE = 12
 
@@ -411,74 +197,223 @@ LAUNCHER_QUIET_ROUNDS = 45
 # has clearly not ended the game, a second trunk is allowed. The round-1000
 # tiebreak order is titanium_collected -> live harvesters -> titanium_stored,
 # so in a long game delivered income is literally the win condition.
-# Harvesters one trunk will carry before the Builder stops laying line.
-#
-# Four was measured on the pre-patch chassis. Re-measured on this one under
-# 2.3.4: 4 -> 250/336, 6 -> 254, 8 -> 254. Six and eight are the same number,
-# so six is shipped -- the extra Harvesters are +5% scale each and the cap
-# stops binding before it reaches eight anyway. Worth taking because the
-# round-1000 tiebreak is titanium collected and the wall sends far more games
-# there: Core losses fall from 70 to 51 across these changes, and almost all
-# of them become full-length games instead.
+# njord: raised toward sporks' scale (ladder #1 runs 12-21 Harvesters and
+# 44-95 conveyors a game against our 2-5; watched 2026-08-08). Under 2.3.4
+# healing, Cores rarely die early, the median game is long, and delivered
+# income is the win condition -- the bot that saturates two trunks by round
+# 150 wins the tiebreak and funds every fight on the way there.
+# Deposits `_pick` prices before choosing, and what a belt tile is worth
+# relative to a step of walking. A conveyor is 3 Ti and +1 on the cost scale
+# (measured with get_scale_percent, not assumed), where a step of walking costs
+# one Builder-turn and nothing permanent -- so a belt tile is worth several
+# steps. Bounded so the extra `_route` calls cannot cost a turn.
+# Re-rank the head of the harass target list by real path distance rather than
+# Chebyshev. Same defect _pick had; see _harass. Bounded by work.
+HARASS_TRUE_DISTANCE = True
+HARASS_RERANK_CANDIDATES = 4
+BELT_SCORE_CANDIDATES = 4
+BELT_TILE_WEIGHT = 3
 NETWORK_CAP_EARLY = 6
-NETWORK_CAP_LATE = 8
-ECON_EXPAND_ROUND = 120
+NETWORK_CAP_LATE = 12
+ECON_EXPAND_ROUND = 80
 
-# --- Ore re-targeting -------------------------------------------------------
-# `_pick` chooses an ore under fog and the Builder then walks, often for twenty
-# rounds, revealing ore the choice could not have known about. Committing
-# anyway is how a Builder walks past a deposit four tiles away to finish
-# reaching the one it picked at spawn.
+# --- Late economic expansion --------------------------------------------------
+# Past the opening this Core only ever replaced the dead: a Builder arrives
+# because the bank stopped being spent (REPLACEMENT_BANK_THRESHOLD) or because
+# the Core is dying. Both are emergencies, and neither is what a long game is
+# decided by.
 #
-# Re-picking is free until the first conveyor of the line is down; after that
-# the tiles already paid for are sunk cost and the line gets finished. The
-# margin exists so a one-tile improvement cannot make a Builder oscillate
-# between two deposits and never mine either.
-RETARGET_ORE = True
-# Combined (walk + belt length) tiles the new deposit must beat the current
-# one by. One conveyor is 3 Ti, one walk step is a round; the units are not
-# the same thing, and treating them as equal is a deliberate simplification
-# that only has to be good enough to rank two candidates.
-RETARGET_MARGIN = 4
-# Rounds between re-checks. Each one costs a BFS per surviving candidate.
-RETARGET_INTERVAL = 3
+# 2.3.4 made that a hole. Healing restores 4 HP for a flat 1 Ti at any cost
+# scale, against the 3.33 Ti of ammunition a Sentinel pays for 6 damage, so
+# defence is ~2.2x more titanium-efficient than offence, Cores mostly do not
+# die, and the median game reaches the round-1000 tiebreak -- whose first
+# criterion is titanium *collected*. In that game a fourth Builder laying belt
+# is not a body in an attrition war, it is income.
+#
+# Measured here, this bot collected 630 titanium a game against vidar's 1548 on
+# the same ten maps. The headcount-of-three finding it overrides was about the
+# *opening* and still holds: an opening Builder is +20% on the Launchers and
+# Harvesters the opening has not bought yet, where the same +20% levied at
+# round 200 falls almost entirely on conveyors at 3 Ti -- 0.6 Ti a tile against
+# the 2.5 Ti a round a connected Harvester returns for the rest of the match.
+ECON_EXPAND_BUILDERS = True
+# njord: 200 -> 120. Waiting until round 200 concedes eighty rounds of a
+# second miner's income (~2.5 Ti a round connected) to protect against an
+# opening-rush risk that ended at round ~40.
+ECON_BUILDER_ROUND = 120
+# Only genuine surplus. A Builder is 30 Ti before scale and this holds back
+# roughly a Harvester and the belt to reach it on top of the Builder itself, so
+# expanding never takes the titanium the existing miners are already waiting on.
+ECON_EXPAND_RESERVE = 60
+# Total Builders the expansion may ever add, counted from spawns rather than
+# from a live headcount -- because a live headcount is not available.
+#
+# The engine's own documentation settles it: "Writes are buffered: a
+# write_store() call becomes visible to all units at the start of the *next*
+# round." Every Builder in a round therefore reads the same snapshot, so a
+# per-round bitmask cannot accumulate -- each Builder ORs its bit onto the same
+# stale value and the last writer's word is the one that survives. A mask built
+# that way reads as one Builder no matter how many are alive, which is exactly
+# what happened here: the live cap never bound and the Core spawned up to 79
+# Builders in a game, each one +20% on every price the team paid afterwards.
+#
+# So the cap is on spawns, which the Core can count for itself, and it is small.
+# Rate-limiting it with the replacement cooldown is what keeps a rich bank from
+# converting into the whole allowance in four consecutive rounds.
+ECON_MAX_TOTAL_BUILDERS = 9
 
-# --- Belt line-of-sight -----------------------------------------------------
-# Lucas's constraint, 2026-08-04: a conveyor inside an enemy turret's ray is
-# destroyed as fast as it is rebuilt, and rebuilding it is the single most
-# expensive habit this lineage has had. REPAIR_ATTEMPT_LIMIT caps the bleeding
-# after the fact -- three rebuilds at 3 Ti and +1% scale each, then the tile is
-# written off and the line replanned, which is 22 rebuilds better than the
-# uncapped version but still nine Ti and a broken line.
+# --- Defensive turret kind ----------------------------------------------------
+# Home defence buys Sentinels, not Gunners. The Aug 4 patch inverted the turret
+# table -- see _turret_kind for the row-by-row -- and the load-bearing row is
+# cost scale: both turrets now levy the same permanent +20% on every price the
+# team pays afterwards, and that tax, not titanium, is what caps how many
+# turrets a game can hold. Once the count is fixed by the tax, 10 Ti more a seat
+# for 1.71x the damage, 1.6x the HP, 2.46x the range and an unblockable line is
+# free. 2.3.3's +10% Gunner against a +20% Sentinel is exactly what made Gunner
+# spam correct, and that is the number the patch changed.
 #
-# Not routing through the ray in the first place costs nothing. The detour is
-# taken as a first-choice route and abandoned if it makes the ore unreachable,
-# so a deposit that can only be reached through fire is still mined.
-BELT_AVOID_ENEMY_RAYS = True
-# Also avoid the seven facings a turret is not currently pointing. A rotation
-# is 10 Ti to them and re-laying the belt is more than that to us, so a tile
-# merely *reachable* by an enemy turret is a tile the belt should not want.
-# Second preference: tried after the strict route and before the unrestricted
-# one, so it never costs a deposit.
-BELT_AVOID_ROTATION = True
-# The same rule for the Launcher ring. With RING_MAX_SITES = 1 the ring is one
-# Launcher and the sort decides which tile it lands on; the enemy-facing tile
-# it preferred unconditionally is the one an enemy turret is most likely to be
-# aimed at. Harvesters get no such flag: a Harvester goes on the ore or
-# nowhere, so there is no alternative tile to prefer.
-LAUNCHER_AVOID_ENEMY_RAYS = True
+# Applied to the two home-guard paths only. The field and denial turrets keep
+# the Gunner: their seats are bought on whatever the Builder happens to meet,
+# where the extra reach buys nothing and rotation -- the one row the Gunner
+# still wins -- is worth more.
+DEFEND_TURRET_SENTINEL = True
+# Answer a live Gunner lane with a 3 Ti barrier before a 20-30 Ti turret. See
+# the ordering in _defend_core: the barrier was third behind two turret paths
+# that both consume the turn, so on the rounds it mattered it was never reached.
+# Rounds a Harvester of ours may go unseen before its deposit is treated as
+# free again. `_pick` skips any ore tile sitting in `p.solids`, and `_sense`
+# only clears that for tiles currently in vision, so a Harvester destroyed out
+# of sight silently retired its whole deposit for the rest of the game.
+# A Builder with nothing left to do explores instead of pacing. 19% of Builders
+# that live 60+ rounds spend their last sixty bouncing between three tiles while
+# moving in a third of them, and the median one spends all sixty on its three
+# most-visited tiles -- all while charging +20% on every price the team pays.
+# Contest the enemy's logistics as soon as theirs is the nearer job, rather than
+# only once ours is saturated. On a tight map -- vault, duel, showdown -- their
+# belt is often the closest economy on the board, and tapping a Harvester of
+# theirs moves 2.5 Ti a round onto our line for a fraction of what laying our
+# own costs in Builder-turns.
+STEAL_BEFORE_EXPAND = True
+STEAL_MAX_DISTANCE = 8
+FLANK_WHEN_IDLE = True
+IDLE_BEFORE_FLANK = 25
+FLANK_REPLAN_ROUNDS = 12
+HARVESTER_RECHECK_ROUNDS = 90
+# Rounds a Builder waits before asking a pad for another throw after a refusal.
+# The stamp this feeds was previously set to the current round, against a gate
+# reading `current < stamp`, so the cooldown never existed.
+LAUNCH_RETRY_COOLDOWN = 0
+# Another bot in the way is not a wall. Bots move, so the escalation is: hold
+# still and let them pass, then give ground and see whether they take it, and
+# only then decide the tile is theirs and route around. Enemy Builders often
+# pace back and forth, which makes the route flicker between clear and blocked
+# so that nothing ever settles and both bodies leave the game.
+BOT_STANDOFF = False
+STANDOFF_WAIT = 2
+STANDOFF_BACKOFF = 2
+LANE_BARRIER_FIRST = True
+# A conveyor we break gets a barrier in the hole on the very next turn, ahead of
+# whatever else that Builder was doing. Cutting without plugging is rented
+# damage -- they relay the tile for 3 Ti -- and the plug is what converts a
+# round of fire into a permanent severance. Required behaviour: this is on
+# regardless of what the panels say about it.
+PLUG_CUT_IMMEDIATELY = True
+# How far a Builder will walk back to plug a hole it made, in Chebyshev tiles.
+PLUG_CUT_LEASH = 4
+# Every Builder past the opening headcount mines, whatever the opening's role
+# arithmetic would have made it.
+#
+# Both role branches key on `builder_index >= economy_builders`, which is the
+# *opening's* way of saying "this one is not a miner". Read by a replacement
+# spawned on round 250 it says the opposite of what it means, so every Builder
+# the Core bought to recover from a loss walked to the enemy Core as a fourth
+# attacker instead of laying belt -- paying +20% on every later price to add
+# nothing to the economy. It shows up directly in the ledger: losing games spawn
+# 7.5 Builders and hold 1.25 Harvesters, winning games spawn 5.6 and hold 1.63.
+LATE_BUILDERS_MINE = False
+# Home-guard turret escalation: `1 + damage // HOME_TURRET_STEP`, capped. The
+# guard escalates with sustained damage rather than committing a formation
+# before it knows one is needed; these two numbers set how fast and how far.
+HOME_TURRET_MAX = 4
+HOME_TURRET_STEP = 180
+# Team A acts first every round for the whole match, so it wins every tie: the
+# race to a tile, the first shot in a duel, the heal that lands before the shot.
+# Seat B therefore escalates its home defence on less damage.
+SEAT_AWARE_DEFENCE = False
+# Seat B acts second every round, so their shot lands before our heal and our
+# Core is the one that spends the round damaged. It therefore recalls the second
+# mender from further out. This is a *live* path -- the mender branch runs every
+# round the Core is hurt -- unlike the three seat flags below it, which tune
+# `_defend_core` and are pre-empted by that same mender.
+SEAT_B_MENDS_HARDER = False
+SEAT_B_MENDER_LEASH = 18
+# Seat B skips the nearest deposit when another is available: team A wins every
+# tie, so the contested ore is a race seat B loses after paying the walk.
+SEAT_B_YIELDS_ORE = False
+# Team A acts first every round for the whole match. Measured on the hard panel
+# that is worth 0.667 from seat A against 0.514 from seat B -- a 15.2pp gap that
+# appears against every opponent and has nothing to do with which opponent it
+# is. These two flags are seat B's answer: fight where the first shot matters
+# least (range), and decline the exchange where it matters most (the duel).
+SEAT_B_PREFERS_RANGE = False
+SEAT_B_SKIPS_DUEL = False
+SEAT_B_TURRET_STEP = 90
+# Run the outer barrier seal on every doctrine rather than FORTIFY only. The
+# seal is dozens of tiles and often will not finish before the game does, which
+# is why it was restricted -- but every loss left is a Core kill.
+SEAL_EVERY_DOCTRINE = False
+# Turrets the attacker will buy at the enemy base before it falls back to
+# harassment. Each one is a permanent +20% on every price the team pays for the
+# rest of the game -- including the mending and the defensive seats at home --
+# and it is bought at the far end of the map, where losing it is likeliest.
+ATTACK_TURRET_CAP = 5
+
+# --- Core mending -------------------------------------------------------------
+# The Builder posted at the Core mends it on any damage at all, rather than
+# waiting for the Core's own 50-HP `repair_alert`. See the call site: the
+# threshold exists to summon a Builder from across the map, and the Builder
+# standing on the Core can simply read its HP.
+GUARD_HEALS_ON_ANY_DAMAGE = True
+# The economy Builder joins the mending detail once the Core is below
+# CRITICAL_HP, instead of answering with a further turret. See the call site:
+# one mender cancels two thirds of a Gunner, two out-heal it outright, and the
+# loss ledger says this bot dies holding turrets rather than short of them.
+SECOND_MENDER_ON_CRITICAL = True
+# Alarm level at which the economy Builder joins the mending detail. 2 is the
+# Core below CRITICAL_HP; 1 is the Core's ordinary 50-HP repair alert.
+SECOND_MENDER_ALARM = 2
+# Trigger the second mender on any Core damage instead of on the alarm level.
+# See the call site: this is vidar_r3's one change over vidar, and vidar_r3 is
+# the matchup that holds this bot's floor.
+SECOND_MENDER_ON_ANY_DAMAGE = True
+# How far from the Core a Builder may be and still be pulled onto mending, in
+# Chebyshev tiles. This is a leash, not a recall radius: a miner summoned from
+# across the map arrives after the decision has been made, and the tempo it
+# gives up costs more games than the healing saves.
+MENDER_LEASH = 10
+
+# --- Sentinel target order ----------------------------------------------------
+# Let a Sentinel shoot the enemy supply line. `get_nearby_entities` returns
+# units, and conveyors, harvesters and barriers are *buildings*, so every
+# Sentinel this lineage has ever built simply held its fire whenever no unit
+# stood on its line -- with an enemy Harvester sitting on that same line.
+#
+# In a game that reaches the round-1000 tiebreak the enemy's Harvesters and
+# trunk are the win condition, and they are 30 and 20 HP: two shots each.
+STARVE_THE_ECONOMY = True
+# Rounds of firing at a Core whose HP is not falling before the Sentinel gives
+# up on it. One mender restores 4 HP a round for a flat 1 Ti against a single
+# Sentinel's 6 damage for 3.33 Ti of ammunition, so a besieged Core that has
+# stopped losing HP is not dying slowly, it is being held -- and every further
+# shot is 10 ammunition into a Core that will be full again before we return.
+SIEGE_STALL_ROUNDS = 12
+# A Builder Bot this close outranks everything, at either end of the map.
+# Defending, the intruder emplacing at our Core is the whole enemy attack.
+# Besieging, it is the mender arithmetic above: shooting a Core past a mender
+# is paying to lose slowly, and shooting the mender ends it.
+BUILDER_PRIORITY_RADIUS_SQ = 20
 
 SLOT_BUILDER_TICKET = 0
-# Bits 0-7 of SLOT_BUILDER_TICKET are the ticket itself. The Core spends the
-# rest publishing the two ore deposits nearest its own footprint, packed with
-# pack_pos, so the opening miners walk at ore the Core can see instead of
-# discovering it a tile at a time. The bit layout lives in utils next to
-# pack_pos; only the policy is here.
-# Publish the Core's own ore sightings to the opening miners.
-ORE_HINTS = True
-# Two 10-bit positions is 20 bits; with the 8-bit ticket that is 28 of 32, so
-# full-resolution coordinates fit and the coarse 2x2 fallback is not needed.
-ORE_HINT_COUNT = 2
 # Two ore reservations: the ring Builder becomes a second miner whenever the
 # seal is unaffordable, so two claims can be live at once. Slot 8 was the
 # seventh Launcher-request slot; six requests still cover every builder.
@@ -486,41 +421,237 @@ CLAIM_SLOTS = (1, 8)
 LAUNCH_REQUEST_SLOTS = range(2, 8)
 LAUNCH_DIRECTION_BITS = 4
 LAUNCH_DIRECTION_MASK = (1 << LAUNCH_DIRECTION_BITS) - 1
+# A launch request now carries where the passenger was actually going, not just
+# which way it wanted to be thrown. Without it the Launcher can only optimise a
+# projection along a compass bearing, which is a straight-line proxy for "close
+# to the goal" and is wrong exactly where it matters -- a landing four tiles
+# nearer as the crow flies can be twenty tiles further to walk if a wall is in
+# between. Layout, low to high: direction (4), goal position (10), passenger id
+# (17), rejection flag (bit 31). pack_pos tops out at 958 so 10 bits is exact.
+# The Builder now names its landing tile outright, as an index into the pad's
+# 89-tile throw field (see utils.THROW_OFFSETS). Seven bits, against the ten an
+# absolute position cost -- but the saving is not the point. The point is which
+# unit decides: the pad sees only its current vision, while the Builder carries
+# a remembered threat map and the route it is trying to walk. Compressing all
+# of that into a compass bearing and letting the pad guess is how passengers
+# ended up landing in firing lines and beside enemy Launchers.
+LAUNCH_LANDING_BITS = 7
+LAUNCH_LANDING_MASK = (1 << LAUNCH_LANDING_BITS) - 1
+LAUNCH_PASSENGER_SHIFT = LAUNCH_LANDING_BITS
 LAUNCH_REJECTION_FLAG = 1 << 31
 LAUNCH_REJECTION_POSITION_BITS = 11
 LAUNCH_REJECTION_POSITION_MASK = (1 << LAUNCH_REJECTION_POSITION_BITS) - 1
 SLOT_SYMMETRY_REJECT_START = 9  # slots 9..10, one writer per opening Builder
+# Width of the owner field in the shared construction lock. Two bits held three
+# Builders and silently wrapped the fourth to 0, which is the "unowned" value --
+# see _refresh_construction_lock. Four bits hold fifteen.
+LOCK_OWNER_BITS = 4
+LOCK_OWNER_MASK = (1 << LOCK_OWNER_BITS) - 1
 SLOT_CONSTRUCTION_LOCK = 11
 SLOT_CORE_DAMAGED = 12
-# Bit 2 of SLOT_CORE_DAMAGED: titanium has stopped arriving. Bits 0-1 are
-# the Core's own damage alarm and are read separately.
-ECONOMY_DEAD_FLAG = 4
-# Bit 3 of SLOT_CORE_DAMAGED: at the damage rate of the last PROJECT_WINDOW
-# rounds the Core is dead within PROJECT_HORIZON rounds. Traced on jackpot vs
-# ragnarok: the guard Builder died on round 143, the only survivor was the
-# attacker across the map, and the Core took 10-20 a round from 157 to 192
-# with 762 titanium banked -- rich, undefended, and dead. A Builder spawned
-# under this flag becomes a home defender, the same conditional-respawn shape
-# that made the income watchdog work where unconditional refill lost 30pp.
-CORE_DYING_FLAG = 8
+# SLOT_CORE_DAMAGED now carries more than the alarm. The guard's defence code
+# requires a *visible* shooter before it will answer (see _defend_core), but a
+# Builder's vision is a fraction of the Core's r^2=36 -- Besvikomat's opener
+# plants a Gunner three tiles from our Core on round 3, outside the guard's
+# sight, and that 25 HP turret chipped a Core to death over 186 rounds while
+# the guard healed beside it (match 3eab9d19, lighthouse: it ended the game
+# untouched). The Core is the one unit that always sees a Core-range shooter,
+# so it publishes the nearest visible enemy turret through the alarm slot.
+# Layout, low to high: alarm (2 bits), packed shooter position (10, pack_pos,
+# whose own 0 already means "none"). Writer: the Core alone, same as before.
+CORE_ALARM_MASK = 3
+SHOOTER_POS_SHIFT = 2
 SLOT_ENEMY_CORE = 13
 SLOT_OWN_CORE = 14
 SLOT_BUILDER_HEARTBEAT = 15
-# Heartbeat layout: (round + 1) << HEARTBEAT_SHIFT, with one bit per Builder
-# index below it. Eight bits is more Builders than the scale factor will ever
-# make worth spawning.
-HEARTBEAT_SHIFT = 8
-HEARTBEAT_MASK = (1 << HEARTBEAT_SHIFT) - 1
-# Builders the Core will field at once, replacements included. The opening
-# headcount is three and is not in question -- this is the ceiling on replacing
-# one the enemy killed.
-MAX_LIVE_BUILDERS = 3
-# Total Builders one game may spawn. A replacement is +20% on every price the
-# team pays for the rest of the game, so an attrition war fought by respawning
-# is one we lose on cost even while winning it on bodies.
-MAX_TOTAL_BUILDERS = 5
-# Held back before a replacement is bought, so reinforcing never starves the
-# turrets and ammunition that the dead Builder was on its way to buy.
-REINFORCE_RESERVE = 40
 
 LAUNCH_RANGE_SQ = 26
+# How far the landing-distance flood runs. A throw reaches r^2=26, so a little
+# beyond that is enough to price every candidate landing and no more.
+WALK_FLOOD_RADIUS_SQ = 64
+# Treat a friendly Launcher as an edge in the movement graph rather than an
+# obstacle. Standing beside one and asking for a throw covers up to r^2=26 in a
+# single round, over anything in between, which is faster than any walk and is
+# also the way past a firing line that cannot be crossed on foot.
+LAUNCH_HOPS_IN_PATHS = True
+
+# --- Launcher screen: cover the approach, not the compass ---------------------
+# The old ring was eight compass sites at RING_RADIUS 2. Around a 2x2 Core that
+# radius cannot hold eight things without them touching, which is why replays
+# show Launchers built side by side: the geometry, not the placement, was wrong.
+#
+# What a defensive Launcher actually does is pick a Builder up at range squared
+# LAUNCH_PICKUP_SQ and throw it away, so one Launcher covers a 3x3 stamp. The
+# tiles worth covering are the ones an enemy must cross to bring a turret into
+# range of the Core -- the shell just outside the threat disc. So the screen is
+# a minimum set cover of that shell by 3x3 stamps, which is also what stops two
+# Launchers landing next to each other: overlapping stamps cover nothing new.
+#
+# RING_THREAT_SQ is the whole difference between this bot and its sibling:
+# 13 sizes the disc to Gunner reach, 32 to Sentinel reach. Sentinel range is
+# 2.5x the area, so the sibling's screen is much larger and much more expensive.
+RING_THREAT_SQ = 13
+LAUNCH_PICKUP_SQ = 2
+# How far apart the screen would *like* its Launchers, in Chebyshev tiles. This
+# is a preference, not a rule: coverage wins ties against it, so a shell tile
+# only one site can reach is still covered even when that site ends up beside
+# another. Refusing it would leave a hole an attacker simply walks through.
+# Past this distance the screen is spread enough and more buys nothing, so the
+# value is a cap on the preference rather than a spacing.
+RING_MIN_SEPARATION = 3
+# Re-plan the screen once vision has grown by this many tiles. The dead-end
+# prune is only as good as the map we have seen, and on round 3 that is nearly
+# nothing; re-planning is what turns later vision into Launchers not built.
+RING_REPLAN_TILES = 60
+# A screen is worth titanium only up to a point: each Launcher is +10% on every
+# price the team pays afterwards, so a full Sentinel-range cover would be +80%
+# or worse. This cap is the constant to sweep, not the geometry.
+# DROPPED. The defensive screen is off: RING_MAX_SITES 1 leaves the single
+# enemy-facing pad, which is the attacker's throw platform and the one site in
+# this lineage with a measured job. It is not a defensive ring.
+#
+# The screen was built, measured on r03 and withdrawn. Closing a Core off from
+# Sentinel reach in open ground genuinely needs ~9 Launchers -- the geometry is
+# in _launcher_ring_targets and it is correct -- and nine Launchers is +90% on
+# every price the team pays afterwards. On the map it was traced on the bot
+# mined *more* than the build that won (950 against 840) and lost anyway,
+# because the titanium went into cost scale instead of defence. Barriers deny
+# the same ground at 3 Ti and +1%, which is the direction worth trying next.
+#
+# The planning code stays. It is right, it is cheap to re-enable, and the
+# reachability prune it carries is reusable for anything that needs to know
+# which approaches to our Core an enemy can actually walk down.
+RING_MAX_SITES = 1
+# The "+1": one Launcher of depth behind the cut. A minimum cut is exactly
+# tight -- it holds until one site in it dies. The spare goes enemy-facing.
+RING_EXTRA_SITES = 0
+# A screen must never wall our own units in. After placing a site, the Core's
+# spawn ring must still reach this many open tiles, or the site is rejected:
+# Launchers are buildings and buildings are not walkable, so every site is a
+# wall to us as much as to them.
+SELF_SEAL_MIN_OPEN = 40
+RING_TITANIUM_RESERVE = 25
+
+# --- Reachability -------------------------------------------------------------
+# Lucas's constraint: a direction the enemy cannot walk down does not need
+# covering. Shell tiles are kept only if they are reachable from the enemy half
+# without crossing the threat disc, so a dead end, a pocket behind terrain, or a
+# map edge costs nothing. On a closed map this can cut the screen to two sites.
+REACHABILITY_ENABLED = True
+
+# --- Attacker survival --------------------------------------------------------
+# An attacker that walks a path through a known firing line arrives dead. Look
+# this many steps ahead, charge each threatened step the damage that would land
+# on it, and re-plan around the threat when the total would kill us.
+PATH_LOOKAHEAD = 12
+PATH_DAMAGE_PER_THREAT_STEP = 7
+PATH_SAFETY_MARGIN = 7
+# How much longer a threat-avoiding route may be before it stops being worth
+# it, as a multiple of the short route plus a constant. Rounds are what the
+# attacker is short of, so a detour is cheap but not free.
+PATH_DETOUR_FACTOR = 1.6
+# Rounds a Builder will spend backing away from a lane it cannot walk before it
+# pays for a Launcher to go over it instead. A Sentinel does not move, does not
+# run dry and cannot rotate off the tile, so waiting is not a plan -- but a
+# throw costs 20 Ti and +10%, so it is not the first answer either.
+FIRE_BLOCK_LAUNCH_ROUNDS = 3
+
+# --- Logistics under fire -----------------------------------------------------
+# Never lay a conveyor, splitter or harvester inside a known enemy firing line:
+# it is 3 Ti and +1% to replace something they clear for 4 ammunition, and
+# heimdall's bridge trace showed a single such tile rebuilt 22 times for an
+# income of 10 titanium in 1000 rounds. Barriers are the exception and go there
+# deliberately -- a barrier in their line is 3 Ti that costs them ammunition and
+# blocks the lane, which starves the economy the line was protecting.
+AVOID_THREAT_FOR_LOGISTICS = False
+BARRIER_INTO_THREAT = True
+# Rounds between belt patrols. Enemies cut lines and then seat a turret on the
+# gap; a miner that keeps rebuilding into that seat is paying rent. On the
+# third failure the tile is written off and the route is planned again from
+# scratch, avoiding every tile the turret can reach.
+BELT_PATROL_ROUNDS = 40
+REPAIR_ATTEMPT_LIMIT = 3
+
+# --- Contested logistics ------------------------------------------------------
+# Nothing in this lineage has ever contested the enemy's belt. Two halves:
+# tap a harvester of theirs into a conveyor of ours (their 2.5 Ti/round becomes
+# ours, and it costs them nothing they can see), and cut the conveyor feeding
+# their Core (3 Ti of ours deletes a stack of theirs every round it stays down).
+STEAL_ENEMY_HARVESTER = True
+CUT_ENEMY_BELT = True
+CONTEST_MAX_DISTANCE_SQ = 400
+
+# --- Turret fire discipline ---------------------------------------------------
+# fire() is an explicit call, so holding fire is possible. A barrier with an
+# enemy Builder beside it is a barrier that gets rebuilt for 3 Ti the round
+# after we spend 4 ammunition breaking it; that trade loses. Hold, and shoot
+# the Builder's own work only once the Builder has left.
+HOLD_FIRE_ON_TENDED_BARRIER = True
+
+# Damage per shot, used to price a tile in the threat map. A tile two turrets
+# both cover is twice as lethal and the attacker's survival check has to see it.
+GUNNER_DAMAGE = 7
+SENTINEL_DAMAGE = 18
+
+# --- Launch-request instrumentation -------------------------------------------
+# Every stage of a relay request logged to stderr. Stdout is discarded by the
+# engine, which is why none of this bot's existing PLAN_FAILED lines have ever
+# been readable; stderr survives. Off for upload, on for the benchmark.
+DEBUG_LAUNCH = False
+# Log every building placed, with whether the tile was known covered, visibly
+# covered, or covered by a turret we had ever seen. Off for upload.
+DEBUG_BUILD = False
+# How long a pad remembers having thrown a passenger. Long enough to cover the
+# one-turn lag on a store write, short enough that a relay chain can reuse a pad
+# and a ferried Builder can be ferried home again.
+THROW_MEMORY_ROUNDS = 3
+
+# --- Sentinel offence ---------------------------------------------------------
+# The siege battery is Sentinels, not Gunners. Per titanium a Sentinel is 1.8
+# HP/Ti against a Gunner's 1.75, it out-damages one over time (18 every 2 rounds
+# against 7 every round), it is 40 HP against 25, and -- the part that decides
+# it -- its line is never blocked, so a defender cannot answer it by building
+# something in the way.
+SENTINEL_SIEGE_FIRST = True
+# No two of our siege Sentinels may share a row, a column or a diagonal. Turrets
+# fire a single-tile-wide line along one of eight compass directions, so two of
+# ours on a shared line are two kills for one enemy turret that never has to
+# rotate. This is the non-attacking-queens constraint, and it is the whole of
+# "spread out" in a game where every weapon is a ray.
+SENTINEL_SPREAD_LINES = True
+# Siege Sentinels one attacker will seat. Now actually read -- it sat in this
+# file unused while `_build_siege_sentinel` hard-capped at one.
+#
+# The arithmetic says a bigger battery should be decisive: every bot on this
+# ladder posts two menders restoring 8 HP a round, one Sentinel deals 6 and
+# never breaks through, two deal 12 and three deal 18. Measured over 210 games
+# against the five bots that hold this build's floor, 2, 3 and 4 all score
+# 0.581 against a cap of one at 0.590 -- the attacker does not survive long
+# enough, or stay solvent enough, to seat a second one often enough to matter.
+# The ceiling is delivery, not permission.
+SIEGE_SENTINEL_TARGET = 1
+
+# --- Guard patrol and trapping ------------------------------------------------
+# The ring the guard walks when nothing is attacking. Outside the Core's own
+# 2x2 but well inside its r^2=36 vision, so the guard is adding sight of the far
+# side rather than duplicating what the Core already sees.
+PATROL_RADIUS = 3
+# Box a loose enemy Builder in with barriers, then put a Gunner on the box. A
+# barrier is 3 Ti against a Builder's 30 Ti and +20% scale, and a boxed Builder
+# cannot dodge the ray the way a free one does.
+TRAP_ENEMY_BUILDERS = False
+TRAP_MAX_DISTANCE_SQ = 64
+# The same trick, seen from the other side. A Builder down to this many cardinal
+# exits with an enemy Builder within r^2=9 is one 3 Ti barrier from being worth
+# nothing for the rest of the game, so it leaves first and argues later.
+ESCAPE_ENCIRCLEMENT = True
+ESCAPE_MIN_EXITS = 1
+# One check at the top of the Builder turn rather than a rule each mechanic has
+# to remember. A Builder's tile is a free choice in nearly every job it does, so
+# a covered tile is HP spent for nothing. Exempt: a mender beside a Core that is
+# under attack, where 4 HP per titanium beats anything the lane can do to it.
+LEAVE_FIRING_LINE = True
+# Rounds a Builder spends exposed to put up an escape Launcher: one to reach a
+# buildable tile and one to build. Used to price launching against walking, so
+# the Launcher is only bought when it genuinely saves HP.
+LAUNCHER_BUILD_ROUNDS = 2
