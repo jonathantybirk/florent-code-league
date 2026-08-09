@@ -7640,3 +7640,71 @@ something I have to remember to ask. It is the check that would have caught
 immediately rather than three iterations apart.
 
 Nothing beat `snotra_h`; nothing queued. Team 20/113, rating 1696.
+
+## Iteration 161 — I have been optimising the wrong lineage with a biased instrument
+
+Checked which build actually holds the live seat before building anything. It
+is healthy: `steward@e55aab5` plays our rated games (169 rated, elo 1771) and
+none of tonight's regressions — `lofn`, `hlin`, `nanna`, `mani` — has a single
+rated game. The farm is keeping them unrated correctly.
+
+But the same table says something I should have checked twelve iterations ago:
+
+| build | rated | games | live elo |
+|---|---|---|---|
+| `vidarr@bbfaa9c` | 20 | 45 | **1777** |
+| `steward_hardened_reinforced@f1f2bda` | 86 | 387 | **1776** |
+| `steward@e55aab5` (live seat) | 169 | 289 | 1771 |
+| **`snotra_h@6951e03`** | 0 | 75 | **1749** |
+
+**`snotra_h` is not our best build.** Every candidate since iteration 156 has
+been a `snotra_h` variant, measured against `snotra_h`, on the strength of the
+loop prompt naming it — while the ladder ranked three other builds above it the
+whole time.
+
+So I ranked the real bases on the calibrated maps, and the result is worse than
+"I picked the wrong base":
+
+| build | vs `spar_sentinel` | vs `undertow` | live elo | lines vs `snotra_h` |
+|---|---|---|---|---|
+| `hoenir@1e5de25` | +0.2 sd | 0.0 sd | 1685 | 58 |
+| `shr@b61aaac` | +0.1 sd | -0.7 sd | 1762 | 716 |
+| `shr@f1f2bda` | 0.0 sd | -0.7 sd | **1776** | 716 |
+| `snotra_h` | — | — | 1749 | — |
+| `vidarr@bbfaa9c` | -1.5 sd | -0.6 sd | **1777** | 63 |
+| `steward@e55aab5` | **-6.7 sd** | -1.8 sd | **1771** | 4134 |
+
+**The local instrument ranks the live flagship dead last by six standard
+deviations.** `steward@e55aab5` scores 0.2400 against `spar_sentinel` where
+`snotra_h` scores 0.4933, and it is the build the ladder has given 169 rated
+games and our highest-confidence high rating.
+
+The mechanism is not mysterious. `spar_sentinel` is itself a `snotra_h`
+derivative — four files changed, six Gunner sites swapped for Sentinels — so
+scoring `snotra_h` variants against it is substantially measuring
+self-similarity. The local order tracks kinship with `snotra_h` far better than
+it tracks live strength, and `steward@e55aab5` is 4,134 lines of a different
+bot. Against `undertow`, which is Jon's code and owes this lineage nothing, the
+whole spread collapses to 0.607-0.677 and `e55aab5` is merely last rather than
+annihilated.
+
+This reproduces a discrepancy I hit and retracted at iteration 115 — `e55aab5`
+looked like a catastrophe locally and turned out to be the best live build. I
+recorded it as noise then. It is not noise; it is the instrument.
+
+What that means for everything above:
+
+- Nulls **within** the `snotra_h` lineage (the fourteen flags, both role-table
+  directions, the four faces of the siege) are probably real, because sibling
+  comparisons are what this instrument can do.
+- Every **cross-lineage** conclusion from local measurement is unsafe, and
+  choosing `snotra_h` as the base to improve was exactly such a conclusion.
+- The live ladder is the only instrument that has ranked lineages correctly,
+  and it says the `steward` family is ahead.
+
+Nothing beat `snotra_h` locally and nothing was queued — but "beats `snotra_h`"
+has been the wrong bar. Team 20/113, rating 1692.
+
+**Next**: work the `steward_hardened_reinforced@f1f2bda` lineage (1776 over 387
+games, the best-sampled high rating we have) rather than `snotra_h`, and
+validate on the ladder rather than against a sibling fixture.
