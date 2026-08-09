@@ -475,20 +475,21 @@ def test_array_chunks_respect_the_lsf_cap():
     assert [i for chunk in chunks for i in chunk] == indices
 
 
-@pytest.mark.parametrize("total,chunk", [(23562, 20), (100, 7), (36, 1), (5, 10), (1000, 1000)])
-def test_chunked_elements_cover_every_worklist_entry_exactly_once(total, chunk):
-    """Mirrors job_script: element i runs `sed -n 'first,last p'` over the worklist file.
+@pytest.mark.parametrize("total", [225, 300, 449, 450, 8184, 23562])
+def test_balanced_batches_cover_every_worklist_entry_exactly_once(total):
+    """Balanced slices must cover every entry once without creating a short final job."""
+    from tournament.hpc import balanced_batches
 
-    An off-by-one silently skips or replays matches, so coverage is checked rather than assumed,
-    including the ragged final element (where sed just yields fewer lines).
-    """
     worklist = list(range(1, total + 1))
-    elements = (total + chunk - 1) // chunk
+    batches = balanced_batches(total, target=300, minimum=225)
     covered: list[int] = []
-    for i in range(1, elements + 1):
-        first, last = (i - 1) * chunk + 1, i * chunk
+    sizes: list[int] = []
+    for first, last in batches:
         covered.extend(worklist[first - 1 : last])  # sed -n 'first,last p', 1-based inclusive
+        sizes.append(last - first + 1)
     assert covered == worklist
+    assert min(sizes) >= 225
+    assert max(sizes) - min(sizes) <= 1
 
 
 def test_chunking_works_over_a_scattered_worklist():
@@ -497,27 +498,45 @@ def test_chunking_works_over_a_scattered_worklist():
     A contiguous element range over a partially-finished schedule would re-run completed work.
     """
     worklist = [3, 7, 8, 15, 40, 41, 42, 99]
-    chunk = 3
+    from tournament.hpc import balanced_batches
+
     covered: list[int] = []
-    for i in range(1, (len(worklist) + chunk - 1) // chunk + 1):
-        first, last = (i - 1) * chunk + 1, i * chunk
+    for first, last in balanced_batches(len(worklist), target=3, minimum=2):
         covered.extend(worklist[first - 1 : last])
     assert covered == worklist
 
 
-def test_default_chunk_comes_from_config_and_is_batched():
-    """Default is batched, not one-per-match: measured overhead makes chunk=1 wasteful."""
+def test_default_batch_is_sized_over_fifteen_minutes_at_the_fastest_observed_rate():
     from tournament.hpc import config
 
-    assert config().get("chunk", 1) > 1
+    settings = config()
+    assert settings["chunk"] >= settings["minimum_matches_per_job"]
+    assert settings["minimum_matches_per_job"] * 4.1 > 15 * 60
+
+
+def test_too_little_work_is_refused_instead_of_creating_a_short_cluster_job():
+    from tournament.hpc import InsufficientWorkError, balanced_batches
+
+    with pytest.raises(InsufficientWorkError, match="15-minute cluster job"):
+        balanced_batches(224, target=300, minimum=225)
+
+
+def test_shipped_remote_root_is_inside_the_assigned_scratch_directory():
+    from tournament.hpc import HpcError, config, remote_root
+
+    settings = config()
+    assert remote_root(settings) == "/work3/s234842/florent-tournament"
+    with pytest.raises(HpcError, match="assigned scratch"):
+        remote_root({**settings, "remote_root": "florent-tournament"})
 
 
 def test_shipped_walltime_covers_the_default_chunk():
-    """Walltime is a hard kill; the shipped config must not be able to lose a whole element."""
+    """Walltime covers the largest batch balancing can create around its boundary."""
     from tournament.hpc import check_walltime, config
 
     settings = config()
-    check_walltime(settings, settings["chunk"])  # must not raise
+    largest_balanced_batch = 2 * settings["minimum_matches_per_job"] - 1
+    check_walltime(settings, largest_balanced_batch)  # must not raise
 
 
 def test_walltime_guard_rejects_an_element_that_cannot_finish():
@@ -536,25 +555,24 @@ def test_job_script_reads_its_slice_from_the_worklist():
     settings = {
         "queue": "hpc", "throttle": 100, "cores": 1, "memory": "2GB", "walltime": "22",
     }
-    script = job_script("t", settings, "1-1000", "n", 20, "t/work_X.txt")
-    assert "first=$(( ($LSB_JOBINDEX - 1) * 20 + 1 ))" in script
-    assert "last=$(( $LSB_JOBINDEX * 20 ))" in script
+    script = job_script("t", settings, "1-1000", "n", "t/batches_X.txt", "t/work_X.txt")
+    assert 'sed -n "${LSB_JOBINDEX}p" t/batches_X.txt' in script
+    assert "first=$1" in script
+    assert "last=$2" in script
     assert 'sed -n "${first},${last}p" t/work_X.txt' in script
     # The index passed to run_match must come from the worklist, never from the array index.
     assert '--index "$index"' in script
     assert '--index "$LSB_JOBINDEX"' not in script
 
 
-def test_job_script_uses_the_worklist_even_at_chunk_one():
-    """chunk=1 must still map through the worklist, or a resubmit re-runs finished matches."""
+def test_job_script_disables_shared_filesystem_bytecode_writes():
     from tournament.hpc import job_script
 
     settings = {
         "queue": "hpc", "throttle": 100, "cores": 1, "memory": "2GB", "walltime": "22",
     }
-    script = job_script("t", settings, "1-10", "n", 1, "t/work_X.txt")
-    assert "sed -n" in script
-    assert '--index "$LSB_JOBINDEX"' not in script
+    script = job_script("t", settings, "1-10", "n", "t/batches_X.txt", "t/work_X.txt")
+    assert "export PYTHONDONTWRITEBYTECODE=1" in script
 
 
 def test_merge_survives_a_truncated_result_file(tmp_path):

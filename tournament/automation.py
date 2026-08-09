@@ -21,7 +21,7 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 
-from tournament import duplicates, hpc, report
+from tournament import duplicates, hpc, local, report
 from tournament import plan as planning
 from tournament.discover import DEFAULT_EXCLUDES, discover
 from tournament.gitutil import REPO_ROOT, resolve_commit
@@ -540,6 +540,15 @@ def resubmit_abandoned_runs(run_names: list[str], *, dry_run: bool = False) -> l
             else:
                 hpc.fetch(tid, settings)
             hpc.submit(tid, settings)
+        except hpc.InsufficientWorkError as error:
+            # A killed element can leave only a handful of matches. Re-submitting that tail as
+            # its own LSF job would recreate the short-job problem the batching floor prevents.
+            # At this point fetch() has made the local results current, so finish only the gaps
+            # on the evaluator host and let the next tick merge/finalise them normally.
+            print(f"  {tid}: {error}; finishing the tail locally")
+            local.run_all(run_dir, jobs=8)
+            requeued.append(tid)
+            continue
         except (hpc.HpcError, OSError) as error:
             print(f"  {tid}: re-submission failed ({error}); still treating it as in flight")
             continue
@@ -1156,12 +1165,18 @@ def run_once(
     )
     print(f"planned {len(schedule)} matches in {tid}; submitting to DTU HPC")
     hpc.push(tid, settings)
+    submitted_to_hpc = True
     try:
         hpc.submit(tid, settings)
+    except hpc.InsufficientWorkError as error:
+        print(f"{error}; running this small schedule locally")
+        local.run_all(destination, jobs=8)
+        submitted_to_hpc = False
     except hpc.HpcError as error:
         if "nothing to submit" not in str(error):
             raise
         print("all scheduled results already exist")
+        submitted_to_hpc = False
     # Record what this run is for, so a later tick can finish it without re-deriving the
     # discovery that produced it. The run directory describes itself; nothing lives in memory
     # across ticks, because there is no process that spans them any more.
@@ -1174,7 +1189,8 @@ def run_once(
     state["last_seen_refs"] = heads
     state["updated_at"] = datetime.now(UTC).isoformat(timespec="seconds")
     _save_state(state_path, state)
-    print(f"submitted {tid}; a later tick will collect and publish it")
+    mode = "submitted" if submitted_to_hpc else "completed locally"
+    print(f"{mode} {tid}; a later tick will collect and publish it")
     return 0
 
 

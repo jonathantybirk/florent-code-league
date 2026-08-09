@@ -165,9 +165,9 @@ def build_parser() -> argparse.ArgumentParser:
                 type=int,
                 default=None,
                 help=(
-                    "matches per array element (default: the `chunk` value in hpc.toml, 20). "
-                    "A match is ~1.3s but each element costs ~4s of startup, so batching is far "
-                    "more efficient; use --chunk 1 for one individually retryable job per match"
+                    "target matches per balanced array element (default: `chunk` in hpc.toml). "
+                    "Values below `minimum_matches_per_job` are rejected so cluster jobs remain "
+                    "longer than 15 minutes"
                 ),
             )
         if name == "watch":

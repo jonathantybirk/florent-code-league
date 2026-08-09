@@ -1,7 +1,7 @@
 """Drive a tournament on the DTU HPC cluster: push, submit, poll, fetch.
 
-One LSF array element per match. Each element is an independently scheduled job that plays one
-match and writes one small JSON file, so results can be pulled down continuously while the rest of
+Each LSF array element runs a balanced batch of matches, while every match still gets a fresh OS
+process and one small JSON result file. Results can be pulled down continuously while the rest of
 the array is still running -- `fetch` is safe against a live directory because run_match writes
 atomically.
 
@@ -17,7 +17,7 @@ import shlex
 import subprocess
 import time
 import tomllib
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from tournament.gitutil import REPO_ROOT
 from tournament.plan import load_manifest, load_schedule, run_dir
@@ -28,6 +28,10 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 
 class HpcError(RuntimeError):
     pass
+
+
+class InsufficientWorkError(HpcError):
+    """The remaining work is too small to make an acceptable cluster job."""
 
 
 def config() -> dict:
@@ -86,7 +90,13 @@ def rsync(source: str, destination: str, delete: bool = False, extra: list[str] 
 
 
 def remote_root(settings: dict) -> str:
-    return settings["remote_root"]
+    root = PurePosixPath(settings["remote_root"])
+    scratch = PurePosixPath(settings["scratch_root"])
+    if not root.is_absolute() or not scratch.is_absolute() or scratch not in root.parents:
+        raise HpcError(
+            f"remote_root must be a child of the assigned scratch directory {scratch}, got {root}"
+        )
+    return str(root)
 
 
 def remote_run(settings: dict, tid: str) -> str:
@@ -163,22 +173,26 @@ def push(tid: str, settings: dict | None = None, bootstrap: bool = False) -> Non
 
 
 def job_script(
-    tid: str, settings: dict, indices: str, name: str, chunk: int, worklist: str
+    tid: str, settings: dict, indices: str, name: str, batchlist: str, worklist: str
 ) -> str:
-    """An LSF array job. Element i plays the i-th group of `chunk` matches from `worklist`.
+    """An LSF array job. Element i plays its balanced slice from `worklist`.
 
     `%<throttle>` caps concurrently running elements. Email flags are deliberately absent -- the
     job-array docs warn that notifications on a large array produce one mail per element.
 
-    Elements index into a *file of schedule indices* rather than computing a contiguous range.
-    That is what lets chunking and skip-already-done coexist: the outstanding matches are usually
-    scattered through the schedule, so an element covering a contiguous range would re-run
-    finished work. `sed -n 'first,last p'` also handles the ragged final element for free -- it
-    simply yields fewer lines.
+    Elements index into a *file of schedule indices* rather than computing a schedule range.
+    That is what lets batching and skip-already-done coexist: the outstanding matches are usually
+    scattered through the schedule. A second file records balanced worklist slices so there is no
+    tiny final element.
     """
     body = f"""
-first=$(( ($LSB_JOBINDEX - 1) * {chunk} + 1 ))
-last=$(( $LSB_JOBINDEX * {chunk} ))
+set -- $(sed -n "${{LSB_JOBINDEX}}p" {batchlist})
+if [ "$#" -ne 2 ]; then
+    echo "no batch range for array element $LSB_JOBINDEX" >&2
+    exit 2
+fi
+first=$1
+last=$2
 for index in $(sed -n "${{first}},${{last}}p" {worklist}); do
     python3 -m tournament.run_match --run-dir {tid} --index "$index" || true
 done
@@ -210,6 +224,9 @@ set -u
 
 # PYTHONPATH so `tournament` resolves from the shared package directory next to this script.
 export PYTHONPATH="$PWD:${{PYTHONPATH:-}}"
+# Staged sources are immutable during a run. Avoid thousands of competing cache writes on the
+# shared scratch filesystem; the venv itself was compiled during bootstrap.
+export PYTHONDONTWRITEBYTECODE=1
 {body}"""
 
 
@@ -242,6 +259,38 @@ def compress_indices(indices: list[int]) -> str:
 # against a real 1,258s), so the guard was certifying budgets that could not hold: 108 elements
 # died in one run.
 BATCH_BUDGET_SECONDS_PER_MATCH = 56
+
+
+def balanced_batches(total: int, target: int, minimum: int) -> list[tuple[int, int]]:
+    """Return 1-based inclusive worklist slices, with no undersized tail.
+
+    `target` controls the normal batch size. The number of elements is chosen near total/target,
+    then reduced until every element has at least `minimum` entries. Work is distributed evenly,
+    so batch sizes differ by at most one.
+    """
+    if target < minimum or minimum < 1:
+        raise HpcError(
+            f"invalid batching configuration: target {target}, minimum {minimum}"
+        )
+    if total < minimum:
+        raise InsufficientWorkError(
+            f"only {total} match(es) remain, fewer than the {minimum} required for a "
+            "15-minute cluster job; finish this tail locally or combine it with more work"
+        )
+
+    elements = max(1, (total + target // 2) // target)
+    while elements > 1 and total // elements < minimum:
+        elements -= 1
+
+    base, extra = divmod(total, elements)
+    batches: list[tuple[int, int]] = []
+    first = 1
+    for element in range(elements):
+        size = base + (1 if element < extra else 0)
+        last = first + size - 1
+        batches.append((first, last))
+        first = last + 1
+    return batches
 
 
 def check_walltime(settings: dict, chunk: int) -> None:
@@ -289,15 +338,14 @@ def submit(
     anyway, but only after the job had been scheduled and paid its startup -- so submitting them
     wastes slots on a contended queue. Pass include_done=True to force a full re-run.
 
-    Each array element plays `chunk` matches (default from hpc.toml, 20). An element costs ~3s of
-    module load, venv activation and interpreter startup, so batching removes most of that and
-    cuts the number of arrays -- LSF caps a single array at MAX_JOB_ARRAY_SIZE (1000 here), and
-    arrays are slow to submit. Pass chunk=1 for one individually retryable job per match.
+    Each array element plays a balanced batch near `chunk` matches. The shipped minimum is sized
+    from the fastest observed production batch to keep every requested cluster job over 15
+    minutes. A smaller remainder is not submitted; callers can finish that tail locally.
     """
     settings = settings or config()
     host = settings["host"]
-    chunk = settings.get("chunk", 20) if chunk is None else chunk
-    check_walltime(settings, chunk)
+    chunk = settings.get("chunk", 300) if chunk is None else chunk
+    minimum = settings.get("minimum_matches_per_job", 225)
     check_connection(host)
 
     local = run_dir(tid)
@@ -315,10 +363,15 @@ def submit(
     if not indices:
         raise HpcError("nothing to submit: every match already has a result")
 
+    batches = balanced_batches(len(indices), chunk, minimum)
+    largest_batch = max(last - first + 1 for first, last in batches)
+    check_walltime(settings, largest_batch)
+
     root = remote_root(settings)
     limit = max_array_size(host)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     worklist = f"{tid}/work_{stamp}.txt"
+    batchlist = f"{tid}/batches_{stamp}.txt"
 
     # The element -> match mapping lives in this file, so a scattered set of outstanding indices
     # chunks exactly as well as a contiguous one.
@@ -326,8 +379,16 @@ def submit(
     worklist_path.write_text("\n".join(str(i) for i in indices) + "\n")
     rsync(str(worklist_path), f"{host}:{root}/{worklist}")
 
-    elements = list(range(1, (len(indices) + chunk - 1) // chunk + 1))
-    print(f"{len(indices)} matches at {chunk} per element -> {len(elements)} array elements")
+    batchlist_path = local / f"batches_{stamp}.txt"
+    batchlist_path.write_text("\n".join(f"{first} {last}" for first, last in batches) + "\n")
+    rsync(str(batchlist_path), f"{host}:{root}/{batchlist}")
+
+    elements = list(range(1, len(batches) + 1))
+    smallest_batch = min(last - first + 1 for first, last in batches)
+    print(
+        f"{len(indices)} matches in {len(elements)} balanced array element(s) "
+        f"({smallest_batch}-{largest_batch} matches each; target {chunk})"
+    )
 
     chunks = [elements[start : start + limit] for start in range(0, len(elements), limit)]
     if len(chunks) > 1:
@@ -339,7 +400,9 @@ def submit(
 
     for number, group in enumerate(chunks, start=1):
         name = f"trn_{tid}_{number}"[:60] if len(chunks) > 1 else f"trn_{tid}"[:60]
-        script = job_script(tid, settings, compress_indices(group), name, chunk, worklist)
+        script = job_script(
+            tid, settings, compress_indices(group), name, batchlist, worklist
+        )
         script_path = local / f"job_{stamp}_{number}.sh"
         script_path.write_text(script)
         rsync(str(script_path), f"{host}:{root}/job_{stamp}_{number}.sh")
@@ -354,7 +417,9 @@ def submit(
                 "job_id": job_id,
                 "name": name,
                 "elements": len(group),
-                "chunk": chunk,
+                "target_chunk": chunk,
+                "batch_min": smallest_batch,
+                "batch_max": largest_batch,
                 "range": f"{group[0]}-{group[-1]}",
                 "submitted_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             }
@@ -420,11 +485,9 @@ def discard_workspace(tid: str, settings: dict | None = None) -> None:
     print(f"  {tid}: reclaimed remote workspace ({', '.join(WORKSPACE_DIRS)})")
 
 
-# Deliberately no pre-flight quota check. DTU's getquota_zhome.sh reports a figure refreshed
-# only every ~240 minutes -- it still read "30.00G of 30.00G" long after 20 GB had been deleted --
-# so gating a submission on it would block pushes that would in fact succeed, and would miss a
-# quota filled since the last refresh. Cleaning up after every finished run is what keeps the
-# headroom; resubmit_abandoned_runs() is what recovers when a push fails anyway.
+# Deliberately no numeric pre-flight quota gate. Scratch quota reporting is advisory and can lag;
+# cleaning each finished run is what keeps inode and capacity headroom. The immutable
+# remote_root() boundary above is the important pre-flight: bulk I/O cannot fall back to zhome.
 
 
 # --------------------------------------------------------------------------------------------
