@@ -8234,3 +8234,59 @@ what the sub-25-game inflation note in
 record, which is why `nott` was built on it.
 
 Team 18/113, rating 1722 — up 38 points from the session low of 1684.
+
+## Iteration 171 — the same method again: one divergence tested, and we were right
+
+The ammunition win came from comparing a timing curve against what opponents
+actually do, so I ran that comparison for every opening milestone. Median first
+round each entity appears, over 25 live games:
+
+| entity | us | them | games we build it | games they do |
+|---|---|---|---|---|
+| conveyor | 2 | 6 | 30/30 | 30/30 |
+| harvester | 7 | 6 | 29/30 | 29/30 |
+| gunner | 10 | 12 | 30/30 | 20/30 |
+| **launcher** | **3** | **180** | **17/30** | **4/30** |
+| **sentinel** | **45** | **24** | **6/30** | **24/30** |
+
+Two real divergences. The Launcher one is the sharper: we put one up on round 3
+in more than half our games, opponents essentially never build one at all, and
+a Launcher deals **no damage** — it repositions a Builder. That is 20 titanium
+plus +10% on every later price, spent in the compounding window, on a tool the
+ladder has no use for. Exactly the shape of the ammunition defect.
+
+`dagr` tests it: `RING_MAX_SITES` 1 -> 0 on `nott`, which drops the pad while
+leaving the ring **Builder** untouched — that role comes from
+`doctrine.launcher_builders`, so it still takes its post and still mends the
+Core, the 11.0pp mechanic.
+
+| vs | `nott` | `dagr` | |
+|---|---|---|---|
+| `vanguard` | 0.7100 | 0.6900 | -0.020 (-0.5 sd) |
+| `undertow` | 0.7133 | 0.6100 | **-0.103 (-2.7 sd)** |
+
+**Clearly worse.** The throw pad earns its 20 titanium; the ferry is
+load-bearing and the divergence from the meta is correct here. Not queued.
+
+Worth stating as a pattern, because I have now tested three "we do something
+the ladder does not" observations from the same replay set:
+
+- **turret spend** — 77% of titanium against Coreflood's 34%: capping it was
+  -0.6 to -2.6 sd. Load-bearing.
+- **the round-3 Launcher** — 17/30 games against their 4/30: removing it is
+  -0.5 to -2.7 sd. Load-bearing.
+- **opening ammunition** — 147-195 Ti by round 30 against their 28-140:
+  halving it is +1.85 sd across two bases. A real defect.
+
+**One in three.** Diverging from the ladder meta is not by itself evidence of a
+defect, and the replay comparison is a source of hypotheses rather than of
+answers — each one still has to be measured, and two of the three said the bot
+was right and the meta was irrelevant to it.
+
+The Sentinel divergence in the table above (round 45 in 6/30 games against
+their round 24 in 24/30) is the one I have not resolved, but it is also the one
+already closed from four sides in iterations 158-160 — permission, delivery,
+targeting and affordability all measured null or negative.
+
+`nott@0ac1faa:12` remains queued and remains our best local build. Team 18/113,
+rating 1735 — up 51 from the session low.
