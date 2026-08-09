@@ -8814,3 +8814,51 @@ No new candidate clears the bar. `hodr_bank` remains the best of this line at
 iteration 178 is not enough to queue.
 
 Team 21/113, rating 1670. `nott@0ac1faa` and `ran@0eca95f` still queued.
+
+## Iteration 182 — the long-game metrics are confounded, and the loop's state
+
+Looked at the biggest slice of long games — `core_destroyed` past 300 rounds,
+63.7% of them, where we sit at 0.535. The separator that dominates every other
+metric is **when we first hit their Core**: round 74-102 in games we win,
+17-19 in games we lose, and it survives controlling for game length:
+
+| rounds | n | our win rate | first hit, win / loss |
+|---|---|---|---|
+| 300-450 | 1226 | 0.514 | 74 / 18 |
+| 450-700 | 791 | 0.555 | 102 / 17 |
+| 700-1001 | 282 | 0.504 | 89 / 19 |
+
+It is almost certainly not a lever. Hitting their Core on round 18 mostly means
+the two Cores were close together, so this reads as a map-shape proxy rather
+than a cause — and the same table has `them_builders_spawned` at 8.3 in our
+wins against 4.6 in our losses, which would otherwise say we win when the
+*opponent* builds more. Both are game-type confounds. After this session I am
+not building on observational metrics again without an intervention to test
+them, so I am recording it and stopping there.
+
+**Consolidated the session into memory**, which is the durable output:
+
+- `project_local_measurement_rules` — the four rules, each of which cost a wrong
+  conclusion here: build map sets from live terrain statistics (density is not
+  enough, placement matters); pair every cell and report McNemar; read the
+  identity column before the win rate; never measure on a set selected from
+  results.
+- `project_long_game_endings` — the ending breakdown, the deterministic
+  stored-titanium tiebreak, and why the belt follow-up cannot work on a clock.
+
+**Where the loop actually stands.** One change has survived everything:
+`nott`, the opening ammunition cut, +0.4 to +1.0 sd across four independently
+built map sets and two bases, worth about a point. It is queued along with
+`ran`. Everything else built tonight is committed with its measurement and not
+queued, and one build (`sunna`) was queued and then withdrawn on my own
+re-test.
+
+Against that, the search space is genuinely exhausted at the level a constant
+sweep can reach: the flag space on two bases in two map regimes, the role table
+in both directions, the siege from four sides, economy expansion, logistics,
+turret spend and retirement, the opening ledger, and the round-1000 tiebreak.
+Seven constants are provably dead code. The remaining gap — 0.72 in short games
+against 0.52 in long ones — is a design question about what the bot does
+between round 100 and round 400, and it will not fall to another constant.
+
+Team 22/113, rating 1658.
