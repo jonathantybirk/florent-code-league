@@ -323,8 +323,8 @@ The engine runs each bot in a CPython sub-interpreter with `SHARED_GIL` and
 process shares an allocator and a GIL with the bots; this repo has already hit segfaults and an
 autograd "called while holding the GIL" failure that way. So:
 
-- one match per OS process, never reused (`max_tasks_per_child=1` locally, one array element per
-  match on LSF);
+- one match per OS process, never reused (`max_tasks_per_child=1` locally, a fresh `run_match`
+  process for every match within an LSF batch);
 - `rating.py` imports numpy/scipy and is imported only by `rate`;
 - `test_harness.py` asserts the boundary in a subprocess rather than trusting the convention.
 
@@ -364,7 +364,7 @@ their probe version. Re-planning therefore reproduces ids, merging is idempotent
 interrupted tournament resumes simply by re-running `hpc submit`, which skips whatever already
 has a result.
 
-## LSF array sizing and `chunk`
+## LSF array sizing and long-job batching
 
 `MAX_JOB_ARRAY_SIZE = 1000` on this cluster — a larger array is rejected outright with
 `Job array index too large. Job not submitted.` This is **not** mentioned in DTU's job-array
@@ -373,24 +373,21 @@ needed. Arrays run concurrently against the same per-user slot limit, so splitti
 in throughput — but `bsub` takes ~90s to accept a 1000-element array, so submitting many of them
 is slow in itself.
 
-**Each array element plays `chunk` consecutive matches — 20 by default** (`chunk` in `hpc.toml`).
-This is set from measurement: each element pays ~3s of module load, venv activation and
-interpreter startup, and 24 arrays take ~35 minutes to `bsub`. For the 23,562-match Jon
-tournament:
-
-| `--chunk` | elements | arrays | submit time |
-|---|---|---|---|
-| 1 | 23,562 | 24 | ~35 min |
-| **20** (default) | **1,179** | **2** | **<1 min** |
+**Each array element plays a balanced batch near 300 matches** (`chunk` in `hpc.toml`), with a
+hard minimum of 225. DTU support requires jobs longer than 15 minutes; the fastest production
+element they reported ran 10 matches in 41 seconds, so 225 matches budget 15.4 minutes even at
+that observed rate. Batch boundaries are balanced across the whole worklist, avoiding a short
+ragged final element. For a 23,562-match tournament this produces about 79 elements instead of
+23,562 short jobs.
 
 ```sh
-uv run python -m tournament hpc submit --tid jon-full             # chunk 20
-uv run python -m tournament hpc submit --tid jon-full --chunk 1   # one job per match
+uv run python -m tournament hpc submit --tid jon-full              # target 300
+uv run python -m tournament hpc submit --tid jon-full --chunk 350  # larger long jobs
 ```
 
-Use `--chunk 1` when you want every match individually schedulable and individually retryable —
-worth it if you expect bots to hang, since a hung match then burns one element's walltime rather
-than taking 19 healthy matches down with it.
+Values below `minimum_matches_per_job` are rejected. If a killed element leaves fewer than 225
+matches outstanding, the automated evaluator fetches the completed results and finishes the tail
+locally rather than creating a prohibited short cluster job.
 
 ### Finished matches are never re-submitted
 
@@ -408,30 +405,34 @@ Pass `--all` to force a full re-run (`run_match --force` is the per-match equiva
 This is why array elements read their work from a **worklist file** of schedule indices rather
 than computing a contiguous range: outstanding matches are scattered through the schedule after a
 partial run, so `element i -> indices [(i-1)*chunk+1 .. i*chunk]` would re-run finished work.
-Instead each element does `sed -n "first,last p" work_<stamp>.txt`, which chunks a gappy set
-exactly as well as a dense one — and handles the ragged final element for free by yielding fewer
-lines. Each submission writes its own timestamped worklist, so re-submitting never disturbs an
-array that is still running.
+Instead each element reads a balanced `first last` slice from `batches_<stamp>.txt`, then applies
+that slice to `work_<stamp>.txt`. This handles a gappy set exactly as well as a dense one and makes
+the smallest and largest elements differ by at most one match. Each submission writes its own
+timestamped files, so re-submitting never disturbs an array that is still running.
 
 ### Walltime is a hard kill
 
-`walltime` must cover a whole element — `chunk` x worst-case match. Measured over 14,465 real
-matches on this roster:
+`walltime` must cover a whole element. The current conservative budget is 56 seconds per match,
+derived from the slowest observed batch plus 10%. A balanced batch can reach 449 matches at the
+one-element/two-element boundary, so the configured walltime is 480 minutes.
 
 | | mean | median | p90 | p99 | max |
 |---|---|---|---|---|---|
 | duration | 8.8s | 6.0s | 17.5s | 39s | **64s** |
 | turns | 584 | **1000** | 1000 | 1000 | 1000 |
 
-Most matches run the full 1000 rounds, so a match is seconds, not milliseconds — the full
-23,562-match tournament is **~58 core-hours**. At chunk 20 an element is ~3 min typically and
-21.3 min in the pathological case where all 20 of its matches are as slow as the slowest ever
-seen, hence `walltime = 22`.
+`submit` checks the actual largest balanced batch before calling `bsub`. Raising `chunk` without
+enough walltime is therefore an error rather than a silent source of killed jobs. If an element is
+killed anyway, completed matches remain durable and only its missing tail needs recovery.
 
-`submit` calls `check_walltime()` first and refuses if `chunk x 66s` exceeds it, so raising
-`chunk` without raising `walltime` is an error rather than a silent source of killed jobs. If an
-element is killed anyway, nothing is lost permanently — its matches simply have no result file,
-and re-running `hpc submit` picks up exactly those.
+## Cluster storage
+
+The complete remote workspace is `/work3/s234842/florent-tournament`: package code, staged bots,
+maps, schedules, result JSON, logs, and the Python venv. `remote_root()` rejects relative paths or
+anything outside the assigned scratch directory, preventing an accidental regression to zhome.
+Jobs also disable bytecode writes to avoid competing `__pycache__` updates on shared storage.
+Scratch is temporary and unbacked; durable results are fetched to the evaluator before remote
+workspace cleanup.
 
 ### Cores
 

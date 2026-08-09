@@ -1165,6 +1165,39 @@ def test_a_run_that_never_reached_the_cluster_is_pushed_and_queued(tmp_path, mon
     assert calls == [("push", "auto-never-sent"), ("submit", "auto-never-sent")]
 
 
+def test_a_short_recovery_tail_runs_locally_instead_of_becoming_a_short_hpc_job(
+    tmp_path, monkeypatch
+):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-tail", merged=90, scheduled=100)
+    run_dir = root / "auto-tail"
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu", "walltime": "480"})
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100, "done": 90, "job_ids": ["111"], "bjobs": _bjobs_missing("111"),
+    })
+    calls = []
+    monkeypatch.setattr(automation.hpc, "fetch",
+                        lambda tid, settings=None: calls.append(("fetch", tid)))
+    monkeypatch.setattr(
+        automation.hpc,
+        "submit",
+        lambda tid, settings=None: (_ for _ in ()).throw(
+            automation.hpc.InsufficientWorkError("too little work")
+        ),
+    )
+    monkeypatch.setattr(
+        automation.local,
+        "run_all",
+        lambda path, jobs=0: calls.append(("local", path.name, jobs)),
+    )
+
+    assert automation.resubmit_abandoned_runs(["auto-tail"]) == ["auto-tail"]
+    assert calls == [("fetch", "auto-tail"), ("local", run_dir.name, 8)]
+
+
 def test_requeueing_gives_up_after_the_cap(tmp_path, monkeypatch):
     from tournament import automation
 

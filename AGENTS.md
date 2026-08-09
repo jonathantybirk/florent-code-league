@@ -288,12 +288,13 @@ evidence matrix. Use `--pool`.
 
 **Do not add bots to a finished tournament's directory.** Plan a new challenger run and pool it.
 
-**Cluster specifics** (all in [`docs/hpc/`](docs/hpc/)): `MAX_JOB_ARRAY_SIZE` is 1000 and DTU does
-not document it; `module` and `bsub` do not exist in a non-interactive ssh shell; `gbar.sh` reads an
-unset `$DT` and dies under `set -u`; `bsub` blocks at roughly 4000 pending jobs; the `hpc` queue
-caps you at ~100-120 concurrent slots regardless of array throttles. If you change `chunk` in
-`hpc.toml`, keep `chunk x 66s <= walltime x 60` — `submit` refuses otherwise, because walltime is a
-hard kill and an over-long element would be killed mid-run.
+**Cluster specifics** (all in [`docs/hpc/`](docs/hpc/)): every tournament file, venv, log, and
+result lives under the assigned `/work3/s234842` scratch directory; never point `remote_root` back
+at zhome. `MAX_JOB_ARRAY_SIZE` is 1000 and DTU does not document it; `module` and `bsub` do not
+exist in a non-interactive ssh shell; `gbar.sh` reads an unset `$DT` and dies under `set -u`; the
+`hpc` queue caps you at ~100-120 concurrent slots regardless of array throttles. Array elements
+are balanced batches of at least 225 matches, sized from the fastest observed production batch to
+last over 15 minutes. `submit` refuses a smaller tail; automation finishes it locally instead.
 
 **Match cost, for planning:** mean 8.8s, median 6.0s, p99 39s, max 63.9s over 36,162 real matches.
 Most matches run the full 1000 rounds. Do not assume matches are cheap.
