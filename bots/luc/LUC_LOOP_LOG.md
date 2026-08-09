@@ -9163,3 +9163,48 @@ Nothing queued. `nott@0ac1faa` is still the only change that has survived every
 independent test, and it is still waiting in the farm queue behind `ran`.
 
 Team 23/114, rating 1657.
+
+## Iteration 189 — the biggest behaviour is also saturated
+
+The ablation map put `_heal_core` at **18.8pp**, four times the next behaviour,
+so the obvious question is whether more of it helps. Its constants are already
+dead — `MENDER_LEASH` 10 -> 16 changed one game in 120, `SECOND_MENDER_ALARM`
+none — so the binding constraint is not distance. It is **role**: exactly two
+Builders may mend, `builder_index == 0` and the ring Builder. An expansion
+Builder standing beside a Core losing HP walks past it.
+
+`constants.py` even names the alternative: *"vidar_r3 is vidar plus exactly this
+change -- every non-attacker Builder mends on any Core damage -- and it is the
+hardest matchup on the ladder at 0.512."*
+
+So I made every non-attacker within the leash mend. **864 strictly paired cells,
+four opponents, both live-placement map sets:**
+
+| | rate | Core HP at end | harvesters |
+|---|---|---|---|
+| `nott` | **0.7037** | 288 | **2.68** |
+| every non-attacker mends | 0.6655 | 287 | **2.42** |
+
+**-0.0382 (-1.71 sd), McNemar z = -3.39, and negative against all four
+opponents.** The mechanism is in the metrics: Harvesters fall from 2.68 to 2.42
+and the Core ends on the same HP, so the extra mending bought nothing and the
+mining it displaced was real.
+
+And the codebase had already guarded this, ten lines above the gate I widened:
+
+> *"A light alarm must not pin the only miner before it has connected a single
+> Harvester. Watched on sweden seat A: chip damage held alarm at 1 from round
+> ~75 to the end, the miner healed 4 HP a round for 240 rounds with its
+> Harvester finished but unbelted three tiles away, and the team mined 0 all
+> game."*
+
+That is the same failure my numbers show, written down before I arrived. The
+role restriction is not an oversight, it is the fix for a measured disaster.
+
+So healing is the largest thing this bot does and it is **saturated**: removing
+it costs 18.8pp, widening it costs 3.8. Both directions are worse than where it
+sits, which is what a tuned parameter looks like.
+
+That closes the last behaviour the ablation map flagged as worth examining.
+Nothing queued. `nott@0ac1faa` remains the only surviving change, still in the
+farm queue. Team 21/115, rating 1672.
