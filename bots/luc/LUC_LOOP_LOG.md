@@ -8181,3 +8181,56 @@ mix-up, caught this time before it was written up.
 Honest size: +3 percentage points, and on our best base alone it is +0.78 sd,
 under the usual bar. The two-base replication is what carries it, and the
 ladder will settle it. Team 20/113, rating 1710.
+
+## Iteration 170 — mapping the one axis that worked, and bounding it
+
+Two things, both bounding rather than opening.
+
+**The ammunition curve.** Iteration 169 found `AMMO_TARGET` 120 -> 60 worth
++1.85 sd across two bases. Swept it finely on `snotra_h` against `vanguard`,
+300 games a cell, `COMBAT_AMMO_FLOOR` at half the target throughout:
+
+| `AMMO_TARGET` | rate | vs shipped |
+|---|---|---|
+| 45 | **0.7100** | +0.007 (+0.2 sd) |
+| 60 (`nott`) | **0.7100** | +0.007 (+0.2 sd) |
+| 75 | 0.7033 | 0.000 |
+| **120** (shipped) | 0.7033 | — |
+| 30 | 0.6933 | -0.010 |
+| 20 | 0.6833 | -0.020 |
+| 90 | 0.6733 | -0.030 (-0.8 sd) |
+
+Flat-topped at **45-60** and falling off on both sides. `nott` sits at the
+optimum, and there is nothing further to win here — the axis is mapped and
+closed. The shipped 120 was well past the top, which is what the live replays
+had suggested.
+
+**The near-misses do not come alive.** Since changing instrument turned this
+same change from "flat" (+0.3 sd on `undertow`) into +1.9 sd, the obvious worry
+was that other nulls were also instrument artifacts. Re-tested the three most
+promising on `nott` against `vanguard`:
+
+| change | rate | vs `nott` | games changed |
+|---|---|---|---|
+| `BOT_STANDOFF` on | 0.7167 | +0.007 (+0.2 sd) | 167 |
+| **`nott`** | **0.7100** | — | — |
+| `AVOID_THREAT_FOR_LOGISTICS` on | 0.7067 | -0.003 | 16 |
+| four claim slots | 0.7033 | -0.007 | 98 |
+
+All still null. So the instrument rescued **one specific result**, not the
+back catalogue — the earlier nulls were mostly real, and `vanguard`'s value is
+that it can resolve a three-point effect that `undertow` could not, rather than
+that it overturns things wholesale.
+
+Neither result produces a new candidate. `nott@0ac1faa:12` remains queued and
+is still our best local build.
+
+Queue status: `nott` and `ran` are both still absent from the feed, so the farm
+has not reached them. `steward_hardened_reinforced@f1f2bda` has grown to 240
+shared games and now reads **0.621 against `snotra_h`'s 0.667** on eleven
+shared opponents — the two have converged as `f1f2bda`'s sample grew, which is
+what the sub-25-game inflation note in
+`project_live_estimate_regression` predicts. `snotra_h` remains our best live
+record, which is why `nott` was built on it.
+
+Team 18/113, rating 1722 — up 38 points from the session low of 1684.
