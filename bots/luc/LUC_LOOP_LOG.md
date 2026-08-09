@@ -9208,3 +9208,53 @@ sits, which is what a tuned parameter looks like.
 That closes the last behaviour the ablation map flagged as worth examining.
 Nothing queued. `nott@0ac1faa` remains the only surviving change, still in the
 farm queue. Team 21/115, rating 1672.
+
+## Iteration 190 — stacking the near-misses makes it worse, not better
+
+Every axis is closed individually, so the last systematic idea was that several
+real-but-unresolvable gains might accumulate. Six changes that each read
+positive and none significant:
+
+- `BOT_STANDOFF` on (+0.2 sd)
+- `ATTACK_TURRET_CAP` 5 -> 10 (+0.1 sd)
+- `HARVESTER_FINISH_STEPS` 2 -> 4 (+0.1 sd)
+- `REPLACEMENT_BANK_THRESHOLD` 260 -> 130 (+0.1 sd)
+- `_repair_network` removed (+0.4 sd on three opponents, +0.09 on seven)
+- `_build_siege_sentinel` removed (+0.2 sd)
+
+Stacked on `nott`, 864 strictly paired cells, four opponents, both
+live-placement map sets:
+
+| | rate |
+|---|---|
+| `nott` | **0.7037** |
+| stack of six | 0.6597 |
+
+**-0.0440 (-1.96 sd), McNemar z = -3.02, and worse against every one of the four
+opponents** — jonbot -0.037, spar_sentinel -0.051, undertow -0.051, vanguard
+-0.037. 158 of 864 games changed, so it is not a question of the changes failing
+to fire.
+
+That is the cleanest possible answer to "maybe the small positives are real".
+They are not. Six readings between +0.1 and +0.4 sd were noise around zero or
+slightly below it, and combining them recovers the negative side of each. It
+also retroactively justifies not queueing any of them individually.
+
+**Where this leaves the loop.** Across roughly thirty-five candidates this
+session, exactly one change has survived every independent test: `nott`, the
+opening ammunition cut from 120 to 60, worth about a point across four
+independently built map sets and two bases. It is queued and still has not
+reached the farm. Everything else is committed with its measurement and a
+reason it was not queued, plus one build (`sunna`) queued and withdrawn on my
+own re-test.
+
+The bot is a local optimum in every direction I can measure: fourteen flags on
+two bases in two map regimes, the role table both ways, the siege from four
+sides, economy expansion, logistics, turret spend, retirement, the opening
+ledger, the round-1000 tiebreak, four composition differences against the top of
+the ladder, nine behaviours ablated, and now the stack. Seventeen constants and
+two whole subsystems are provably dead code.
+
+Live: rating recovered to **1685**, rank 21/115. `snotra_h` 0.558, `ran` 0.552,
+`shr@f1f2bda` 0.509 on shared opponents — still all within each other's
+intervals.
