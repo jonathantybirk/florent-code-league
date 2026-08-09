@@ -15,9 +15,14 @@ The economics are why attrition cannot close it:
 
 | action | cost per point |
 |---|---|
-| Builder attack | 2 Ti -> 2 dmg = **1.00 Ti/dmg** |
-| Gunner / Sentinel | ammo 1:1 -> **~0.57 Ti/dmg** |
+| Gunner fire | 4 ammo -> 7 dmg = **0.57 Ti/dmg** |
+| Sentinel fire | 10 ammo -> 18 dmg = **0.56 Ti/dmg** |
 | Builder heal | 1 Ti -> 4 HP = **0.25 Ti/HP** |
+
+(This table originally listed a 1.00 Ti/dmg Builder melee on the Core. There is
+no such attack in this bot -- both `ct.fire` sites in `builder.py` hit enemy
+conveyors and Harvesters, and all Core damage is turret fire on ammunition. The
+race is 2.3x against us, not 4x.)
 
 `constants.py` already knew the shape of the answer. `SIEGE_SENTINEL_TARGET`
 was swept to 2, 3 and 4, all scoring 0.581 against a cap of one at 0.590, and

@@ -7381,12 +7381,20 @@ Against that, attrition is arithmetically hopeless:
 
 | action | cost per point |
 |---|---|
-| Builder attack | 2 Ti -> 2 dmg = 1.00 Ti/dmg |
-| Gunner / Sentinel | ammo 1:1 -> ~0.57 Ti/dmg |
+| Gunner fire | 4 ammo -> 7 dmg = 0.57 Ti/dmg |
+| Sentinel fire | 10 ammo -> 18 dmg = 0.56 Ti/dmg |
 | Builder heal | 1 Ti -> 4 HP = **0.25 Ti/HP** |
 
-Healing is four times cheaper than the attack we grind with. We are not losing
-these games on skill, we are losing them on exchange rate.
+Healing is 2.3x cheaper than the fire we grind with. We are not losing these
+games on skill, we are losing them on exchange rate.
+
+**Corrected in iteration 158.** This table first read "Builder attack, 2 Ti ->
+2 dmg = 1.00 Ti/dmg", on the assumption that the attacker chips the enemy Core
+by hand. It does not: both `ct.fire` sites in `builder.py` target enemy
+conveyors and Harvesters, and every point of Core damage this bot deals comes
+from turret fire on ammunition. The healing race and the 1230 HP are unchanged,
+but the ratio is 2.3x rather than 4x, and the lever is ammunition and turret
+uptime rather than anything a Builder does with its hands.
 
 `constants.py` had already been here. `SIEGE_SENTINEL_TARGET` was swept to 2, 3
 and 4 — all 0.581 against a cap of one at 0.590 — with the conclusion *"the
@@ -7425,3 +7433,69 @@ right to check; it does not have to be paid twice.
 Nothing beat `snotra_h`, so nothing was queued. Team 20/113, rating 1694 — down
 6 points while the farm works through the weak queue (`lofn`, `hlin`, `nanna`,
 `mani`), all of which carry `RING_AFTER_ECONOMY`.
+
+## Iteration 158 — a correction, and the siege line closes
+
+**First, a correction to iteration 157.** I wrote that a Builder attack costs
+1.00 Ti per point of damage and that this is "the attack we grind with". There
+is no such attack in this bot. Both `ct.fire` sites in `builder.py` target
+enemy conveyors and Harvesters — economy harassment — and every point of Core
+damage we deal comes from turret fire on ammunition. The healing race and the
+1230 HP are unchanged, but the exchange rate is **2.3x against us, not 4x**,
+and the lever is ammunition and turret uptime rather than anything a Builder
+does by hand. The log and `tyr`'s README are both corrected in place.
+
+`eir` follows the corrected mechanism: a Sentinel prefers a Builder over the
+Core — *"shooting a Core past a mender is 10 ammunition a shot spent to lose
+slowly, and shooting the mender ends it"* — but the rule is gated at `r^2 <=
+20` while a Sentinel **reaches 32**, and a siege Sentinel is deliberately
+seated at the far end of that reach. So the mender on the Core sits outside the
+radius and the Sentinel shoots the Core instead. `frigg` had already found this
+in live replays (two games against Pivot dealing **2828 and 4123 damage**
+without killing a 500-HP Core, both lost on the round-1000 tiebreak), but
+`frigg` sits on the `lofn` lineage and carries both `RING_AFTER_ECONOMY` and
+`saga`'s null role table. `eir` is the constant alone on `snotra_h`.
+
+| vs | `snotra_h` | `eir` | |
+|---|---|---|---|
+| `spar_sentinel` | 0.4300 | 0.4267 | -0.003 (-0.1 sd) |
+| `undertow` | 0.6000 | 0.6000 | 0.000 |
+
+Level, and the siege diagnostics do not move either (Core damage 1358 -> 1347,
+their Core HP 218 -> 216).
+
+**Why a correct change measures nothing**, split by siege Sentinels seated:
+
+| seated | win rate | games |
+|---|---|---|
+| 0 | 0.424 +-0.045 | **458** |
+| 1 | 0.458 +-0.090 | 118 |
+| 2 | 0.455 +-0.208 | 22 |
+
+**76% of games seat no siege Sentinel at all.** In three games out of four
+there is no turret for the radius to govern, and where one exists it is worth
+about +3.4pp against a +-9pp interval.
+
+So the siege line is closed from all three sides:
+
+- **permission** — `SIEGE_SENTINEL_TARGET` swept to 2, 3, 4: all 0.581 against
+  0.590 at one;
+- **delivery** — `tyr`'s second attacker: **-1.3 sd**, and it seated *fewer*
+  Sentinels (0.28 -> 0.16) because each Builder levies +20% on every later
+  price;
+- **targeting** — `eir`: inert, because the turret is usually not there.
+
+That is the third build in a row (`bragi`, `eir`) that is a *correct* change to
+a path which almost never runs. The pattern across this whole session is now
+hard to miss: this bot's mechanisms are individually sound and gated so tightly
+that most of them are dead code in most games. Fourteen flags, both directions
+of the role table, and three faces of the siege all measure inside noise for
+the same underlying reason.
+
+Nothing beat `snotra_h`, so nothing was queued. Team 19/113, rating 1695.
+
+One process note: I lost my wait loop to the tool's 10-minute ceiling again
+(`--timeout 900000` is clamped to 600000). The suites themselves survived
+because they were backgrounded in a subshell — which is the fix I should have
+been using since iteration 152. Poll a finished log; never wait in the
+foreground.
