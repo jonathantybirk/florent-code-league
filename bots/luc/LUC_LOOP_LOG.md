@@ -6387,3 +6387,43 @@ already queued directly behind `lofn`, and the pair will be read on shared
 opponents. That is the strongest position the session has reached, and it
 required finding an opponent registry I had walked past for a hundred
 iterations.
+
+## Iteration 133 — the full external field cannot separate them either
+
+Found the rest of the registry: Jon has eight current bots, **Elias** has
+`autistimusprime` and `gobbleglitch` on `origin/elias_dev`, **Viktor** has
+`green`. Eleven external opponents, none of them ours. Ran the two leaders
+against all of them, official maps, 462 games each:
+
+| opponent | `hlin` | `lofn` |
+|---|---|---|
+| casemate | 42/42 1.00 | 42/42 1.00 |
+| green | 42/42 1.00 | 42/42 1.00 |
+| mistral / mistral_fast | 41/42 0.98 | 41/42 0.98 |
+| tempest_jon / tempest_fast | 41/42 0.98 | 41/42 0.98 |
+| gobbleglitch | 40/42 0.95 | 40/42 0.95 |
+| autistimusprime | 39/42 0.93 | 39/42 0.93 |
+| jonbot | 39/42 0.93 | 39/42 0.93 |
+| vanguard | **37/42 0.88** | 36/42 0.86 |
+| undertow | 32/42 0.76 | 32/42 0.76 |
+| **overall** | **435/462 = 0.9416 ±0.0214** | **434/462 = 0.9394 ±0.0218** |
+
+**Identical to one game**, and that game is against `vanguard`. Nine of eleven
+matchups are exactly equal. The claim-leak fix that separates `hlin` from `lofn`
+changes nothing against anybody outside our own lineage.
+
+**And both beat every other team's best bot on this pool** — 0.94 overall, worst
+matchup 0.76. That is worth stating plainly because it is the context for
+everything else tonight: against Jon, Elias and Viktor we win nine games in ten,
+and on the actual ladder we are **rank 20 of 113 at 1687**, losing to Pivot 0.25
+and O(1) 0.31.
+
+**The local instrument is saturated.** Our builds beat every opponent available
+to it by margins so wide that differences between our builds vanish — 0.9416
+against 0.9394 is one game in 462. Whatever separates rank 20 from rank 1 is
+not visible to any opponent I can run locally, because we beat all of them.
+
+That is the cleanest statement of the session's limit I have managed: **not that
+my maps are wrong, or my samples too small, but that the entire local opponent
+set is too weak to rank builds that are all far above it.** The ladder's 112
+teams include several we lose to. Nothing here does.
