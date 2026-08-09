@@ -1,0 +1,12 @@
+{
+  "challengers": [
+    "hodr_bank@cfed588"
+  ],
+  "heads": {
+    "elias_dev": "39e312adaf80d5a292c8c77811df4aa83449dcee",
+    "viktor": "b11b57df5668c49ac26de385b402464abdd16e94",
+    "x/jon": "6a2af02a9d07ed943bf730e686b34e71c633b3c5",
+    "x/luc": "cfed5881c243775d2df4992cc4a0a6b0cb4ad59e"
+  },
+  "submitted_at": "2026-08-09T10:48:18+00:00"
+}
