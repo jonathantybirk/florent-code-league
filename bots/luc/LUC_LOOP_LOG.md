@@ -8707,3 +8707,58 @@ Where the loop stands after the corrections of the last two iterations:
   constant.
 
 Team 21/113, rating 1685. `nott@0ac1faa` and `ran@0eca95f` remain queued.
+
+## Iteration 180 — the most lopsided ending in the data, and a fix that only half works
+
+Iteration 179 left the long game as the open question, so I asked how those
+games actually end. Over 21,400 recorded games:
+
+| ending | share of 300+ round games | our win rate |
+|---|---|---|
+| core_destroyed | 63.7% | 0.535 |
+| titanium_collected | 26.4% | 0.652 |
+| **titanium_stored** | **7.3%** | **0.116** |
+| harvesters | 1.3% | 0.556 |
+| coinflip | 1.2% | 0.364 |
+
+**We lose 176 of 199 games decided on titanium stored.** Every one of them ends
+at exactly round 1000 with **both sides having collected zero titanium** — no
+Harvester ever delivered, so the tiebreak falls past "collected" to the bank.
+There we hold a median of **16 against their 68**. We spend the opening 500 on
+turrets and ammunition; they sit on it.
+
+That is the most lopsided ending in the whole record, and it is purely
+mechanical — nothing about play, just where the titanium went.
+
+`hodr_bank` stops ammunition conversion and turret buying past round 880:
+
+| build | bank at r1000 | `titanium_stored` won | on 58 stalemate maps |
+|---|---|---|---|
+| `nott` | 18 | 2 / 56 | — |
+| ammunition only, from 950 | 42 | 6 / 56 | +0.4 sd, z=+1.63 |
+| **`hodr_bank`** | 41 | 6 / 54 | **+0.6 sd, z=+2.12** |
+
+And it is provably confined: on `maps/livelike` + `maps/livelike2`, 648 paired
+cells, it is **identical in 646 of 648 games**, because only 3.2% of those
+games reach round 1000.
+
+**Not queued, for three reasons I want on the record:**
+
+1. **The bank still loses** — 41 against 68. The fix captures the ammunition and
+   not the rest, so 48 of 54 of these games are still lost. The remaining late
+   spend is barriers, conveyors and Builder replacements.
+2. **The gain is 4 wins out of 56** (2 -> 6), binomial p about 0.14 on its own.
+3. **The 58 maps were selected for the mechanism** — a quarter or more of their
+   games reach round 1000. That is right for observing a rare code path and
+   wrong for deciding what to ship, which is what `sunna` cost two iterations
+   ago.
+
+On live-representative maps it does not beat `nott`, so it does not clear the
+bar. Committed with the diagnosis, which is the valuable part.
+
+Also worth recording: `hoard_floor`, the cautious version that only stops
+converting once ammunition is above the combat floor, was an **exact no-op** —
+identical bank, identical games. The floor is below where the pool sits, so the
+guard never fires. Half-measures in this area do nothing.
+
+Team 21/113, rating 1670. `nott@0ac1faa` and `ran@0eca95f` still queued.
