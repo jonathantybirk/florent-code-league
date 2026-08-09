@@ -9398,3 +9398,31 @@ regress — but it is uploading and playing, which is what was wanted.
 
 Twelve rounds are queued for it. That will be the first live test of the only
 change that survived this session.
+
+## Iteration 194 — the reserve that guards the ammunition change is also at its optimum
+
+`nott` halved what ammunition conversion takes, so the constant that decides how
+much titanium conversion may *not* touch is the natural follow-up:
+`MIN_TITANIUM_RESERVE`, which sets the floor in
+`construction_reserve = max(MIN_TITANIUM_RESERVE, harvester_cost, launcher_cost)`.
+
+Swept on the four-opponent panel, both live-placement map sets, 864 strictly
+paired cells:
+
+| reserve | rate | vs `nott` | games changed |
+|---|---|---|---|
+| **60 (shipped)** | **0.7674** | — | — |
+| 30 | 0.7650 | -0.0023 (-0.11 sd) | 10 |
+| 90 | 0.7639 | -0.0035 (-0.17 sd) | 11 |
+| 120 | 0.7593 | -0.0081 (-0.40 sd) | 23 |
+
+Monotonic away from the shipped value in the up direction and slightly negative
+in the down direction, so 60 is the peak. Consistent with `nott` itself sitting
+on a flat optimum between 45 and 60 for `AMMO_TARGET` — the opening
+titanium/ammunition split is tuned in both of the constants that control it.
+
+Live: `nott@0ac1faa` is uploading and playing now that the queue is unblocked.
+Still far too few games to read.
+
+That is the axis that produced the session's only surviving change, now closed
+from the second side as well.
