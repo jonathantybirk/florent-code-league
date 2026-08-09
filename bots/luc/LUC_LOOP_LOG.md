@@ -7499,3 +7499,68 @@ One process note: I lost my wait loop to the tool's 10-minute ceiling again
 because they were backgrounded in a subshell — which is the fix I should have
 been using since iteration 152. Poll a finished log; never wait in the
 foreground.
+
+## Iteration 159 — I was measuring on the wrong maps
+
+Before building another candidate I checked the instrument, by comparing what
+this bot *builds* live against what it builds locally. Same bot, same game
+lengths:
+
+| | gunners | harvesters | conveyors | turns |
+|---|---|---|---|---|
+| live vs 0033 | 2.8 | **2.2** | 23.8 | 336 |
+| live vs Besvikomat | 9.8 | **4.2** | 29.0 | 392 |
+| live vs Coreflood | 31.4 | **2.0** | 17.6 | 435 |
+| live vs O(1) | 7.6 | **2.4** | 12.2 | 300 |
+| **local, `offpool_long`** | 3.7 | **0.8** | **8.6** | 385 |
+
+A third to a fifth of the economy. The cause is terrain. Decoding every map
+with a reader built from `generate_maps.py`'s own encoder:
+
+| set | ore/1k | ore tiles |
+|---|---|---|
+| live ladder (replay grids) | **47.0** | 20.6 |
+| `maps/live` | 47.9 | 20.9 |
+| `maps/` root pool | 39.4 | 15.7 |
+| **`maps/offpool_long`** | **19.0** | **7.7** |
+
+**Iterations 156-158 were all measured on maps carrying 40% of the live ore
+density.** Every mechanism I tested costs titanium and I was testing them in a
+world with none. That is a straightforward instrument error and it is mine: I
+picked `offpool_long` for game length and never checked what else was different
+about it.
+
+Built `maps/orerich` — 150 maps selected from 9,000 draws to sit inside the
+live profile (46.1 ore/1k against 47.0, 12.0% wall against 11.9%, area 404
+against 439) — plus `tools/mapstat.py` to read `.map26` terrain, and re-ran
+every candidate.
+
+The economy lands in the live range: **2.4-3.0 Harvesters and 10.4-13.8
+conveyors**, against 0.8 and 8.6 before. And the bot is simply stronger on
+richer ground — `snotra_h` goes 0.4300 -> **0.4933** against `spar_sentinel`
+and 0.6000 -> **0.6767** against `undertow`.
+
+But the candidates did not come alive. They got worse:
+
+| | ore-poor | ore-realistic |
+|---|---|---|
+| `eir` | -0.1 sd | **-0.1 sd** |
+| `saga` | -0.2 sd (read as null) | **-1.2 / -1.4 sd** |
+| `tyr` | -0.8 / -1.3 sd | **-3.1 / -1.3 sd** |
+
+So the tempting hypothesis — that everything measured null because the test
+world was too poor for the mechanisms to fire — is **refuted by its own fix**.
+Given a live-realistic economy the extra-Builder builds are clearly negative.
+`saga`'s fourth Builder is a genuine regression that the poor maps were hiding
+at zero, which means iteration 156's "Builder count is a correlate, not a
+cause" was too generous: on realistic ground it is actively wrong to add one.
+
+Two things worth carrying forward:
+
+- **Check what a map set is, not just how long its games run.** `offpool_long`
+  was selected for length and silently selected for poverty.
+- The re-run cost one iteration and changed one conclusion's sign. Every
+  earlier null in iterations 156-158 should be read as "null on poor ground",
+  and anything that matters should be re-measured on `maps/orerich`.
+
+Nothing beat `snotra_h`, so nothing was queued. Team 20/113, rating 1685.
