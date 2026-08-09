@@ -9477,3 +9477,37 @@ every previous time, and by the standard set in iteration 193 it needs a wide
 opponent panel before it means anything. Not queued.
 
 Live: rank 21/116, rating 1680. `nott` is playing.
+
+## Iteration 196 — the revived constant is a cliff, not a curve
+
+Iteration 195 recovered `TURRET_QUIET_ROUNDS` from the dead-code pile: on
+`spar_wall` it changes 94 of 216 games at 20 and reads -1.35 sd, where every
+short-game fixture had it identical in all 300. So the obvious next question is
+whether the shipped 60 is optimal or merely better than 20.
+
+Swept against `spar_wall`, 216 paired cells, median 136 rounds:
+
+| setting | rate | vs `nott` | games changed |
+|---|---|---|---|
+| 20 (iteration 195) | 0.5093 | **-1.35 sd** | **94** |
+| 40 | 0.5787 | +0.10 sd | **1** |
+| **60 (shipped)** | **0.5741** | — | — |
+| 90 | 0.5741 | 0.000 | **0** |
+| 150 | 0.5741 | 0.000 | **0** |
+| never retire | 0.5694 | -0.10 sd | **1** |
+
+**It is a one-sided cliff.** Everything from 40 upward is the same bot —
+turrets essentially never sit idle for forty consecutive rounds, so the rule
+never triggers. Only going below that fires it, and firing it is harmful.
+
+So `TURRET_QUIET_ROUNDS` is a safety threshold rather than a tuning knob, and
+60 sits comfortably on the safe side of the only edge that exists. There is
+nothing to win here, which is worth knowing precisely because iteration 195
+made it look like a live lever: a constant that *can* move games is not the
+same as a constant that can move them in a useful direction.
+
+That is the third shape this session's dead constants have taken — never
+executes (seventeen of them), executes but is subsumed
+(`SEAT_B_PREFERS_RANGE`), and now executes only past a cliff on the wrong side.
+
+Live: `nott@0ac1faa` is accumulating games. Rank 21/116, rating 1692.
