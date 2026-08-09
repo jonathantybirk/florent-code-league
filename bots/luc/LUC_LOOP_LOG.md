@@ -6427,3 +6427,39 @@ That is the cleanest statement of the session's limit I have managed: **not that
 my maps are wrong, or my samples too small, but that the entire local opponent
 set is too weak to rank builds that are all far above it.** The ladder's 112
 teams include several we lose to. Nothing here does.
+
+## Iteration 134 — the discriminating opponent agrees: they are the same bot
+
+`undertow` is the only external opponent with room to separate our builds — we
+beat the other ten by 0.88 to 1.00, but only 0.76 against it. Ran the leaders
+against it on 300 generated maps, 600 games each:
+
+| build | vs `undertow` | |
+|---|---|---|
+| `vili` | 96/147 | 0.6531 ±0.0769 |
+| `syn` | 361/600 | 0.6017 ±0.0392 |
+| `lofn` | 360/600 | 0.6000 ±0.0392 |
+| `hlin` | 360/600 | 0.6000 ±0.0392 |
+
+**One game separates `syn`, `lofn` and `hlin` across 1,800 games.** `vili` reads
+higher on a quarter of the sample and its interval covers all three.
+
+That is now the third independent instrument to call them identical: the full
+external field (0.9416 / 0.9394, one game in 462), the current live flagship
+on-pool (0.690 / 0.643, 42 games, overlapping), and the one opponent that can
+actually pressure us (0.6000 / 0.6000 / 0.6017).
+
+**So the economy line's internal differences are not small — they are absent.**
+`freyja`, `lofn`, `hlin`, `syn` and `gefn` differ in claim slots, miner count,
+leak handling, done-masks and claim expiry; five distinct mechanisms, each
+verified to fire by instrumentation; and against every opponent I can field they
+produce the same win rate to within one game in six hundred.
+
+The mechanisms are real. What they change is real. **What they are worth,
+against anything I can measure, is zero** — and I have now established that four
+ways: against our own bots, against three other teams' bots, against the
+discriminating one, and against the live flagship.
+
+The queue remains the only open question, and it is now a narrow one: not "which
+of these is best" — nothing local can tell them apart — but "does the ladder see
+a difference my instruments cannot". `lofn` and `hlin` are next and next-but-one.
