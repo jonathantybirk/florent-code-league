@@ -7564,3 +7564,79 @@ Two things worth carrying forward:
   and anything that matters should be re-measured on `maps/orerich`.
 
 Nothing beat `snotra_h`, so nothing was queued. Team 20/113, rating 1685.
+
+## Iteration 160 — the flag sweep on the right maps, and three flags that are no-ops
+
+Re-ran the disabled-flag sweep on `maps/orerich` — all twelve switchable-off
+flags turned on one at a time, 300 games each against `spar_sentinel`, baseline
+in the same run.
+
+| flag ON | rate | vs shipped |
+|---|---|---|
+| `BOT_STANDOFF` | 0.5100 | +0.017 (+0.4 sd) |
+| `AVOID_THREAT_FOR_LOGISTICS` | 0.5100 | +0.017 (+0.4 sd) |
+| `SEAT_B_SKIPS_DUEL` | 0.4933 | 0.000 |
+| `SEAT_B_PREFERS_RANGE` | 0.4933 | 0.000 |
+| `SEAT_B_MENDS_HARDER` | 0.4933 | 0.000 |
+| `SEAT_AWARE_DEFENCE` | 0.4933 | 0.000 |
+| **shipped `snotra_h`** | **0.4933** | — |
+| `LATE_BUILDERS_MINE` | 0.4700 | -0.023 |
+| `SEAT_B_YIELDS_ORE` | 0.4433 | -0.050 |
+| `SEAL_EVERY_DOCTRINE` | 0.4400 | -0.053 |
+| `FERRY_ON_INFERENCE` | 0.4367 | -0.057 |
+| `TRAP_ENEMY_BUILDERS` | 0.4267 | -0.067 |
+| `PAD_FIRST_ORDER` | 0.3767 | **-0.117 (-2.9 sd)** |
+
+Still nothing improves, now on maps that match the live economy. `PAD_FIRST_ORDER`
+is confirmed harmful, which agrees with the "MEASURED AND OFF" note it already
+carries.
+
+**But four of those rows are not measurements at all.** Comparing outcomes
+cell by cell — same map, same seat, same winner, same round count — against
+shipped:
+
+| flag | games identical to shipped |
+|---|---|
+| `SEAT_AWARE_DEFENCE` | **300/300** |
+| `SEAT_B_MENDS_HARDER` | **300/300** |
+| `SEAT_B_PREFERS_RANGE` | **300/300** |
+| `SEAT_B_SKIPS_DUEL` | 298/300 |
+| `PAD_FIRST_ORDER` | 3/300 |
+
+Three seat-B flags are **pure no-ops**: turning them on changes not one game.
+In iteration 155 I recorded two of these as "0.000, no improvement found" and
+counted them toward "fourteen flags measured". They were never measured. That
+distinction matters, because a mechanism reading 0.0 sd wants tuning and a
+mechanism that never executes wants its gate fixed, and I have spent several
+iterations conflating the two.
+
+`SEAT_B_YIELDS_ORE` does fire (168/300 identical, -1.2 sd), so `p.seat_b`
+itself works — these three are gated on something else that never holds.
+
+Chased the obvious suspect and it was wrong. `_turret_kind` requires
+`get_global_ammo() >= MIN_AMMO_FOR_SENTINEL`, which is **40** against
+`MIN_AMMO_FOR_GUNNER`'s 20, and the comment defending it calls a Sentinel
+"2.78x worse per titanium... a fallback, never the first choice" — the 2.3.3
+table, which the 2.3.4 patch inverted. A stale gate strangling the whole
+Sentinel program was a good story. It is not true:
+
+| `MIN_AMMO_FOR_SENTINEL` | rate | Sentinels/game | games changed |
+|---|---|---|---|
+| 40 (shipped) | 0.4933 | 0.32 | — |
+| 30 | 0.4933 | 0.32 | 0 |
+| 20 | 0.4933 | 0.32 | 1 |
+| 10 | 0.4933 | 0.32 | 1 |
+
+Dropping the bar to a single shot's worth changes **one game in three
+hundred**. The gate never binds; Sentinel count is limited by seat
+availability, not by the ammunition bar. That is the fourth independent side
+from which the Sentinel line is now closed — permission, delivery, targeting,
+and now affordability.
+
+Wrote `tools/suite_compare.py`, which prints rate, composition and per-game
+identity together from any suite run dir, so "did this even run" stops being
+something I have to remember to ask. It is the check that would have caught
+`bragi`'s doctrine gate, `eir`'s missing Sentinels and these three no-ops
+immediately rather than three iterations apart.
+
+Nothing beat `snotra_h`; nothing queued. Team 20/113, rating 1696.
