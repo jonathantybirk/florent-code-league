@@ -8068,3 +8068,57 @@ constant sweep.
 
 Nothing beat the base, so nothing new was built. Queued
 `steward_hardened_reinforced@f1f2bda:12`. Team 18/113, rating 1699.
+
+## Iteration 168 — screened every opponent for a better instrument; found one, but not the one I wanted
+
+Acted on iteration 167's recommendation: find a sparring partner that gives
+long, even games. Screened `vidarr@bbfaa9c` against all twelve external bots in
+the registry, 120 games each.
+
+| opponent | rate | median rounds | past 200 |
+|---|---|---|---|
+| **`vanguard`** | **0.575** | 94 | 11% |
+| `undertow` | 0.658 | 105 | 10% |
+| `autistimusprime` | 0.842 | 81 | 7% |
+| `tempest_jon` | 0.883 | 78 | 2% |
+| `jonbot` | 0.908 | 107 | 18% |
+| `gobbleglitch` | 0.925 | 86 | 11% |
+| `mistral` / `vg_v7` / `casemate` | 0.96-0.99 | 69-122 | 2-18% |
+| `turtle` / `riptide` / `green` | **1.000** | 67-128 | 2-21% |
+
+**One real find: `vanguard` is a better-balanced instrument than `undertow`** —
+0.575 against 0.658. Everything else in the external zoo we beat 84-100% of the
+time, which is no instrument at all. Worth using both from here.
+
+**But nothing gives long games**, and the next two experiments explain why.
+
+Our own builds produce dead-even matchups and *shorter* games than `vanguard`:
+`hoenir` 0.500 at 92 rounds, `snotra_h` 0.483 at 90, `spar_sentinel` 0.508 at
+82. So balance does not produce length.
+
+So I built `spar_grind` — a fixture meant to survive rather than win: no
+attacker, eight home turrets escalating three times sooner, never retiring, four
+claim slots, no harassment. It is balanced (0.533 against its own parent) and
+just as short: **101 rounds median, 8% past 300**.
+
+Terrain is not the cause either. `maps/orerich` matches the live ladder on
+every dimension I can measure — ore 46.1/1k against 47.0, area 404 against 439,
+wall 12.0% against 11.9%, and Chebyshev Core-to-Core distance **median 12.0
+against 12.0**.
+
+**The resolution is that live game length is not uniform, and I had been
+comparing against its tail.** Decoded, our own live matches run **84 turns
+against Big O and 435 against Coreflood**. Local games at 82-105 rounds
+reproduce the Big O regime faithfully. What is missing is the *grinding*
+regime, and reaching it needs an opponent that both survives our attack and
+out-economies us — which is to say, an opponent stronger than anything we have.
+Removing `spar_grind`'s attacker made it passive, not durable.
+
+That reframes iteration 167's closing recommendation, which was mine and was
+too optimistic: a better sparring partner is not something I can build out of a
+weaker bot. The long-game questions stay unanswerable locally until the ladder
+answers them.
+
+Nothing beat any base, so nothing new was queued. `ran@0eca95f:10` and
+`steward_hardened_reinforced@f1f2bda:12` are both still pending. Team 20/113,
+rating 1699.
