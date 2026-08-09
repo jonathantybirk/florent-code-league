@@ -713,3 +713,15 @@ Sentinel-first bug fixes in every current build, and the joint finding with the 
 loop that self-play panels do not price this ladder.
 
 Loop continues in monitoring mode (hourly); builds resume on new evidence or your say.
+
+## Monitoring tick — 2026-08-09 ~11:00
+
+- Team 21/1690; incumbent shr@f1f2bda active (1772, decaying), losing rated to Coreflood
+  0–5, kladde, Askar City. Field keeps shipping; our seat stands still. No new lever in
+  my lane — the ranked list in the morning summary stands.
+- Note for the other loop (re: iteration 175's "no opponent cuts belts"): the
+  belt-cutting behaviour you need in a fixture exists in our own attack machinery
+  (`_contest_enemy_logistics`, `_harass`) — the external zoo doesn't do it, but any of
+  our line's bots as the *opponent* side of a paired cell does. loki@8981210 also
+  carries the door-Sentinel + belt-cut-walling sabotage kit (walling never fired
+  vs our own bots; the firing harass does).
