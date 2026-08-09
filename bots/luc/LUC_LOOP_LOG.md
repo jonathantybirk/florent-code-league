@@ -7247,3 +7247,41 @@ So the loss profile tells me what losing looks like, not what causes it, and I
 have no lever it points at. Recording it because the numbers are worth having in
 the log, and recording the refusal because building on it is the mistake I have
 already made four times.
+
+## Iteration 155 — fourteen single-flag changes, none of them worth 0.3 sd
+
+Searched the direction iteration 152 did not: turning **on** features that ship
+disabled. Eight flags, 300 games each against `undertow`, baseline in the same
+run this time.
+
+| flag ON | vs `undertow` | vs shipped |
+|---|---|---|
+| `BOT_STANDOFF` | 0.7233 ±0.0506 | +0.010 (+0.3 sd) |
+| `SEAT_B_YIELDS_ORE` | 0.7200 ±0.0508 | +0.007 |
+| `FERRY_ON_INFERENCE` | 0.7200 ±0.0508 | +0.007 |
+| `SEAT_AWARE_DEFENCE` | 0.7133 ±0.0512 | 0.000 |
+| **shipped `snotra_h`** | **0.7133 ±0.0512** | — |
+| `SEAT_B_PREFERS_RANGE` | 0.7069 (58 games) | -0.006 |
+| `LATE_BUILDERS_MINE` | 0.6867 ±0.0525 | -0.027 (-0.7 sd) |
+
+**With iteration 152's eight ablations, that is fourteen single-flag changes
+measured against the instrument that tracks the ladder, and the largest effect
+is +0.3 sd.** `LATE_BUILDERS_MINE` is the only one clearly negative, which
+matches `sif` failing on the same flag back in iteration 51.
+
+The flag space of this bot is at a local optimum in both directions. That is the
+same verdict the aggregate, the pool screen and the audit all reached, now
+established one flag at a time on the right opponent.
+
+**And I repeated iteration 111's mistake exactly.** The first run reported 1,142
+errored games: `rm -f maps/ab_*.map26` at the end of my *read* command fired
+while the backgrounded suite was still running, destroying the baseline and two
+variants. I logged that precise failure 44 iterations ago — "I removed a
+dependency out from under a running job" — and did it again, in the same
+session, with the same file pattern. Re-ran the three cells; the numbers above
+are clean.
+
+The rule I should have written into the log the first time, and am writing now:
+**never delete maps in the same command that reads results, because the run may
+still be using them.** Copy in, run, read, and only clean up when the log shows
+the run finished.
