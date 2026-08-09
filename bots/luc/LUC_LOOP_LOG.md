@@ -8553,3 +8553,64 @@ deposit expensive.
 
 Team 20/113, rating 1706. `nott@0ac1faa` and `ran@0eca95f` still pending on the
 farm.
+
+## Iteration 177 — the test maps had the ore in the wrong place, and that changes the answer
+
+Followed iteration 176's open question — find a round-0 detector for the
+distant-ore regime — and the answer turned out to be that no detector is
+needed, because **the live ladder is entirely in that regime**.
+
+**First, the detectors all fail.** Four candidates evaluated offline against
+the two regimes, best cut for each:
+
+| detector | fires on long-game sides | fires on `orerich` sides | separation |
+|---|---|---|---|
+| ore within 4 tiles <= 2 | 83% | 44% | +0.40 |
+| ore in vision <= 2 | 67% | 28% | +0.39 |
+| nearest ore (Chebyshev) > 2 | 80% | 42% | +0.38 |
+| nearest ore (walking) > 2 | 80% | 42% | +0.38 |
+
+None separates. **And adaptive versions fail too**: `LATE_BUILDERS_MINE` on
+with `ECON_BUILDER_ROUND` at 120, 60 and 40 score 0.673, 0.673 and 0.680 on
+`maps/longgame` against the second miner's 0.767. The metrics say why —
+`lbm40` spawns **5.83 Builders to the second-miner build's 4.60 and still gets
+fewer Harvesters**, 1.45 against 1.85. A Builder arriving on round 40 has less
+game left to mine and pays more cost scale for it. **The second miner is worth
+having from round 1 or not at all.**
+
+**Then the decisive measurement.** Decoded from 24 live map sides: the nearest
+ore a Core can see is a median of **4.0 tiles**, and **92% of sides have it
+beyond 2 tiles**. `maps/orerich` — which I built in iteration 159 and have used
+for every economy result since — is at median **2.0**, with only 42% beyond 2.
+
+So `maps/orerich` matches live on ore *density* (46.1 per 1000 against 47.0),
+area, wall fraction and Core-to-Core distance, and **misses on where the ore
+sits relative to the Core**, which is the axis this mechanism turns on. That is
+the third instrument defect this session, after ore density itself and the
+sibling bias of `spar_sentinel`.
+
+The effect is a clean dose-response in that distance:
+
+| map set | nearest ore | second miner |
+|---|---|---|
+| `maps/orerich` | 2 | **-1.2 sd** |
+| wider long set (48 maps) | ~2.5 | -0.3 sd |
+| `maps/livelike` (new, 39 maps) | 3 | +0.7 sd |
+| `maps/longgame` (15 maps) | 4 | **+2.2 sd**, McNemar z = +2.89 |
+| **live ladder** | **4** | — |
+
+Monotonic across four independent sets, with the mechanism moving alongside
+(Harvesters 1.23 -> 1.77 at the far end), and the ladder at the far end of the
+dose. That is a far better causal case than any single cell, and it says the
+unconditional second miner is right for the ladder even though it is wrong on
+the set I had been measuring on.
+
+**Queued `sunna@82553b1:12`** — `nott` plus the second opening miner — and
+committed `maps/livelike`, which matches live on placement as well as density.
+
+Risk stated plainly, because the case is not airtight: the +2.2 sd cell is
+fifteen maps selected for producing long games, and the live-placement set gives
+only +0.7 sd. If live behaves like `livelike` rather than `longgame` this is a
+small gain. The ladder settles it.
+
+Team 21/113, rating 1702.
