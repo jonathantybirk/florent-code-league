@@ -6929,3 +6929,41 @@ does not. Deleted.
 Four bases, one positive-but-noise, three mildly negative. That is a cleaner
 refutation of the change than any single measurement gave, and it is the twelfth
 mechanism tonight to land in the same place.
+
+## Iteration 147 — lofn is live, and snotra_h has nothing left to teach us
+
+**`lofn` fired round 372 at 03:38 as v60**, seven rounds to go — the build this
+whole queue was arranged around. One round of games is in. I am not reading 25
+games: that is iteration 107's error, and `freyja`'s first 25 would have
+misled too. The read happens at ~200.
+
+**Meanwhile, the next candidate, sought where the evidence points.** `snotra_h`
+is the best build we own by live record, so the question is what it has that the
+rest of the lineage lacks. Its two commits:
+
+- `snotra@34b0ce8` — "choose a deposit by what it costs to deliver, not how far
+  it is to walk"
+- `snotra_h@6951e03` — "the same distance defect, at the harass target site"
+
+Both are the same idea: real path distance instead of Chebyshev. Checked against
+our other lineage:
+
+| constant | `snotra_h` | `vili` | `lofn` |
+|---|---|---|---|
+| `HARASS_RERANK_CANDIDATES` | 4 | 4 | 4 |
+| `HARASS_TRUE_DISTANCE` | True | True | True |
+| `BELT_TILE_WEIGHT` | 3 | 3 | 3 |
+| `BELT_SCORE_CANDIDATES` | 4 | 4 | 4 |
+
+**Identical.** The two lineages converged on both fixes before tonight began, so
+there is nothing to port. Whatever advantage `snotra_h` has live — 0.600 against
+`vili`'s 0.491, intervals overlapping — is not in any constant that differs
+between them.
+
+That closes the last direction I had for finding a candidate from evidence
+rather than from guessing. The remaining differences between these two bots are
+everything the `steward_hardened_reinforced` line added after they diverged, and
+tonight has measured each of those additions individually at zero.
+
+No build this iteration: there was a candidate to look for, I looked, and the
+thing I would have ported is already there. `lofn` reports in ~75 minutes.
