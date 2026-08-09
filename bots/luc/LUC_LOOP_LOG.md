@@ -6463,3 +6463,48 @@ discriminating one, and against the live flagship.
 The queue remains the only open question, and it is now a narrow one: not "which
 of these is best" — nothing local can tell them apart — but "does the ladder see
 a difference my instruments cannot". `lofn` and `hlin` are next and next-but-one.
+
+## Iteration 135 — the discriminating opponent separates them, and the economy line is behind
+
+`vili`'s sample against `undertow` was cut short at 147 games. Completed:
+
+| build | vs `undertow` | |
+|---|---|---|
+| **`vili`** | **494/760 = 0.6500 ±0.0339** | |
+| `syn` | 361/600 = 0.6017 ±0.0392 | |
+| `lofn` | 360/600 = 0.6000 ±0.0392 | |
+| `hlin` | 360/600 = 0.6000 ±0.0392 | |
+
+**`vili` - `hlin` = +5.0 points, +1.9 sd.** After three instruments found the
+economy line indistinguishable, the one opponent strong enough to pressure us
+separates it — and puts the *pre-economy* build ahead.
+
+`lofn` is `vili` plus four claim slots and a second opening miner. Against
+`undertow` those additions cost five points. Against everything weaker they cost
+nothing, because everything weaker loses regardless.
+
+**And live points the same way.** On ten shared opponents, `vili` scores 0.564
+against `bifrost` 0.475 and `hoenir` 0.467 — `vili` leads its own ancestors
+there too. `lofn` and `hlin` have not played yet, so the live half of this is
+about the line rather than the specific builds, but both available instruments
+now favour the simpler bot.
+
+**This is the first coherent signal of the session, and it is negative.** The
+pattern across every measurement that can resolve anything:
+
+- `steward@e55aab5`, the oldest and simplest, has the best live record (0.581);
+- `vili`, before the economy work, beats the economy builds against the only
+  opponent that can pressure us (+1.9 sd) and leads them live (+9 points);
+- `lofn`, `hlin`, `syn`, `gefn` — five mechanisms, all verified to fire —
+  are identical to each other and behind `vili`.
+
+The economy work did what it claimed mechanically and appears to have made the
+bot slightly worse where it matters. That is not what I concluded in iterations
+67 or 118, and the difference is that I now have an opponent capable of showing
+it.
+
+**Practical consequence:** `lofn` and `hlin` are queued and will play. On this
+evidence I would rather the queue tested `vili` further, but `vili` has already
+had its six rounds. If the live results come back level or worse for `lofn` and
+`hlin`, the honest conclusion will be that tonight's economy line should not
+ship at all.
