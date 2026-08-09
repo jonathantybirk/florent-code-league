@@ -8122,3 +8122,62 @@ answers them.
 Nothing beat any base, so nothing new was queued. `ran@0eca95f:10` and
 `steward_hardened_reinforced@f1f2bda:12` are both still pending. Team 20/113,
 rating 1699.
+
+## Iteration 169 — the new instrument pays off: a change that replicates
+
+Re-ranked our real candidates on `vanguard`, the better-balanced instrument
+found in iteration 168, over the full 150 ore-realistic maps.
+
+| build | vs `vanguard` | vs `vidarr` | live raw record |
+|---|---|---|---|
+| `snotra_h@6951e03` | **0.7033** | +2.4 sd | 0.673 |
+| `hoenir@1e5de25` | 0.6867 | +2.0 sd | — |
+| `shr@f1f2bda` | 0.6867 | +2.0 sd | **0.681** |
+| `am60` (vidarr + ammo 60/30) | 0.6833 | +1.9 sd | — |
+| `steward@e55aab5` | 0.6133 | +0.1 sd | 0.528 |
+| `vidarr@bbfaa9c` | 0.6100 | — | 0.613 |
+
+**`vanguard` agrees with the live raw records** — `snotra_h` and `f1f2bda` on
+top, `vidarr` and `e55aab5` at the bottom — which no earlier fixture managed.
+`spar_sentinel` had put `e55aab5` 6.7 sd last and `snotra_h` first purely by
+kinship. That makes `vanguard` the first local instrument with any demonstrated
+agreement with the ladder, and it should be the default from here.
+
+It immediately paid for itself. The opening-ammunition change measured +0.3 sd
+on `undertow` in iteration 166 and I filed it as flat. On `vanguard` the same
+build reads **+1.9 sd**. So I tested it properly, on both bases and all three
+opponents, 300 matched games a cell:
+
+| opponent | `snotra_h` -> `nott` | `vidarr` -> `am60` |
+|---|---|---|
+| `vanguard` | 0.7033 -> 0.7100 (+0.2 sd) | 0.6100 -> 0.6833 (+1.9 sd) |
+| `undertow` | 0.6767 -> 0.7133 (+1.0 sd) | 0.6533 -> 0.6633 (+0.3 sd) |
+| `spar_sentinel` | 0.4933 -> 0.5033 (+0.2 sd) | 0.4333 -> 0.4767 (+1.1 sd) |
+| **pooled, 900 a side** | 0.6244 -> 0.6422 (**+0.78 sd**) | 0.5656 -> 0.6078 (**+1.82 sd**) |
+
+**Both bases together: 1071/1800 -> 1125/1800, +0.030 (+1.85 sd), 6 of 6 cells
+favouring the change, sign test p = 0.016.** After roughly twenty mechanisms
+that measured null or negative, this is the first one that replicates on an
+unrelated base.
+
+The change itself is two constants in `core.py`: `AMMO_TARGET` 120 -> 60 and
+`COMBAT_AMMO_FLOOR` 80 -> 30. Live replays had shown we convert 147-195
+titanium to ammunition by round 30 against opponents' 28-140, because
+`AMMO_TARGET = 120` fires on round 0 — 120 of a 500-Ti bank locked into a
+resource only turrets spend, before any turret exists. The metric moves with
+it: the first Gunner arrives around round 23 instead of 26.
+
+**Queued `nott@0ac1faa:12`.** It is our best absolute local build, ahead of
+`snotra_h` on all three opponents, and `snotra_h` has the second-best live raw
+record.
+
+One trap avoided. My first pooled table showed the `snotra_h` base at **-0.1
+sd** — an artifact: its `vanguard` baseline spans two runs (600 games) against
+`nott`'s 300, so pooling weighted `vanguard` at 50% for one build and 33% for
+the other, across opponents scoring 0.70 and 0.49. Every figure above uses
+matched 300-game cells. That is the same shape as the iteration-141 baseline
+mix-up, caught this time before it was written up.
+
+Honest size: +3 percentage points, and on our best base alone it is +0.78 sd,
+under the usual bar. The two-base replication is what carries it, and the
+ladder will settle it. Team 20/113, rating 1710.
