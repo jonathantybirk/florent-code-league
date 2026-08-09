@@ -9258,3 +9258,38 @@ two whole subsystems are provably dead code.
 Live: rating recovered to **1685**, rank 21/115. `snotra_h` 0.558, `ran` 0.552,
 `shr@f1f2bda` 0.509 on shared opponents — still all within each other's
 intervals.
+
+## Iteration 191 — consolidated the session where the next session will actually look
+
+`CLAUDE.local.md` says to re-read `bots/luc/NOTES.md` and the recent `git log`
+rather than reasoning from memory, and `NOTES.md` had not been touched since
+this session began — everything since was in this log, which is now 9,300 lines
+and not what anyone reads first. Fixed that.
+
+Added a section to `NOTES.md` covering:
+
+- **the four measurement rules**, each of which cost a wrong conclusion here:
+  build map sets from live terrain *including ore placement* (`maps/orerich`
+  matches density, area, wall and Core separation and still misses); pair every
+  comparison and report McNemar; read the identity column and **bisect** rather
+  than guess when a change looks dead; never measure on a map set selected from
+  results;
+- **what shipped** — `nott`, and where its constants live (`core.py`, not
+  `constants.py`, which cost one void run);
+- **the ablation map** — this bot is three behaviours, healing is 18.8pp and
+  saturated in both directions, two subsystems are dead and two are mildly
+  positive to delete;
+- **the closed questions with their numbers** — turrets, barriers, the round-3
+  Launcher, economy expansion, the round-1000 tiebreak, and the -1.96 sd stack;
+- **the instruments** — `vanguard` over `spar_sentinel` and why, and the fact
+  that local games run 82-105 rounds against the ladder's 300-435 with no way
+  found to change it.
+
+That is the durable output. A future session that reads it will not repeat the
+`offpool_long` ore-density error, the unmatched-pooling headlines, the
+selected-map-set trap, or the twenty-odd sweeps of constants that never execute.
+
+Live: rank 21/115, rating 1685. `nott@0ac1faa` is still queued and still has not
+reached the farm; `ran@0eca95f` finished at 0.552 over 145 shared games against
+`snotra_h`'s 0.558, confirming the local prediction that its mender-radius
+change is null.
