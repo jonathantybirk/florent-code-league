@@ -6558,3 +6558,45 @@ verdict as the truth. What I can say is narrower: **against `undertow`
 specifically, the economy line is 13 points behind `hoenir`; against the ladder
 so far, `vili` leads its ancestors; and these two facts do not combine into a
 ranking.**
+
+## Iteration 137 — aggregating the disagreeing instruments
+
+Four instruments, four orderings, no principled reason to prefer one. The
+defensible synthesis is to average across them rather than pick. Percentile rank
+within each instrument (0.00 = best measured, 1.00 = worst), averaged:
+
+| build | instruments | mean pct-rank | per-instrument placings |
+|---|---|---|---|
+| `hlin` | 4 | **0.25** | 1/6, 1/9, **7/7**, 1/2 |
+| **`bifrost`** | 3 | **0.26** | **2/9, 2/7, 2/3** |
+| `nanna` | 1 | 0.25 | 3/9 |
+| `shr` | 1 | 0.33 | 3/7 |
+| `gefn` | 2 | 0.55 | 4/6, 5/9 |
+| `vili` | 4 | 0.57 | 5/6, 9/9, 4/7, **1/3** |
+| `hoenir` | 3 | 0.58 | 7/9, **1/7**, 3/3 |
+| `syn` | 3 | 0.68 | 6/6, 4/9, 5/7 |
+| `lofn` | 4 | 0.71 | 3/6, 6/9, 6/7, 2/2 |
+
+**`bifrost` is the only build that is never bad anywhere** — second on all three
+instruments that measured it, including the live one. `hlin` has a marginally
+better mean but ranges from first to dead last; `vili` and `hoenir` each place
+first somewhere and near-last somewhere else.
+
+**If forced to name one build on all available evidence, it is `bifrost`** — not
+because it is best anywhere, but because it is the only one that is good
+everywhere, and with four instruments disagreeing that is the property worth
+having. It is also the simplest change of the night: one line clearing a ferry
+slot the opening never released.
+
+**The irony is worth recording.** `bifrost` was the first build of the session,
+made before any of the methodology, and everything after it — the cost-scale
+ordering, the claim slots, the miners, the done-masks — measures worse or wildly
+inconsistent. Seventeen candidates and about forty measurement runs later, the
+best-supported recommendation is the change I made in the first hour.
+
+`lofn` and `hlin` are still queued and will still report; `bifrost` has already
+had its six rounds and sits at 0.475 on ten shared live opponents, second of
+three. None of this is settled. But if the live results come back ambiguous —
+which on tonight's evidence they will — the defensible position is that the
+session produced one small, robust fix and a great deal of measurement
+infrastructure, and that the rest should not ship.
