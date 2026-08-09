@@ -7052,3 +7052,40 @@ the ring hold, the claim slots, the second miner, the leak fix, the done-mask,
 the claim expiry, the replacement threshold — is worth between -8 and 0 points.
 The session's net contribution to the bot is negative, and its contribution to
 knowing that is the diagnostics.
+
+## Iteration 150 — the two best builds are level, so the ladder should stay as it is
+
+`hoenir` (0.7333 vs `undertow`) and `snotra_h` (0.7267, live now) were separated
+by 0.7 points against a third party, which decides nothing. Measured directly on
+400 maps:
+
+    hoenir vs snotra_h: 411/800 = 0.5138 +-0.0346  (+0.8 sd)
+
+**Level.** There is no case for changing the live bot.
+
+**The full picture at 150 iterations, on the instrument that discriminates:**
+
+| build | vs `undertow` | status |
+|---|---|---|
+| `hoenir` | 0.7333 | tonight's 2nd build |
+| **`snotra_h`** | **0.7267** | **live now, pre-dates tonight** |
+| `bifrost` | 0.7233 | tonight's 1st build |
+| `steward_hardened_reinforced` | 0.7106 | the starting point |
+| `verdandi` | 0.6700 | economy on hoenir |
+| `vili` | 0.6500 | ring hold: **-8.3** |
+| `syn`/`lofn`/`hlin` | 0.600 | economy on vili |
+
+The lineage improves for two builds — `bifrost` +1.3, `hoenir` +2.3 over the
+starting point — and then falls 13 points across the next five. Every one of
+those five was shipped or queued on an on-pool measurement that said the
+opposite.
+
+**What I would do with this, if the decision were mine:** leave `snotra_h` live,
+unqueue `lofn`, `hlin`, `nanna` and `mani` (all carry the ring-hold regression
+and measure 6-13 points down), and keep `bifrost` and `hoenir` as the only two
+builds of the night worth having — both already live-tested and both level with
+what is running.
+
+The queue will test them anyway over the next few hours, which is fine: it costs
+unrated games and will produce live numbers on builds I now expect to
+underperform. That is a prediction worth having on the record.
