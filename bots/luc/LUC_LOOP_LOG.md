@@ -7885,3 +7885,65 @@ other, n=36 and 26), so it supports nothing either way.
 
 Nothing queued this iteration. `ran@0eca95f:10` is still pending. Team 19/113,
 rating 1698.
+
+## Iteration 165 — the turret runaway is a symptom, not the disease
+
+Followed my own note from iteration 164: look at what the income is *spent on*.
+Base-cost titanium allocation per game, decoded from the live matches:
+
+| matchup | side | total | turrets | economy | turret share |
+|---|---|---|---|---|---|
+| Coreflood | them | 1094 | 374 | **426** | 34% |
+| Coreflood | **us** | 899 | **692** | **93** | **77%** |
+| O(1) | them | 458 | 170 | 98 | 37% |
+| O(1) | us | 348 | 170 | 85 | 49% |
+| Besvikomat | them | 1146 | 758 | 184 | 66% |
+| Besvikomat | us | 594 | 284 | 171 | 48% |
+
+Against Coreflood we put **77% of our titanium into turrets** and 93 into
+economy, while it put 34% into turrets and 426 into economy — and it built 31
+Gunners' worth of tax onto every later price. `nanna` had already found the
+ladder-wide version: Gunners per game are 8.5 for rank-1 sporks, 13.0 for
+Pivot, **22.8 for us**. And this bot has no spend-side turret cap at all —
+nothing anywhere reads `get_scale_percent()`.
+
+So I ported `nanna`'s `TURRET_SCALE_CEILING` onto `vidarr` (all eight build
+sites routed through gated helpers) and swept it. Note `nanna` itself was never
+clean: it sits on `hlin`, which carries `RING_AFTER_ECONOMY`.
+
+| ceiling | rate vs `undertow` | vs base | gunners | builders |
+|---|---|---|---|---|
+| none (`vidarr`) | 0.6533 | — | 2.28 | 4.70 |
+| 450 | 0.6467 | -0.2 sd | 2.26 | 4.85 |
+| 350 | 0.6433 | -0.3 sd | 2.11 | 5.28 |
+| 300 | 0.5967 | **-1.4 sd** | 1.83 | 6.56 |
+
+It does exactly what it says — fewer turrets, more Builders — and costs games.
+
+**The length split is what settles it.** The runaway is a long-game effect
+locally too (Gunners built: 1.94 under 100 rounds, 2.20 to 200, **4.06** past
+200), so the ceiling only bites in long games. And in long games it is strictly
+worse, monotonically with how tight it is:
+
+| ceiling | 0-100 | 100-200 | 200+ |
+|---|---|---|---|
+| 450 | 0.0 sd | 0.0 sd | -0.6 sd |
+| 350 | 0.0 sd | +0.1 sd | **-1.2 sd** |
+| 300 | -0.1 sd | -0.9 sd | **-2.6 sd** |
+
+That is the opposite of the prediction, and it reframes the live allocation
+table above. **We do not spend 77% on turrets because we are misallocating; we
+spend it because we are being attacked**, and the turrets are load-bearing.
+Cutting them off at any threshold loses the games they were holding. The
+Gunner count is a symptom of the position, not a self-inflicted tax.
+
+Unlike `idun`, where the short-game excuse was available and I had to test it
+down, here the mechanism does reproduce locally at reduced scale and the answer
+is unambiguous in the regime that matters. Not queued.
+
+That is four consecutive resource-reallocation mechanisms — `saga` (+1 miner),
+`tyr` (+1 attacker), `idun` (+2 claim slots), and now a turret ceiling in both
+directions — all firing, all null or negative. The allocation this bot already
+runs is a local optimum in every direction I can push it.
+
+`ran@0eca95f:10` still pending on the farm. Team 18/113, rating 1704.
