@@ -9071,3 +9071,49 @@ bisect — strip every precondition, keep the cap — answered it immediately an
 should have been the second step, not the fourth.
 
 Nothing to queue. Team 24/114, rating 1638.
+
+## Iteration 187 — the barrier gap is the turret gap again
+
+The last untested difference from iteration 185: the top of the ladder builds
+**2.2-3.3 barriers per 100 rounds against our 0.19-0.44**. Barriers are the one
+item where the affordability argument does not apply — 3 titanium and **+1%**
+scale, against a turret's 20-30 and +20%. If we are under-building anything for
+lack of money, it should not be this.
+
+Swept the two reserves that gate them, plus the doctrine flag:
+
+| change | rate | vs `nott` | barriers built | games changed |
+|---|---|---|---|---|
+| **`nott`** | **0.652** | — | **0.00** | — |
+| `SEAL_TITANIUM_RESERVE` 25 -> 5 | 0.650 | -0.1 sd | 0.00 | 1 |
+| `SIEGE_BARRIER_RESERVE` 12 -> 3 | 0.650 | -0.1 sd | 0.00 | 1 |
+| both | 0.647 | -0.1 sd | 0.00 | 2 |
+| `SEAL_EVERY_DOCTRINE` on + reserve 5 | 0.577 | **-2.2 sd** | 0.00 | 119 |
+
+**We build 0.00 barriers a game and nothing changes that.** Eight
+`ct.build_barrier` sites exist in `builder.py` and none of them run. The one
+change that does move games — turning on `SEAL_EVERY_DOCTRINE` — alters 119 of
+414 games, costs 2.2 standard deviations, and *still* produces no barriers, so
+whatever it does it does through some other route.
+
+So the barrier gap has the same shape as the turret gap closed last iteration:
+the difference against the top of the ladder is real and measured, the
+machinery to close it is present in the code, and it is gated on situations
+that do not arise in our games. Cheapness was not the obstacle, which rules out
+the one explanation that would have made this fixable by a reserve.
+
+That is the last of the four composition differences from iteration 185. All
+four are now measured:
+
+| difference | verdict |
+|---|---|
+| they build 4-5x our turrets | not reachable — caps dead, field path -5.3 sd, fortification -18pp |
+| they build 10x our barriers | not reachable — count stays 0.00 under every knob |
+| they build no Launchers, we build one on round 3 | ours is load-bearing, removing it is -0.5 to -2.7 sd |
+| we convert 2x their opening ammunition | **the one real defect — fixed in `nott`, +0.4 to +1.0 sd** |
+
+One live note: `ran@0eca95f` has grown to **0.592 over 125 shared games**, now
+the best live number among our builds (`snotra_h` 0.550), though the intervals
+still overlap. `nott` is still not in the feed.
+
+Team 24/114, rating 1638.
