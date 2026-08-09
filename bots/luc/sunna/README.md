@@ -52,6 +52,38 @@ better trade **given that live maps are 92% in the regime that wants it**.
 39 maps, four opponents, 312 strictly paired cells: 0.673 -> **0.699**
 (+0.7 sd), Harvesters 2.68 -> 3.24.
 
+## WITHDRAWN — it does not replicate off the set it was found on
+
+Queued and then withdrawn within the hour. Tested on `maps/livelike2` — 69
+freshly generated maps whose nearest visible ore is a median **4.0 tiles,
+matching live exactly** — over 552 strictly paired cells against four
+opponents:
+
+| build | rate | vs `snotra_h` |
+|---|---|---|
+| `nott` | 0.721 | +0.011 (+0.4 sd) |
+| `snotra_h` | 0.710 | — |
+| **`sunna`** | **0.710** | **0.000 (McNemar z = 0.00)** |
+
+Exactly level, and -0.4 sd against `nott`. Game length is not the hidden
+moderator either: split inside that set it reads +0.1, -1.0 and +0.3 sd for
+games under 100, 100-200 and 200+ rounds.
+
+So the +2.2 sd holds only on `maps/longgame`, and **that set was selected
+post-hoc** — the top 15 of 150 maps by median game length, chosen from the same
+games that then produced the result. That is the classic shape of a spurious
+finding, and the dose-response below is better read as a coincidence of three
+points than as a mechanism: it does not survive on any independently
+constructed set (0.0 sd on `livelike2`, -0.3 on the wider 48-map set, -1.2 on
+`maps/orerich`).
+
+The lesson is the useful part: **a map set selected from results cannot then be
+used to measure them.** `maps/livelike` and `maps/livelike2` are constructed
+from live terrain statistics alone and are safe; `maps/longgame` is not, and is
+only fit for asking what happens in long games, never for deciding what to ship.
+
+## Original argument, kept for the record
+
 ## Honest risk
 
 The strongest cell (+2.2 sd) is fifteen maps chosen for producing long games;
