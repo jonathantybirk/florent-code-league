@@ -9328,3 +9328,50 @@ if it does not, the cause is elsewhere and this deletion cost nothing.
 `snotra_h@a494b78:6` both still present.
 
 Live: rank 21/115, rating 1690.
+
+## Iteration 193 — the shipping change survives the test that killed the last one
+
+`no_repair` read +0.4 sd on three opponents and collapsed to +0.09 on seven.
+`nott` had only ever been measured against three — `vanguard`, `undertow` and
+`spar_sentinel` — so it was exposed to exactly the same failure, and it is the
+one change I have queued.
+
+Ran it against **six opponents never used to develop it**, both live-placement
+map sets, 1,296 strictly paired cells:
+
+| opponent | `snotra_h` | `nott` | |
+|---|---|---|---|
+| jonbot | 0.870 | 0.898 | **+0.028** |
+| autistimusprime | 0.833 | 0.847 | +0.014 |
+| mistral | 0.972 | 0.981 | +0.009 |
+| casemate | 0.972 | 0.972 | 0.000 |
+| gobbleglitch | 0.921 | 0.921 | 0.000 |
+| green | 1.000 | 0.995 | -0.005 |
+| **pooled** | 0.9282 | **0.9360** | **+0.0077 (+0.78 sd)**, McNemar z = +1.25 |
+
+It holds, and it holds under compression — the base rate against this panel is
+0.93, so there is very little room for a difference to show at all.
+
+Pooling **every strictly paired `snotra_h`/`nott` cell in the session** — all
+opponents, all map sets, 3,648 cells:
+
+| | record | rate |
+|---|---|---|
+| `snotra_h` | 2796/3648 | 0.7664 |
+| **`nott`** | **2829/3648** | **0.7755** |
+| | | **+0.0090 (+0.92 sd), McNemar z = +1.52** |
+
+So the honest size of the one thing shipping is **about one percentage point**,
+positive on nine opponents' worth of data across five map sets and two bases,
+never negative in aggregate, and **not conventionally significant** — z = 1.52.
+That is a real but small change, and I would rather state it that way than
+round it up.
+
+The distinction from `no_repair` is the point: both looked like +0.4 sd on a
+narrow panel, and only one survived contact with opponents it had not been
+tuned against. Widening the panel is the cheapest test that separates a real
+small effect from noise, and it should come before the queue, not after.
+
+Queue: `nott@0ac1faa` and `snotra_h@a494b78` are still the only unseen entries,
+and the feed has not regenerated since 13:38, so whether removing the broken
+`aegis` spec unstalled the upload queue is still unanswered.
