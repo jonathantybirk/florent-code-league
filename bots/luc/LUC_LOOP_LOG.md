@@ -9375,3 +9375,26 @@ small effect from noise, and it should come before the queue, not after.
 Queue: `nott@0ac1faa` and `snotra_h@a494b78` are still the only unseen entries,
 and the feed has not regenerated since 13:38, so whether removing the broken
 `aegis` spec unstalled the upload queue is still unanswered.
+
+### Iteration 193, addendum — the queue was stalled, and it is not any more
+
+`nott@0ac1faa` entered the feed at **13:49:42 UTC**, roughly fifteen minutes
+after I removed the unuploadable `aegis@00d5940` spec. Nothing else changed in
+that window. The upload queue had been frozen since `ran` at 09:28 — more than
+four hours against a ninety-minute cadence — and it moved as soon as the broken
+entry was gone.
+
+That confirms the iteration-192 diagnosis, which I had explicitly flagged as
+elimination rather than proof: a `test_next` entry whose commit predates the bot
+it names does not fail and get skipped, it **blocks the queue behind it**. Worth
+knowing, because nothing in the config's own documentation says so, and the
+failure is silent — the farm keeps playing UCB selections from builds it already
+holds, so it looks healthy from the outside.
+
+First live numbers, 25 games: **0.560** on shared opponents against
+`snotra_h`'s 0.508 and `ran`'s 0.588. Far too few games to mean anything —
+`project_live_estimate_regression` says sub-25-game numbers read high and
+regress — but it is uploading and playing, which is what was wanted.
+
+Twelve rounds are queued for it. That will be the first live test of the only
+change that survived this session.
