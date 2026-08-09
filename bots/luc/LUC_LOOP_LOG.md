@@ -8762,3 +8762,46 @@ identical bank, identical games. The floor is below where the pool sits, so the
 guard never fires. Half-measures in this area do nothing.
 
 Team 21/113, rating 1670. `nott@0ac1faa` and `ran@0eca95f` still queued.
+
+## Iteration 181 — the tiebreak is a pure bank comparison, and the belt fix missed
+
+Pinned down the ending from iteration 180 exactly. Over 537 recorded
+`titanium_stored` sides:
+
+- **it is deterministic**: our bank higher -> won, 47 of 47; not higher -> lost,
+  **490 of 490**. No other factor enters.
+- **collected is tied in 522 of 537** (both sides zero), which is why it falls
+  through to the bank at all.
+- median bank **ours 20, theirs 70**.
+
+So the whole ending reduces to: spend less than the opponent before round 1000.
+Composition in those games says where ours goes — we build **10.1 conveyors and
+0.03 Harvesters**. Thirty titanium of belt laid toward ore we never reach, in
+the one ending where the bank *is* the win condition.
+
+Built `belt` on top of `hodr_bank`: past round 200, a Builder that has never
+seen a Harvester stops laying conveyor.
+
+| | conveyors | bank at r1000 | vs `nott` |
+|---|---|---|---|
+| `nott` | 10.8 | 18 | — |
+| `hodr_bank` | 10.8 | 41 | +0.6 sd, z=+2.12 |
+| `belt` | **10.5** | 41 | +0.5 sd, z=+1.89 |
+
+**The guard barely fires** — conveyors move 10.8 to 10.5, and on
+`maps/livelike2` not at all (17.1 to 17.1, 276 of 276 games identical). The
+predicate is wrong: `p.harvester_seen` is populated from *any* Harvester a
+Builder sees, including the enemy's, so it is almost never empty. The +0.5 sd
+`belt` shows is inherited from its `hodr_bank` base, not earned by the change.
+
+That is the second time this session a guard has been written against a
+variable that does not mean what its name suggests — `SEAT_B_PREFERS_RANGE` was
+subsumed by a broader condition, and this one reads a set that includes the
+opponent's buildings. Both were caught by the identity column rather than by
+reading the code first, which is the cheaper order.
+
+No new candidate clears the bar. `hodr_bank` remains the best of this line at
++0.6 sd on a map set selected for the mechanism, which by the standard set in
+iteration 178 is not enough to queue.
+
+Team 21/113, rating 1670. `nott@0ac1faa` and `ran@0eca95f` still queued.
