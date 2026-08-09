@@ -15,12 +15,20 @@
       "chunk": 10,
       "range": "1-348",
       "submitted_at": "2026-08-09T12:54:54+0200"
+    },
+    {
+      "job_id": "29054036",
+      "name": "trn_auto-feba727501e7",
+      "elements": 175,
+      "chunk": 10,
+      "range": "1-175",
+      "submitted_at": "2026-08-09T12:58:54+0200"
     }
   ],
   "job_ids": [
-    "29054034"
+    "29054036"
   ],
-  "job_id": "29054034",
+  "job_id": "29054036",
   "host": "dtu",
   "remote": "florent-tournament/auto-feba727501e7"
 }
