@@ -9017,3 +9017,57 @@ different code for *seating* turrets, not different limits on them.
 
 That is roughly the fifteenth constant proven inert this session. Nothing to
 queue. Team 24/113, rating 1636.
+
+## Iteration 186 — tried to copy the top of the ladder's turret count, four ways, and it loses
+
+Iteration 185 established the gap: Jython (1983) and not adgato (1900) build
+19.4 and 8.5 Gunners per 100 rounds against our 3.8 and 2.3, on the same
+Builders and Harvesters, and no cap in this bot can raise our number. The
+conclusion was that it needs different *seating* code. So I wrote some.
+
+`_fortify` seats a Gunner with **no enemy in sight**, aimed down the bearing to
+the enemy Core — because every existing seat search needs a visible enemy to
+align to, which is exactly why our count is set by what a Builder happens to
+walk into.
+
+It took four attempts and the first three were dead code:
+
+1. **Hooked at the tail of `_defend_core`** — 414/414 games identical.
+   `_defend_core` only runs when the Core is *already under alarm*, so a
+   pre-emptive turret there is a contradiction in terms.
+2. **Moved to the quiet branch** (`builder_index == 0 and not alarm`) —
+   414/414 identical again.
+3. **Aimed by bearing instead of `_ray_direction`**, which demands exact
+   eight-way alignment with the enemy Core and an adjacent tile almost never
+   has — 414/414 identical a third time.
+4. **Stripped every precondition**: build on the first legal adjacent tile, any
+   facing, cap only. **It fires** — Gunners 2.98 -> 4.40 — and the win rate
+   goes **0.633 -> 0.450**.
+
+So the call site was reachable all along; versions 2 and 3 were blocked by their
+own guards, most likely the 120-titanium reserve, which this bot's bank rarely
+holds. And the mechanism itself is **-18 percentage points** when it actually
+runs.
+
+**That closes the turret question.** The gap against the top of the ladder is
+real and measured, and every route to closing it costs games:
+
+| route | result |
+|---|---|
+| `HOME_TURRET_STEP` / `HOME_TURRET_MAX` | dead — count unchanged at 3.31 |
+| `ATTACK_TURRET_CAP` 5 -> 10 -> 20 | dead — count unchanged |
+| `_FIELD_GUNNERS` on RUSH | fires, **-5.3 sd** |
+| pre-emptive fortification | fires, **-18pp** |
+
+Jython's nineteen turrets a hundred rounds are not a setting this bot is
+missing. They are affordable to a bot whose economy and seating work
+differently, and bolting the count onto ours buys turrets we cannot pay for
+with Builder turns we needed elsewhere.
+
+The methodological note is the useful one: **three dead versions cost about
+1,200 games and the identity column caught each in one run.** What it did not do
+is tell me *which* guard was blocking, and I guessed twice before bisecting. The
+bisect — strip every precondition, keep the cap — answered it immediately and
+should have been the second step, not the fourth.
+
+Nothing to queue. Team 24/114, rating 1638.
