@@ -7136,3 +7136,37 @@ one of them was wrong by 6 to 19 points.
 - and the finding that **`RING_AFTER_ECONOMY` costs 8.3 points**, which is the
   one thing here that would improve the bot if reverted — except it only exists
   in builds made tonight, so reverting it returns us exactly to `hoenir`.
+
+## Iteration 152 — ablating existing features, and a run I killed myself
+
+The ring hold showed that *removing* a feature can be worth 8 points, which
+inverts the search: instead of adding mechanisms, look for existing ones that
+are net-negative. `snotra_h` has 39 boolean flags; I ablated eight that gate a
+real mechanism, one at a time, against `undertow`.
+
+| variant (flag off) | vs `undertow` |
+|---|---|
+| `SIEGE_BARRIER_ENABLED` | 216/300 = 0.7200 ±0.0508 |
+| `FLANK_WHEN_IDLE` | 214/300 = 0.7133 ±0.0512 |
+| `REPAIR_NETWORK` | 214/300 = 0.7133 ±0.0512 |
+| `STEAL_BEFORE_EXPAND` | 212/300 = 0.7067 ±0.0515 |
+| `LANE_BARRIER_FIRST` | 211/300 = 0.7033 ±0.0517 |
+| `STARVE_THE_ECONOMY` | 157/224 = 0.7009 ±0.0600 |
+| shipped `snotra_h` (separate run, 300 maps) | 0.7267 ±0.0357 |
+
+**All six at or slightly below the shipped build.** No second ring-hold-sized
+regression among them — every flag tested is doing its job or is neutral, which
+is the same verdict the aggregate gave: this codebase is well-tuned, and the one
+bad constant in it is the one I added tonight.
+
+**And I broke my own experiment.** The suite was running in the foreground of a
+command that hit the ten-minute tool timeout, so the process was killed at
+1675 of 2700 games: two variants never ran and the in-run baseline never
+completed, which is why the comparison above has to borrow a baseline from a
+different map count. Every long run tonight that worked was launched with
+`run_in_background`; this one was not, and I did not notice until the log
+stopped advancing.
+
+The finding survives the sloppiness — six flags, none of them a regression — but
+it is weaker than it should be, and the fix is mechanical: background the run,
+poll the log.
