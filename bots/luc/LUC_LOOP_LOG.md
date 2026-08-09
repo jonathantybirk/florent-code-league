@@ -9293,3 +9293,38 @@ Live: rank 21/115, rating 1685. `nott@0ac1faa` is still queued and still has not
 reached the farm; `ran@0eca95f` finished at 0.552 over 145 shared games against
 `snotra_h`'s 0.558, confirming the local prediction that its mender-radius
 change is null.
+
+## Iteration 192 — the queue has stalled, and the one entry that cannot work is gone
+
+`nott` has been queued for six hours without reaching the farm, so I checked
+whether that is cadence or a stall.
+
+**The farm is alive.** Matches at 13:36, 13:29 and 13:27 UTC — it is playing
+`nanna`, `f1f2bda` and `snotra_h`, which are UCB selections from builds it
+already holds.
+
+**But the upload queue has stopped.** New builds appeared roughly every ninety
+minutes all night — `lofn` 01:38, `hlin` 03:17, `nanna` 04:49, `byggvir` 06:51,
+`mani` 07:49, `ran` 09:28 — and nothing since, now four hours. Three entries
+have never appeared: `aegis@00d5940`, `snotra_h@a494b78` and `nott@0ac1faa`.
+
+Of those, exactly one is broken. `bots/luc/aegis` was added in `5709fbf9` and
+does not exist at `00d5940`, so `bots/luc/aegis/main.py` cannot be read at that
+commit and the upload fails however often it is retried. The other two resolve.
+
+I flagged this in iteration 173 and deliberately left it alone because it is not
+an entry I added. I have removed it now: the queue is stalled, the only
+unuploadable spec in it is that one, and behind it sits the single change that
+has survived every independent test this session. An entry that can never
+succeed cannot be made worse by deletion, and the commit says plainly that
+whoever queued `aegis` should re-point it at a commit where the bot exists.
+
+Note this is a diagnosis by elimination, not proof — I cannot see the farm's
+runtime state, which lives on the desktop, and the local `state.json` is a stale
+copy from 2026-08-07. If the queue starts moving again the diagnosis was right;
+if it does not, the cause is elsewhere and this deletion cost nothing.
+
+`enabled` and `yield_until` untouched, JSON validated, `nott@0ac1faa:12` and
+`snotra_h@a494b78:6` both still present.
+
+Live: rank 21/115, rating 1690.
