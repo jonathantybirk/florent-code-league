@@ -6600,3 +6600,31 @@ three. None of this is settled. But if the live results come back ambiguous —
 which on tonight's evidence they will — the defensible position is that the
 session produced one small, robust fix and a great deal of measurement
 infrastructure, and that the rest should not ship.
+
+## Iteration 138 — hunting more bifrost-class bugs, and finding none
+
+The aggregate says the one robust change of the session is `bifrost`, a bug fix,
+while every tuning change is inconsistent across instruments. So the productive
+direction is more bugs of that class: **state that is set and never released,
+blocking something the bot is trying to do.** Searched for the pattern
+systematically.
+
+| candidate | verdict |
+|---|---|
+| store slots written but never cleared (7 of them) | all periodically overwritten, not latched |
+| `SLOT_CONSTRUCTION_LOCK` — 3 writes, 2 clears | carries an expiry and is refreshed each round as a heartbeat; no leak |
+| lock owner field vs my extra opening Builder | `LOCK_OWNER_BITS = 4` holds 15 owners against `ECON_MAX_TOTAL_BUILDERS = 9` — no overflow |
+| flags set `True` and never `False` | two one-shot print guards |
+
+**Nothing found.** The two candidates that looked real were both already fixed —
+the lock owner field was widened from two bits to four in `366cd1b` for exactly
+the reason I was checking, and its docstring says so.
+
+That is worth recording as a negative result rather than skipping: **this
+codebase has already had its obvious latch bugs found.** `bifrost`'s ferry slot
+was the last one, and it was in a path (the opening ferry) that the previous
+work had not instrumented. There is no cheap second win of that kind waiting.
+
+Which means the honest summary of the local work has not changed since iteration
+137, and I have now confirmed it from the one remaining angle: **no more free
+bug fixes, and tuning changes cannot be ranked by any instrument I can build.**
