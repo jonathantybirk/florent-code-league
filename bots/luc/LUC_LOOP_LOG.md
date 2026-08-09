@@ -6664,3 +6664,40 @@ line — behind it.
 signal, and I have retracted enough tonight to be careful about the difference.
 What would settle it is `lofn` and `hlin`, which are next and next-but-one, at
 eight rounds each — 200 games apiece, enough to halve these intervals.
+
+## Iteration 140 — the live bot is ahead of everything we built tonight
+
+`vili` leads tonight's four builds on live evidence, so the decision-relevant
+question is whether it should replace what is running. Six shared opponents:
+
+| build | shared record | rate |
+|---|---|---|
+| **`snotra_h@6951e03`** (live now) | 42/70 | **0.600 ±0.115** |
+| `vili@419bf08` | 27/55 | 0.491 ±0.132 |
+
+**The bot already on the ladder is 11 points ahead** of the best of tonight's
+line, on the opponents both have faced. 1.25 sd, intervals overlapping — but the
+direction is consistent with every other live reading, and there is no version
+of this table where `vili` is the upgrade.
+
+**So the session's answer to its own question is negative, and now measured
+rather than inferred.** Nothing built tonight beats what was already running:
+
+| | live, shared opponents |
+|---|---|
+| `snotra_h` (live) | 0.600 |
+| `vili` | 0.533 / 0.491 (two readings) |
+| `freyja` | 0.486 |
+| `hoenir` | 0.446 |
+| `bifrost` | 0.436 |
+
+`lofn`, `hlin`, `nanna` and `mani` have yet to play, and on every local
+instrument they sit at or below `vili` — the economy line is behind it on
+`undertow` by 5 points and level with it everywhere else. The prediction from
+iteration 135 stands: I expect them to land in the same band.
+
+**What I would tell Lucas if he asked for one sentence:** the ladder position is
+fine, the bot currently running is the best we have, tonight produced no
+improvement on it, and the two things worth fixing are in the farm rather than
+the bot — the promotion rule that swapped flagships seven times on noise, and
+the build it cannot see.
