@@ -6350,3 +6350,40 @@ could ever have settled this.
 That is a better place to end than the one I was in three iterations ago, when
 I had declared the question closed on the strength of not having looked for the
 opponents.
+
+## Iteration 132 — a ranking on the external panel, and it agrees with the other one
+
+Ran every serious candidate against Jon's four bots — external code, official
+maps, 168 games each:
+
+| build | vs Jon's bots | detail |
+|---|---|---|
+| **`hlin`** | **149/168 = 0.887 ±0.048** | jonbot 39/42, tempest 41/42, undertow 32/42, vanguard 37/42 |
+| `syn` | 148/168 = 0.881 ±0.049 | |
+| `lofn` | 148/168 = 0.881 ±0.049 | |
+| `mani` | 144/168 = 0.857 ±0.053 | |
+| `base_e55` | 127/168 = **0.756 ±0.065** | |
+
+`hlin`, `syn` and `lofn` are one game apart — a tie, not a ranking. What is not
+a tie is the 13-point gap to `steward@e55aab5`, consistent across all four of
+Jon's bots individually.
+
+**Two independent local instruments now agree.** Against the current live
+flagship on the official pool: `hlin` 0.690, `mani`/`lofn` 0.643. Against Jon's
+external bots: `hlin` 0.887, `syn`/`lofn` 0.881, `mani` 0.857. Different
+opponents, different question, same build on top and the same build on the
+bottom.
+
+**And `mani` is last of ours on both**, which is worth stating because I queued
+it. Against the flagship it is level with `lofn` (0.643); against Jon it is 2.4
+points below (0.857 against 0.881). The 110 threshold does not help here — it
+never has locally, in five separate measurements — and the live argument for it
+collapsed in iteration 128 when `e55aab5`'s "hardest opponent mix" turned out to
+be the easiest. It stays queued because the live test costs nothing now that it
+is in the queue, but I would not queue it today knowing what I know.
+
+**Net:** `hlin` is the best local candidate on every instrument I have, it is
+already queued directly behind `lofn`, and the pair will be read on shared
+opponents. That is the strongest position the session has reached, and it
+required finding an opponent registry I had walked past for a hundred
+iterations.
