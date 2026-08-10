@@ -652,7 +652,11 @@ def self_update(branch: str) -> bool:
     """
     before = _run(["git", "rev-parse", "HEAD"]).strip()
     try:
-        _run(["git", "fetch", "origin", branch])
+        # An unqualified `git fetch origin x/tournament` updates FETCH_HEAD but, with the
+        # evaluator checkout's remote config, leaves origin/x/tournament stale. The merge then
+        # reports success against yesterday's commit and the live service never adopts new code.
+        remote_ref = f"refs/remotes/origin/{branch}"
+        _run(["git", "fetch", "origin", f"{branch}:{remote_ref}"])
         _run(["git", "merge", "--ff-only", f"origin/{branch}"])
     except RuntimeError as error:
         print(f"self-update skipped: {error}".splitlines()[0])
