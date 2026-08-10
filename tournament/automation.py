@@ -480,6 +480,17 @@ def resubmit_abandoned_runs(run_names: list[str], *, dry_run: bool = False) -> l
         except (hpc.HpcError, OSError, KeyError) as error:
             print(f"  {tid}: cannot ask the cluster whether its jobs are gone ({error})")
             continue
+        if state.get("short_jobs"):
+            print(
+                f"  {tid}: runtime guard tripped; cancelling every array and refusing to "
+                "re-submit this run"
+            )
+            if not dry_run:
+                try:
+                    hpc.cancel(tid, settings)
+                except (hpc.HpcError, OSError) as error:
+                    print(f"  {tid}: could not cancel every array ({error})")
+            continue
         # A run that never recorded a job id was never queued at all -- planning wrote the
         # schedule, then the push or the bsub died before hpc.json existed. _abandoned() cannot
         # see it (it returns False on empty job_ids) and recover_stranded_results() cannot either

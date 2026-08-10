@@ -151,7 +151,8 @@ def push(tid: str, settings: dict | None = None, bootstrap: bool = False) -> Non
         ],
     )
     ssh(host, f"mkdir -p {shlex.quote(root)}/{shlex.quote(tid)}/results "
-              f"{shlex.quote(root)}/{shlex.quote(tid)}/logs")
+              f"{shlex.quote(root)}/{shlex.quote(tid)}/logs "
+              f"{shlex.quote(root)}/{shlex.quote(tid)}/runtime")
 
     if bootstrap:
         print("running bootstrap.sh on the cluster (this installs fcode; takes a minute)")
@@ -185,7 +186,9 @@ def job_script(
     scattered through the schedule. A second file records balanced worklist slices so there is no
     tiny final element.
     """
+    minimum_runtime = int(settings["minimum_runtime_seconds"])
     body = f"""
+started=$(date +%s)
 set -- $(sed -n "${{LSB_JOBINDEX}}p" {batchlist})
 if [ "$#" -ne 2 ]; then
     echo "no batch range for array element $LSB_JOBINDEX" >&2
@@ -196,6 +199,21 @@ last=$2
 for index in $(sed -n "${{first}},${{last}}p" {worklist}); do
     python3 -m tournament.run_match --run-dir {tid} --index "$index" || true
 done
+
+elapsed=$(( $(date +%s) - started ))
+marker_tmp={tid}/runtime/.runtime_${{LSB_JOBID}}_${{LSB_JOBINDEX}}.tmp
+if [ "$elapsed" -lt {minimum_runtime} ]; then
+    marker={tid}/runtime/short_${{LSB_JOBID}}_${{LSB_JOBINDEX}}.txt
+    printf 'job_id=%s element=%s elapsed_seconds=%s minimum_seconds=%s\\n' "$LSB_JOBID" "$LSB_JOBINDEX" "$elapsed" "{minimum_runtime}" > "$marker_tmp"
+    mv "$marker_tmp" "$marker"
+    echo "RUNTIME GUARD: element finished in ${{elapsed}}s (< {minimum_runtime}s); cancelling array $LSB_JOBID" >&2
+    bkill "$LSB_JOBID" >/dev/null 2>&1 || true
+    exit 72
+fi
+
+marker={tid}/runtime/ok_${{LSB_JOBID}}_${{LSB_JOBINDEX}}.txt
+printf 'job_id=%s element=%s elapsed_seconds=%s minimum_seconds=%s\\n' "$LSB_JOBID" "$LSB_JOBINDEX" "$elapsed" "{minimum_runtime}" > "$marker_tmp"
+mv "$marker_tmp" "$marker"
 """
     return f"""#!/bin/sh
 #BSUB -q {settings["queue"]}
@@ -344,8 +362,8 @@ def submit(
     """
     settings = settings or config()
     host = settings["host"]
-    chunk = settings.get("chunk", 400) if chunk is None else chunk
-    minimum = settings.get("minimum_matches_per_job", 300)
+    chunk = settings.get("chunk", 600) if chunk is None else chunk
+    minimum = settings.get("minimum_matches_per_job", 500)
     check_connection(host)
 
     local = run_dir(tid)
@@ -452,7 +470,7 @@ def cancel(tid: str, settings: dict | None = None) -> None:
 # Everything a finished run leaves on the cluster that this machine already has a copy of.
 # schedule.jsonl and the job scripts stay: they are small, and they are what makes a remote run
 # directory legible if someone goes looking months later.
-WORKSPACE_DIRS = ("results", "logs", "stage", "compliance-stage")
+WORKSPACE_DIRS = ("results", "logs", "runtime", "stage", "compliance-stage")
 
 
 def discard_workspace(tid: str, settings: dict | None = None) -> None:
@@ -516,6 +534,19 @@ def remote_finished(tid: str, settings: dict) -> set[str]:
     return {line.strip() for line in listing.splitlines() if line.strip()}
 
 
+def short_runtime_markers(tid: str, settings: dict) -> list[str]:
+    """Completed elements that tripped the minimum-runtime guard."""
+    root = remote_run(settings, tid)
+    output = ssh(
+        settings["host"],
+        f"find {shlex.quote(root)}/runtime -maxdepth 1 -type f -name 'short_*.txt' "
+        "-exec cat {} \\; 2>/dev/null",
+        check=False,
+        quiet=True,
+    )
+    return [line.strip() for line in output.splitlines() if line.strip()]
+
+
 def status(tid: str, settings: dict | None = None) -> dict:
     settings = settings or config()
     host = settings["host"]
@@ -543,7 +574,18 @@ def status(tid: str, settings: dict | None = None) -> dict:
     print(f"{tid}: {done}/{total} matches done on the cluster ({100 * done / total:.1f}%)")
     if summary:
         print(summary)
-    return {"total": total, "done": done, "job_ids": job_ids, "bjobs": summary}
+    short_jobs = short_runtime_markers(tid, settings)
+    if short_jobs:
+        print("RUNTIME GUARD TRIPPED:")
+        for marker in short_jobs:
+            print(f"  {marker}")
+    return {
+        "total": total,
+        "done": done,
+        "job_ids": job_ids,
+        "bjobs": summary,
+        "short_jobs": short_jobs,
+    }
 
 
 def fetch(tid: str, settings: dict | None = None) -> int:
@@ -575,6 +617,10 @@ def watch(tid: str, settings: dict | None = None, interval: int = 60) -> None:
             print(f"{tid}: complete ({rows}/{total})")
             return
         state = status(tid, settings)
+        if state["short_jobs"]:
+            print(f"{tid}: cancelling all arrays because the runtime guard tripped")
+            cancel(tid, settings)
+            return
         if state["bjobs"] and "not found" in state["bjobs"].lower():
             print(
                 f"{tid}: job is gone but only {rows}/{total} results exist. "

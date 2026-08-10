@@ -475,20 +475,20 @@ def test_array_chunks_respect_the_lsf_cap():
     assert [i for chunk in chunks for i in chunk] == indices
 
 
-@pytest.mark.parametrize("total", [300, 400, 599, 600, 8184, 23562])
+@pytest.mark.parametrize("total", [500, 600, 999, 1000, 8184, 23562])
 def test_balanced_batches_cover_every_worklist_entry_exactly_once(total):
     """Balanced slices must cover every entry once without creating a short final job."""
     from tournament.hpc import balanced_batches
 
     worklist = list(range(1, total + 1))
-    batches = balanced_batches(total, target=400, minimum=300)
+    batches = balanced_batches(total, target=600, minimum=500)
     covered: list[int] = []
     sizes: list[int] = []
     for first, last in batches:
         covered.extend(worklist[first - 1 : last])  # sed -n 'first,last p', 1-based inclusive
         sizes.append(last - first + 1)
     assert covered == worklist
-    assert min(sizes) >= 300
+    assert min(sizes) >= 500
     assert max(sizes) - min(sizes) <= 1
 
 
@@ -511,14 +511,15 @@ def test_default_batch_is_sized_over_fifteen_minutes_at_the_fastest_observed_rat
 
     settings = config()
     assert settings["chunk"] >= settings["minimum_matches_per_job"]
-    assert settings["minimum_matches_per_job"] * 4.1 > 15 * 60
+    assert settings["minimum_matches_per_job"] >= 500
+    assert settings["minimum_runtime_seconds"] == 15 * 60
 
 
 def test_too_little_work_is_refused_instead_of_creating_a_short_cluster_job():
     from tournament.hpc import InsufficientWorkError, balanced_batches
 
     with pytest.raises(InsufficientWorkError, match="15-minute cluster job"):
-        balanced_batches(299, target=400, minimum=300)
+        balanced_batches(499, target=600, minimum=500)
 
 
 def test_shipped_remote_root_is_inside_the_assigned_scratch_directory():
@@ -554,6 +555,7 @@ def test_job_script_reads_its_slice_from_the_worklist():
 
     settings = {
         "queue": "hpc", "throttle": 100, "cores": 1, "memory": "2GB", "walltime": "22",
+        "minimum_runtime_seconds": 900,
     }
     script = job_script("t", settings, "1-1000", "n", "t/batches_X.txt", "t/work_X.txt")
     assert 'sed -n "${LSB_JOBINDEX}p" t/batches_X.txt' in script
@@ -570,9 +572,24 @@ def test_job_script_disables_shared_filesystem_bytecode_writes():
 
     settings = {
         "queue": "hpc", "throttle": 100, "cores": 1, "memory": "2GB", "walltime": "22",
+        "minimum_runtime_seconds": 900,
     }
     script = job_script("t", settings, "1-10", "n", "t/batches_X.txt", "t/work_X.txt")
     assert "export PYTHONDONTWRITEBYTECODE=1" in script
+
+
+def test_job_script_cancels_its_array_and_leaves_a_marker_when_too_short():
+    from tournament.hpc import job_script
+
+    settings = {
+        "queue": "hpc", "throttle": 100, "cores": 1, "memory": "2GB", "walltime": "600",
+        "minimum_runtime_seconds": 900,
+    }
+    script = job_script("t", settings, "1-3", "n", "t/batches_X.txt", "t/work_X.txt")
+    assert 'if [ "$elapsed" -lt 900 ]' in script
+    assert "runtime/short_${LSB_JOBID}_${LSB_JOBINDEX}.txt" in script
+    assert 'bkill "$LSB_JOBID"' in script
+    assert "exit 72" in script
 
 
 def test_merge_survives_a_truncated_result_file(tmp_path):

@@ -12,13 +12,24 @@ queue = "hpc"
 # limit, so this is a courtesy bound per array, not the real concurrency.
 throttle = 100
 
-# Matches per array element. The fastest elements in the 2026-08-09 support trace ran 10 matches
-# in 41s. A hard minimum of 300 therefore budgets 1,230s (20.5 min) even at that observed rate,
-# leaving more than five minutes of margin over support's requirement. Work is balanced across
-# elements instead of leaving a short ragged tail; 400 is the normal target. A remainder below
-# 300 is finished locally and is never submitted as a short HPC job.
-chunk = 400
-minimum_matches_per_job = 300
+# Matches per array element. Recomputed 2026-08-10 from 702,474 recorded match durations across
+# 54 schedules, using every fully-observed contiguous window (so this measures the actual fast
+# tail, not just averages):
+#   300 matches: minimum 606.4s (10.11m) -- unsafe
+#   400 matches: minimum 821.7s (13.70m) -- unsafe
+#   450 matches: minimum 928.5s (15.47m) -- too little margin
+#   500 matches: minimum 1037.9s (17.30m)
+#   600 matches: minimum 1254.1s (20.90m)
+# A hard minimum of 500 is therefore the smallest measured size with useful margin over 15m;
+# 600 is the normal target. Work is balanced instead of leaving a short ragged tail. A remainder
+# below 500 is finished locally and is never submitted as a short HPC job.
+chunk = 600
+minimum_matches_per_job = 500
+
+# Fail closed if real behavior contradicts the sizing estimate. Each element records its elapsed
+# workload time under <run>/runtime. An element below 15 minutes writes a durable `short_` marker,
+# cancels its own LSF array, and prevents automation from re-submitting that run.
+minimum_runtime_seconds = 900
 
 # Walltime is a HARD KILL and must cover a whole element. It is now budgeted on the p99 of a real
 # batch, not on chunk x the slowest match ever seen -- the old rule assumed every match in an
@@ -29,8 +40,8 @@ minimum_matches_per_job = 300
 # 33-map v3 pool, with spar_econ retired:
 #   batch of 10:  median 81s   p95 216s   p99 315s   p99.9 450s   max 502s
 # The per-match budget is the observed MAXIMUM plus 10%: 502s x 1.1 / 10, rounded up to 56s.
-# Balanced batches can be as large as 599 around the one-element/two-element boundary, requiring
-# 560 minutes under that deliberately conservative linear bound; 600 minutes leaves headroom.
+# Balanced batches can be as large as 999 around the one-element/two-element boundary, requiring
+# 933 minutes under that deliberately conservative linear bound; 960 minutes leaves headroom.
 # The previous constants (mean 8.8s, max 64s) were
 # measured on a bot population that no longer exists and were wrong by 19x at the tail; that is
 # what killed 108 elements in v3-newmaps-20260806 alone.
@@ -43,7 +54,7 @@ minimum_matches_per_job = 300
 # file, `hpc submit` re-queues exactly those, resubmit_abandoned_runs() does it automatically, and
 # each retry now escalates the walltime (see RESUBMIT_WALLTIME_FACTOR) so a batch that outgrew
 # this budget gets room rather than dying at the same wall three times.
-walltime = "600"
+walltime = "960"
 memory = "2GB"        # per core; measured max RSS is 193 MB, so this is ample headroom.
 
 # One core, and only one. A match cannot use more: the engine runs both bots in CPython
