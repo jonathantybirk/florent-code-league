@@ -1,9 +1,9 @@
 """Drive a tournament on the DTU HPC cluster: push, submit, poll, fetch.
 
-Each LSF array element runs a balanced batch of matches, while every match still gets a fresh OS
-process and one small JSON result file. Results can be pulled down continuously while the rest of
-the array is still running -- `fetch` is safe against a live directory because run_match writes
-atomically.
+Each LSF job owns a small pool of cores and dynamically feeds each core a fresh match process.
+Jobs receive interleaved portions of the schedule so different maps and opponents are spread
+evenly. Results can be pulled continuously while work is still running -- `fetch` is safe against
+a live directory because run_match writes atomically.
 
 All ssh goes through the `dtu` alias and its 8-hour ControlMaster (see docs/hpc/access.md). This
 module never tries to authenticate: if the master is down it says so and stops, rather than
@@ -174,56 +174,63 @@ def push(tid: str, settings: dict | None = None, bootstrap: bool = False) -> Non
 
 
 def job_script(
-    tid: str, settings: dict, indices: str, name: str, batchlist: str, worklist: str
+    tid: str, settings: dict, name: str, worklist: str, workers: int, stop_file: str
 ) -> str:
-    """An LSF array job. Element i plays its balanced slice from `worklist`.
+    """One long LSF job whose cores dynamically drain `worklist`.
 
-    `%<throttle>` caps concurrently running elements. Email flags are deliberately absent -- the
-    job-array docs warn that notifications on a large array produce one mail per element.
-
-    Elements index into a *file of schedule indices* rather than computing a schedule range.
-    That is what lets batching and skip-already-done coexist: the outstanding matches are usually
-    scattered through the schedule. A second file records balanced worklist slices so there is no
-    tiny final element.
+    Every match still gets a fresh one-core OS process.  The controller merely keeps `workers`
+    such processes busy, so one slow match no longer strands the rest of a static array slice.
+    Email flags remain absent: scheduler mail for automated jobs is noise, not monitoring.
     """
     minimum_runtime = int(settings["minimum_runtime_seconds"])
     body = f"""
 started=$(date +%s)
-set -- $(sed -n "${{LSB_JOBINDEX}}p" {batchlist})
-if [ "$#" -ne 2 ]; then
-    echo "no batch range for array element $LSB_JOBINDEX" >&2
-    exit 2
-fi
-first=$1
-last=$2
-for index in $(sed -n "${{first}},${{last}}p" {worklist}); do
-    python3 -m tournament.run_match --run-dir {tid} --index "$index" || true
-done
+set +e
+python3 -m tournament.worker --run-dir {tid} --worklist {worklist} --jobs {workers} --stop-file {stop_file}
+worker_status=$?
+set -e
 
 elapsed=$(( $(date +%s) - started ))
-marker_tmp={tid}/runtime/.runtime_${{LSB_JOBID}}_${{LSB_JOBINDEX}}.tmp
+marker_tmp={tid}/runtime/.runtime_${{LSB_JOBID}}.tmp
 if [ "$elapsed" -lt {minimum_runtime} ]; then
-    marker={tid}/runtime/short_${{LSB_JOBID}}_${{LSB_JOBINDEX}}.txt
-    printf 'job_id=%s element=%s elapsed_seconds=%s minimum_seconds=%s\\n' "$LSB_JOBID" "$LSB_JOBINDEX" "$elapsed" "{minimum_runtime}" > "$marker_tmp"
+    marker={tid}/runtime/short_${{LSB_JOBID}}.txt
+    printf 'job_id=%s workers=%s elapsed_seconds=%s minimum_seconds=%s\\n' "$LSB_JOBID" "{workers}" "$elapsed" "{minimum_runtime}" > "$marker_tmp"
     mv "$marker_tmp" "$marker"
-    echo "RUNTIME GUARD: element finished in ${{elapsed}}s (< {minimum_runtime}s); cancelling array $LSB_JOBID" >&2
+    stop_tmp={stop_file}.$LSB_JOBID.tmp
+    printf 'job_id=%s elapsed_seconds=%s\\n' "$LSB_JOBID" "$elapsed" > "$stop_tmp"
+    mv "$stop_tmp" {stop_file}
+    echo "RUNTIME GUARD: worker job finished in ${{elapsed}}s (< {minimum_runtime}s); cancelling job $LSB_JOBID" >&2
     bkill "$LSB_JOBID" >/dev/null 2>&1 || true
     exit 72
 fi
 
-marker={tid}/runtime/ok_${{LSB_JOBID}}_${{LSB_JOBINDEX}}.txt
-printf 'job_id=%s element=%s elapsed_seconds=%s minimum_seconds=%s\\n' "$LSB_JOBID" "$LSB_JOBINDEX" "$elapsed" "{minimum_runtime}" > "$marker_tmp"
+if [ "$worker_status" -eq 75 ]; then
+    marker={tid}/runtime/stopped_${{LSB_JOBID}}.txt
+    printf 'job_id=%s workers=%s elapsed_seconds=%s reason=peer_runtime_guard\\n' "$LSB_JOBID" "{workers}" "$elapsed" > "$marker_tmp"
+    mv "$marker_tmp" "$marker"
+    exit 73
+fi
+
+if [ "$worker_status" -ne 0 ]; then
+    marker={tid}/runtime/failed_${{LSB_JOBID}}.txt
+    printf 'job_id=%s workers=%s elapsed_seconds=%s worker_status=%s\\n' "$LSB_JOBID" "{workers}" "$elapsed" "$worker_status" > "$marker_tmp"
+    mv "$marker_tmp" "$marker"
+    exit 74
+fi
+
+marker={tid}/runtime/ok_${{LSB_JOBID}}.txt
+printf 'job_id=%s workers=%s elapsed_seconds=%s minimum_seconds=%s\\n' "$LSB_JOBID" "{workers}" "$elapsed" "{minimum_runtime}" > "$marker_tmp"
 mv "$marker_tmp" "$marker"
 """
     return f"""#!/bin/sh
 #BSUB -q {settings["queue"]}
-#BSUB -J "{name}[{indices}]%{settings["throttle"]}"
-#BSUB -n {settings["cores"]}
+#BSUB -J "{name}"
+#BSUB -n {workers}
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem={settings["memory"]}]"
 #BSUB -W {settings["walltime"]}
-#BSUB -o {tid}/logs/%J_%I.out
-#BSUB -e {tid}/logs/%J_%I.err
+#BSUB -o {tid}/logs/%J.out
+#BSUB -e {tid}/logs/%J.err
 
 set -eu
 # LSF resolves the -o/-e paths above, and starts the job, relative to the submission directory.
@@ -311,10 +318,43 @@ def balanced_batches(total: int, target: int, minimum: int) -> list[tuple[int, i
     return batches
 
 
+def worker_worklists(
+    indices: list[int],
+    target: int,
+    minimum: int,
+    max_workers: int,
+    workers_per_job: int,
+) -> list[tuple[int, list[int]]]:
+    """Split work across long multi-core jobs without static per-core slices.
+
+    The total worker count is the same conservative count implied by the measured `target` and
+    `minimum`. Schedule positions are striped across worker lanes, then adjacent lanes are packed
+    into one LSF job. The pool inside that job dynamically drains the combined worklist, removing
+    per-lane stragglers while every requested core still has at least `minimum` matches on average.
+    """
+    if max_workers < 1 or workers_per_job < 1:
+        raise HpcError("max_workers and workers_per_job must both be at least one")
+    batches = balanced_batches(len(indices), target, minimum)
+    total_workers = min(len(batches), max_workers)
+
+    lanes: list[list[int]] = [[] for _ in range(total_workers)]
+    for position, index in enumerate(indices):
+        lanes[position % total_workers].append(index)
+
+    groups: list[tuple[int, list[int]]] = []
+    for first in range(0, total_workers, workers_per_job):
+        selected = lanes[first : first + workers_per_job]
+        selected_indices = {index for lane in selected for index in lane}
+        # Preserve schedule/worklist order for reproducible logs and cache-friendly map staging.
+        worklist = [index for index in indices if index in selected_indices]
+        groups.append((len(selected), worklist))
+    return groups
+
+
 def check_walltime(settings: dict, chunk: int) -> None:
     """Refuse to submit an element whose walltime cannot cover a batch of `chunk` matches.
 
-    Walltime is a hard kill. Getting this wrong silently wastes a whole element's work --
+    Walltime is a hard kill. Getting this wrong silently wastes a whole worker job's work --
     recoverable, since a re-submit picks the gaps back up, but only after the fact.
 
     Note this is a linear approximation: the per-match figure is a p99 batch divided by the chunk
@@ -350,20 +390,23 @@ def submit(
     chunk: int | None = None,
     include_done: bool = False,
 ) -> list[str]:
-    """Submit the outstanding matches as one or more LSF arrays. Returns the job ids.
+    """Submit the outstanding matches as one or more long LSF worker jobs. Returns job ids.
 
     **Matches that already have a result are skipped by default.** run_match would skip them
     anyway, but only after the job had been scheduled and paid its startup -- so submitting them
     wastes slots on a contended queue. Pass include_done=True to force a full re-run.
 
-    Each array element plays a balanced batch near `chunk` matches. The shipped minimum is sized
-    from the fastest observed production batch to keep every requested cluster job over 15
-    minutes. A smaller remainder is not submitted; callers can finish that tail locally.
+    Worker slots are sized near `chunk` matches each, then packed into a few multi-core LSF jobs.
+    Within a job, slots pull dynamically from one worklist instead of owning static slices. The
+    shipped minimum comes from the fastest observed production batch and keeps every requested
+    job over 15 minutes. A smaller remainder is not submitted; callers finish that tail locally.
     """
     settings = settings or config()
     host = settings["host"]
     chunk = settings.get("chunk", 600) if chunk is None else chunk
-    minimum = settings.get("minimum_matches_per_job", 500)
+    minimum = settings.get(
+        "minimum_matches_per_worker", settings.get("minimum_matches_per_job", 500)
+    )
     check_connection(host)
 
     local = run_dir(tid)
@@ -381,45 +424,39 @@ def submit(
     if not indices:
         raise HpcError("nothing to submit: every match already has a result")
 
-    batches = balanced_batches(len(indices), chunk, minimum)
-    largest_batch = max(last - first + 1 for first, last in batches)
-    check_walltime(settings, largest_batch)
+    max_workers = int(settings.get("max_worker_slots", settings.get("throttle", 1)))
+    workers_per_job = int(settings.get("workers_per_job", settings.get("cores", 1)))
+    groups = worker_worklists(indices, chunk, minimum, max_workers, workers_per_job)
+    largest_per_core = max(
+        (len(group_indices) + workers - 1) // workers
+        for workers, group_indices in groups
+    )
+    check_walltime(settings, largest_per_core)
 
     root = remote_root(settings)
-    limit = max_array_size(host)
     stamp = time.strftime("%Y%m%d-%H%M%S")
-    worklist = f"{tid}/work_{stamp}.txt"
-    batchlist = f"{tid}/batches_{stamp}.txt"
-
-    # The element -> match mapping lives in this file, so a scattered set of outstanding indices
-    # chunks exactly as well as a contiguous one.
-    worklist_path = local / f"work_{stamp}.txt"
-    worklist_path.write_text("\n".join(str(i) for i in indices) + "\n")
-    rsync(str(worklist_path), f"{host}:{root}/{worklist}")
-
-    batchlist_path = local / f"batches_{stamp}.txt"
-    batchlist_path.write_text("\n".join(f"{first} {last}" for first, last in batches) + "\n")
-    rsync(str(batchlist_path), f"{host}:{root}/{batchlist}")
-
-    elements = list(range(1, len(batches) + 1))
-    smallest_batch = min(last - first + 1 for first, last in batches)
+    total_workers = sum(workers for workers, _ in groups)
+    per_worker = [len(group_indices) / workers for workers, group_indices in groups]
+    smallest_batch = int(min(per_worker))
     print(
-        f"{len(indices)} matches in {len(elements)} balanced array element(s) "
-        f"({smallest_batch}-{largest_batch} matches each; target {chunk})"
+        f"{len(indices)} matches across {total_workers} dynamic worker slot(s) in "
+        f"{len(groups)} long LSF job(s) ({smallest_batch}-{largest_per_core} matches/core "
+        f"on average; target {chunk})"
     )
-
-    chunks = [elements[start : start + limit] for start in range(0, len(elements), limit)]
-    if len(chunks) > 1:
-        print(f"splitting into {len(chunks)} arrays (LSF caps one at {limit})")
 
     state_path = local / "hpc.json"
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     job_ids: list[str] = []
 
-    for number, group in enumerate(chunks, start=1):
-        name = f"trn_{tid}_{number}"[:60] if len(chunks) > 1 else f"trn_{tid}"[:60]
+    stop_file = f"{tid}/runtime/stop_{stamp}.txt"
+    for number, (workers, group_indices) in enumerate(groups, start=1):
+        name = f"trn_{tid}_{number}"[:60] if len(groups) > 1 else f"trn_{tid}"[:60]
+        group_worklist = f"{tid}/work_{stamp}_{number}.txt"
+        worklist_path = local / f"work_{stamp}_{number}.txt"
+        worklist_path.write_text("\n".join(str(i) for i in group_indices) + "\n")
+        rsync(str(worklist_path), f"{host}:{root}/{group_worklist}")
         script = job_script(
-            tid, settings, compress_indices(group), name, batchlist, worklist
+            tid, settings, name, group_worklist, workers, stop_file
         )
         script_path = local / f"job_{stamp}_{number}.sh"
         script_path.write_text(script)
@@ -434,27 +471,38 @@ def submit(
             {
                 "job_id": job_id,
                 "name": name,
-                "elements": len(group),
+                "workers": workers,
+                "matches": len(group_indices),
                 "target_chunk": chunk,
                 "batch_min": smallest_batch,
-                "batch_max": largest_batch,
-                "range": f"{group[0]}-{group[-1]}",
+                "batch_max": largest_per_core,
                 "submitted_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             }
         )
-        print(f"  array {number}/{len(chunks)}: {len(group)} elements -> job {job_id}", flush=True)
+        # Persist after every bsub. If a later submission fails, cancel/recovery can still see and
+        # stop the jobs already accepted by LSF.
+        state["job_ids"] = job_ids
+        state["job_id"] = job_ids[0]
+        state["host"] = host
+        state["remote"] = remote_run(settings, tid)
+        state_path.write_text(json.dumps(state, indent=2) + "\n")
+        print(
+            f"  worker job {number}/{len(groups)}: {workers} cores, "
+            f"{len(group_indices)} matches -> job {job_id}",
+            flush=True,
+        )
 
     state["job_ids"] = job_ids
     state["job_id"] = job_ids[0]
     state["host"] = host
     state["remote"] = remote_run(settings, tid)
     state_path.write_text(json.dumps(state, indent=2) + "\n")
-    print(f"submitted {len(indices)} matches across {len(job_ids)} array(s)")
+    print(f"submitted {len(indices)} matches across {len(job_ids)} long worker job(s)")
     return job_ids
 
 
 def cancel(tid: str, settings: dict | None = None) -> None:
-    """Kill every array submitted for this tournament."""
+    """Kill every worker job submitted for this tournament."""
     settings = settings or config()
     host = settings["host"]
     check_connection(host)
@@ -568,7 +616,10 @@ def status(tid: str, settings: dict | None = None) -> dict:
     summary = ""
     if job_ids:
         summary = ssh(
-            host, f"bjobs -A {' '.join(job_ids)} 2>&1 || true", check=False, quiet=True
+            host,
+            f"bjobs -a -noheader -o 'jobid stat' {' '.join(job_ids)} 2>&1 || true",
+            check=False,
+            quiet=True,
         ).strip()
 
     print(f"{tid}: {done}/{total} matches done on the cluster ({100 * done / total:.1f}%)")
@@ -618,10 +669,13 @@ def watch(tid: str, settings: dict | None = None, interval: int = 60) -> None:
             return
         state = status(tid, settings)
         if state["short_jobs"]:
-            print(f"{tid}: cancelling all arrays because the runtime guard tripped")
+            print(f"{tid}: cancelling all worker jobs because the runtime guard tripped")
             cancel(tid, settings)
             return
-        if state["bjobs"] and "not found" in state["bjobs"].lower():
+        if state["bjobs"] and all(
+            f"<{job_id}>" in state["bjobs"] and "not found" in state["bjobs"].lower()
+            for job_id in state["job_ids"]
+        ):
             print(
                 f"{tid}: job is gone but only {rows}/{total} results exist. "
                 f"Re-run `hpc submit --tid {tid}` -- it submits only the gaps."

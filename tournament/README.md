@@ -349,7 +349,7 @@ A run directory is self-contained and rsyncs as a unit:
 ```
 runs/<tid>/
   manifest.json    what was planned, and from which commits
-  schedule.jsonl   one match per line; the line number IS the LSF array index
+  schedule.jsonl   one match per line; the line number is its stable worklist index
   stage/<bot_id>/  bot sources at their pinned commits
   maps/            only the maps this tournament uses
   results/         one <match_id>.json per finished match
@@ -364,38 +364,36 @@ their probe version. Re-planning therefore reproduces ids, merging is idempotent
 interrupted tournament resumes simply by re-running `hpc submit`, which skips whatever already
 has a result.
 
-## LSF array sizing and long-job batching
+## Long-lived worker jobs
 
-`MAX_JOB_ARRAY_SIZE = 1000` on this cluster — a larger array is rejected outright with
-`Job array index too large. Job not submitted.` This is **not** mentioned in DTU's job-array
-documentation, so `submit` queries `bparams -a` and splits the schedule across as many arrays as
-needed. Arrays run concurrently against the same per-user slot limit, so splitting costs nothing
-in throughput — but `bsub` takes ~90s to accept a 1000-element array, so submitting many of them
-is slow in itself.
+**Each worker slot is budgeted near 600 matches** (`chunk` in `hpc.toml`), with a hard minimum of
+500. Several slots are packed into one multi-core LSF job, and a small controller dynamically
+gives the next match to whichever slot becomes free. Individual matches remain isolated in fresh,
+one-core OS processes. This removes static-batch stragglers without bringing back thousands of
+short scheduler jobs.
 
-**Each array element plays a balanced batch near 600 matches** (`chunk` in `hpc.toml`), with a
-hard minimum of 500. DTU support requires jobs longer than 15 minutes. Recomputing every fully
+DTU support requires jobs longer than 15 minutes. Recomputing every fully
 observed contiguous window across 702,474 historical match durations found minima of 10.1 minutes
 for 300 matches, 13.7 for 400, 15.5 for 450, 17.3 for 500, and 20.9 for 600. The 500 floor is the
-smallest measured size with useful margin. Batch boundaries are balanced across the worklist,
-avoiding a short ragged final element. A 23,562-match tournament produces about 39 elements, not
-23,562 short jobs.
+smallest measured size with useful margin. Schedule positions are striped across worker jobs so
+maps and opponents are mixed rather than leaving one slow job at the end. A 23,562-match
+tournament uses about 39 worker slots, packed into only a few long LSF jobs.
 
 ```sh
 uv run python -m tournament hpc submit --tid jon-full              # target 600
 uv run python -m tournament hpc submit --tid jon-full --chunk 700  # larger long jobs
 ```
 
-Values below `minimum_matches_per_job` are rejected. If a killed element leaves fewer than 500
+Values below `minimum_matches_per_worker` are rejected. If a killed job leaves fewer than 500
 matches outstanding, the automated evaluator fetches the completed results and finishes the tail
 locally rather than creating a prohibited short cluster job.
 
-Every element also measures its real workload time. If it completes in less than 900 seconds
-(15 minutes), it atomically writes a `runtime/short_<job>_<element>.txt` marker, cancels its LSF
-array, and exits unsuccessfully. The automation treats that marker as a permanent stop condition:
-it cancels every array recorded for the run and refuses automatic resubmission until a human has
-reviewed and cleared the incident. Successful elements leave corresponding `runtime/ok_*.txt`
-evidence with their measured elapsed seconds.
+Every worker job also measures its real workload time. If it completes in less than 900 seconds
+(15 minutes), it atomically writes a `runtime/short_<job>.txt` marker, signals sibling jobs to stop
+claiming new matches, cancels itself, and exits unsuccessfully. The automation treats that marker
+as a permanent stop condition: it cancels every job recorded for the run and refuses automatic
+resubmission until a human has reviewed and cleared the incident. Successful jobs leave
+corresponding `runtime/ok_*.txt` evidence with their measured elapsed seconds and worker count.
 
 ### Finished matches are never re-submitted
 
@@ -410,27 +408,27 @@ error: nothing to submit: every match already has a result
 
 Pass `--all` to force a full re-run (`run_match --force` is the per-match equivalent).
 
-This is why array elements read their work from a **worklist file** of schedule indices rather
-than computing a contiguous range: outstanding matches are scattered through the schedule after a
-partial run, so `element i -> indices [(i-1)*chunk+1 .. i*chunk]` would re-run finished work.
-Instead each element reads a balanced `first last` slice from `batches_<stamp>.txt`, then applies
-that slice to `work_<stamp>.txt`. This handles a gappy set exactly as well as a dense one and makes
-the smallest and largest elements differ by at most one match. Each submission writes its own
-timestamped files, so re-submitting never disturbs an array that is still running.
+This is why worker jobs read **worklist files** of schedule indices rather than computing a
+contiguous range: outstanding matches are scattered after a partial run. The submitter first
+stripes those indices across the requested worker slots, then packs adjacent stripes into each
+job's worklist. Its controller dynamically drains that list. This handles a gappy set exactly as
+well as a dense one, spreads adjacent maps and opponents, and lets fast cores absorb the work that
+would otherwise sit behind a slow static slice. Each submission writes timestamped files, so a
+retry never disturbs work already running.
 
 ### Walltime is a hard kill
 
-`walltime` must cover a whole element. The current conservative budget is 56 seconds per match,
-derived from the slowest observed batch plus 10%. A balanced batch can reach 999 matches at the
-one-element/two-element boundary, so the configured walltime is 960 minutes.
+`walltime` must cover a whole worker slot's share. The current conservative budget is 56 seconds
+per match, derived from the slowest observed batch plus 10%. Balancing can leave one slot with up
+to 999 matches at the one-worker/two-worker boundary, so the configured walltime is 960 minutes.
 
 | | mean | median | p90 | p99 | max |
 |---|---|---|---|---|---|
 | duration | 8.8s | 6.0s | 17.5s | 39s | **64s** |
 | turns | 584 | **1000** | 1000 | 1000 | 1000 |
 
-`submit` checks the actual largest balanced batch before calling `bsub`. Raising `chunk` without
-enough walltime is therefore an error rather than a silent source of killed jobs. If an element is
+`submit` checks the largest per-core share before calling `bsub`. Raising `chunk` without enough
+walltime is therefore an error rather than a silent source of killed jobs. If a worker job is
 killed anyway, completed matches remain durable and only its missing tail needs recovery.
 
 ## Cluster storage
@@ -444,14 +442,13 @@ workspace cleanup.
 
 ### Cores
 
-One core per element (`-n 1`), and more would be pointless. A single match cannot use more than
-one core: the engine runs both bots in CPython sub-interpreters sharing one GIL inside one
-process (measured CPU/wall efficiency ~84% of one core, max RSS 193 MB). And parallelising
-*within* an element gains nothing either, because the binding constraint is the ~100-120 per-user
-**slot** cap — 25 elements x 4 cores buys exactly the same concurrency as 100 elements x 1 core,
-while being harder for LSF to backfill on a busy queue.
+One core per match, always. A single match cannot use more: the engine runs both bots in CPython
+sub-interpreters sharing one GIL inside one process (measured CPU/wall efficiency ~84% of one core,
+max RSS 193 MB). A worker job requests multiple cores only to run that many independent match
+processes. Packing slots this way reduces scheduler objects and lets the in-job pool dynamically
+balance them; it does not claim that one match itself is parallel.
 
-`hpc cancel --tid <tid>` bkills every array belonging to a tournament.
+`hpc cancel --tid <tid>` bkills every worker job belonging to a tournament.
 
 ## Determinism
 

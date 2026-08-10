@@ -135,7 +135,7 @@ submits exactly the gaps:
 ```sh
 uv run python -m tournament hpc submit --tid my-run     # only the missing matches
 uv run python -m tournament hpc logs   --tid my-run     # tail recent stderr
-uv run python -m tournament hpc cancel --tid my-run     # bkill every array
+uv run python -m tournament hpc cancel --tid my-run     # bkill every worker job
 ```
 
 `--all` forces a full re-run. A killed or crashed match loses nothing permanently: it simply has no
@@ -292,11 +292,12 @@ evidence matrix. Use `--pool`.
 result lives under the assigned `/work3/s234842` scratch directory; never point `remote_root` back
 at zhome. `MAX_JOB_ARRAY_SIZE` is 1000 and DTU does not document it; `module` and `bsub` do not
 exist in a non-interactive ssh shell; `gbar.sh` reads an unset `$DT` and dies under `set -u`; the
-`hpc` queue caps you at ~100-120 concurrent slots regardless of array throttles. Array elements
-are balanced batches of at least 500 matches. Across 702,474 recorded durations, the fastest
-contiguous 500-match window took 17.3 minutes (300 and 400 were empirically unsafe). Every element
-also has a 15-minute fail-closed runtime guard. `submit` refuses a smaller tail; automation
-finishes it locally.
+`hpc` queue normally caps you at ~100-120 concurrent slots. DTU support temporarily capped this
+account at 3, represented by `max_worker_slots` in `hpc.toml`; do not raise it until they confirm
+the restriction is lifted. Long multi-core jobs dynamically drain striped worklists, with at least
+500 matches per worker slot on average. Across 702,474 recorded durations, the fastest contiguous
+500-match window took 17.3 minutes (300 and 400 were empirically unsafe). Every LSF job also has a
+15-minute fail-closed runtime guard. `submit` refuses a smaller tail; automation finishes it locally.
 
 **Match cost, for planning:** mean 8.8s, median 6.0s, p99 39s, max 63.9s over 36,162 real matches.
 Most matches run the full 1000 rounds. Do not assume matches are cheap.
