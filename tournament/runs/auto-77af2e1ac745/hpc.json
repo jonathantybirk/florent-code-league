@@ -7,12 +7,22 @@
       "chunk": 10,
       "range": "1-822",
       "submitted_at": "2026-08-09T16:21:14+0200"
+    },
+    {
+      "job_id": "29073388",
+      "name": "trn_auto-77af2e1ac745",
+      "elements": 3,
+      "target_chunk": 600,
+      "batch_min": 619,
+      "batch_max": 619,
+      "range": "1-3",
+      "submitted_at": "2026-08-10T15:00:12+0200"
     }
   ],
   "job_ids": [
-    "29063264"
+    "29073388"
   ],
-  "job_id": "29063264",
+  "job_id": "29073388",
   "host": "dtu",
-  "remote": "florent-tournament/auto-77af2e1ac745"
+  "remote": "/work3/s234842/florent-tournament/auto-77af2e1ac745"
 }
