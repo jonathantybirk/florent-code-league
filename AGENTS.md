@@ -293,8 +293,10 @@ result lives under the assigned `/work3/s234842` scratch directory; never point 
 at zhome. `MAX_JOB_ARRAY_SIZE` is 1000 and DTU does not document it; `module` and `bsub` do not
 exist in a non-interactive ssh shell; `gbar.sh` reads an unset `$DT` and dies under `set -u`; the
 `hpc` queue caps you at ~100-120 concurrent slots regardless of array throttles. Array elements
-are balanced batches of at least 300 matches, sized from the fastest observed production batch to
-last at least 20.5 minutes. `submit` refuses a smaller tail; automation finishes it locally.
+are balanced batches of at least 500 matches. Across 702,474 recorded durations, the fastest
+contiguous 500-match window took 17.3 minutes (300 and 400 were empirically unsafe). Every element
+also has a 15-minute fail-closed runtime guard. `submit` refuses a smaller tail; automation
+finishes it locally.
 
 **Match cost, for planning:** mean 8.8s, median 6.0s, p99 39s, max 63.9s over 36,162 real matches.
 Most matches run the full 1000 rounds. Do not assume matches are cheap.

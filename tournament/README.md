@@ -373,21 +373,29 @@ needed. Arrays run concurrently against the same per-user slot limit, so splitti
 in throughput — but `bsub` takes ~90s to accept a 1000-element array, so submitting many of them
 is slow in itself.
 
-**Each array element plays a balanced batch near 400 matches** (`chunk` in `hpc.toml`), with a
-hard minimum of 300. DTU support requires jobs longer than 15 minutes; the fastest production
-element they reported ran 10 matches in 41 seconds, so 300 matches budget 20.5 minutes even at
-that observed rate. Batch boundaries are balanced across the whole worklist, avoiding a short
-ragged final element. For a 23,562-match tournament this produces about 59 elements instead of
+**Each array element plays a balanced batch near 600 matches** (`chunk` in `hpc.toml`), with a
+hard minimum of 500. DTU support requires jobs longer than 15 minutes. Recomputing every fully
+observed contiguous window across 702,474 historical match durations found minima of 10.1 minutes
+for 300 matches, 13.7 for 400, 15.5 for 450, 17.3 for 500, and 20.9 for 600. The 500 floor is the
+smallest measured size with useful margin. Batch boundaries are balanced across the worklist,
+avoiding a short ragged final element. A 23,562-match tournament produces about 39 elements, not
 23,562 short jobs.
 
 ```sh
-uv run python -m tournament hpc submit --tid jon-full              # target 400
-uv run python -m tournament hpc submit --tid jon-full --chunk 500  # larger long jobs
+uv run python -m tournament hpc submit --tid jon-full              # target 600
+uv run python -m tournament hpc submit --tid jon-full --chunk 700  # larger long jobs
 ```
 
-Values below `minimum_matches_per_job` are rejected. If a killed element leaves fewer than 300
+Values below `minimum_matches_per_job` are rejected. If a killed element leaves fewer than 500
 matches outstanding, the automated evaluator fetches the completed results and finishes the tail
 locally rather than creating a prohibited short cluster job.
+
+Every element also measures its real workload time. If it completes in less than 900 seconds
+(15 minutes), it atomically writes a `runtime/short_<job>_<element>.txt` marker, cancels its LSF
+array, and exits unsuccessfully. The automation treats that marker as a permanent stop condition:
+it cancels every array recorded for the run and refuses automatic resubmission until a human has
+reviewed and cleared the incident. Successful elements leave corresponding `runtime/ok_*.txt`
+evidence with their measured elapsed seconds.
 
 ### Finished matches are never re-submitted
 
@@ -413,8 +421,8 @@ timestamped files, so re-submitting never disturbs an array that is still runnin
 ### Walltime is a hard kill
 
 `walltime` must cover a whole element. The current conservative budget is 56 seconds per match,
-derived from the slowest observed batch plus 10%. A balanced batch can reach 599 matches at the
-one-element/two-element boundary, so the configured walltime is 600 minutes.
+derived from the slowest observed batch plus 10%. A balanced batch can reach 999 matches at the
+one-element/two-element boundary, so the configured walltime is 960 minutes.
 
 | | mean | median | p90 | p99 | max |
 |---|---|---|---|---|---|

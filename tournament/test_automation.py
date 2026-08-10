@@ -1198,6 +1198,33 @@ def test_a_short_recovery_tail_runs_locally_instead_of_becoming_a_short_hpc_job(
     assert calls == [("fetch", "auto-tail"), ("local", run_dir.name, 8)]
 
 
+def test_runtime_guard_cancels_and_permanently_blocks_automatic_resubmission(
+    tmp_path, monkeypatch
+):
+    from tournament import automation
+
+    root = tmp_path / "runs"
+    _stranded_run(root, "auto-too-fast", merged=40, scheduled=100)
+    monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu"})
+    monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
+        "total": 100,
+        "done": 40,
+        "job_ids": ["111"],
+        "bjobs": _bjobs_missing("111"),
+        "short_jobs": ["job_id=111 element=1 elapsed_seconds=600 minimum_seconds=900"],
+    })
+    calls = []
+    monkeypatch.setattr(automation.hpc, "cancel",
+                        lambda tid, settings=None: calls.append(("cancel", tid)))
+    monkeypatch.setattr(automation.hpc, "submit",
+                        lambda *args, **kwargs: pytest.fail("guarded work must not be submitted"))
+
+    assert automation.resubmit_abandoned_runs(["auto-too-fast"]) == []
+    assert calls == [("cancel", "auto-too-fast")]
+    assert automation._resubmit_count(root / "auto-too-fast") == 0
+
+
 def test_requeueing_gives_up_after_the_cap(tmp_path, monkeypatch):
     from tournament import automation
 
