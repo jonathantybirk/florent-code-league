@@ -778,13 +778,21 @@ def test_self_update_rolls_back_when_tests_fail(tmp_path, monkeypatch):
 def test_self_update_adopts_a_passing_commit(tmp_path, monkeypatch):
     from tournament import automation
 
+    calls = []
     revs = iter(["old1234" + "0" * 33, "new5678" + "0" * 33])
-    monkeypatch.setattr(automation, "_run",
-                        lambda command, cwd=None: (next(revs) + "\n")
-                        if command[:3] == ["git", "rev-parse", "HEAD"] else "")
+
+    def fake_run(command, cwd=None):
+        calls.append(command)
+        return (next(revs) + "\n") if command[:3] == ["git", "rev-parse", "HEAD"] else ""
+
+    monkeypatch.setattr(automation, "_run", fake_run)
     monkeypatch.setattr(automation.subprocess, "run",
                         lambda *a, **k: type("R", (), {"returncode": 0, "stdout": ""})())
     assert automation.self_update("x/tournament") is True
+    assert [
+        "git", "fetch", "origin",
+        "x/tournament:refs/remotes/origin/x/tournament",
+    ] in calls
 
 
 def _push_data_calls(monkeypatch, *, branch_head, status, push_fails=False,
