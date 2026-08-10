@@ -1107,6 +1107,13 @@ def test_walltime_escalation_is_capped():
     assert automation._escalated_walltime({"walltime": "bogus"}, 1) == {"walltime": "bogus"}
 
 
+def test_walltime_escalation_never_reduces_a_validated_base_above_the_cap():
+    from tournament import automation
+
+    settings = {"walltime": "2000"}
+    assert automation._escalated_walltime(settings, 1)["walltime"] == "2000"
+
+
 def test_a_failed_requeue_still_counts_against_the_cap(tmp_path, monkeypatch):
     """Recording the attempt only on success made a hopeless retry loop for ever.
 
