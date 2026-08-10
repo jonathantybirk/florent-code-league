@@ -423,7 +423,7 @@ def _abandoned(state: dict) -> bool:
 # that needs more than this is a bot problem, not a budget problem, and MAX_RESUBMITS will hand it
 # to a human with the evidence.
 RESUBMIT_WALLTIME_FACTOR = 2
-MAX_RESUBMIT_WALLTIME_MINUTES = 720
+MAX_RESUBMIT_WALLTIME_MINUTES = 1440
 
 
 def _escalated_walltime(settings: dict, attempt: int) -> dict:
@@ -432,7 +432,12 @@ def _escalated_walltime(settings: dict, attempt: int) -> dict:
         base = int(str(settings["walltime"]).split(":")[0])
     except (KeyError, ValueError):
         return settings
-    scaled = min(base * RESUBMIT_WALLTIME_FACTOR ** attempt, MAX_RESUBMIT_WALLTIME_MINUTES)
+    # A cap must never make a recovery request *shorter* than the validated base configuration.
+    # This happened when the base was raised to 960 minutes but the old cap remained 720.
+    scaled = max(
+        base,
+        min(base * RESUBMIT_WALLTIME_FACTOR ** attempt, MAX_RESUBMIT_WALLTIME_MINUTES),
+    )
     return {**settings, "walltime": str(scaled)}
 
 
