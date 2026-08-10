@@ -974,6 +974,33 @@ def _bjobs_missing(*job_ids: str) -> str:
     return "\n".join(f"Job array <{job_id}> is not found" for job_id in job_ids)
 
 
+def _worker_jobs(*states: tuple[str, str]) -> str:
+    return "\n".join(f"{job_id} {state}" for job_id, state in states)
+
+
+def test_plain_worker_jobs_are_abandoned_only_when_every_job_is_terminal():
+    from tournament import automation
+
+    assert automation._abandoned({
+        "job_ids": ["111", "222"],
+        "bjobs": _worker_jobs(("111", "DONE"), ("222", "EXIT")),
+    })
+    assert not automation._abandoned({
+        "job_ids": ["111", "222"],
+        "bjobs": _worker_jobs(("111", "DONE"), ("222", "RUN")),
+    })
+
+
+def test_plain_worker_jobs_may_be_partly_aged_out_without_being_abandoned():
+    from tournament import automation
+
+    state = {
+        "job_ids": ["111", "222"],
+        "bjobs": "Job <111> is not found\n" + _worker_jobs(("222", "PEND")),
+    }
+    assert not automation._abandoned(state)
+
+
 def test_a_run_whose_arrays_vanished_is_requeued(tmp_path, monkeypatch):
     from tournament import automation
 

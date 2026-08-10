@@ -430,7 +430,7 @@ def test_compliance_percentiles_use_all_observed_turns():
 
 
 # --------------------------------------------------------------------------------------------
-# LSF array index ranges
+# LSF work distribution
 # --------------------------------------------------------------------------------------------
 
 
@@ -506,13 +506,41 @@ def test_chunking_works_over_a_scattered_worklist():
     assert covered == worklist
 
 
+@pytest.mark.parametrize("total", [500, 600, 999, 1000, 8184, 23562])
+def test_worker_worklists_cover_every_match_once_and_keep_long_per_core_averages(total):
+    from tournament.hpc import worker_worklists
+
+    indices = list(range(1, total + 1))
+    groups = worker_worklists(
+        indices, target=600, minimum=500, max_workers=100, workers_per_job=8
+    )
+    covered = [index for _, worklist in groups for index in worklist]
+    assert sorted(covered) == indices
+    assert len(covered) == len(set(covered))
+    assert all(len(worklist) / workers >= 500 for workers, worklist in groups)
+    assert all(1 <= workers <= 8 for workers, _ in groups)
+
+
+def test_worker_worklists_respect_temporary_three_core_limit():
+    from tournament.hpc import worker_worklists
+
+    groups = worker_worklists(
+        list(range(1, 8185)), target=600, minimum=500, max_workers=3, workers_per_job=3
+    )
+    assert len(groups) == 1
+    assert groups[0][0] == 3
+    assert len(groups[0][1]) == 8184
+
+
 def test_default_batch_is_sized_over_fifteen_minutes_at_the_fastest_observed_rate():
     from tournament.hpc import config
 
     settings = config()
-    assert settings["chunk"] >= settings["minimum_matches_per_job"]
-    assert settings["minimum_matches_per_job"] >= 500
+    assert settings["chunk"] >= settings["minimum_matches_per_worker"]
+    assert settings["minimum_matches_per_worker"] >= 500
     assert settings["minimum_runtime_seconds"] == 15 * 60
+    assert settings["max_worker_slots"] == 3
+    assert settings["workers_per_job"] <= settings["max_worker_slots"]
 
 
 def test_too_little_work_is_refused_instead_of_creating_a_short_cluster_job():
@@ -536,7 +564,7 @@ def test_shipped_walltime_covers_the_default_chunk():
     from tournament.hpc import check_walltime, config
 
     settings = config()
-    largest_balanced_batch = 2 * settings["minimum_matches_per_job"] - 1
+    largest_balanced_batch = 2 * settings["minimum_matches_per_worker"] - 1
     check_walltime(settings, largest_balanced_batch)  # must not raise
 
 
@@ -550,46 +578,65 @@ def test_walltime_guard_rejects_an_element_that_cannot_finish():
         check_walltime(settings, fits + 1)
 
 
-def test_job_script_reads_its_slice_from_the_worklist():
+def test_job_script_runs_a_dynamic_pool_from_the_worklist():
     from tournament.hpc import job_script
 
     settings = {
-        "queue": "hpc", "throttle": 100, "cores": 1, "memory": "2GB", "walltime": "22",
+        "queue": "hpc", "cores": 1, "memory": "2GB", "walltime": "22",
         "minimum_runtime_seconds": 900,
     }
-    script = job_script("t", settings, "1-1000", "n", "t/batches_X.txt", "t/work_X.txt")
-    assert 'sed -n "${LSB_JOBINDEX}p" t/batches_X.txt' in script
-    assert "first=$1" in script
-    assert "last=$2" in script
-    assert 'sed -n "${first},${last}p" t/work_X.txt' in script
-    # The index passed to run_match must come from the worklist, never from the array index.
-    assert '--index "$index"' in script
-    assert '--index "$LSB_JOBINDEX"' not in script
+    script = job_script("t", settings, "n", "t/work_X.txt", 3, "t/runtime/stop_X.txt")
+    assert "#BSUB -n 3" in script
+    assert "python3 -m tournament.worker" in script
+    assert "--worklist t/work_X.txt" in script
+    assert "--jobs 3" in script
+    assert "LSB_JOBINDEX" not in script
 
 
 def test_job_script_disables_shared_filesystem_bytecode_writes():
     from tournament.hpc import job_script
 
     settings = {
-        "queue": "hpc", "throttle": 100, "cores": 1, "memory": "2GB", "walltime": "22",
+        "queue": "hpc", "cores": 1, "memory": "2GB", "walltime": "22",
         "minimum_runtime_seconds": 900,
     }
-    script = job_script("t", settings, "1-10", "n", "t/batches_X.txt", "t/work_X.txt")
+    script = job_script("t", settings, "n", "t/work_X.txt", 3, "t/runtime/stop_X.txt")
     assert "export PYTHONDONTWRITEBYTECODE=1" in script
 
 
-def test_job_script_cancels_its_array_and_leaves_a_marker_when_too_short():
+def test_job_script_signals_peers_and_leaves_a_marker_when_too_short():
     from tournament.hpc import job_script
 
     settings = {
-        "queue": "hpc", "throttle": 100, "cores": 1, "memory": "2GB", "walltime": "600",
+        "queue": "hpc", "cores": 1, "memory": "2GB", "walltime": "600",
         "minimum_runtime_seconds": 900,
     }
-    script = job_script("t", settings, "1-3", "n", "t/batches_X.txt", "t/work_X.txt")
+    script = job_script("t", settings, "n", "t/work_X.txt", 3, "t/runtime/stop_X.txt")
     assert 'if [ "$elapsed" -lt 900 ]' in script
-    assert "runtime/short_${LSB_JOBID}_${LSB_JOBINDEX}.txt" in script
+    assert "runtime/short_${LSB_JOBID}.txt" in script
+    assert "mv \"$stop_tmp\" t/runtime/stop_X.txt" in script
     assert 'bkill "$LSB_JOBID"' in script
     assert "exit 72" in script
+
+
+def test_dynamic_worker_pool_runs_every_index_once():
+    from tournament.worker import run_indices
+
+    calls: list[int] = []
+    completed, stopped = run_indices(range(1, 21), jobs=4, run_one=lambda i: calls.append(i) or 0)
+    assert completed == 20
+    assert not stopped
+    assert sorted(calls) == list(range(1, 21))
+
+
+def test_dynamic_worker_pool_obeys_a_peer_stop_marker(tmp_path):
+    from tournament.worker import run_indices
+
+    stop = tmp_path / "stop.txt"
+    stop.write_text("stop\n")
+    completed, stopped = run_indices(range(1, 21), jobs=4, run_one=lambda i: 0, stop_file=stop)
+    assert completed == 0
+    assert stopped
 
 
 def test_merge_survives_a_truncated_result_file(tmp_path):

@@ -139,12 +139,12 @@ def build_parser() -> argparse.ArgumentParser:
     hpc_sub = hpc.add_subparsers(dest="hpc_command", required=True)
     for name, helptext in [
         ("push", "upload package + run directory"),
-        ("submit", "submit the LSF job array"),
-        ("status", "array progress"),
+        ("submit", "submit long-lived LSF worker jobs"),
+        ("status", "worker-job progress"),
         ("fetch", "pull results down and merge"),
         ("watch", "fetch on a loop until done"),
         ("logs", "tail recent error logs"),
-        ("cancel", "bkill every array for this tournament"),
+        ("cancel", "bkill every worker job for this tournament"),
     ]:
         command = hpc_sub.add_parser(name, help=helptext)
         _add_tid(command)
@@ -165,8 +165,8 @@ def build_parser() -> argparse.ArgumentParser:
                 type=int,
                 default=None,
                 help=(
-                    "target matches per balanced array element (default: `chunk` in hpc.toml). "
-                    "Values below `minimum_matches_per_job` are rejected so cluster jobs remain "
+                    "target matches per dynamic worker slot (default: `chunk` in hpc.toml). "
+                    "Values below `minimum_matches_per_worker` are rejected so cluster jobs remain "
                     "longer than 15 minutes"
                 ),
             )

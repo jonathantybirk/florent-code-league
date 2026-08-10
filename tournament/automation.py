@@ -394,18 +394,30 @@ def _idle_arrays(bjobs: str) -> dict[str, bool]:
     return idle
 
 
+def _idle_jobs(bjobs: str) -> dict[str, bool]:
+    """Map job id -> terminal state from `bjobs -o 'jobid stat'` output."""
+    terminal = {"DONE", "EXIT", "ZOMBI", "UNKWN"}
+    idle: dict[str, bool] = {}
+    for line in (bjobs or "").splitlines():
+        fields = line.split()
+        if len(fields) != 2 or not fields[0].isdigit():
+            continue
+        idle[fields[0]] = fields[1].upper() in terminal
+    return idle
+
+
 def _abandoned(state: dict) -> bool:
-    """True when no array this run submitted will do any more work.
+    """True when no LSF job this run submitted will do any more work.
 
     Two ways that happens, and both have wedged the ladder:
 
-    `bjobs -A` answers "Job array <id> is not found" for an array the scheduler no longer knows
-    about. One such line is not enough -- a run split across five arrays can have four finished
+    `bjobs` answers "Job <id> is not found" for a job the scheduler no longer knows about. One
+    such line is not enough -- a run split across five jobs can have four finished
     and one still going -- so every submitted id has to be accounted for.
 
-    An array LSF *does* still list, but whose every element has ended in EXIT, is equally never
-    coming back, and matching only on "not found" missed it: auto-ac98e09efc0e sat on 8 of 5,901
-    matches with one EXITed element, which recover_stranded_results() also skips because the
+    A job LSF *does* still list as DONE or EXIT is equally never coming back, and matching only on
+    "not found" missed this class of failure: auto-ac98e09efc0e sat on 8 of 5,901 matches with one
+    EXITed element, which recover_stranded_results() also skips because the
     cluster never reached done == total. Nothing fetched it, nothing re-queued it, and it
     deferred every later bot for as long as it was left alone.
     """
@@ -413,9 +425,13 @@ def _abandoned(state: dict) -> bool:
     if not job_ids:
         return False
     bjobs = state.get("bjobs") or ""
-    missing = set(re.findall(r"Job array <(\d+)> is not found", bjobs))
-    idle = _idle_arrays(bjobs)
-    return all(job_id in missing or idle.get(job_id, False) for job_id in job_ids)
+    missing = set(re.findall(r"Job(?: array)? <(\d+)> is not found", bjobs))
+    idle_arrays = _idle_arrays(bjobs)
+    idle_jobs = _idle_jobs(bjobs)
+    return all(
+        job_id in missing or idle_arrays.get(job_id, False) or idle_jobs.get(job_id, False)
+        for job_id in job_ids
+    )
 
 
 # Each re-submission doubles the walltime of the one before it. Capped because an unbounded
@@ -487,7 +503,7 @@ def resubmit_abandoned_runs(run_names: list[str], *, dry_run: bool = False) -> l
             continue
         if state.get("short_jobs"):
             print(
-                f"  {tid}: runtime guard tripped; cancelling every array and refusing to "
+                f"  {tid}: runtime guard tripped; cancelling every worker job and refusing to "
                 "re-submit this run"
             )
             if not dry_run:
@@ -517,10 +533,10 @@ def resubmit_abandoned_runs(run_names: list[str], *, dry_run: bool = False) -> l
         # case and read as a lie in the other two, which cost real time when reading the log.
         if never_submitted:
             cause = "was never queued (no job id was ever recorded)"
-        elif _idle_arrays(state.get("bjobs") or ""):
-            cause = "has no element left running"
+        elif _idle_arrays(state.get("bjobs") or "") or _idle_jobs(state.get("bjobs") or ""):
+            cause = "has no worker job left running"
         else:
-            cause = "has lost every array"
+            cause = "has lost every worker job"
         attempts = _resubmit_count(run_dir)
         if attempts >= MAX_RESUBMITS:
             print(

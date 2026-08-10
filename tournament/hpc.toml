@@ -5,14 +5,18 @@ scratch_root = "/work3/s234842"           # assigned by DTU HPC support; mode 07
 remote_root = "/work3/s234842/florent-tournament"
 queue = "hpc"
 
-# Per-array cap on concurrently running elements. The `hpc` queue caps a user at ~100-120
-# processes overall (docs/hpc/queues.md), and that cap is what actually binds -- a large schedule
-# is split across several arrays (LSF allows at most 1000 elements each), so the nominal total is
-# throttle x number-of-arrays. LSF holds the excess as PEND rather than over-running the queue
-# limit, so this is a courtesy bound per array, not the real concurrency.
-throttle = 100
+# Total match processes the submitter may request. DTU support temporarily capped this account at
+# three cores while they review the repaired pipeline, so this must remain 3 until they explicitly
+# lift that restriction. Afterwards it can return to the normal ~100-slot user limit without
+# changing the worker implementation.
+max_worker_slots = 3
 
-# Matches per array element. Recomputed 2026-08-10 from 702,474 recorded match durations across
+# Pack worker slots into long multi-core LSF jobs. The controller in each job dynamically hands
+# the next match to whichever core becomes free, eliminating static-batch stragglers while each
+# match still gets its own fresh one-core OS process. Keep this at or below max_worker_slots.
+workers_per_job = 3
+
+# Target matches per worker slot. Recomputed 2026-08-10 from 702,474 recorded durations across
 # 54 schedules, using every fully-observed contiguous window (so this measures the actual fast
 # tail, not just averages):
 #   300 matches: minimum 606.4s (10.11m) -- unsafe
@@ -21,17 +25,18 @@ throttle = 100
 #   500 matches: minimum 1037.9s (17.30m)
 #   600 matches: minimum 1254.1s (20.90m)
 # A hard minimum of 500 is therefore the smallest measured size with useful margin over 15m;
-# 600 is the normal target. Work is balanced instead of leaving a short ragged tail. A remainder
-# below 500 is finished locally and is never submitted as a short HPC job.
+# 600 is the normal target. Worker slots are striped across the schedule and dynamically share
+# their LSF job's worklist. A remainder below 500 is finished locally and is never submitted as a
+# short HPC job.
 chunk = 600
-minimum_matches_per_job = 500
+minimum_matches_per_worker = 500
 
-# Fail closed if real behavior contradicts the sizing estimate. Each element records its elapsed
-# workload time under <run>/runtime. An element below 15 minutes writes a durable `short_` marker,
-# cancels its own LSF array, and prevents automation from re-submitting that run.
+# Fail closed if real behavior contradicts the sizing estimate. Each worker job records its elapsed
+# workload time under <run>/runtime. A job below 15 minutes writes a durable `short_` marker,
+# signals sibling jobs to stop taking work, and prevents automation from re-submitting that run.
 minimum_runtime_seconds = 900
 
-# Walltime is a HARD KILL and must cover a whole element. It is now budgeted on the p99 of a real
+# Walltime is a HARD KILL and must cover a whole worker job. It is budgeted on the p99 of a real
 # batch, not on chunk x the slowest match ever seen -- the old rule assumed every match in an
 # element could simultaneously be the worst one, which by 2026-08-06 demanded 7 hours for chunk=20
 # and would have forced chunk=1.
@@ -57,10 +62,7 @@ minimum_runtime_seconds = 900
 walltime = "960"
 memory = "2GB"        # per core; measured max RSS is 193 MB, so this is ample headroom.
 
-# One core, and only one. A match cannot use more: the engine runs both bots in CPython
-# sub-interpreters that share a single GIL inside one process. Measured CPU/wall efficiency is
-# ~84% of one core (the rest is startup I/O). Asking for more cores per element would not speed
-# anything up -- the binding constraint is the ~100-120 per-user *slot* cap, so 25 elements x 4
-# cores buys exactly the same concurrency as 100 elements x 1 core, while being harder to
-# schedule on a busy cluster.
-cores = 1
+# One core per MATCH, always. A worker job requests several cores only to run several independent
+# match processes concurrently; an individual match cannot use more because both bots execute in
+# CPython sub-interpreters sharing one GIL.
+cores = 1  # retained for compatibility with older saved/test settings
