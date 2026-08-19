@@ -10,11 +10,15 @@ from __future__ import annotations
 
 import math
 
+from datetime import UTC, datetime
+
 from tournament.live_feed import (
     MECHANICS_EPOCH,
     MIN_GAMES_PER_CONTEXT,
     _expected,
     _fit_selection_bonus,
+    _recency_weight,
+    EVIDENCE_HALF_LIFE_HOURS,
     _shrink_towards_the_field,
     _fit_strength,
     PAIRING_KERNEL,
@@ -297,3 +301,49 @@ def test_the_epoch_separates_byte_identical_submissions_that_straddle_it():
     kept = [r for r in rows if r["t"] >= MECHANICS_EPOCH]
     assert [r["ver"] for r in kept] == [16]
     assert _pre_epoch_counts(rows, MECHANICS_EPOCH) == {9: 1}
+
+
+def test_an_opponent_with_no_rating_yet_cannot_break_the_fit():
+    """A brand-new team has no rating; such a row informs nothing and must not crash the feed."""
+    n = MIN_GAMES_PER_CONTEXT * 4
+    rows = (_games("unrated", 1800.0, n // 2, n // 2) + _games("ladder", 1800.0, n // 2, n // 2))
+    rows.append({"kind": "ladder", "opp_rating": None, "gf": 1, "ga": 0, "ver": 1})
+    rows.append({"kind": "unrated", "opp_rating": None, "gf": 0, "ga": 1, "ver": 1})
+    assert abs(_fit_selection_bonus(rows)) < 15.0
+
+
+def test_evidence_decays_with_age():
+    """A game an hour old must count for more than the same game a week old."""
+    now = datetime(2026, 8, 19, 12, 0, tzinfo=UTC).timestamp()
+    fresh = _recency_weight("2026-08-19T11:00:00+00:00", now)
+    day = _recency_weight("2026-08-18T12:00:00+00:00", now)
+    week = _recency_weight("2026-08-12T12:00:00+00:00", now)
+    assert 0.8 < fresh <= 1.0          # an hour old still counts as most of a game
+    assert day < fresh and week < day
+    # One half-life back is worth exactly half, whatever the half-life is set to.
+    one_half_life_ago = datetime(2026, 8, 19, 12, 0, tzinfo=UTC).timestamp() - EVIDENCE_HALF_LIFE_HOURS * 3600
+    stamp = datetime.fromtimestamp(one_half_life_ago, UTC).isoformat()
+    assert math.isclose(_recency_weight(stamp, now), 0.5, abs_tol=1e-9)
+
+
+def test_a_stale_landslide_no_longer_outvotes_a_fresh_record():
+    """The bug this fixes: old wins against a still-deployed build flattering the estimate.
+
+    Two hundred games won 80% a week ago, forty games split evenly in the last hour. Pooled
+    flat, the ancient landslide dominates and the bot looks far stronger than it is now.
+    """
+    now = datetime(2026, 8, 19, 12, 0, tzinfo=UTC).timestamp()
+    stale = _recency_weight("2026-08-12T12:00:00+00:00", now)
+    fresh = _recency_weight("2026-08-19T11:30:00+00:00", now)
+    flat = _fit_strength([(1800.0, 160, 40), (1800.0, 20, 20)])
+    aged = _fit_strength([(1800.0, 160 * stale, 40 * stale),
+                          (1800.0, 20 * fresh, 20 * fresh)])
+    assert flat > 1900.0                    # the stale landslide wins outright
+    assert aged < flat - 100.0              # ageing hands it back to the recent evidence
+    assert math.isclose(aged, 1800.0, abs_tol=25.0)
+
+
+def test_weighted_totals_that_round_to_nothing_are_degenerate():
+    """Recency weights make the totals floats; a hair above zero is not a record."""
+    assert _fit_strength([(1800.0, 1e-9, 5.0)]) is None
+    assert _fit_strength([(1800.0, 5.0, 1e-9)]) is None

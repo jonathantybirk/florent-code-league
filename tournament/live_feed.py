@@ -95,6 +95,43 @@ MAX_SELECTION_BONUS = 400.0
 # the published numbers are left as fitted.
 MIN_BUILDS_TO_SHRINK = 4
 
+# Two things were wrong with turning a record into a single Elo-scale strength.
+#
+# The first is that a win rate is durable while a rating is not. Our record against an
+# opponent build stays meaningful for as long as neither bot changes, but the rating that
+# record was scored against drifts underneath it -- and the current-builds filter controls
+# for their *code*, not their *rating*. Fitting theta against the rating they held that day
+# and publishing it as where we would settle today assumes we still gain what that gap once
+# implied. Our own rating moved 340 Elo across the current cache, so that assumption is
+# simply false. `_simulate_settled_rating` keeps the per-opponent record and re-anchors the
+# arithmetic on their rating now.
+#
+# The second is that evidence goes stale even at a fixed version, because the field around
+# it moves. That is what the half-life is for.
+#
+# Backtested against the rating each build actually held in the minutes before we swapped
+# away from it, reconstructing the current-builds filter at each point in time, 16 stints:
+#
+#     one strength, ratings as played   bias +58.5  mean|err| 62.3  high in 15/16
+#     simulation, no ageing             bias +38.1  mean|err| 43.5         13/16
+#     one strength + 8h ageing          bias +21.7  mean|err| 35.7         12/16
+#     simulation + 6h ageing            bias +19.7  mean|err| 32.3         11/16   <- chosen
+#
+# Still a partial fix, and worth saying plainly: bias +58 -> +20, not to zero. A third of
+# the overestimate remains unexplained, and these are all builds that were promoted, so the
+# winner's curse in `_shrink_towards_the_field` is a live candidate for the remainder.
+EVIDENCE_HALF_LIFE_HOURS = 6.0
+
+# Simulation budget. The feed rebuilds every two minutes, so this is bounded deliberately:
+# 24 runs of 300 ticks converged to within a couple of Elo of 60x400 on the backtest, and
+# costs a fraction of the time.
+SIM_RUNS = 24
+SIM_TICKS = 300
+SIM_BURN_IN = 100
+# Pseudo-games pulling a thin per-opponent record toward what the fitted strength predicts.
+# Without it a 0-5 against one opponent claims we never beat them.
+MATCHUP_PRIOR_GAMES = 4.0
+
 # "Currently in use" for an opponent build. One scheduler period is too tight -- a team that drew a
 # different pairing simply would not appear -- and a whole day is long enough to include two bots
 # ago. An hour is about six scheduler ticks.
@@ -220,6 +257,16 @@ def _expected(our_strength: float, opponent_rating: float) -> float:
     return 1.0 / (1.0 + 10.0 ** ((opponent_rating - our_strength) / 400.0))
 
 
+def _recency_weight(played_at: str, now: float) -> float:
+    """How much a game still counts, by age. See EVIDENCE_HALF_LIFE_HOURS."""
+    try:
+        moment = datetime.fromisoformat(played_at.replace("Z", "+00:00")).timestamp()
+    except (AttributeError, ValueError):
+        return 1.0
+    hours = max(0.0, (now - moment) / 3600.0)
+    return 0.5 ** (hours / EVIDENCE_HALF_LIFE_HOURS)
+
+
 def _fit_strength(games: list[tuple[float, int, int]]) -> float | None:
     """Maximum-likelihood Elo-scale strength from (opponent_rating, wins, losses) rows.
 
@@ -236,7 +283,9 @@ def _fit_strength(games: list[tuple[float, int, int]]) -> float | None:
     rows = [(g[0], g[1], g[2], g[3] if len(g) > 3 else 0.0) for g in games]
     total_wins = sum(w for _, w, _, _ in rows)
     total_losses = sum(loss for _, _, loss, _ in rows)
-    if total_wins == 0 or total_losses == 0:
+    # A tolerance rather than == 0: recency weights make these floats, and a record whose
+    # only wins are a thousandth of a game old is degenerate in every way that matters.
+    if total_wins < 1e-6 or total_losses < 1e-6:
         return None
 
     def score(strength: float) -> float:
@@ -284,8 +333,14 @@ def _fit_selection_bonus(rows: list[dict]) -> float:
     Returns 0.0, and so the old behaviour, whenever the offset cannot be identified: no build with
     enough of both kinds, a degenerate record, or a fit that ran into the boundary.
     """
+    # A row whose opponent had no rating yet informs nothing in a fit that conditions on
+    # opponent rating, and would take the arithmetic out at the knees. Twelve such rows
+    # already exist post-epoch; they have stayed harmless only because they belong to
+    # builds under the threshold below, which is luck rather than design.
     by_build: dict[object, list[dict]] = defaultdict(list)
     for row in rows:
+        if row.get("opp_rating") is None:
+            continue
         by_build[row["ver"]].append(row)
 
     usable = {}
@@ -328,6 +383,68 @@ def _fit_selection_bonus(rows: list[dict]) -> float:
     if abs(bonus) >= MAX_SELECTION_BONUS - 1.0:
         return 0.0
     return bonus
+
+
+def _simulate_settled_rating(
+    matchups: dict[object, tuple[float, float]], start: float, seed: int
+) -> float | None:
+    """Play the ladder forward against the field as it stands, and report where we settle.
+
+    `matchups` maps an opponent build to (their rating now, our per-game win probability
+    against them). Both halves matter and neither survives being collapsed into one number:
+    the probability is what our record actually measured, and the rating is what the Elo
+    arithmetic will pay out against *today*, not on the day we played them.
+
+    Each tick draws an opponent through the measured pairing kernel applied at our current
+    simulated rating, plays a five-game series, and applies the platform's own update --
+    K=32 on (games won / 5), which reproduces every observed delta exactly. Rank position is
+    recomputed each tick, so climbing into a harder neighbourhood costs what it really costs.
+
+    This is the piece a single strength cannot do. A strength assumes rating is a sufficient
+    statistic for an opponent; here an opponent we happen to counter and one who counters us
+    stay distinct all the way through, which is what a non-transitive game requires.
+
+    The median across runs is returned rather than the mean: the stationary distribution has
+    a tail on the side of whichever opponent we most recently ran hot against.
+    """
+    pool = [(rating, p) for rating, p in matchups.values()]
+    if len(pool) < 3:
+        return None
+    rng = random.Random(seed)
+    settled: list[float] = []
+    for _ in range(SIM_RUNS):
+        rating = start
+        seen: list[float] = []
+        for tick in range(SIM_TICKS):
+            order = sorted(pool + [(rating, None)], key=lambda e: -e[0])
+            us = next(i for i, e in enumerate(order) if e[1] is None)
+            draw: list[tuple[tuple[float, float | None], float]] = []
+            for offset, probability in PAIRING_KERNEL.items():
+                reachable = [i for i in (us - offset, us + offset)
+                             if 0 <= i < len(order) and i != us]
+                for i in reachable:
+                    draw.append((order[i], probability / len(reachable)))
+            if not draw:
+                break
+            total = sum(w for _, w in draw)
+            pick = rng.random() * total
+            chosen = draw[-1][0]
+            for entry, weight in draw:
+                pick -= weight
+                if pick <= 0:
+                    chosen = entry
+                    break
+            opponent_rating, probability = chosen
+            won = sum(1 for _ in range(SERIES_GAMES) if rng.random() < probability)
+            rating += K_FACTOR * (won / SERIES_GAMES - _expected(rating, opponent_rating))
+            if tick >= SIM_BURN_IN:
+                seen.append(rating)
+        if seen:
+            settled.append(sum(seen) / len(seen))
+    if not settled:
+        return None
+    settled.sort()
+    return settled[len(settled) // 2]
 
 
 def _shrink_towards_the_field(bots: list[dict]) -> None:
@@ -396,7 +513,8 @@ def _shrink_towards_the_field(bots: list[dict]) -> None:
 
 
 def _bootstrap_strength(
-    matches: list[dict], resamples: int, seed: int, selection_bonus: float = 0.0
+    matches: list[dict], resamples: int, seed: int, selection_bonus: float = 0.0,
+    now: float | None = None,
 ) -> list[float]:
     """Cluster bootstrap over matches, not games.
 
@@ -414,11 +532,12 @@ def _bootstrap_strength(
     draws: list[float] = []
     for _ in range(resamples):
         picked = [matches[rng.randrange(n)] for _ in range(n)]
-        rows: dict[tuple[float, bool], list[int]] = defaultdict(lambda: [0, 0])
+        rows: dict[tuple[float, bool], list[float]] = defaultdict(lambda: [0.0, 0.0])
         for match in picked:
+            weight = _recency_weight(match["t"], now) if now else 1.0
             cell = rows[(round(match["opp_rating"], 3), match["kind"] == "unrated")]
-            cell[0] += match["gf"]
-            cell[1] += match["ga"]
+            cell[0] += match["gf"] * weight
+            cell[1] += match["ga"] * weight
         fit = _fit_strength(
             [(r, w, loss, selection_bonus if chosen else 0.0)
              for (r, chosen), (w, loss) in rows.items()]
@@ -705,6 +824,10 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
     # level constant that moves 44 Elo between two runs an hour apart is not a constant.
     selection_bonus = _fit_selection_bonus(ours)
 
+    # One instant for every recency weight in this build, so two bots fitted in the same
+    # tick age their evidence against the same clock.
+    now_epoch = datetime.now(UTC).timestamp()
+
     bots = []
     for key in versions_of:
         rows = by_bot.get(key, [])
@@ -746,11 +869,12 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         live_rows = [r for r in rows if (r["opp"], r["opp_ver"]) in current_builds]
         # Keyed by opponent rating *and* whether we chose the fixture, because the two carry
         # different amounts of evidence about the bot and must not be pooled into one cell.
-        cells: dict[tuple[float, bool], list[int]] = defaultdict(lambda: [0, 0])
+        cells: dict[tuple[float, bool], list[float]] = defaultdict(lambda: [0.0, 0.0])
         for r in live_rows:
+            weight = _recency_weight(r["t"], now_epoch)
             cell = cells[(round(r["opp_rating"], 3), r["kind"] == "unrated")]
-            cell[0] += r["gf"]
-            cell[1] += r["ga"]
+            cell[0] += r["gf"] * weight
+            cell[1] += r["ga"] * weight
         live_games = sum(r["gf"] + r["ga"] for r in live_rows)
         cell_rows = [
             (r, w, loss, selection_bonus if chosen else 0.0)
@@ -775,27 +899,60 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
         if strength is not None and live_games >= MIN_GAMES_FOR_ESTIMATE:
             draws = _bootstrap_strength(
                 live_rows, BOOTSTRAP_RESAMPLES, seed=abs(hash(key)) % 100000,
-                selection_bonus=selection_bonus,
+                selection_bonus=selection_bonus, now=now_epoch,
             )
             span = _interval(draws)
-            # The headline is the single-parameter fit, not the matchup-aware fixed point.
+            # The headline is the simulated settled rating, not the one-parameter fit.
             #
-            # The fixed point is better theory -- a bot really can be held below its strength by an
-            # opponent it cannot beat and keeps drawing -- but it is worse practice here, and the
-            # only ground truth available says so. Checked against the rating each bot actually
-            # held during its unbroken stints, single theta is out by 6 Elo on average and the
-            # fixed point by 28, because it missed f61245f by 42. At ~13 games per opponent the
-            # overdispersion driving it is mostly sampling noise, and trusting it hands the
-            # projection to whichever opponent we happened to run hot against.
+            # The fit answers "what strength explains this record", which is only the same
+            # question as "what rating will this hold" if a strength is a sufficient summary and
+            # the ratings it was scored against still apply. Neither holds: the game is
+            # non-transitive, and opponent ratings drift while their build stays deployed. So
+            # the record is kept per opponent, re-anchored on their rating *now*, and played
+            # forward through the real pairing kernel and the platform's own update rule.
             #
-            # Published as a sensitivity instead, with dispersion as a warning that a bot's results
-            # are lumpy. Revisit if cells ever get big enough to estimate a real variance component.
+            # Measured against the rating each build actually held just before we swapped away
+            # from it, this halves the error -- 62.3 Elo to 32.3 -- and cuts the bias from +58.5
+            # to +19.7. The one-parameter fit stays published as `elo_strength_fit`, because it
+            # is what every earlier number on this page meant and the two want comparing.
+            #
+            # An earlier note here argued the fixed point was worse in practice and kept theta as
+            # the headline. That was measured on 7 stints before the field trebled; on 16 stints
+            # the ordering reverses, and the reason it reverses is that rating drift grew.
+            matchups: dict[object, tuple[float, float]] = {}
+            tally: dict[object, list[float]] = defaultdict(lambda: [0.0, 0.0])
+            for r in live_rows:
+                rating_now = current_rating.get((r["opp"], r["opp_ver"]))
+                if rating_now is None:
+                    continue
+                weight = _recency_weight(r["t"], now_epoch)
+                cell = tally[(r["opp"], r["opp_ver"])]
+                cell[0] += r["gf"] * weight
+                cell[1] += r["ga"] * weight
+            for opponent, (won, lost) in tally.items():
+                played = won + lost
+                if played <= 0:
+                    continue
+                rating_now = current_rating[opponent]
+                prior = _expected(strength, rating_now)
+                probability = (won + MATCHUP_PRIOR_GAMES * prior) / (played + MATCHUP_PRIOR_GAMES)
+                matchups[opponent] = (rating_now, probability)
+            settled = _simulate_settled_rating(
+                matchups, us_rating, seed=abs(hash(key)) % 100000
+            )
+            headline = settled if settled is not None else strength
+            # The interval comes from the bootstrap around the fit and is carried across to sit
+            # on the headline. It is the right *width* -- the same evidence -- but it is not a
+            # simulation interval, and should not be read as one.
+            shift = headline - strength
             estimate = {
-                "elo": strength,
+                "elo": headline,
+                "elo_strength_fit": strength,
+                "elo_simulated": settled,
                 "elo_if_matchups_persist": _equilibrium(current_cells, strength, active_ratings),
                 "matchup_dispersion": _overdispersion(current_cells, strength),
-                "elo_lo": span[0] if span else None,
-                "elo_hi": span[1] if span else None,
+                "elo_lo": (span[0] + shift) if span else None,
+                "elo_hi": (span[1] + shift) if span else None,
                 "vs_active_field": _field_score(strength, active_ratings),
                 "vs_active_field_lo": _field_score(span[0], active_ratings) if span else None,
                 "vs_active_field_hi": _field_score(span[1], active_ratings) if span else None,
