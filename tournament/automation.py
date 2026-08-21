@@ -36,15 +36,18 @@ from tournament.site_data import build as build_site_data
 
 STATE_VERSION = 2
 
-# What every automated run plays. Both official pools, so a new bot arrives with a record on the
-# current competition maps *and* a record comparable to the 144 bots already rated on the old
-# ones -- 33 maps rather than 15, at 57% more compute per challenger.
+# What every automated run plays. Every official era, so a new bot arrives with a record on the
+# live competition maps *and* a record comparable to the bots already rated on each retired pool
+# -- 53 maps rather than 15, at 253% more compute per challenger than the live pool alone.
+#
+# That cost grows by fifteen maps every time Florent swaps the pool, which is roughly fortnightly
+# so far. It buys comparability with the existing ratings and nothing else, so when the older eras
+# stop being worth comparing against, retire them from this spec rather than from maps.py: the
+# tuples are what published ratings mean, the spec is only what new runs play.
 #
 # Note what this does not do: it schedules the challenger against the field, so the field's own
-# pairwise results on the twelve new maps still do not exist, and the new-official pool stays
-# incomplete -- and therefore unpublished -- until somebody backfills the whole matrix over them.
-# Dropping this back to "official" is the right move once that backfill has landed and the old
-# pool has become a museum piece.
+# pairwise results on a newly added era still do not exist, and that era stays incomplete -- and
+# therefore unpublished -- until somebody backfills the whole matrix over it.
 RUN_MAP_SPEC = "all_official"
 
 

@@ -8,11 +8,16 @@ The held-out pool is the exception: it lives outside maps/ entirely, in tourname
 because that directory is gitignored. Keeping it off the maps/ tree means neither `official` nor
 `generated` can pick it up by accident, and a developer globbing maps/ never trips over it.
 
-The two *official* pools cannot be told apart by path, because they overlap: when Florent replaced
-the pool on 2026-08-06 they kept atoll, hive and jackpot. So both pools are written out by name
-below, a map may belong to both, and combining pools always means the union -- never a partition.
-Globbing maps/ would silently merge the eras, which is exactly the mistake the named lists exist
-to prevent.
+The *official* pools cannot be told apart by path, because they overlap: every replacement so far
+has retained some of its predecessor's maps. So each era is written out by name below, a map may
+belong to several, and combining pools always means the union -- never a partition. Globbing maps/
+would silently merge the eras, which is exactly the mistake the named lists exist to prevent.
+
+Each official pool is named for the date Florent released it, because that is the only property
+that stays true: "current" and "new" both went stale within a fortnight, and a rating labelled
+with a moving name cannot be read two months later. The pre-2026-08-06 pool keeps the name
+`legacy` -- it predates our records and we do not know its release date, and inventing one to fit
+the scheme would be a worse lie than an honest label.
 """
 
 from __future__ import annotations
@@ -29,26 +34,67 @@ SECRET_ROOT = REPO_ROOT / "tournament" / "custom_maps"
 # apart -- match CSVs and the website both classify on the label, never on a path.
 SECRET_PREFIX = "secret/"
 
-# The competition pool as served by `fcode maps list`, synced 2026-08-06. This list is the one
-# thing here that can go stale without anything failing: if Florent adds a map, runs keep playing
-# the old fifteen and the omission is invisible. `fcode maps sync` reports what the platform has;
-# compare it against this tuple whenever the pool is said to have changed.
-CURRENT_OFFICIAL = (
-    "antler", "archipelago", "atoll", "drumlin", "eider", "fjordgate", "heart", "hive",
-    "jackpot", "lighthouse", "meander", "moonrise", "nordkap", "saga", "snowflake",
-)
+# The competition pool as served by `fcode maps list`, per era. `fcode maps sync` only ever serves
+# the *current* pool, so a stale CURRENT_POOL is the one thing here that can go wrong silently:
+# runs keep playing the old fifteen and the omission is invisible. Compare `fcode maps list`
+# against POOL_20260821 whenever the pool is said to have changed, and add a new era rather than
+# editing one -- an edited era retroactively redefines every rating published under it.
+#
+# Retired maps stay downloadable by name from /api/maps/download long after they leave the pool,
+# which is how the 2026-08-13 era was reconstructed after nobody recorded it at the time.
 
 # The pool every published rating before 2026-08-06 was computed over. Kept whole, including the
-# three maps the current pool retained: these names define what the historical numbers mean, and
-# dropping the overlap to make the pools disjoint would redefine them retroactively.
-LEGACY_OFFICIAL = (
+# maps later pools retained: these names define what the historical numbers mean, and dropping the
+# overlap to make the pools disjoint would redefine them retroactively.
+POOL_LEGACY = (
     "atoll", "aurora", "bridge", "crossfire", "duel", "fjord", "hive", "jackpot", "longship",
     "pinch", "quarry", "runestone", "showdown", "skerry", "sprint", "strait", "string",
     "sweden", "twins", "vase", "vault",
 )
 
+# Released 2026-08-06, retaining atoll, hive and jackpot from the legacy pool.
+POOL_20260806 = (
+    "antler", "archipelago", "atoll", "drumlin", "eider", "fjordgate", "heart", "hive",
+    "jackpot", "lighthouse", "meander", "moonrise", "nordkap", "saga", "snowflake",
+)
+
+# Released 2026-08-13 between 06:53 and 07:13 UTC, retaining antler, archipelago, drumlin,
+# fjordgate and nordkap. Reconstructed on 2026-08-21 from ladder match history -- nobody recorded
+# this pool while it was live, so its membership is the saturated union of the maps actually drawn
+# in ladder games during the era (80 sampled matches, 400 draws, 70 consecutive samples adding
+# nothing), cross-checked by re-deriving POOL_20260806 the same way and getting it exactly.
+POOL_20260813 = (
+    "antler", "archipelago", "auroraveil", "drakkarfjord", "drumlin", "fjordgate", "frostgate",
+    "glacierkeep", "icefloe", "midgard", "nordkap", "ragnarok", "royale", "valkyrie", "yulerune",
+)
+
+# Released 2026-08-21 between 07:33 and 08:13 UTC, retaining auroraveil, glacierkeep, icefloe,
+# midgard and valkyrie. The live competition pool.
+POOL_20260821 = (
+    "auroraveil", "bifrost", "fimbulwinter", "glacierkeep", "helheim", "holmgang", "icefloe",
+    "jotunheim", "longhouse", "midgard", "paths", "skald", "stavkirke", "valkyrie", "yggdrasil",
+)
+
+# Every official era, oldest first. Adding an era means appending to this map and nothing else.
+OFFICIAL_POOLS: dict[str, tuple[str, ...]] = {
+    "legacy": POOL_LEGACY,
+    "official-20260806": POOL_20260806,
+    "official-20260813": POOL_20260813,
+    "official-20260821": POOL_20260821,
+}
+
+# The live pool. Everything that used to say "official" means this.
+CURRENT_POOL = "official-20260821"
+
 # Pool identifiers, in the order the website offers them.
-POOLS = ("official", "legacy", "secret")
+POOLS = (*OFFICIAL_POOLS, "secret")
+
+# Back-compatible aliases. Ratings published before 2026-08-21 were computed under the names
+# `official` and `legacy`; `official` moved with the pool and so cannot be trusted to mean any
+# particular set of maps, which is why it now resolves to the current era and nothing reads it
+# except old command lines.
+CURRENT_OFFICIAL = POOL_20260821
+LEGACY_OFFICIAL = POOL_LEGACY
 
 # The fast subset x/jon uses for iteration (scratch/gauntlet.py:SCREEN).
 SCREEN = ("atoll", "aurora", "duel", "pinch", "quarry", "twins")
@@ -59,7 +105,7 @@ def _named(names: tuple[str, ...]) -> list[Path]:
 
 
 def _union(*groups: list[Path]) -> list[Path]:
-    """Deduplicated union, because the official pools share three maps."""
+    """Deduplicated union, because consecutive official pools share maps."""
     seen: dict[Path, None] = {}
     for group in groups:
         for path in group:
@@ -68,15 +114,15 @@ def _union(*groups: list[Path]) -> list[Path]:
 
 
 def _official() -> list[Path]:
-    return _named(CURRENT_OFFICIAL)
+    return _named(OFFICIAL_POOLS[CURRENT_POOL])
 
 
 def _legacy() -> list[Path]:
-    return _named(LEGACY_OFFICIAL)
+    return _named(POOL_LEGACY)
 
 
 def _all_official() -> list[Path]:
-    return _union(_official(), _legacy())
+    return _union(*(_named(names) for names in OFFICIAL_POOLS.values()))
 
 
 def _generated() -> list[Path]:
@@ -96,20 +142,15 @@ def pools_of(map_label: str) -> tuple[str, ...]:
     """Which pools a map label belongs to -- more than one where the pools overlap."""
     if is_secret(map_label):
         return ("secret",)
-    found = []
-    if map_label in CURRENT_OFFICIAL:
-        found.append("official")
-    if map_label in LEGACY_OFFICIAL:
-        found.append("legacy")
-    return tuple(found)
+    return tuple(pool for pool, names in OFFICIAL_POOLS.items() if map_label in names)
 
 
 def pool_labels(pool: str) -> tuple[str, ...]:
     """The map labels a pool identifier covers."""
+    if pool in OFFICIAL_POOLS:
+        return OFFICIAL_POOLS[pool]
     if pool == "official":
-        return CURRENT_OFFICIAL
-    if pool == "legacy":
-        return LEGACY_OFFICIAL
+        return OFFICIAL_POOLS[CURRENT_POOL]
     if pool == "secret":
         return tuple(label(path) for path in _secret())
     raise ValueError(f"unknown map pool {pool!r}")
@@ -119,8 +160,8 @@ def resolve(spec: str) -> list[Path]:
     """Return absolute map paths for a map-set name or an explicit comma-separated list."""
     if spec == "official":
         maps = _official()
-    elif spec == "legacy":
-        maps = _legacy()
+    elif spec in OFFICIAL_POOLS:
+        maps = _named(OFFICIAL_POOLS[spec])
     elif spec == "all_official":
         maps = _all_official()
     elif spec == "generated":
