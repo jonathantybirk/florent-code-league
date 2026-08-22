@@ -39,6 +39,11 @@ RUSH-FAILURE VALUE FUNCTION
     The failure rate per opponent is the single most diagnostic number we have: it separates "they
     out-heal our ring" from "they kill our Builder on the way in".
 
+RANK BAND
+    Sampling is restricted to ranks BAND_LOW..BAND_HIGH. Beating rank 60 is not information -- we
+    are not matched there and we already know the answer. The band brackets where we expect to
+    finish and extends upward, because the aim is to climb past it.
+
 USAGE
     python tools/scout.py fire          pick and launch up to 5 (respects the rate limit)
     python tools/scout.py collect       harvest finished matches into the log
@@ -60,6 +65,7 @@ US = "Powered by SmartFridge"
 
 BATCH = 5                 # platform cap per 10 minutes
 RUSH_DEADLINE = 80        # a rush that has not killed by here did not land
+BAND_LOW, BAND_HIGH = 3, 20   # ranks worth sampling: a few BELOW our projected finish, and up
 RATING_SCALE = 250.0      # how quickly relevance decays with rating distance
 EXPLORE = 0.35            # uncertainty floor for an opponent we have barely played
 
@@ -109,9 +115,15 @@ def value(rec, ours, total_played):
         uncertainty += EXPLORE
     else:
         uncertainty += EXPLORE * math.sqrt(math.log(max(total_played, 2)) / n) / 3.0
-    gap = abs(rec.get("rating", ours) - ours)
-    relevance = math.exp(-(gap / RATING_SCALE) ** 2)
-    return uncertainty * relevance
+    # Relevance is by RANK BAND, not by rating distance. The team's own bandit estimate puts our
+    # finish around 15-16, and you are matched against people near your level, so the games that
+    # decide the final placing are against ranks a little below that and everything above. Rank 60
+    # tells us nothing whether we beat it or not; rank 1 tells us little because we will rarely be
+    # matched there and it is a different bot class entirely.
+    rank = rec.get("rank", 99)
+    if rank < BAND_LOW or rank > BAND_HIGH:
+        return 0.0
+    return uncertainty
 
 
 def pick(state, pool):
@@ -126,6 +138,7 @@ def pick(state, pool):
         if tid in state["pending"].values():
             continue
         scored.append((value(rec, ours, total), tid, name, rating))
+    scored = [row for row in scored if row[0] > 0.0]
     scored.sort(reverse=True)
     return scored[:BATCH]
 

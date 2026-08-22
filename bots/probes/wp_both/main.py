@@ -200,6 +200,8 @@ class Player:
         self.height = 0
         self.spots = {}             # tile -> facing that puts the Core on its ray
         self.turrets = {}           # enemy turret id -> (pos, facing, covered tiles)
+        self.thrown_from = set()    # tiles an enemy launcher has grabbed us from
+        self.last_pos = None
         self.goal = None            # this round's destination tile
         self.path = []              # cached route, held until genuinely obstructed
         self._dist = {}             # this round's flood, shared by lane scoring and movement
@@ -420,6 +422,13 @@ class Player:
         here = ct.get_position()
         if self.home is None:
             self._orient(ct, here)
+        # A launcher picked us up: our position moved by more than the one tile we are able to
+        # walk. The tile it grabbed us from is a tile to stop standing on.
+        last = getattr(self, 'last_pos', None)
+        if last is not None and abs(last[0] - here.x) + abs(last[1] - here.y) > 1:
+            self.thrown_from.add(last)
+            self.path = []
+        self.last_pos = (here.x, here.y)
         try:
             ct.write_store(SLOT_BUILDER, self.round + 1)
         except Exception:
@@ -455,6 +464,9 @@ class Player:
             # worth 9 HP/round, and a cluster stranded is worth fifteen rounds.
             self.goal = self._next_stand(here)
             at_anchor = self.goal is None or (here.x, here.y) == self.goal
+            if self.built == 0 and self._anchor_value((here.x, here.y)):
+                if self._place(ct, here):
+                    return
             if at_anchor or self._anchor_value((here.x, here.y)) >= self._anchor_value(self.goal):
                 if self._place(ct, here):
                     return
@@ -946,21 +958,6 @@ class Player:
                     soft.add((spot.x, spot.y))
                     for _d, dx, dy in CARDINALS:
                         soft.add((spot.x + dx, spot.y + dy))
-                elif kind == EntityType.LAUNCHER:
-                    # A Launcher does no damage and was therefore invisible to this threat map --
-                    # which is how it became the single largest source of wasted movement in the
-                    # bot. It picks up ANY adjacent Builder, diagonals included, and throws it up
-                    # to five tiles back; our Builder then walks the same ground and is thrown
-                    # again. Measured across 240 games: 1,238 rounds re-walked, 96.5% of all
-                    # revisited tiles, and 35 games livelocked outright.
-                    #
-                    # Its pickup ring is the danger, not its position: standing beside one is what
-                    # loses the game, so the eight tiles around it are what we route away from.
-                    ring = set()
-                    for ax in (-1, 0, 1):
-                        for ay in (-1, 0, 1):
-                            ring.add((spot.x + ax, spot.y + ay))
-                    self.turrets[uid] = ((spot.x, spot.y), None, frozenset(ring))
                 elif kind in (EntityType.GUNNER, EntityType.SENTINEL):
                     facing = ct.get_direction(uid)
                     known = self.turrets.get(uid)
@@ -1030,6 +1027,8 @@ class Player:
                         continue
                     walk = cost + (1 if step in self.seen else UNKNOWN_COST)
                     if soft and step in soft:
+                        walk += THREAT_COST
+                    if step in self.thrown_from:
                         walk += THREAT_COST
                     if walk < dist.get(step, limit):
                         dist[step] = walk

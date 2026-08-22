@@ -455,11 +455,20 @@ class Player:
             # worth 9 HP/round, and a cluster stranded is worth fifteen rounds.
             self.goal = self._next_stand(here)
             at_anchor = self.goal is None or (here.x, here.y) == self.goal
+            print("PROBE r%d at=%s goal=%s av_here=%s av_goal=%s reach=%s" % (
+                self.round, (here.x, here.y), self.goal,
+                self._anchor_value((here.x, here.y)),
+                self._anchor_value(self.goal) if self.goal else None,
+                self._dist.get(self.goal) if self.goal else None))
             if at_anchor or self._anchor_value((here.x, here.y)) >= self._anchor_value(self.goal):
                 if self._place(ct, here):
                     return
+                print("PROBE r%d place FAILED; spots adj=%s" % (self.round,
+                    [(here.x+dx, here.y+dy) for _d, dx, dy in CARDINALS
+                     if self._free_spot((here.x+dx, here.y+dy))]))
             if self._advance(ct, here):
                 return
+            print("PROBE r%d advance FAILED path=%s" % (self.round, self.path[:4]))
             self._break_through(ct, here)
             return
         self._tend(ct, here)
@@ -946,21 +955,6 @@ class Player:
                     soft.add((spot.x, spot.y))
                     for _d, dx, dy in CARDINALS:
                         soft.add((spot.x + dx, spot.y + dy))
-                elif kind == EntityType.LAUNCHER:
-                    # A Launcher does no damage and was therefore invisible to this threat map --
-                    # which is how it became the single largest source of wasted movement in the
-                    # bot. It picks up ANY adjacent Builder, diagonals included, and throws it up
-                    # to five tiles back; our Builder then walks the same ground and is thrown
-                    # again. Measured across 240 games: 1,238 rounds re-walked, 96.5% of all
-                    # revisited tiles, and 35 games livelocked outright.
-                    #
-                    # Its pickup ring is the danger, not its position: standing beside one is what
-                    # loses the game, so the eight tiles around it are what we route away from.
-                    ring = set()
-                    for ax in (-1, 0, 1):
-                        for ay in (-1, 0, 1):
-                            ring.add((spot.x + ax, spot.y + ay))
-                    self.turrets[uid] = ((spot.x, spot.y), None, frozenset(ring))
                 elif kind in (EntityType.GUNNER, EntityType.SENTINEL):
                     facing = ct.get_direction(uid)
                     known = self.turrets.get(uid)

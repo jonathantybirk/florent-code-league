@@ -58,6 +58,7 @@ USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known poo
 ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their Core by here
 HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
 NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
+STALL_WINDOW = 6           # readings of their Core HP that must show no fall
 SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
 ECON_BUILDERS = 3          # Builders devoted to mining and mending once that happens
 ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
@@ -946,21 +947,6 @@ class Player:
                     soft.add((spot.x, spot.y))
                     for _d, dx, dy in CARDINALS:
                         soft.add((spot.x + dx, spot.y + dy))
-                elif kind == EntityType.LAUNCHER:
-                    # A Launcher does no damage and was therefore invisible to this threat map --
-                    # which is how it became the single largest source of wasted movement in the
-                    # bot. It picks up ANY adjacent Builder, diagonals included, and throws it up
-                    # to five tiles back; our Builder then walks the same ground and is thrown
-                    # again. Measured across 240 games: 1,238 rounds re-walked, 96.5% of all
-                    # revisited tiles, and 35 games livelocked outright.
-                    #
-                    # Its pickup ring is the danger, not its position: standing beside one is what
-                    # loses the game, so the eight tiles around it are what we route away from.
-                    ring = set()
-                    for ax in (-1, 0, 1):
-                        for ay in (-1, 0, 1):
-                            ring.add((spot.x + ax, spot.y + ay))
-                    self.turrets[uid] = ((spot.x, spot.y), None, frozenset(ring))
                 elif kind in (EntityType.GUNNER, EntityType.SENTINEL):
                     facing = ct.get_direction(uid)
                     known = self.turrets.get(uid)
@@ -1251,8 +1237,32 @@ class Player:
         # Gated on the pivot, not applied always, because while the Core's health is still falling
         # the direct shot is the fastest kill and menders are a distraction. The pivot latch is
         # exactly the statement "their Core is recovering", which is exactly when this trade flips.
+        # Watch the number we are shooting at. If it has not fallen across the last STALL_WINDOW
+        # readings while we were firing, they are mending faster than we are damaging, and every
+        # further shot into the Core is 1.8 HP per ammo spent against a repair that costs them 4.5.
+        # Killing the Builder doing the mending is 40 HP for 30 ammo and removes 4 HP/round for the
+        # rest of the match.
+        stalled = False
         try:
-            if ct.read_store(SLOT_PIVOT):
+            now = None
+            for key in self.enemy_tiles:
+                bid = ct.get_tile_building_id(Position(key[0], key[1]))
+                if bid is not None:
+                    now = ct.get_hp(bid)
+                    break
+            if now is not None:
+                seen = getattr(self, 'hp_seen', None)
+                if seen is None:
+                    seen = self.hp_seen = []
+                seen.append(now)
+                if len(seen) > STALL_WINDOW:
+                    del seen[0]
+                    stalled = now >= max(seen)
+        except Exception:
+            stalled = False
+
+        try:
+            if stalled or ct.read_store(SLOT_PIVOT):
                 for tile in ct.get_attackable_tiles():
                     uid = ct.get_tile_builder_bot_id(tile)
                     if uid is None or ct.get_team(uid) == ct.get_team():

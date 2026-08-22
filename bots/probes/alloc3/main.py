@@ -45,7 +45,7 @@ except Exception:          # unknown deployment -- fall back to observation
     _MAP_INDEX, _MAP_WALLS = {}, {}
 
 # ---------------------------------------------------------------------------- tuning
-SENTINEL_TARGET = 4        # see "WHY EXACTLY FOUR" above
+SENTINEL_TARGET = 3        # see "WHY EXACTLY FOUR" above
 MAX_RANGE_SQ = 32          # Sentinel attack radius^2
 KILL_AMMO = 280            # 28 Sentinel shots: what a full-health 500 HP Core costs
 AMMO_CAP = 340             # leave a little titanium for mending the ring
@@ -59,13 +59,13 @@ ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their C
 HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
 NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
 SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
-ECON_BUILDERS = 3          # Builders devoted to mining and mending once that happens
+ECON_BUILDERS = 4          # Builders devoted to mining and mending once that happens
 ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
                            # At 140 the menders' own spending (752 heals in one game)
                            # kept the balance under the reserve permanently, so no
                            # titanium ever became ammunition and the ring sat silent
                            # for 348 straight rounds.
-HARVESTER_TARGET = 1       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
+HARVESTER_TARGET = 0       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
 MAX_CHAIN = 6              # longest belt worth laying -- a conveyor is 3 Ti and 1% of scale
                            # (unbounded, four Builders laid 21 of them on paths)
 CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
@@ -269,6 +269,17 @@ class Player:
         if self.pivoted:
             return True
         why = None
+        # THEY commit on contact, not on evidence of failure: one Builder at round 1, then four
+        # more at rounds 22-29, always 7-14 rounds after first sighting us. Waiting to see whether
+        # the rush works is what makes menders arrive too late to matter.
+        try:
+            mine = ct.get_team()
+            for uid in ct.get_nearby_units():
+                if ct.get_team(uid) != mine:
+                    why = "contact"
+                    break
+        except Exception:
+            pass
         try:
             seen = ct.read_store(SLOT_FOE_HP)
         except Exception:
@@ -946,21 +957,6 @@ class Player:
                     soft.add((spot.x, spot.y))
                     for _d, dx, dy in CARDINALS:
                         soft.add((spot.x + dx, spot.y + dy))
-                elif kind == EntityType.LAUNCHER:
-                    # A Launcher does no damage and was therefore invisible to this threat map --
-                    # which is how it became the single largest source of wasted movement in the
-                    # bot. It picks up ANY adjacent Builder, diagonals included, and throws it up
-                    # to five tiles back; our Builder then walks the same ground and is thrown
-                    # again. Measured across 240 games: 1,238 rounds re-walked, 96.5% of all
-                    # revisited tiles, and 35 games livelocked outright.
-                    #
-                    # Its pickup ring is the danger, not its position: standing beside one is what
-                    # loses the game, so the eight tiles around it are what we route away from.
-                    ring = set()
-                    for ax in (-1, 0, 1):
-                        for ay in (-1, 0, 1):
-                            ring.add((spot.x + ax, spot.y + ay))
-                    self.turrets[uid] = ((spot.x, spot.y), None, frozenset(ring))
                 elif kind in (EntityType.GUNNER, EntityType.SENTINEL):
                     facing = ct.get_direction(uid)
                     known = self.turrets.get(uid)
