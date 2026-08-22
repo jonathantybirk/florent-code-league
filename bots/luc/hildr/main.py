@@ -77,7 +77,8 @@ SLOT_ENEMY = 2             # enemy Core, packed (x + 1) * 64 + y, published by o
 SLOT_THREAT = 3            # round + 1 while something that can hit our Core is in sight
 SLOT_BEAT0 = 4             # Sentinel heartbeats, one slot each: round + 1
 SLOT_BEATS = 5             # slots 4..8
-SLOT_HARVEST = 9           # 1 once the miner has a Harvester feeding the Core
+SLOT_HARVEST = 9           # Harvesters the miner has laid
+HARVESTERS_MAX = 3         # the miner keeps laying them while the Core pays
 SLOT_EHEAL = 10            # enemy Builders beside the enemy Core, written by the Sentinels
 SLOT_GO = 11               # 1: shoot the Core.  0: hold, snipe menders, bank
 SLOT_EHP = 12              # enemy Core HP, written by the Sentinels (0 = unknown)
@@ -410,13 +411,14 @@ class Player:
         # Mining needs a Builder to spare, not a quiet map: enemy turrets beside our Core stay
         # there all game.  Once the menders hold the Core near full, one of them can go.
         safe = (not threatened) or (hp >= 400 and menders >= 2)
+        harvesters = self._read(ct, SLOT_HARVEST)
         econ_ok = (safe and need_menders == 0
                    and (built >= SENTINEL_TARGET or self.round >= ECON_ROUND)
-                   and not self._read(ct, SLOT_HARVEST))
+                   and (harvesters == 0 or (harvesters < HARVESTERS_MAX and ti >= 100)))
         self._write(ct, SLOT_ECON_OK, self.round + 1 if econ_ok else 0)
         # The Harvester pays for itself in forty rounds.  While the kill is further off than that
         # on passive income alone, it comes first -- but only while someone can actually build it.
-        econ_first = econ_ok and (go != 1 or (kill_ammo - bank) > 100)
+        econ_first = econ_ok and harvesters == 0 and (go != 1 or (kill_ammo - bank) > 100)
 
         # ---- ammunition, lazily
         self._feed_ammo(ct, alive, go, 0 if finishing else ring_reserve, need_menders,
@@ -804,7 +806,7 @@ class Player:
 
     def _mine(self, ct, here):
         """One Harvester and a belt to the Core.  Returns True while there is a job in hand."""
-        if self.chain is None:
+        if self.chain is None or (not self.chain and self.round % 20 == 0):
             self.chain = self._plan_chain(ct) or []
         if not self.chain:
             return False
@@ -854,7 +856,7 @@ class Player:
                         ct.build_harvester(Position(ore[0], ore[1]))
                         self.occupied.add(ore)
                         self.chain = []
-                        self._write(ct, SLOT_HARVEST, 1)
+                        self._write(ct, SLOT_HARVEST, self._read(ct, SLOT_HARVEST) + 1)
                         return True
                 except Exception:
                     pass
@@ -1386,18 +1388,33 @@ class Player:
             return
         if go != 2:
             return
-        # A volley: the menders make the Core a bad target, so hit one of them on our ray.
+        # A volley: the menders make the Core a bad target.  Their economy is what outlasts us,
+        # so a Harvester on our ray (30 HP, two shots, 2.5 Ti/round of theirs) comes first, then
+        # a mender on the ring, then a belt.
         try:
-            ring = set(_ring(self.enemy_tiles))
             mine = ct.get_team()
-            for uid in ct.get_nearby_units():
-                if ct.get_team(uid) == mine or ct.get_entity_type(uid) != EntityType.BUILDER_BOT:
+            ring = set(_ring(self.enemy_tiles))
+            best = None
+            best_rank = None
+            for uid in ct.get_nearby_buildings():
+                if ct.get_team(uid) == mine:
+                    continue
+                kind = ct.get_entity_type(uid)
+                rank = {EntityType.HARVESTER: 0, EntityType.CONVEYOR: 2, EntityType.SPLITTER: 2}.get(kind)
+                if rank is None:
                     continue
                 p = ct.get_position(uid)
-                if (p.x, p.y) not in ring:
-                    continue
-                if ct.can_fire(p):
-                    ct.fire(p)
-                    return
+                if (best_rank is None or rank < best_rank) and ct.can_fire(p):
+                    best, best_rank = p, rank
+            if best_rank != 0:
+                for uid in ct.get_nearby_units():
+                    if ct.get_team(uid) == mine or ct.get_entity_type(uid) != EntityType.BUILDER_BOT:
+                        continue
+                    p = ct.get_position(uid)
+                    if (p.x, p.y) in ring and ct.can_fire(p):
+                        best, best_rank = p, 1
+                        break
+            if best is not None:
+                ct.fire(best)
         except Exception:
             return
