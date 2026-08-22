@@ -308,8 +308,11 @@ class Player:
         self.prev_ammo = ammo
         self.converted = 0
         eheal = 4 * menders_seen
-        if menders_seen and sum(self.shots) >= 20 and self.heals:
-            eheal = min(eheal, sum(self.heals) / len(self.heals))
+        if sum(self.shots) >= 20 and len(self.heals) >= 3:
+            realized = sum(self.heals) / len(self.heals)
+            eheal = realized if menders_seen == 0 else min(eheal, realized)
+            if ehp >= 500 and menders_seen:
+                eheal = 4 * menders_seen           # a full Core shows no mending; trust the count
         our_dps = 9 * alive
         net_us = our_dps - eheal
         self.eta = self._read(ct, SLOT_ETA)
@@ -655,7 +658,10 @@ class Player:
                 p = ct.get_position(uid)
                 if (p.x, p.y) in ring:
                     n += 1
-            self._write(ct, SLOT_EHEAL, n)
+            # Last write wins, and a turret that sees only the near side of their Core would
+            # overwrite a real count with nothing: zero is reported only by one that sees it all.
+            if n > 0 or all(ct.is_in_vision(Position(k[0], k[1])) for k in ring):
+                self._write(ct, SLOT_EHEAL, n)
             bid = ct.get_tile_building_id(Position(self.enemy.x, self.enemy.y))
             if bid is not None:
                 self._write(ct, SLOT_EHP, ct.get_hp(bid))
