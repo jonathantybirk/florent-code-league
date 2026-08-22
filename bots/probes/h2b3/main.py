@@ -65,7 +65,7 @@ ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and
                            # kept the balance under the reserve permanently, so no
                            # titanium ever became ammunition and the ring sat silent
                            # for 348 straight rounds.
-HARVESTER_TARGET = 1       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
+HARVESTER_TARGET = 2       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
 MAX_CHAIN = 6              # longest belt worth laying -- a conveyor is 3 Ti and 1% of scale
                            # (unbounded, four Builders laid 21 of them on paths)
 CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
