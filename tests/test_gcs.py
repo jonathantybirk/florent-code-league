@@ -557,3 +557,17 @@ def test_core_slot_stays_chain_format_during_onboarding():
     # and the builder absorbed only real tile states
     for (x, y), st in builder.gcs.map.tiles.items():
         assert 0 < st < len(protocol.TILE_STATES)
+
+
+def test_assign_outranks_deferred_symmetry():
+    """A SYMMETRY deferred by an onboarding window must not delay the next
+    spawn's ASSIGN, which has to be written in the spawn round itself."""
+    world = World()
+    core = Unit("core", (2, 2))
+    world.units.append(core)
+    core.gcs.queue(OutMessage("control", control=(CTRL_SYMMETRY, 1)), priority=90.0)
+    core.gcs.core_announce_assign(4)
+    world.step()
+    v = world.store.values[SLOT_CORE]
+    out = messages.decode_standard("core", v, (2, 2), W, H)
+    assert out.events and out.events[0].kind == CTRL_ASSIGN

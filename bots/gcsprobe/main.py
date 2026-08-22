@@ -19,8 +19,7 @@ import random
 from fcode import Direction, EntityType, Environment
 
 from utils.GCS.Base.gcs import GCS
-from utils.GCS.Base.messages import Fact
-from utils.GCS.Base.protocol import STATE_CODE
+from utils.internal_map.Base.internal_map import InternalMap
 
 CARDINALS = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST]
 MAX_BUILDERS = 3
@@ -37,10 +36,10 @@ class Player:
         if kind not in ("core", "builder_bot", "gunner", "sentinel", "launcher"):
             return
         if self.gcs is None:
-            self.gcs = GCS(kind)
+            self.gcs = GCS(kind, InternalMap(ct.get_map_width(), ct.get_map_height()))
 
         result = self.gcs.absorb(ct)
-        self._observe(ct)
+        self.gcs.map.observe(ct)
         if kind == "core":
             self._core(ct)
         elif kind == "builder_bot":
@@ -51,17 +50,6 @@ class Player:
 
         if kind == "core" and ct.get_current_round() == STOP_ROUND:
             ct.resign("probe finished")
-
-    def _observe(self, ct):
-        """Feed own eyesight into the map as unpublished facts."""
-        for tile in ct.get_nearby_tiles():
-            env = ct.get_tile_env(tile)
-            if env == Environment.WALL:
-                self.gcs.map.apply_fact(Fact(tile.x, tile.y, STATE_CODE["WALL"]),
-                                        from_gcs=False)
-            elif env == Environment.ORE_TITANIUM:
-                self.gcs.map.apply_fact(Fact(tile.x, tile.y, STATE_CODE["ORE_FREE"]),
-                                        from_gcs=False)
 
     def _core(self, ct):
         reg = self.gcs.registry
@@ -107,6 +95,8 @@ class Player:
             "slots": {s: d for s, d in result.per_slot.items()},
             "learned": [[f.x, f.y, f.state] for f in result.facts],
             "known": len(self.gcs.map.tiles),
+            "symmetry": self.gcs.map.symmetry(),
+            "enemy_core": self.gcs.map.enemy_core(),
             "resync": reg.resync_write_round, "onboard_until": reg.onboard_until,
             "core_hp": reg.core_hp,
         }
