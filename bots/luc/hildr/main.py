@@ -64,7 +64,9 @@ MEND_RESERVE = 30          # titanium kept for mending while anything is shootin
 AMMO_PER_SENTINEL = 20     # ammunition kept banked per living Sentinel (two shots each)
 BURST_SLACK = 0.85         # GO when the bank covers this fraction of the finish
 ECON_ROUND = 40            # no Harvester before this unless the ring is already up
-ECON_MARGIN = 40           # titanium kept over the build cost before the miner starts a job
+ECON_MARGIN = 20           # titanium kept over the build cost before the miner starts a job
+ECON_RESERVE = 90          # titanium set aside for the Harvester and belt while the kill is far off
+SNIPE_BANK = 40            # ammunition banked before the ring snipes a mender, so it dies in a round
 GO_LOW_HP = 120            # always finish a Core this low if we out-damage the menders
 TIE_FLOOR = 5              # titanium never converted: the dead-heat tiebreak
 
@@ -74,7 +76,8 @@ SLOT_BUILDER = 1           # attack Builder heartbeat: round + 1
 SLOT_ENEMY = 2             # enemy Core, packed (x + 1) * 64 + y, published by our Core
 SLOT_THREAT = 3            # round + 1 while something that can hit our Core is in sight
 SLOT_BEAT0 = 4             # Sentinel heartbeats, one slot each: round + 1
-SLOT_BEATS = 6             # slots 4..9
+SLOT_BEATS = 5             # slots 4..8
+SLOT_HARVEST = 9           # 1 once the miner has a Harvester feeding the Core
 SLOT_EHEAL = 10            # enemy Builders beside the enemy Core, written by the Sentinels
 SLOT_GO = 11               # 1: shoot the Core.  0: hold, snipe menders, bank
 SLOT_EHP = 12              # enemy Core HP, written by the Sentinels (0 = unknown)
@@ -388,19 +391,29 @@ class Player:
                 slack = BURST_SLACK * (0.6 if (self.go and self.go_held) else 1.0)
                 go = 1 if bank >= slack * kill_ammo else 0
             self.go_held = True
+            if go == 0 and ammo >= SNIPE_BANK:
+                go = 2                             # a volley at a mender, then bank again
         else:
             self.go_held = False
         self.go = go
         self._write(ct, SLOT_GO, go)
+        # The Harvester pays for itself in forty rounds.  While the kill is further off than that
+        # on passive income alone, it comes first.
+        econ_first = (not self._read(ct, SLOT_HARVEST) and menders
+                      and (go != 1 or (kill_ammo - bank) > 100))
 
         # ---- ammunition, lazily
         self._feed_ammo(ct, alive, go, 0 if finishing else ring_reserve, need_menders,
-                        threatened, mend_first, mend_reserve, finishing)
+                        threatened, mend_first, mend_reserve + (ECON_RESERVE if econ_first else 0),
+                        finishing)
 
         # ---- mining
-        econ_ok = (not threatened and self.round - self.last_hit > 12
+        # Mining needs a Builder to spare, not a quiet map: enemy turrets beside our Core stay
+        # there all game.  Once the menders hold the Core near full, one of them can go.
+        safe = (not threatened) or (hp >= 400 and menders >= 2)
+        econ_ok = (safe and need_menders == 0
                    and (built >= SENTINEL_TARGET or self.round >= ECON_ROUND)
-                   and need_menders == 0)
+                   and not self._read(ct, SLOT_HARVEST))
         self._write(ct, SLOT_ECON_OK, self.round + 1 if econ_ok else 0)
 
     def _builder_cost(self, ct):
@@ -579,9 +592,10 @@ class Player:
                 want = ti
             elif go:
                 want = AMMO_PER_SENTINEL * alive - ammo
+            elif go == 2:
+                want = 0
             else:
-                want = 10 - ammo                   # one sniping shot at a time
-                reserve = ring_reserve             # sniping is never blocked by the mend reserve
+                want = SNIPE_BANK - ammo           # bank a volley, then let it go
             if want <= 0:
                 return
             # Both Cores dying in one round is settled on titanium stored, and an all-in rusher
@@ -667,7 +681,7 @@ class Player:
         except Exception:
             pass
         # 2. mining, if the Core is paying and nobody else is on it
-        if not threatened and _fresh(self._read(ct, SLOT_ECON_OK), self.round, 1):
+        if _fresh(self._read(ct, SLOT_ECON_OK), self.round, 1):
             miner = self._read(ct, SLOT_MINER)
             mine_is_me = self.chain is not None and self.chain != []
             if mine_is_me or not _fresh(miner, self.round, 2):
@@ -778,6 +792,7 @@ class Player:
                         ct.build_harvester(Position(ore[0], ore[1]))
                         self.occupied.add(ore)
                         self.chain = []
+                        self._write(ct, SLOT_HARVEST, 1)
                         return True
                 except Exception:
                     pass
@@ -1260,7 +1275,7 @@ class Player:
         self._report_enemy(ct)
 
         go = self._read(ct, SLOT_GO, 1)
-        if go:
+        if go == 1:
             for key in self.enemy_tiles:
                 spot = Position(key[0], key[1])
                 try:
@@ -1270,7 +1285,9 @@ class Player:
                 except Exception:
                     continue
             return
-        # HOLD: the menders make the Core a bad target.  Snipe a mender on our ray instead.
+        if go != 2:
+            return
+        # A volley: the menders make the Core a bad target, so hit one of them on our ray.
         try:
             ring = set(_ring(self.enemy_tiles))
             mine = ct.get_team()
