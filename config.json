@@ -5,6 +5,7 @@
   "yield_until": null,
   "_yield_until": "ISO-8601 UTC timestamp, e.g. '2026-08-06T18:30:00Z'. Fires nothing until then, then resumes by itself. Prefer this over enabled:false -- it cannot be forgotten.",
   "test_next": [
+    "odin@1963029:2",
     "odin@8c35e81:2",
     "steward_hardened_reinforced@b61aaac:2",
     "steward@e55aab5:3",
