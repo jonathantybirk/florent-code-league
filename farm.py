@@ -819,6 +819,37 @@ def run_round(dry_run: bool = False) -> None:
     )
     opponents = validated_opponents(policy.choose_opponents(ctx), ctx)
 
+    # An explicit opponent list overrides the policy entirely. The policy optimises
+    # for information about our own bracket, which is the right default and the wrong
+    # answer when someone wants a named set played -- e.g. "everyone above us this
+    # build has not met". Names come from config; the remainder is tracked in state so
+    # a list longer than five carries across rounds instead of replaying its head.
+    wanted = (config.get("opponents_for") or {}).get(bot_id)
+    if wanted:
+        pending = state.setdefault("opponents_pending", {}).get(bot_id)
+        if pending is None:
+            pending = list(wanted)
+        by_name = {r["teamName"]: r for r in ladder_rows}
+        picked, missing, rest = [], [], []
+        for name in pending:
+            row = by_name.get(name)
+            if row is None:
+                missing.append(name)
+            elif len(picked) < CHALLENGES_PER_ROUND:
+                picked.append(row)
+            else:
+                rest.append(name)
+        if missing:
+            log.warning("opponents_for %s: not on the ladder, dropped: %s",
+                        bot_id, ", ".join(missing))
+        if picked:
+            opponents = validated_opponents(picked, ctx)
+            state["opponents_pending"][bot_id] = rest
+            why = f"{why}; opponents_for ({len(rest)} left after this round)"
+        else:
+            log.warning("opponents_for %s: nothing left to play, using the policy", bot_id)
+            state["opponents_pending"].pop(bot_id, None)
+
     log.info("round %d: testing %s (v%d) -- %s", state.get("rounds", 0) + 1, bot_id, version, why)
     log.info("policy %r chose:", getattr(policy, "NAME", "unnamed"))
     log.info("opponents: %s", ", ".join(f"{o['teamName']}(#{o['_rank']})" for o in opponents))
