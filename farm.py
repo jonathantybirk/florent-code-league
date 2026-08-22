@@ -705,6 +705,10 @@ def run_round(dry_run: bool = False) -> None:
     # UnboundLocalError -- Python marks `feed` local for the whole function the
     # moment it is assigned anywhere in it, so the earlier read hit an empty slot.
     feed = livefeed.load()
+    # Hoisted for the same reason as `feed` above, and it bit the same way: the
+    # queued-bot check below reads it, so assigning it further down made every
+    # round with something queued die on UnboundLocalError before firing.
+    registry = submission_registry(state)
     # Uncertainty sampling, not UCB: the internal tournament already ranks our builds
     # over thousands of games, so the live budget is spent narrowing what we do NOT
     # know -- how each build performs against the real ladder -- rather than
@@ -747,7 +751,6 @@ def run_round(dry_run: bool = False) -> None:
     # normal UCB selection stands.
     filling_coverage = False
     closest = closest_opponents(ladder_rows)
-    registry = submission_registry(state)
     incumbent_id = {info["version"]: b for b, info in registry.items()}.get(
         state.get("flagship_version"))
     if closest and incumbent_id:
