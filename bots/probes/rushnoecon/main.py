@@ -55,16 +55,9 @@ UNKNOWN_COST = 3           # what a tile we have never seen costs, against 1 for
 THREAT_COST = 8            # detour a Builder will accept to stay out of a threatened tile
 ANCHOR_BONUS = 2           # steps of walking each extra buildable neighbour is worth
 USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known pool
-ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their Core by here
-HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
-NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
-SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
-ECON_BUILDERS = 3          # Builders devoted to mining and mending once that happens
-ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
-                           # At 140 the menders' own spending (752 heals in one game)
-                           # kept the balance under the reserve permanently, so no
-                           # titanium ever became ammunition and the ring sat silent
-                           # for 348 straight rounds.
+ECON_ROUND = 70            # if the Core is not dead by here, the rush failed -- start an economy
+ECON_BUILDERS = 0          # Builders devoted to mining and mending once that happens
+ECON_RESERVE = 140         # working capital kept liquid for Builders, belts and mending
 HARVESTER_TARGET = 1       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
 MAX_CHAIN = 6              # longest belt worth laying -- a conveyor is 3 Ti and 1% of scale
                            # (unbounded, four Builders laid 21 of them on paths)
@@ -73,8 +66,6 @@ CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
 SLOT_BUILT = 0             # Sentinels standing, written by the Builder
 SLOT_BUILDER = 1           # Builder heartbeat: round + 1
 SLOT_ENEMY = 2             # enemy Core, packed (x + 1) * 64 + y, published by our Core
-SLOT_FOE_HP = 3            # their Core's hit points + 1, published by whichever turret sees it
-SLOT_PIVOT = 4             # 1 once the rush is judged dead; never clears
 
 
 def _pack(pos):
@@ -178,9 +169,6 @@ class Player:
         # core
         self.spawned = 0
         self.econ = 0
-        self.pivoted = False        # latched once the rush is judged dead
-        self.foe_min = None         # lowest enemy Core HP any turret has reported
-        self.converted = 0          # titanium turned into ammunition so far
         # builder
         self.home = None
         self.enemy = None
@@ -247,61 +235,10 @@ class Player:
         self._keep_econ(ct)
         self._feed_ammo(ct, built)
 
-    def _rush_is_dead(self, ct):
-        """Has the rush failed? Judged on evidence, never on the clock.
-
-        A round number is the wrong trigger and a dangerous one. Some of these games are still being
-        won at round 100, and on valkyrie we had their Core down to 46 HP -- six shots from the win --
-        which a round-70 switch would have walked away from to go mining.
-
-        The direct evidence is available: our Sentinels stand next to their Core, so they can read
-        its hit points and publish them. Then
-
-          * their Core RECOVERING is proof of failure. Healing returns 4 HP per Ti against our 1.8,
-            so once the line turns upward we are losing the exchange and no amount of patience fixes
-            it. Measured on the ladder, theirs went 174 -> 500 while ours went 284 -> 50.
-          * spending well past a full kill budget with their Core still healthy says the same thing
-            in titanium rather than in hit points.
-          * and a backstop, for the case where we never got close enough to see the Core at all.
-
-        Latched: a rush that has failed does not un-fail.
-        """
-        if self.pivoted:
-            return True
-        why = None
-        try:
-            seen = ct.read_store(SLOT_FOE_HP)
-        except Exception:
-            seen = 0
-        if seen:
-            now = seen - 1
-            if self.foe_min is None or now < self.foe_min:
-                self.foe_min = now
-            elif now > self.foe_min + HEAL_EVIDENCE and now > NEARLY_DEAD:
-                # Recovery alone is not enough to quit on. A Core we drove to 46 HP that mends back
-                # to 106 has "recovered 60" and is still six shots from dead -- walking away from
-                # that to go mining would throw a won game, which is the exact failure a round
-                # counter would have had. Only abandon a rush whose target is BOTH recovering and
-                # still healthy.
-                why = "healing"
-        if why is None and self.converted > KILL_AMMO * SPEND_MULTIPLE:
-            if self.foe_min is None or self.foe_min > 120:
-                why = "overspent"
-        if why is None and self.round >= ECON_BACKSTOP:
-            why = "backstop"
-        if why is None:
-            return False
-        self.pivoted = True
-        try:
-            ct.write_store(SLOT_PIVOT, 1)
-        except Exception:
-            pass
-        return True
-
     def _keep_econ(self, ct):
         """The rush had its chance. From here it is an attrition war, and attrition is won on
         income -- which nobody on this ladder bothers to build."""
-        if self.econ >= ECON_BUILDERS or not self._rush_is_dead(ct):
+        if self.round < ECON_ROUND or self.econ >= ECON_BUILDERS:
             return
         try:
             if ct.get_global_resources() < ct.get_builder_bot_cost() + 30:
@@ -378,7 +315,7 @@ class Player:
         for the rest of the match. Mending a turret is worth nothing if the Core survives.
         """
         try:
-            if self.pivoted:
+            if self.round >= ECON_ROUND:
                 # THE PIVOT. Past this point the rush has failed. Keep ECON_RESERVE liquid so the
                 # Builders can go on mining and mending -- mending returns 4 HP per Ti against a
                 # Sentinel's 1.8 -- and turn everything ABOVE that into ammunition so the ring
@@ -394,7 +331,6 @@ class Player:
                     return
                 if ct.can_convert_ammo(spare):
                     ct.convert_ammo(spare)
-                    self.converted += spare
                 return
             if ct.get_global_ammo() >= AMMO_CAP:
                 return
@@ -411,7 +347,6 @@ class Player:
             amount = min(spare, AMMO_CAP - ct.get_global_ammo())
             if amount >= 10 and ct.can_convert_ammo(amount):
                 ct.convert_ammo(amount)
-                self.converted += amount
         except Exception:
             return
 
@@ -426,13 +361,9 @@ class Player:
             pass
 
         if self.role is None:
-            # Anything spawned after the pivot exists only because the rush was judged dead,
-            # so its job is the long game. The Core latches that judgement in the store, so
-            # this needs no negotiation and no clock.
-            try:
-                self.role = 'econ' if ct.read_store(SLOT_PIVOT) else 'attack'
-            except Exception:
-                self.role = 'attack'
+            # Anything spawned after ECON_ROUND exists only because the rush did not land, so
+            # its job is the long game. No negotiation needed: the round it first ran decides.
+            self.role = 'econ' if self.round >= ECON_ROUND else 'attack'
 
         self._observe(ct, here)
         if self.role == 'econ':
@@ -835,21 +766,15 @@ class Player:
         # the gap it was aimed at. Holding a mediocre anchor costs more than re-deciding does,
         # because the cheapest cluster genuinely moves as the opponent builds.
         want = SENTINEL_TARGET - self.built
-        steps = self._steps_from(here)
         best = None
         chosen = None
-        for key, cost in steps.items():
+        for key, cost in self._dist.items():
             usable = self._anchor_value(key)
             if not usable:
                 continue
             score = cost - ANCHOR_BONUS * min(usable, want)
             if best is None or score < best:
                 best, chosen = score, key
-        # NOTE: capping the trek for the last turret was tried and MEASURED WORSE -- ring assembly
-        # improved from 8.8 rounds to 7.8, and the panel fell from 152/180 to 149. Three turrets and
-        # a mender loses more damage than four turrets and a hike costs tempo. Faster assembly is
-        # not the same thing as more wins, which is why the ring-speed number is a diagnostic and
-        # not a target.
         if chosen is not None:
             return chosen
         return self._closest_to_core()
@@ -965,33 +890,6 @@ class Player:
                         pending += 1
             cost += 1
         return dist, came
-
-    def _steps_from(self, here):
-        """Plain BFS step counts -- ROUNDS of walking, with no cost weighting.
-
-        `_flood` returns a weighted cost (3 per unseen tile, +8 per threatened one) which is right
-        for choosing a route but wrong for choosing a destination: ANCHOR_BONUS is denominated in
-        rounds, so scoring `cost - BONUS * neighbours` was subtracting rounds from a quantity that
-        was not rounds. On helheim that made a 1-neighbour anchor 2 steps away beat a 4-neighbour
-        anchor 7 steps away, and the Builder then spent fourteen consecutive rounds walking an arc
-        around the Core to place its fourth turret.
-        """
-        start = (here.x, here.y)
-        dist = {start: 0}
-        frontier = [start]
-        depth = 0
-        while frontier:
-            depth += 1
-            nxt = []
-            for key in frontier:
-                for _d, dx, dy in CARDINALS:
-                    step = (key[0] + dx, key[1] + dy)
-                    if step in dist or not self._passable(step):
-                        continue
-                    dist[step] = depth
-                    nxt.append(step)
-            frontier = nxt
-        return dist
 
     def _trace(self, came, here, goal):
         """Full tile-by-tile route out of a finished sweep, or [] if the goal was not reached."""
@@ -1111,18 +1009,10 @@ class Player:
 
     # -- construction --------------------------------------------------------
     def _tend(self, ct, here):
-        """Ring is up. Mend it -- and when there is nothing beside us to mend, WALK HOME.
-
-        This used to end at the loop below: heal an adjacent damaged building, otherwise return.
-        With an undamaged ring that is "do nothing", forever, and the Builder that laid the ring
-        became a statue. tools/autopsy.py measured it standing idle for 954 rounds of a 1000-round
-        game -- 40 Ti and a permanent +20% on our cost scale, buying nothing.
-
-        Walking back to our own Core turns it into the best rate on the board: 4 HP per titanium,
-        against the 1.8 a Sentinel gets. A Builder with no ring left to repair is a mender that has
-        not been told where to stand.
-        """
+        """Ring is up. Mend it: 4 HP for 1 Ti is the cheapest HP on the board."""
         try:
+            if ct.get_cpu_time_elapsed() > CPU_BUDGET_US:
+                return
             for _d, dx, dy in CARDINALS:
                 spot = Position(here.x + dx, here.y + dy)
                 bid = ct.get_tile_building_id(spot)
@@ -1137,8 +1027,6 @@ class Player:
                     return
         except Exception:
             return
-        if self.mine_tiles:
-            self._mend(ct, here)
 
     # --------------------------------------------------------------- sentinel
     def _sentinel(self, ct):
@@ -1157,39 +1045,6 @@ class Player:
                 return
             self.enemy = Position(found[0], found[1])
             self.enemy_tiles = _footprint(self.enemy)
-        # Publish their Core's health. This turret is the only unit close enough to read it, and
-        # it is the number the whole strategy turns on.
-        try:
-            for key in self.enemy_tiles:
-                bid = ct.get_tile_building_id(Position(key[0], key[1]))
-                if bid is not None:
-                    ct.write_store(SLOT_FOE_HP, ct.get_hp(bid) + 1)
-                    break
-        except Exception:
-            pass
-        # ONCE THEY ARE OUT-HEALING US, SHOOT THE HEALERS.
-        #
-        # Into a Core they mend, a shot buys 18 HP for 10 ammo and they undo it for 4.5 Ti: about
-        # 1.8 HP per ammo, and against enough menders the net is zero no matter how long we fire.
-        # A Builder is 40 HP -- three shots, 30 ammo -- and killing one removes 4 HP/round of
-        # mending for the REST OF THE MATCH. Over a hundred remaining rounds that is 400 HP denied
-        # for 30 ammo, about 13 HP per ammo, roughly seven times the rate of shooting the Core.
-        #
-        # Gated on the pivot, not applied always, because while the Core's health is still falling
-        # the direct shot is the fastest kill and menders are a distraction. The pivot latch is
-        # exactly the statement "their Core is recovering", which is exactly when this trade flips.
-        try:
-            if ct.read_store(SLOT_PIVOT):
-                for tile in ct.get_attackable_tiles():
-                    uid = ct.get_tile_builder_bot_id(tile)
-                    if uid is None or ct.get_team(uid) == ct.get_team():
-                        continue
-                    if ct.can_fire(tile):
-                        ct.fire(tile)
-                        return
-        except Exception:
-            pass
-
         for key in self.enemy_tiles:
             spot = Position(key[0], key[1])
             try:

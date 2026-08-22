@@ -57,7 +57,6 @@ ANCHOR_BONUS = 2           # steps of walking each extra buildable neighbour is 
 USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known pool
 ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their Core by here
 HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
-NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
 SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
 ECON_BUILDERS = 3          # Builders devoted to mining and mending once that happens
 ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
@@ -226,6 +225,13 @@ class Player:
 
     # ------------------------------------------------------------------- core
     def _core(self, ct):
+        if self.round == 12 and not getattr(self, '_said', False):
+            self._said = True
+            a = ct.read_store(9); b = ct.read_store(12)
+            ct.resign('chosen=(%d,%d) usable=%d cost=%d | free_spots=%d | 4-anchors=%d nearest4=(%d,%d) cost=%d' % (
+                a//64-1, a%64, ct.read_store(10), ct.read_store(14), ct.read_store(15),
+                ct.read_store(11), b//64-1, b%64, ct.read_store(13)))
+            return
         # The Core is the only unit that always knows where our Core is, so it is the only unit
         # that can derive the enemy Core without guessing. Everyone else reads it from here.
         if self.enemy is None:
@@ -277,12 +283,7 @@ class Player:
             now = seen - 1
             if self.foe_min is None or now < self.foe_min:
                 self.foe_min = now
-            elif now > self.foe_min + HEAL_EVIDENCE and now > NEARLY_DEAD:
-                # Recovery alone is not enough to quit on. A Core we drove to 46 HP that mends back
-                # to 106 has "recovered 60" and is still six shots from dead -- walking away from
-                # that to go mining would throw a won game, which is the exact failure a round
-                # counter would have had. Only abandon a rush whose target is BOTH recovering and
-                # still healthy.
+            elif now > self.foe_min + HEAL_EVIDENCE:
                 why = "healing"
         if why is None and self.converted > KILL_AMMO * SPEND_MULTIPLE:
             if self.foe_min is None or self.foe_min > 120:
@@ -448,7 +449,7 @@ class Player:
             # shooting the Core is worth more than a step toward a tidier spot for one.
             if self._place(ct, here):
                 return
-            self.goal = self._next_stand(here)
+            self.goal = self._next_stand(here, ct)
             if self._advance(ct, here):
                 return
             self._break_through(ct, here)
@@ -815,7 +816,7 @@ class Player:
             return True
         return False
 
-    def _next_stand(self, here):
+    def _next_stand(self, here, ct=None):
         """The anchor: a tile to stand on whose NEIGHBOURS are firing spots -- as many as possible.
 
         A Builder can only build on the four tiles orthogonally beside it, so a tile with all four
@@ -835,22 +836,28 @@ class Player:
         # the gap it was aimed at. Holding a mediocre anchor costs more than re-deciding does,
         # because the cheapest cluster genuinely moves as the opponent builds.
         want = SENTINEL_TARGET - self.built
-        steps = self._steps_from(here)
         best = None
         chosen = None
-        for key, cost in steps.items():
+        for key, cost in self._dist.items():
             usable = self._anchor_value(key)
             if not usable:
                 continue
             score = cost - ANCHOR_BONUS * min(usable, want)
             if best is None or score < best:
                 best, chosen = score, key
-        # NOTE: capping the trek for the last turret was tried and MEASURED WORSE -- ring assembly
-        # improved from 8.8 rounds to 7.8, and the panel fell from 152/180 to 149. Three turrets and
-        # a mender loses more damage than four turrets and a hike costs tempo. Faster assembly is
-        # not the same thing as more wins, which is why the ring-speed number is a diagnostic and
-        # not a target.
         if chosen is not None:
+            n_free = sum(1 for k in self.spots if self._free_spot(k))
+            best4 = [(self._dist.get(k, 999), k) for k in self._dist
+                     if self._anchor_value(k) >= 4]
+            best4.sort()
+            ct.write_store(9, (chosen[0] + 1) * 64 + chosen[1])
+            ct.write_store(10, self._anchor_value(chosen))
+            ct.write_store(11, len(best4))
+            if best4:
+                ct.write_store(12, (best4[0][1][0] + 1) * 64 + best4[0][1][1])
+                ct.write_store(13, best4[0][0])
+            ct.write_store(14, self._dist.get(chosen, 999))
+            ct.write_store(15, n_free)
             return chosen
         return self._closest_to_core()
 
@@ -965,33 +972,6 @@ class Player:
                         pending += 1
             cost += 1
         return dist, came
-
-    def _steps_from(self, here):
-        """Plain BFS step counts -- ROUNDS of walking, with no cost weighting.
-
-        `_flood` returns a weighted cost (3 per unseen tile, +8 per threatened one) which is right
-        for choosing a route but wrong for choosing a destination: ANCHOR_BONUS is denominated in
-        rounds, so scoring `cost - BONUS * neighbours` was subtracting rounds from a quantity that
-        was not rounds. On helheim that made a 1-neighbour anchor 2 steps away beat a 4-neighbour
-        anchor 7 steps away, and the Builder then spent fourteen consecutive rounds walking an arc
-        around the Core to place its fourth turret.
-        """
-        start = (here.x, here.y)
-        dist = {start: 0}
-        frontier = [start]
-        depth = 0
-        while frontier:
-            depth += 1
-            nxt = []
-            for key in frontier:
-                for _d, dx, dy in CARDINALS:
-                    step = (key[0] + dx, key[1] + dy)
-                    if step in dist or not self._passable(step):
-                        continue
-                    dist[step] = depth
-                    nxt.append(step)
-            frontier = nxt
-        return dist
 
     def _trace(self, came, here, goal):
         """Full tile-by-tile route out of a finished sweep, or [] if the goal was not reached."""
@@ -1167,29 +1147,6 @@ class Player:
                     break
         except Exception:
             pass
-        # ONCE THEY ARE OUT-HEALING US, SHOOT THE HEALERS.
-        #
-        # Into a Core they mend, a shot buys 18 HP for 10 ammo and they undo it for 4.5 Ti: about
-        # 1.8 HP per ammo, and against enough menders the net is zero no matter how long we fire.
-        # A Builder is 40 HP -- three shots, 30 ammo -- and killing one removes 4 HP/round of
-        # mending for the REST OF THE MATCH. Over a hundred remaining rounds that is 400 HP denied
-        # for 30 ammo, about 13 HP per ammo, roughly seven times the rate of shooting the Core.
-        #
-        # Gated on the pivot, not applied always, because while the Core's health is still falling
-        # the direct shot is the fastest kill and menders are a distraction. The pivot latch is
-        # exactly the statement "their Core is recovering", which is exactly when this trade flips.
-        try:
-            if ct.read_store(SLOT_PIVOT):
-                for tile in ct.get_attackable_tiles():
-                    uid = ct.get_tile_builder_bot_id(tile)
-                    if uid is None or ct.get_team(uid) == ct.get_team():
-                        continue
-                    if ct.can_fire(tile):
-                        ct.fire(tile)
-                        return
-        except Exception:
-            pass
-
         for key in self.enemy_tiles:
             spot = Position(key[0], key[1])
             try:

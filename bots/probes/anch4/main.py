@@ -53,11 +53,10 @@ REPAIR_RESERVE = 40
 REPLACE_BUILDER = True     # re-spawn a dead Builder while the ring is unfinished
 UNKNOWN_COST = 3           # what a tile we have never seen costs, against 1 for one we have
 THREAT_COST = 8            # detour a Builder will accept to stay out of a threatened tile
-ANCHOR_BONUS = 2           # steps of walking each extra buildable neighbour is worth
+ANCHOR_BONUS = 4           # steps of walking each extra buildable neighbour is worth
 USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known pool
 ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their Core by here
 HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
-NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
 SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
 ECON_BUILDERS = 3          # Builders devoted to mining and mending once that happens
 ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
@@ -277,12 +276,7 @@ class Player:
             now = seen - 1
             if self.foe_min is None or now < self.foe_min:
                 self.foe_min = now
-            elif now > self.foe_min + HEAL_EVIDENCE and now > NEARLY_DEAD:
-                # Recovery alone is not enough to quit on. A Core we drove to 46 HP that mends back
-                # to 106 has "recovered 60" and is still six shots from dead -- walking away from
-                # that to go mining would throw a won game, which is the exact failure a round
-                # counter would have had. Only abandon a rush whose target is BOTH recovering and
-                # still healthy.
+            elif now > self.foe_min + HEAL_EVIDENCE:
                 why = "healing"
         if why is None and self.converted > KILL_AMMO * SPEND_MULTIPLE:
             if self.foe_min is None or self.foe_min > 120:
@@ -845,11 +839,6 @@ class Player:
             score = cost - ANCHOR_BONUS * min(usable, want)
             if best is None or score < best:
                 best, chosen = score, key
-        # NOTE: capping the trek for the last turret was tried and MEASURED WORSE -- ring assembly
-        # improved from 8.8 rounds to 7.8, and the panel fell from 152/180 to 149. Three turrets and
-        # a mender loses more damage than four turrets and a hike costs tempo. Faster assembly is
-        # not the same thing as more wins, which is why the ring-speed number is a diagnostic and
-        # not a target.
         if chosen is not None:
             return chosen
         return self._closest_to_core()
@@ -1167,29 +1156,6 @@ class Player:
                     break
         except Exception:
             pass
-        # ONCE THEY ARE OUT-HEALING US, SHOOT THE HEALERS.
-        #
-        # Into a Core they mend, a shot buys 18 HP for 10 ammo and they undo it for 4.5 Ti: about
-        # 1.8 HP per ammo, and against enough menders the net is zero no matter how long we fire.
-        # A Builder is 40 HP -- three shots, 30 ammo -- and killing one removes 4 HP/round of
-        # mending for the REST OF THE MATCH. Over a hundred remaining rounds that is 400 HP denied
-        # for 30 ammo, about 13 HP per ammo, roughly seven times the rate of shooting the Core.
-        #
-        # Gated on the pivot, not applied always, because while the Core's health is still falling
-        # the direct shot is the fastest kill and menders are a distraction. The pivot latch is
-        # exactly the statement "their Core is recovering", which is exactly when this trade flips.
-        try:
-            if ct.read_store(SLOT_PIVOT):
-                for tile in ct.get_attackable_tiles():
-                    uid = ct.get_tile_builder_bot_id(tile)
-                    if uid is None or ct.get_team(uid) == ct.get_team():
-                        continue
-                    if ct.can_fire(tile):
-                        ct.fire(tile)
-                        return
-        except Exception:
-            pass
-
         for key in self.enemy_tiles:
             spot = Position(key[0], key[1])
             try:
