@@ -58,7 +58,6 @@ CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
 
 HOME_BUILDER_AT_START = False  # a Builder at home on round 0 costs 60 Ti effective: six shots, the kill
 MENDERS_MAX = 5            # never more than this many Builders minding the Core
-MENDERS_RACE = 4           # the squad bought when their ring will stand before ours
 RACE_MARGIN = 1            # rounds our ring must lead theirs by to go all-in
 MEND_RESERVE = 30          # titanium kept for mending while anything is shooting us
 AMMO_PER_SENTINEL = 20     # ammunition kept banked per living Sentinel (two shots each)
@@ -358,13 +357,14 @@ class Player:
             t_us = ehp / net_us
 
         # ---- menders
+        # Sized to the turrets actually standing: one per Sentinel's worth of damage, plus one.
+        # A lone Gunner is not a ring, and four menders bought against it is the kill not bought.
         want_menders = 0
-        if self.plan == 'mend':
-            want_menders = MENDERS_RACE
-            if their_dps > 0:
-                want_menders = min(MENDERS_MAX, max(MENDERS_RACE, (int(their_dps) + 8) // 9 + 1))
-        elif self.plan is None and threatened:
-            want_menders = min(MENDERS_MAX, (int(their_dps) + 8) // 9 + 1)
+        if self.plan == 'mend' or (self.plan is None and threatened):
+            want_menders = (int(their_dps) + 8) // 9 + 1
+            if hp < 300 and their_dps >= 27:
+                want_menders += 1
+            want_menders = min(MENDERS_MAX, max(1, want_menders))
         if HOME_BUILDER_AT_START:
             want_menders = max(want_menders, 1)
         mining = _fresh(self._read(ct, SLOT_MINER), self.round, 2)
