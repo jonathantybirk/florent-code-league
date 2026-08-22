@@ -284,6 +284,20 @@ def submission_registry(state: dict) -> dict[str, dict]:
     return known
 
 
+def faced_for(bot_id: str, state: dict | None = None, live: dict | None = None,
+              registry: dict | None = None) -> set:
+    """Team ids this build has played, feed first and the farm's own log as fallback."""
+    lookup = registry if registry is not None else (state or {}).get("uploads", {})
+    version = lookup.get(bot_id, {}).get("version")
+    if live and version is not None:
+        build = livefeed.build_for_version(live, version)
+        if build is not None:
+            faced = livefeed.faced_team_ids(live, build)
+            if faced:
+                return faced
+    return {t for t, n in per_bot_opponent_counts().get(bot_id, {}).items() if n > 0}
+
+
 def qualification(bot_id: str, closest: list[dict], state: dict | None = None,
                   live: dict | None = None,
                   registry: dict | None = None) -> tuple[int, bool]:
@@ -762,6 +776,16 @@ def run_round(dry_run: bool = False) -> None:
                 bot_id = incumbent_id
             why = (f"flagship unqualified ({seen}/{len(closest)} of the closest "
                    f"{CLOSEST_K}), filling its own coverage")
+
+    # Coverage on request. The rule above only reaches for it when the flagship has
+    # fallen below the bar, and never for a queued bot -- but "play the teams at our
+    # level this build has not met" is a reasonable thing to ask for deliberately,
+    # and the policy already implements exactly that.
+    if bot_id in (config.get("coverage_bots") or []):
+        filling_coverage = True
+        unmet = len([r for r in closest if r["teamId"] not in faced_for(
+            bot_id, state, feed, registry)]) if closest else 0
+        why = f"{why}; coverage_bots: {unmet} of the closest {CLOSEST_K} unmet"
 
     cand = by_id.get(bot_id) or {
         "name": incumbent_id.split("@")[0] if incumbent_id else bot_id.split("@")[0],
