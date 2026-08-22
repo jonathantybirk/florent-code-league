@@ -46,8 +46,9 @@ Obviously also information negatives are important
 
 Everything above is the original brief. This section records what was decided and built. The exact wire
 format — every reserved value, layout, tile-state code and field value — is **generated** from
-`protocol.py` into [PROTOCOL.md](PROTOCOL.md) (`python -c "from utils.GCS.Base.protocol import
-dump_protocol; print(dump_protocol())"`), so that file cannot drift from the encoder.
+`protocol.py` into [PROTOCOL.md](PROTOCOL.md) (from the repo root: `.venv/bin/python -c "from
+bots.utils.GCS.Base.protocol import dump_protocol; print(dump_protocol())"`), so that file cannot drift from
+the encoder.
 
 ## Files
 | file | role |
@@ -58,8 +59,8 @@ dump_protocol; print(dump_protocol())"`), so that file cannot drift from the enc
 | `messages.py` | stateless encode/decode: standard, RUN/REMOTE/CONTROL escapes, resync, onboarding chain |
 | `registry.py` | slot ownership, ASSIGN/grant handling, liveness & reclamation, round windows, Core knowledge model |
 | `gcs.py` | per-unit facade: `absorb`, `publish`, `queue`, `send_raw`, Core helpers |
-| `interfaces.py` | placeholders for the internal-map / logistics / behaviour modules |
-| `tests/test_gcs.py` | headless tests (pytest) |
+| `interfaces.py` | the `MapSource` contract the internal map fulfils, plus placeholders for the logistics / behaviour modules |
+| `tests/test_gcs.py` (repo root) | headless tests: `.venv/bin/python -m pytest tests/test_gcs.py` |
 | `bots/gcsprobe/` | real-engine probe bot used for end-to-end verification; prints a `GCSTRACE` JSON line per unit per round |
 | `tools/gcs_viz.py` | turns a probe replay into **Store Scope**, a side-by-side viewer of the board and the decoded store; `--report` prints reckoning/learned-fact tallies |
 
@@ -110,7 +111,8 @@ addressed to that builder slot (Core only), 16–18 = BUILD/SCOUT/DEFEND_HERE).
 4. Rounds R+2 … R+1+`ONBOARD_ROUNDS` (8): the Core streams absolute-coordinate **chains** (one absolute fact +
    one fact relative to it, window radius 9 in its own slot / 6 in a borrowed turret slot on 30×30) through
    its own slot and every turret/launcher slot; turrets stay silent. The Core keeps a per-slot model of what
-   each unit already knows and streams only the rest.
+   each unit already knows and streams only the rest; when nothing is fresh it restates known facts, still in
+   chain format, so its own slot keeps changing and readers never see a format they did not expect.
 5. The Core must not spawn while a resync/onboarding window is active (`registry.in_onboard_window`,
    `is_resync_round`).
 6. Readers decode onboarding chains only in the Core's slot and in slots they *know* are turret/launcher
@@ -119,8 +121,9 @@ addressed to that builder slot (Core only), 16–18 = BUILD/SCOUT/DEFEND_HERE).
 
 ## Deviations from the plan made during implementation
 - The Core takes part in the resync round like every other unit — that is how newborns learn its position.
-- `publish()` falls back to one `REMOTE` (absolute) fact automatically when nothing pending lies inside the
-  sender's FOV, instead of idling.
+- `publish()` falls back automatically: new fact inside the FOV (standard) → new fact outside it (`REMOTE`)
+  → restate known facts (standard or `REMOTE`) → on an empty map, an empty standard message with parity
+  filler. Never a raw idle value.
 - Sentinels carry no `turn` digit (the engine's `rotate()` is Gunner-only).
 - The initial Core HP (500) is never announced; the first HP message comes only after a >50 drift.
 
@@ -128,12 +131,30 @@ addressed to that builder slot (Core only), 16–18 = BUILD/SCOUT/DEFEND_HERE).
 Only unpublished facts are offered; a fact is marked published **only** when a write actually carried it
 (`publish()` returns exactly those); anything absorbed from the store is marked published on arrival.
 
+## The `MapSource` contract (what the internal map provides)
+The GCS never touches map data directly; it calls these five methods on `gcs.map`
+(`interfaces.MapSource`):
+
+| method | the GCS uses it for |
+|---|---|
+| `pending_facts(budget)` | up to `budget` **unpublished** facts, best first — what to say next |
+| `apply_fact(fact, from_gcs=True)` | record a fact; `from_gcs=True` marks it published on arrival |
+| `note_shared(facts)` | mark exactly the facts a confirmed write carried |
+| `known_facts()` | everything held, published or not — restated when there is nothing new |
+| `symmetry()` | the map's symmetry kind if known, or `None` |
+
+`interfaces.DictMapSource` is the minimal stand-in used by the tests; `bots/utils/internal_map` is the
+real implementation (see its `Base/specs.md`). `absorb()` also forwards `SYMMETRY` control events to
+`map.set_symmetry()` when the map has it, and a Core whose map knows the symmetry announces it once.
+
 ## Engine constraints discovered (fcode 2.3.9)
 - The bot validator only allows **builtin exception names** in `except` clauses (syntactically) and bans
   `finally`. Hence `CodecError(ValueError)` is caught as `ValueError`, and `absorb`/`publish` catch
   `Exception`. No custom exception may ever appear after `except`.
-- Bot modules are loaded from the sources found under the bot's own directory: the module must live (or be
-  symlinked) inside each bot that uses it. `print()` output from bots is not shown by `fcode run`.
+- Bot modules are loaded from the sources found under the bot's own directory (`bots/utils` is copied or
+  symlinked into each bot). `print()` output is not shown by `fcode run` but is stored verbatim in the
+  replay (event field 9, keyed by unit id) — that is what `tools/gcs_viz.py` reads. `ct.resign(msg)` shows
+  up in the `--json` result as `resign_message`.
 - `rotate()` is Gunner-only and accepts any compass direction; our gunners keep to one step per round so
   `turn(3)` stays complete.
 - `get_nearby_tiles()` occlusion is irrelevant: FOV indices always name the full geometric disc.
@@ -141,8 +162,7 @@ Only unpublished facts are offered; a fact is marked published **only** when a w
 ## Usage
 ```python
 from utils.GCS.Base.gcs import GCS
-from utils.GCS.Base.messages import Fact
-from utils.GCS.Base.protocol import STATE_CODE
+from utils.internal_map.Base.internal_map import InternalMap
 
 class Player:
     def __init__(self):
@@ -151,9 +171,9 @@ class Player:
     def run(self, ct):
         if self.gcs is None:
             kind = ct.get_entity_type().value     # "core" / "builder_bot" / "gunner" / ...
-            self.gcs = GCS(kind)
+            self.gcs = GCS(kind, InternalMap(ct.get_map_width(), ct.get_map_height()))
         result = self.gcs.absorb(ct)              # facts + control events + deaths + core_hp
-        # ... observe: self.gcs.map.apply_fact(Fact(x, y, STATE_CODE["WALL"]), from_gcs=False)
+        self.gcs.map.observe(ct)                  # own eyesight into the map
         # ... Core on spawn: self.gcs.core_announce_assign(self.gcs.registry.pick_builder_slot())
         # ... act / move ...
         self.gcs.publish(ct)                      # call LAST, after moving
@@ -171,10 +191,12 @@ dead-reckoned positions of teammates (green ring = exact, rose = off), tiles it 
 (rose if they contradict the real map), and the 16 slots as that unit decodes them each round.
 
 ## Known limitations / TODO for other modules
-- `interfaces.DictMapSource` is a stand-in for the internal map; `has_conveyor_issue`, `has_harvester_issue`
-  and `on_directive` are stubs returning nothing.
+- `has_conveyor_issue`, `has_harvester_issue` (logistics) and `on_directive` (behaviour) are stubs returning
+  nothing.
 - A builder sharing a slot (`period > 1`) that moves more than once between writes drifts in readers'
   reckoning until the next resync round.
 - Enemy-builder movement inference (the TODO above) is not implemented; enemy bots are plain tile states.
-- `SYMMETRY` is delivered as a control event; applying it to derive the enemy Core and mirror facts is the
-  internal map's job.
+- A message deferred by a resync/onboarding round keeps its priority; `ASSIGN` is queued at priority 1000 so
+  nothing deferred can ever push it out of its spawn round (that bug cost a newborn its slot once).
+- `SYMMETRY` is delivered as a control event (`RoundResult.events`); applying it is the internal map's job
+  (see `bots/utils/internal_map/Base/specs.md`).

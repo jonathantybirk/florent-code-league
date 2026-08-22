@@ -61,6 +61,7 @@ class GCS:
         self.last_pub_pos: tuple[int, int] | None = None   # where we last wrote from
         self.last_written: int | None = None
         self.restate_cursor = 0                # cycles through known facts
+        self.symmetry_announced = False        # Core only
         self.queued: list[tuple[float, OutMessage]] = []
         # Core only: everyone knows HP starts at CORE_HP_MAX, so the first
         # announcement happens only once the Core has drifted from it
@@ -98,6 +99,9 @@ class GCS:
 
         for f in result.facts:
             self.map.apply_fact(f, from_gcs=True)
+        for _slot, ev in result.events:
+            if ev.kind == CTRL_SYMMETRY and hasattr(self.map, "set_symmetry"):
+                self.map.set_symmetry(ev.args[0])
         self._dispatch_directives(result)
         return result
 
@@ -146,9 +150,16 @@ class GCS:
         if not reg.may_write(self.slot, round_no):
             return []                       # off-phase, or the Core borrowed us
 
+        # the Core announces the map's symmetry once, as soon as it knows it
+        if (self.kind == "core" and not self.symmetry_announced
+                and self.map.symmetry() is not None):
+            self.symmetry_announced = True
+            self.core_announce_symmetry(self.map.symmetry())
+
+        priority = 0.0
         if message is None and self.queued:
             self.queued.sort(key=lambda pair: -pair[0])
-            _, message = self.queued.pop(0)
+            priority, message = self.queued.pop(0)
 
         # An ASSIGN must go out in the spawn round itself, so queued control
         # messages outrank the HP announcement; the HP waits a round.
@@ -161,12 +172,12 @@ class GCS:
 
         if reg.is_resync_round(round_no):
             if message is not None:
-                self.queued.append((100.0, message))   # keep it for later
+                self.queued.append((priority, message))   # deferred, same rank
             return self._publish_resync(ct)
 
         if self.kind == "core" and reg.in_onboard_window(round_no):
             if message is not None:
-                self.queued.append((100.0, message))   # keep it for later
+                self.queued.append((priority, message))   # deferred, same rank
             self._core_stream(ct, round_no, skip_own=False)
             return []
 
@@ -294,7 +305,8 @@ class GCS:
         Must be the only control the Core sends this round, and must not be
         sent while a resync/onboarding window is active."""
         args = messages.assign_args(slot, period, phase)
-        self.queue(OutMessage("control", control=(CTRL_ASSIGN, args)), priority=100.0)
+        # strictly above every other message: it must go out THIS round
+        self.queue(OutMessage("control", control=(CTRL_ASSIGN, args)), priority=1000.0)
 
     def core_announce_symmetry(self, kind: int):
         self.queue(OutMessage("control", control=(CTRL_SYMMETRY, kind)), priority=90.0)
