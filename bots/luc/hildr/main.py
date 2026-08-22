@@ -347,13 +347,17 @@ class Player:
             # re-check once the dust settles: an attacker that died, or a ring that never came
             if our_eta > their_eta + 4 and hp < 400:
                 self.plan = 'mend'
-        mend_first = self.plan == 'mend' and threatened
         finishing = ehp <= GO_LOW_HP
-        mend_reserve = min(MEND_RESERVE, 3 * menders) if (threatened and menders and not finishing) else 0
-
         # What the kill costs from here, if the ring is to keep shooting.
         full = 9 * SENTINEL_TARGET
         kill_ammo = (10.0 * ehp / 18.0) * (full / max(1, full - eheal)) if net_us > 0 or alive == 0 else 0
+        can_finish = alive > 0 and net_us > 0 and ammo + max(0, ti - ring_reserve) >= BURST_SLACK * kill_ammo
+        stalled = (self.plan == 'race' and built >= SENTINEL_TARGET
+                   and self.round - self.plan_round > 10
+                   and (eheal > 0 or (hp < 300 and ehp >= 250))
+                   and not can_finish)
+        mend_first = threatened and not finishing and (self.plan == 'mend' or stalled)
+        mend_reserve = min(MEND_RESERVE, 3 * menders) if (threatened and menders and not finishing) else 0
         bank = ammo + max(0, ti - ring_reserve - mend_reserve)
         t_us = None
         if net_us > 0:
@@ -363,7 +367,7 @@ class Player:
         # Sized to the turrets actually standing: one per Sentinel's worth of damage, plus one.
         # A lone Gunner is not a ring, and four menders bought against it is the kill not bought.
         want_menders = 0
-        if self.plan == 'mend' or (self.plan is None and threatened):
+        if mend_first or (self.plan is None and threatened):
             want_menders = (int(their_dps) + 8) // 9 + 1
             if hp < 300 and their_dps >= 27:
                 want_menders += 1
@@ -387,7 +391,7 @@ class Player:
 
         # ---- GO / HOLD for the ring
         go = 1
-        if alive and eheal > 0 and not finishing:
+        if alive and eheal > 0:
             if net_us <= 0:
                 go = 0
             else:
@@ -1309,8 +1313,13 @@ class Player:
             if self.slot is None:
                 self.slot = SLOT_BEATS - 1
         self._write(ct, SLOT_BEAT0 + self.slot, self.round + 1)
+        self._act(ct)
+        # Reported AFTER the shot: the Core pairs this round's HP change with this round's
+        # ammunition spend, and a report taken before firing put the two a round apart --
+        # a phantom 6 HP/round of mending against an opponent that mends nothing.
         self._report_enemy(ct)
 
+    def _act(self, ct):
         if self._counter_battery(ct):
             return
         go = self._read(ct, SLOT_GO, 1)
