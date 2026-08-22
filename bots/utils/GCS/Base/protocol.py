@@ -30,7 +30,11 @@ U32 = 2**32
 # announces the Core's exact HP.  Everything strictly below PAYLOAD_SPACE is a
 # normal mixed-radix payload.
 
-IDLE_A = U32 - 1          # zero-payload heartbeat, alternate with IDLE_B
+# IDLE_A/IDLE_B: alternating zero-payload heartbeat used ONLY as the
+# last-resort fallback when a message cannot be built.  A unit with nothing
+# to say normally sends an empty standard message instead (move/turn digits
+# intact, filler parity toggled) — a bare idle would lose a builder's move.
+IDLE_A = U32 - 1
 IDLE_B = U32 - 2
 RESERVED_FREE_1 = U32 - 3  # unassigned, held in reserve
 RESERVED_FREE_2 = U32 - 4  # unassigned, held in reserve
@@ -276,7 +280,8 @@ def dump_protocol() -> str:
     out = ["# GCS wire protocol (generated from protocol.py)", ""]
     out += ["## Reserved raw values", "",
             f"- payload space: 0 .. {PAYLOAD_SPACE - 1}",
-            f"- IDLE_A={IDLE_A}, IDLE_B={IDLE_B} (alternating heartbeat)",
+            f"- IDLE_A={IDLE_A}, IDLE_B={IDLE_B} (fallback heartbeat; normally an "
+            "empty standard message with toggled filler parity is sent instead)",
             f"- free: {RESERVED_FREE_1}, {RESERVED_FREE_2}",
             f"- Core HP block: {CORE_HP_BASE} + h (h=0..{CORE_HP_MAX}), "
             f"announced on >{CORE_HP_ANNOUNCE_DRIFT} HP drift", ""]

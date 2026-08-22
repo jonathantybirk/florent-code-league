@@ -69,6 +69,9 @@ class RoundResult:
     core_hp: int | None = None
     deaths: list[int] = field(default_factory=list)                       # slots
     assigned_slot: int | None = None    # set on the round OUR unit learns its slot
+    # per-slot decode detail (for tooling/visualisation): slot -> dict with
+    # raw, changed, format, facts, move/turn/aux, events
+    per_slot: dict[int, dict] = field(default_factory=dict)
 
 
 class SlotRegistry:
@@ -102,10 +105,19 @@ class SlotRegistry:
 
         for slot in range(STORE_SIZE):
             value = snapshot[slot]
+            prev = self.prev_snapshot[slot] if self.prev_snapshot else None
+            detail = {"raw": value, "changed": prev is not None and value != prev,
+                      "format": "-",
+                      "facts": [], "events": []}
+            result.per_slot[slot] = detail
+            n_facts, n_events = len(result.facts), len(result.events)
             try:
-                self._absorb_slot(slot, value, wrote_round, resync, onboard, result)
+                self._absorb_slot(slot, value, wrote_round, resync, onboard, result, detail)
             except ValueError as exc:                       # decision 7: never raise
+                detail["format"] = f"undecodable: {exc}"
                 print(f"[GCS] slot {slot} round {round_no}: undecodable ({exc})")
+            detail["facts"] = [(f.x, f.y, f.state) for f in result.facts[n_facts:]]
+            detail["events"] = [(ev.kind, list(ev.args)) for _, ev in result.events[n_events:]]
 
         self._liveness(snapshot, wrote_round, resync, onboard, result)
         self._apply_windows(result, wrote_round)
@@ -116,25 +128,30 @@ class SlotRegistry:
                 known.add((f.x, f.y))
         return result
 
-    def _absorb_slot(self, slot, value, wrote_round, resync, onboard, result):
-        raw_kind, detail = messages.classify_raw(value)
+    def _absorb_slot(self, slot, value, wrote_round, resync, onboard, result, detail):
+        raw_kind, raw_detail = messages.classify_raw(value)
         if raw_kind == "core_hp":
+            detail["format"] = f"core_hp={raw_detail}"
             if slot == SLOT_CORE:
-                self.core_hp = detail
-                result.core_hp = detail
+                self.core_hp = raw_detail
+                result.core_hp = raw_detail
             return
         if raw_kind in ("idle", "free"):
+            detail["format"] = raw_kind
             return
         owner = self.owners.get(slot)
         prev = self.prev_snapshot[slot] if self.prev_snapshot else None
         if value == prev:
+            detail["format"] = "stale"
             return                       # unchanged: stale content, nothing new
 
         if onboard and slot == SLOT_CORE:
+            detail["format"] = "onboard"
             decoded = messages.decode_onboard(value, self.map_w, self.map_h, False)
             result.facts.extend(decoded.facts)
             return
         if onboard and owner is not None and owner.kind not in ("builder_bot", "core"):
+            detail["format"] = "onboard(borrowed)"
             decoded = messages.decode_onboard(value, self.map_w, self.map_h, True)
             result.facts.extend(decoded.facts)
             return
@@ -142,12 +159,15 @@ class SlotRegistry:
         if owner is None:
             # a slot whose owner we have not learned yet (e.g. we are the
             # newborn) cannot be interpreted safely — skip until we know
+            detail["format"] = "empty" if value == 0 else "unknown owner"
             return
 
         if resync:
+            detail["format"] = "resync"
             decoded = messages.decode_resync(owner.kind, value, self.map_w, self.map_h)
             owner.pos = decoded.position
             owner.has_written = True
+            detail["position"] = decoded.position
             result.facts.extend(decoded.facts)
             return
 
@@ -162,6 +182,8 @@ class SlotRegistry:
                                            owner.pos if pos_known else (0, 0),
                                            self.map_w, self.map_h)
         owner.has_written = True
+        detail["format"] = "standard" + ("" if pos_known else " (pos unknown)")
+        detail["move"], detail["turn"], detail["aux"] = decoded.move, decoded.turn, decoded.aux
         if not pos_known:
             # FOV-relative facts can't be resolved without the sender's
             # position; control events and REMOTE facts (absolute) survive.

@@ -11,12 +11,12 @@ import random
 
 import pytest
 
-from .. import codec, fov, messages, protocol
-from ..codec import CodecError
-from ..gcs import GCS, OutMessage
-from ..interfaces import DictMapSource
-from ..messages import Fact
-from ..protocol import (
+from bots.utils.GCS.Base import codec, fov, messages, protocol
+from bots.utils.GCS.Base.codec import CodecError
+from bots.utils.GCS.Base.gcs import GCS, OutMessage
+from bots.utils.GCS.Base.interfaces import DictMapSource
+from bots.utils.GCS.Base.messages import Fact
+from bots.utils.GCS.Base.protocol import (
     CTRL_ASSIGN,
     CTRL_DIRECTIVE,
     CTRL_SYMMETRY,
@@ -223,17 +223,30 @@ def test_gunner_turn_digit():
 # 4. liveness
 # ---------------------------------------------------------------------------
 
-def test_idle_alternates_and_death_detected():
+def test_nothing_to_say_still_changes_value_every_round():
+    """With nothing new, a unit sends an empty standard message whose filler
+    parity toggles — never the same value twice, never a bare idle that
+    would lose a builder's move digit."""
     world = World()
     core = Unit("core", (2, 2))
     world.units.append(core)
-    world.step()                             # round 0: nothing new -> idle
-    world.step()
-    world.step()
-    a, b = world.store.values[SLOT_CORE], None
-    world.step()
-    b = world.store.values[SLOT_CORE]
-    assert {a, b} == {IDLE_A, IDLE_B}        # never the same value twice
+    seen = []
+    for _ in range(4):
+        world.step()
+        seen.append(world.store.values[SLOT_CORE])
+    assert all(a != b for a, b in zip(seen, seen[1:]))
+    for v in seen:
+        assert messages.classify_raw(v)[0] == "payload"
+        assert messages.decode_standard("core", v, (2, 2), W, H).facts == []
+
+
+def test_builder_move_survives_empty_round():
+    """A builder with nothing to say still reports its move."""
+    pos = (5, 5)
+    value, used = messages.encode_standard("builder_bot", pos, [], move=2, parity=1)
+    assert used == []
+    out = messages.decode_standard("builder_bot", value, pos, W, H)
+    assert out.move == 2 and out.facts == []
 
 
 def test_core_hp_announce_only_on_drift():
@@ -242,7 +255,7 @@ def test_core_hp_announce_only_on_drift():
     world.units.append(core)
     world.step()
     # HP starts at 500 and that is common knowledge: nothing to announce
-    assert messages.classify_raw(world.store.values[SLOT_CORE])[0] == "idle"
+    assert messages.classify_raw(world.store.values[SLOT_CORE])[0] == "payload"
     core.hp = 470                            # drift 30: no announcement
     for _ in range(2):
         world.step()
@@ -251,8 +264,8 @@ def test_core_hp_announce_only_on_drift():
     world.step()
     kind, hp = messages.classify_raw(world.store.values[SLOT_CORE])
     assert (kind, hp) == ("core_hp", 440)
-    world.step()                             # latched: back to the heartbeat
-    assert messages.classify_raw(world.store.values[SLOT_CORE])[0] == "idle"
+    world.step()                             # latched: back to normal traffic
+    assert messages.classify_raw(world.store.values[SLOT_CORE])[0] == "payload"
 
 
 # ---------------------------------------------------------------------------

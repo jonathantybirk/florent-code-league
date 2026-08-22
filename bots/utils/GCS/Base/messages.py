@@ -139,11 +139,16 @@ def _fact_digit(kind: str, sender_pos, f: Fact | None) -> int | None:
     return idx * S_ALPHABET + f.state
 
 
-def encode_standard(kind: str, sender_pos, facts, *, move=0, turn=0, aux=0):
+def encode_standard(kind: str, sender_pos, facts, *, move=0, turn=0, aux=0, parity=0):
     """Pack up to two FOV-relative facts plus the sender's prefix fields.
 
     facts: list of Fact (absolute coords).  Unencodable facts are skipped;
     returns (value, facts_actually_encoded) or (None, []) if nothing packs.
+
+    parity (0/1) is the FOV index of the filler used for a missing fact.
+    Receivers ignore UNKNOWN-state facts whatever their index, so toggling it
+    lets a unit with nothing new to say still send its move/turn digits every
+    round without ever repeating a value (the liveness rule).
     """
     usable: list[Fact] = []
     digits_ab: list[int] = []
@@ -155,7 +160,7 @@ def encode_standard(kind: str, sender_pos, facts, *, move=0, turn=0, aux=0):
             usable.append(f)
             digits_ab.append(d)
     while len(digits_ab) < 2:
-        digits_ab.append(0)   # filler: index 0, state UNKNOWN — receivers ignore
+        digits_ab.append(parity * S_ALPHABET)   # filler: state UNKNOWN, ignored
 
     names, radices = _radices(kind)
     values = {"move": move, "turn": turn, "speaker": 0, "aux": aux,
