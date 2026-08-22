@@ -34,10 +34,13 @@ ENGINE = str(pathlib.Path(fcode.__file__).resolve().parent)
 
 PANEL = ["steward", "vigil", "heimdall", "odin", "prospect_rushonly"]
 
-# The 15-map competition pool as synced on 2026-08-04. Kept explicit rather than globbed so a stale
-# map left in maps/ cannot silently join the evaluation.
-POOL = ["antler", "archipelago", "atoll", "drumlin", "eider", "fjordgate", "heart", "hive",
-        "jackpot", "lighthouse", "meander", "moonrise", "nordkap", "saga", "snowflake"]
+# The FINAL competition pool, synced 2026-08-21 -- the last rotation before finalists are picked.
+# All 15 maps are new; nothing from the August pool survives. Kept explicit rather than globbed
+# because `fcode maps sync` ADDS without removing: after this sync maps/ held 48 files, and a glob
+# would have quietly evaluated on 33 retired maps. The superseded ones now live in maps/retired/.
+POOL = ["auroraveil", "bifrost", "fimbulwinter", "glacierkeep", "helheim", "holmgang", "icefloe",
+        "jotunheim", "longhouse", "midgard", "paths", "skald", "stavkirke", "valkyrie",
+        "yggdrasil"]
 
 
 def resolve_bot(name: str) -> str:
@@ -136,10 +139,12 @@ def main():
         from diag.detect import analyse
         print("\n--- DIAGNOSTICS ---")
         totals: dict[str, int] = {}
+        foe_totals: dict[str, int] = {}
         for r in rows:
             if not r.get("replay"):
                 continue
             team = "a" if r["side"] == "A" else "b"
+            foe = "b" if team == "a" else "a"
             try:
                 rep = analyse(r["replay"], team)
             except Exception as exc:
@@ -147,9 +152,27 @@ def main():
                 continue
             for k, v in rep.counts.items():
                 totals[k] = totals.get(k, 0) + v
-        if totals:
-            for k, v in sorted(totals.items(), key=lambda kv: -kv[1]):
-                print(f"  {k:<18}{v}")
+            # Run the same detector on the OPPONENT. A sparring partner that parks its units reads
+            # MOSTLY_IDLE / NEVER_ACTED here, which is a machine-checkable statement that it is not
+            # a real test. We shipped an economy change on 30/30 against a home-made clone whose
+            # Builders never pressed; the real opponent then beat it 0-5. This column is what turns
+            # "my sparbot is faithful" from an assumption into a number.
+            try:
+                foe_rep = analyse(r["replay"], foe)
+            except Exception:
+                continue
+            for k, v in foe_rep.counts.items():
+                foe_totals[k] = foe_totals.get(k, 0) + v
+        if totals or foe_totals:
+            keys = sorted(set(totals) | set(foe_totals),
+                          key=lambda k: -(totals.get(k, 0) + foe_totals.get(k, 0)))
+            print(f"  {'finding':<18}{'us':>6}{'them':>7}")
+            for k in keys:
+                print(f"  {k:<18}{totals.get(k, 0):>6}{foe_totals.get(k, 0):>7}")
+            idle_foe = foe_totals.get("MOSTLY_IDLE", 0) + foe_totals.get("NEVER_ACTED", 0)
+            if idle_foe and idle_foe >= len(rows):
+                print(f"  !! OPPONENT IS MOSTLY IDLE ({idle_foe} findings over {len(rows)} games)"
+                      f" -- this panel member is not contesting; results against it prove little")
         else:
             print("  no findings")
 
