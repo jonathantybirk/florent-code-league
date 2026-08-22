@@ -157,13 +157,18 @@ def expected_titanium_flow(ct: Controller) -> float:
     window = GameConstants.PASSIVE_TITANIUM_INTERVAL
     return sum(expected_titanium_schedule(ct, window)) / window
 
+tiles = (type for type in (EntityType.CONVEYOR, EntityType.SPLITTER, EntityType.CORE))
 
 class Player:
-    def __init__(self):
+    def __init__(self, ct: Controller):
         self.harvester_positions = []
+        self.map = self._contruct_map(ct)
     @property
     def _num_harvesters(self) -> int:
         return len(self.harvester_positions)
 
     def _expected_income(self, ct: Controller) -> float:
         return expected_titanium_flow(ct)
+
+    def _contruct_map(self, ct: Controller) -> list[list[int]]:
+        return [[0 for _ in range(ct.get_map_width())] for _ in range(ct.get_map_height())]

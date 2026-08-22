@@ -1,33 +1,43 @@
 # Expected titanium flow
 
 `main.py` answers one question, from the Core's point of view: **how much
-titanium should I expect to receive per round, over the next few rounds?**
+titanium should I expect to receive, round by round, over the next few
+rounds?**
 
-That's `expected_titanium_flow(ct)`. Everything else in the file exists to
-support that one function. It's a pure calculation with no side effects —
-nothing here moves, builds, or spends anything — so it's meant to be copied
-or imported into a real bot's decision logic later, not run as-is (there's
-no `run()` method).
+That's `expected_titanium_schedule(ct, rounds)` — it returns a list, one
+estimate per upcoming round. `expected_titanium_flow(ct)` is a convenience
+wrapper around it (the old, single-number entry point, kept because
+`bots/test/econ_demo` and `bots/test/luc/vidar` both already call it):
+just the schedule's first 4 rounds, averaged into one per-round rate.
+Everything else in the file exists to support the schedule function. It's a
+pure calculation with no side effects — nothing here moves, builds, or
+spends anything — so it's meant to be copied or imported into a real bot's
+decision logic later, not run as-is (there's no `run()` method).
 
 ## The formula
 
+For each round `i` from now (`i = 1, 2, 3, ...`):
+
 ```
-flow = (titanium already in the pipeline, weighted, within 4 rounds  +  10)
-       ----------------------------------------------------------------------
-                                        4
+schedule[i] = (titanium already in the pipeline, weighted, that's exactly i tiles out)
+              + (10, if i rounds from now lands on a multiple of PASSIVE_TITANIUM_INTERVAL)
 ```
 
-- **4** is `GameConstants.PASSIVE_TITANIUM_INTERVAL` — every team gets 10
-  titanium passively every 4 rounds, guaranteed, regardless of anything on
-  the map. Any 4-round window contains exactly one of those ticks, so it
-  always contributes a flat `10`.
-- **The pipeline term** is everything currently sitting on a Conveyor or
-  Splitter that's close enough to the Core to plausibly arrive within that
-  same 4-round window. "Weighted" is explained below — it's not always a
-  straightforward count.
-- Dividing by 4 turns "titanium expected over the next 4 rounds" into
-  "titanium expected per round", which is the number a bot actually wants
-  when comparing its economy against build costs.
+- **The pipeline term** is titanium currently sitting on a same-team
+  Conveyor or Splitter within the Core's vision, weighted by the
+  probability it actually completes its route (see below), and bucketed by
+  exactly how many tiles — rounds — it has left to travel. A stack 3 tiles
+  out contributes to `schedule[3]`, not to every round up to it.
+- **The passive term** is `GameConstants.PASSIVE_TITANIUM_AMOUNT` (10),
+  landing on whichever future round is next a multiple of
+  `GameConstants.PASSIVE_TITANIUM_INTERVAL` (4) — every team gets this
+  automatically, regardless of anything on the map.
+
+`expected_titanium_flow` is just `sum(schedule(ct, 4)) / 4`: the same
+information, collapsed from "how much arrives in each of the next 4
+rounds" into "what's the average per-round rate over that same window" —
+the number a bot actually wants when comparing its economy against a
+build cost, if it doesn't need the round-by-round detail.
 
 ## Why this needs more than "look at nearby Conveyors"
 
@@ -72,18 +82,26 @@ un-inspectable step is a Harvester is left out entirely.
 
 ## Walking the code
 
-Reading top-down, in the order a call to `expected_titanium_flow` actually
-visits them:
+Reading top-down, in the order a call to `expected_titanium_schedule`
+actually visits them:
 
 ### `_is_receiver(ct, pos, direction)`
 
 Whether the tile in `direction` from `pos` is something that can actually
 hold a delivered stack: a same-team Conveyor, Splitter, or the Core. Empty
-ground, a wall, and a building that has no titanium storage at all (a
-Barrier, a turret) all come back `False`. This is the piece that makes the
-Splitter weight below dynamic instead of a hardcoded constant — it's how
-`_feeder_at` counts how many of a Splitter's outputs are actually live
-right now.
+ground, a wall, a building that has no titanium storage at all (a Barrier,
+a turret), and a tile the Core can't currently see all come back `False`.
+This is the piece that makes the Splitter weight below dynamic instead of a
+hardcoded constant — it's how `_feeder_at` counts how many of a Splitter's
+outputs are actually live right now.
+
+The vision check exists because a Splitter's *other* two sides — the ones
+`_feeder_at` isn't walking toward — might sit outside the Core's vision
+even when the tracked side is well within it. Treating an unconfirmable
+side as "not a receiver" is a deliberate choice, not the only one possible:
+the alternative (assume it *is* live) would silently spread a Splitter's
+weight across sides that might not even be built, which felt like the
+worse failure mode to default to.
 
 (The Barrier/turret case is the one part of this that's reasoned from the
 mechanics rather than directly measured: `splitter_probe` only tested bare,
@@ -116,8 +134,9 @@ The single-direction building block: "is there something in `from_dir` from
 `pos` that feeds into `pos`, and if so, with what probability?"
 
 It looks at the neighbouring tile and returns `None` unless that neighbour
-is a Conveyor or Splitter whose output genuinely points back at `pos` — not
-just "is adjacent", but "is actually facing the right way to deliver here":
+is in the Core's vision, on the same team, and is a Conveyor or Splitter
+whose output genuinely points back at `pos` — not just "is adjacent", but
+"is actually facing the right way to deliver here":
 
 - **Conveyor** — its one fixed facing direction must equal the direction
   back toward `pos`. If so, weight `1.0` (certain).
@@ -146,34 +165,45 @@ Core's own footprint tiles in the first place. The Core isn't a Splitter, so
 it automatically falls into the "check all four sides" branch, with no
 special-casing needed.
 
-### `_titanium_via(ct, pos, etype, weight, rounds_left)`
+### `_accumulate(ct, pos, etype, weight, hop, schedule)`
 
 The recursive core of the whole thing. Given a tile that's already been
 confirmed to feed toward the Core with some cumulative `weight` (the product
-of every Splitter probability along the path so far), it:
+of every Splitter probability along the path so far) and is `hop` tiles —
+rounds — out, it:
 
-1. Checks whether `pos` currently holds titanium, and if so counts
+1. Checks whether `pos` currently holds titanium, and if so adds
    `weight * STACK_SIZE` (10 Ti scaled by however likely this stack is to
-   actually complete the trip).
-2. If there are rounds left in the window (`rounds_left > 1`), recurses one
-   hop further upstream for everything `_feeders` finds, each contributing
-   its own `hop_weight` multiplied into the running `weight`.
+   actually complete the trip) into `schedule[hop - 1]` — the bucket for
+   "arrives in exactly `hop` rounds", not a running total.
+2. If `schedule` still has rounds left past this hop, recurses one hop
+   further upstream for everything `_feeders` finds, each contributing its
+   own `hop_weight` multiplied into the running `weight`.
 
 ```python
 holding = ct.get_stored_resource(ct.get_tile_building_id(pos)) is not None
-total = weight * GameConstants.STACK_SIZE if holding else 0.0
-if rounds_left > 1:
+if holding:
+    schedule[hop - 1] += weight * GameConstants.STACK_SIZE
+if hop < len(schedule):
     for neighbor, n_etype, hop_weight in _feeders(ct, pos, etype):
-        total += _titanium_via(ct, neighbor, n_etype, weight * hop_weight, rounds_left - 1)
-return total
+        _accumulate(ct, neighbor, n_etype, weight * hop_weight, hop + 1, schedule)
 ```
+
+This mutates `schedule` in place rather than returning a total — the whole
+point is *which* round a contribution lands in, not just how much there is
+altogether.
 
 Two things worth noticing about this being a plain bounded recursion instead
 of an explicit queue-plus-visited-set walk:
 
-- **It can't run away.** `rounds_left` shrinks by exactly one on every hop,
-  so recursion depth is capped at the window size (4) no matter what's
-  built on the map.
+- **It can't run away.** `hop` climbs by exactly one on every step and stops
+  once it reaches `len(schedule)`, so recursion depth is capped at however
+  many rounds were asked for. It also can't wander further than the Core's
+  vision, independent of that cap: `_feeder_at` refuses to step onto
+  anything outside vision, so a request for a very large number of rounds
+  doesn't turn into a search of the whole map — it's bounded by how many
+  same-team Conveyor/Splitter tiles the Core can currently see, not by the
+  round count.
 - **It can't double-count.** Because every Conveyor and Splitter has
   exactly *one* fixed output direction, a given tile can only ever be
   discovered as a feeder of the one specific tile its output points at —
@@ -182,22 +212,38 @@ of an explicit queue-plus-visited-set walk:
   Core, is guaranteed to be a tree. (Verified by hand and by a scratch test
   before relying on it — see the worked example below.)
 
-### `expected_titanium_flow(ct)`
+### `expected_titanium_schedule(ct, rounds)`
 
 Ties it together: find everything feeding the Core's footprint directly
-(`_feeders(ct, tile, EntityType.CORE)` for each footprint tile), sum what
-`_titanium_via` finds along each of those branches, add the guaranteed
-passive 10 Ti, and divide by the window:
+(`_feeders(ct, tile, EntityType.CORE)` for each footprint tile), run
+`_accumulate` for each of those branches into a shared `schedule`, then lay
+the guaranteed passive 10 Ti onto whichever future round it's actually due:
 
 ```python
-window = GameConstants.PASSIVE_TITANIUM_INTERVAL
-pending = sum(
-    _titanium_via(ct, neighbor, etype, weight, window)
-    for tile in _core_footprint(ct)
-    for neighbor, etype, weight in _feeders(ct, tile, EntityType.CORE)
-)
-return (pending + GameConstants.PASSIVE_TITANIUM_AMOUNT) / window
+schedule = [0.0] * rounds
+for tile in _core_footprint(ct):
+    for neighbor, etype, weight in _feeders(ct, tile, EntityType.CORE):
+        _accumulate(ct, neighbor, etype, weight, 1, schedule)
+
+current_round = ct.get_current_round()
+for i in range(rounds):
+    if (current_round + i + 1) % GameConstants.PASSIVE_TITANIUM_INTERVAL == 0:
+        schedule[i] += GameConstants.PASSIVE_TITANIUM_AMOUNT
+return schedule
 ```
+
+The passive tick has to be placed by actual game round (`current_round + i +
+1`), not just by index — it's a fixed, calendar-based cadence, not something
+that starts counting over from whenever this function happens to be called.
+Two Cores that call this on different rounds, or the same Core calling it
+twice ten rounds apart, should each get the tick lined up with the *same*
+real rounds, not with "4 calls from now" in each of their own local frames.
+
+### `expected_titanium_flow(ct)`
+
+The single-number convenience wrapper: `sum(expected_titanium_schedule(ct,
+4)) / 4`. Same information as the first 4 entries of the schedule, just
+collapsed into one average.
 
 ## Worked example
 
@@ -207,7 +253,8 @@ Splitter branch feeding it from the north. The Splitter also has a second
 Conveyor built on its western side, running off to a separate stockpile —
 an ordinary use of a Splitter's third side, and the reason its weight below
 is `1/2` rather than `1.0`: two of its three sides are genuinely in use, so
-each gets half the dispatches long-run.
+each gets half the dispatches long-run. Assume `ct.get_current_round()` is
+`0` and everything drawn is in vision.
 
 ```
                     north branch          spare side, also built
@@ -216,30 +263,43 @@ each gets half the dispatches long-run.
                                           │
                                           ▼
 [dist 5: Ti] ──► [dist 4: Ti] ──► [dist 3: empty] ──► [dist 2: Ti] ──► [dist 1: Ti] ──► Core
- outside the        weight 1        weight 1           weight 1         weight 1
- 4-round window,
- not counted
+                    weight 1        weight 1           weight 1         weight 1
 ```
 
-- **West chain:** `10 + 0 + 10 + 10 = 30` Ti. The dist-3 tile is empty so it
-  contributes nothing; the dist-5 tile is never even reached by
-  `_titanium_via`, since the recursion stops one hop before it (`rounds_left`
-  hits `1` at dist 4 and doesn't expand further) — a Conveyor that far out is
-  excluded the same as an empty one, just for a different reason (out of
-  time, not out of stock).
-- **North branch:** the Splitter has two live outputs (ours, and the spare
-  route to the stockpile), so `_is_receiver` counts 2 and the weight is
-  `1/2`. The Splitter (weight `1/2`) and the Conveyor feeding it (weight
-  `1 * 1/2 = 1/2`) both hold titanium: `10/2 + 10/2 = 10` Ti. The stockpile
-  branch itself is never traced — `_feeders` only ever looks *backward*
-  from a tile already known to feed the Core, so a Splitter's other outputs
-  simply don't come up.
-- `pending = 30 + 10 = 40`
-- `flow = (40 + 10) / 4 = 12.5` titanium per round.
+Every tile in the picture is exactly as many hops from the Core as its
+label says, on both branches (the north branch's Splitter is hop 1, its
+feeder is hop 2), so each one's contribution (`weight * 10` if holding,
+`0` if empty) lands in `schedule[hop - 1]`:
 
-This matches a scratch test run against the code (a hand-built fake
-`Controller` reproducing this exact board) — see the note in
-[Limitations](#limitations) about what that test does and doesn't prove.
+| hop | west chain | north branch | pipeline total this hop |
+|---|---|---|---|
+| 1 | dist-1, w `1`, holds → `10` | Splitter, w `1/2`, holds → `5` | `15` |
+| 2 | dist-2, w `1`, holds → `10` | feeder, w `1/2`, holds → `5` | `15` |
+| 3 | dist-3, w `1`, **empty** → `0` | — | `0` |
+| 4 | dist-4, w `1`, holds → `10` | — | `10` |
+| 5 | dist-5, w `1`, holds → `10` | — | `10` |
+| 6 | *(nothing left to feed either branch)* | — | `0` |
+
+Then the passive `+10` lands on whichever hop is a multiple of 4 rounds
+from now — here just hop 4 — and the result is `expected_titanium_schedule(ct, 6)`:
+
+```python
+>>> expected_titanium_schedule(ct, 6)
+[15.0, 15.0, 0.0, 20.0, 10.0, 0.0]
+#                  ^^^^ hop 4: 10 (pipeline) + 10 (passive)
+```
+
+`expected_titanium_flow(ct)` is `sum([15.0, 15.0, 0.0, 20.0]) / 4 = 12.5` —
+only the first 4 entries; the dist-5 Conveyor never enters the average at
+all, since it's one hop past where that 4-round window cuts off.
+
+Both of these were checked against a hand-built fake `Controller`
+reproducing this exact board, including the `current_round`-dependent
+placement of the passive tick (a second run starting from
+`current_round = 2` instead of `0` moves the `+10` from `schedule[3]` to
+`schedule[1]` and `schedule[5]`, exactly as the game-round arithmetic
+above predicts) — see the note in [Limitations](#limitations) about what
+that test does and doesn't prove.
 
 ## Limitations
 
@@ -267,16 +327,34 @@ This matches a scratch test run against the code (a hand-built fake
   about the dynamic weight was verified against the real engine (below);
   this specific case (a Barrier or turret sitting on one of a Splitter's
   sides) wasn't.
+- **The search silently stops at the edge of vision.** `_feeder_at` refuses
+  to step onto anything outside the Core's vision, so a route whose next
+  segment happens to sit just past that edge doesn't get excluded with an
+  error or a warning — it just quietly reads as "nothing here", same as an
+  empty tile or a genuine dead end. A high round count doesn't buy visibility
+  the Core doesn't have; it only buys a longer schedule over whatever *is*
+  visible. This also means the schedule can change from one call to the
+  next purely because something entered or left vision, with no change to
+  the actual belt at all.
 - **Verified against a hand-written fake, and separately against the real
   engine — including the finding that changed the Splitter weight from a
   flat 1/3 to a dynamic 1/(live outputs).** The worked examples above were
   checked against a mock object implementing the documented `Controller`
-  methods, confirming the arithmetic matches the rules as coded. Separately:
+  methods, confirming the arithmetic matches the rules as coded, including
+  the round-by-round schedule and its `current_round`-dependent passive-tick
+  placement. Separately, against the real engine:
   - [`bots/test/econ_demo`](../econ_demo/) plays a real match, lays a real
     Harvester → Conveyor → Splitter → Core route, and has the Core call
-    this exact `expected_titanium_flow`. On `maps/duel.map26` it now
-    reports `5.0000`, i.e. `(10 * 1.0 + 10) / 4` — before the fix below it
-    reported `3.3333` (the old flat `1/3`).
+    both `expected_titanium_flow` and `expected_titanium_schedule` (with
+    `SCHEDULE_ROUNDS` set past the old 4-round window, so it actually
+    exercises the extra reach). On `maps/duel.map26`, `flow` reports
+    `5.0000` — `(10 * 1.0 + 10) / 4`, versus `3.3333` before the
+    Splitter-weight fix (see the flat-`1/3` bullet above) — and one sampled
+    `schedule_now` was
+    `[0.0, 10.0, 0.0, 0.0, 0.0, 10.0, 0.0, 0.0]`, whose first 4 entries sum
+    to `10.0`, matching `flow_now = 2.5000` at that exact same round: the
+    two functions agree with each other in a real match, not just in
+    isolation.
   - [`bots/test/splitter_probe`](../splitter_probe/) is what found the fix
     in the first place: it builds a Splitter with only one of its three
     sides connected to anything and counts, over hundreds of real rounds,

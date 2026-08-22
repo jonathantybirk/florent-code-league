@@ -1,12 +1,15 @@
-"""Real-engine smoke test for bots/test/econ/main.py's expected_titanium_flow.
+"""Real-engine smoke test for bots/test/econ/main.py's expected_titanium_flow
+and expected_titanium_schedule.
 
 Not a competitive bot. It lays exactly one route to the Core -- Harvester ->
 Conveyor chain -> Splitter -> Core, the same shape the econ README's worked
 example walks through -- waits long enough for titanium to actually start
 flowing through it, then has the Core call the real (imported, not copied)
-expected_titanium_flow and resign with the result in the message. `fcode
-run` prints a resign message, so this surfaces a real number from a real
-match instead of only from a hand-built fake Controller.
+econ functions and resign with the results in the message. `fcode run`
+prints a resign message, so this surfaces real numbers from a real match
+instead of only from a hand-built fake Controller. SCHEDULE_ROUNDS is
+deliberately larger than expected_titanium_flow's fixed 4-round window, so
+this also exercises the schedule reaching further than that window allows.
 """
 
 import importlib.util
@@ -20,6 +23,7 @@ CARDINALS = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST]
 STORE_CHAIN_DONE = 0
 ROUNDS_TO_LET_TITANIUM_FLOW = 30
 GIVE_UP_ROUND = 300
+SCHEDULE_ROUNDS = 8  # deliberately > the old 4-round window expected_titanium_flow uses
 
 
 def _load_econ():
@@ -48,6 +52,7 @@ class Player:
         self.chain_done_round: int | None = None
         self.max_flow_seen = 0.0
         self.max_flow_round: int | None = None
+        self.max_schedule_seen = [0.0] * SCHEDULE_ROUNDS
 
     def run(self, ct: Controller) -> None:
         etype = ct.get_entity_type()
@@ -79,15 +84,20 @@ class Player:
             if flow > self.max_flow_seen:
                 self.max_flow_seen = flow
                 self.max_flow_round = round_
+            schedule = econ.expected_titanium_schedule(ct, SCHEDULE_ROUNDS)
+            self.max_schedule_seen = [max(a, b) for a, b in zip(self.max_schedule_seen, schedule)]
 
         ready = self.chain_done_round is not None and round_ >= self.chain_done_round + ROUNDS_TO_LET_TITANIUM_FLOW
         if ready or round_ >= GIVE_UP_ROUND:
             flow = econ.expected_titanium_flow(ct)
+            schedule = econ.expected_titanium_schedule(ct, SCHEDULE_ROUNDS)
             ct.resign(
                 message=(
                     f"round={round_} chain_done_round={self.chain_done_round} "
                     f"flow_now={flow:.4f} "
-                    f"max_flow_seen={self.max_flow_seen:.4f} at round {self.max_flow_round}"
+                    f"max_flow_seen={self.max_flow_seen:.4f} at round {self.max_flow_round} "
+                    f"schedule_now={[round(v, 2) for v in schedule]} "
+                    f"max_schedule_seen={[round(v, 2) for v in self.max_schedule_seen]}"
                 )
             )
 
