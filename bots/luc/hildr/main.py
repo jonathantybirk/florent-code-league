@@ -68,6 +68,7 @@ ECON_RESERVE = 90          # titanium set aside for the Harvester and belt while
 SNIPE_BANK = 40            # ammunition banked before the ring snipes a mender, so it dies in a round
 GO_LOW_HP = 120            # always finish a Core this low if we out-damage the menders
 TIE_FLOOR = 5              # titanium never converted: the dead-heat tiebreak
+ATTACKER_DIG_REACH = 3     # steps the attack Builder walks to dig out a turret shooting the ring
 
 # communication store
 SLOT_BUILT = 0             # Sentinels placed, written by the attack Builder
@@ -207,6 +208,7 @@ class Player:
         self.role = None
         self.chain = None           # [ore, c1 .. ck] with ck beside our Core
         self.post = None            # mender: the ring tile we stand on
+        self.digging = False
         self.sym = 'R'
         self.seen = set()
         self.walls = set()
@@ -648,7 +650,56 @@ class Player:
             return
         self._write(ct, SLOT_ETA, 1)
         self._report_enemy(ct)
+        if self._dig(ct, here, ATTACKER_DIG_REACH):
+            return
         self._tend(ct, here)
+
+    def _dig(self, ct, here, reach):
+        """Dig out the nearest enemy turret: 2 Ti a hit, thirteen hits for a Gunner that would
+        otherwise take 40-60 Ti of Sentinel with it.  Stand beside it on a tile no turret covers."""
+        try:
+            mine = ct.get_team()
+            target = None
+            best = None
+            for uid in ct.get_nearby_units():
+                if ct.get_team(uid) == mine:
+                    continue
+                if ct.get_entity_type(uid) not in (EntityType.GUNNER, EntityType.SENTINEL):
+                    continue
+                p = ct.get_position(uid)
+                d = abs(p.x - here.x) + abs(p.y - here.y)
+                if best is None or d < best:
+                    best, target = d, p
+            if target is None:
+                self.digging = False
+                return False
+            if best == 1:
+                if ct.can_fire(target):
+                    ct.fire(target)
+                    return True
+                return False
+            if not self.digging and best > reach:
+                return False
+            covered = self._threats(ct)
+            goal = None
+            gbest = None
+            for _d, dx, dy in CARDINALS:
+                step = (target.x + dx, target.y + dy)
+                cost = self._dist.get(step)
+                if cost is None or step in covered:
+                    continue
+                if gbest is None or cost < gbest:
+                    gbest, goal = cost, step
+            if goal is None:
+                return False
+            self.digging = True
+            path = self._trace(self._came, here, goal)
+            if path:
+                self._step_to(ct, here, path[0])
+                return True
+        except Exception:
+            pass
+        return False
 
     def _report_enemy(self, ct):
         """Menders beside the enemy Core and its HP, for the Core's arithmetic."""
