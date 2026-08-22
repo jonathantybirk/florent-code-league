@@ -670,6 +670,21 @@ def run_round(dry_run: bool = False) -> None:
             state.setdefault("test_next_done", []).append(bot)
             log.info("queued %s from config.json", bot)
 
+    for spec in (config.get("queue_front") or []) if not dry_run else []:
+        # "name@commit[:rounds]" -- same as test_next, but jumps the queue
+        bot, _, rounds = str(spec).partition(":")
+        queue = state.setdefault("queue", [])
+        entry = next((e for e in queue if e["bot_id"] == bot), None)
+        if bot in (state.get("queue_front_done") or []):
+            continue
+        if entry is None:
+            queue_bot(state, bot, int(rounds or 1))
+            entry = queue[-1]
+        queue.remove(entry)
+        queue.insert(0, entry)
+        state.setdefault("queue_front_done", []).append(bot)
+        log.info("moved %s to the front of the queue", bot)
+
     allowed, why_not = firing_allowed(config)
     if not allowed and not dry_run:
         log.info("not firing: %s", why_not)
