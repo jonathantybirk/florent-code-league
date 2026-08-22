@@ -68,7 +68,7 @@ ECON_RESERVE = 90          # titanium set aside for the Harvester and belt while
 SNIPE_BANK = 40            # ammunition banked before the ring snipes a mender, so it dies in a round
 GO_LOW_HP = 120            # always finish a Core this low if we out-damage the menders
 TIE_FLOOR = 5              # titanium never converted: the dead-heat tiebreak
-ATTACKER_DIG_REACH = 3     # steps the attack Builder walks to dig out a turret shooting the ring
+ATTACKER_DIG_REACH = 0     # steps the attack Builder walks to dig out a turret shooting the ring
 
 # communication store
 SLOT_BUILT = 0             # Sentinels placed, written by the attack Builder
@@ -201,6 +201,7 @@ class Player:
         self.shots = []
         self.go_held = False
         self.plan_round = 0
+        self.ring_seen = 0
         # builder
         self.home = None
         self.enemy = None
@@ -418,7 +419,7 @@ class Player:
         self._write(ct, SLOT_ECON_OK, self.round + 1 if econ_ok else 0)
         # The Harvester pays for itself in forty rounds.  While the kill is further off than that
         # on passive income alone, it comes first -- but only while someone can actually build it.
-        econ_first = econ_ok and harvesters == 0 and (go != 1 or (kill_ammo - bank) > 100)
+        econ_first = econ_ok and harvesters == 0 and menders > 0 and (go != 1 or (kill_ammo - bank) > 100)
 
         # ---- ammunition, lazily
         self._feed_ammo(ct, alive, go, 0 if finishing else ring_reserve, need_menders,
@@ -540,6 +541,18 @@ class Player:
 
     def _keep_attacker(self, ct, built):
         if built >= SENTINEL_TARGET:
+            # The ring is up -- or was.  Four turrets dug out and a dead Builder left v78 sitting
+            # on 2000 Ti for 800 rounds.  No heartbeat from any Sentinel for a while means start over.
+            alive = self._sentinels_alive(ct)
+            if alive:
+                self.ring_seen = self.round
+            if self.round - self.ring_seen < 12 or self.round - self.plan_round < 30:
+                return False
+            if _fresh(self._read(ct, SLOT_BUILDER), self.round, 2):
+                return False
+            self._write(ct, SLOT_BUILT, 0)
+            self.spawned = 0
+            self.ring_seen = self.round
             return False
         if self.spawned and not REPLACE_BUILDER:
             return False
@@ -652,7 +665,7 @@ class Player:
             return
         self._write(ct, SLOT_ETA, 1)
         self._report_enemy(ct)
-        if self._dig(ct, here, ATTACKER_DIG_REACH):
+        if ATTACKER_DIG_REACH and self._dig(ct, here, ATTACKER_DIG_REACH):
             return
         self._tend(ct, here)
 
