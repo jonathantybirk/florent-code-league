@@ -61,20 +61,20 @@ NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
 SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
 ECON_BUILDERS = 10         # Builders devoted to mining and mending once that happens.
                            # hildr -- the build currently carrying our ladder rank -- runs the
-                           # IDENTICAL 1-Builder 4-Sentinel rush we do (first turret r20-36) and
-                           # differs ONLY in what it does when that rush fails: 10-11 Builders,
-                           # 24-35 conveyors, 2-3 Harvesters, and it wins on titanium at round 813.
-                           # We had built the same shape at a third of the scale.
+                           # IDENTICAL 1-builder 4-Sentinel rush we do (first turret r20-36) and
+                           # differs only in what it does when that rush fails: 10-11 Builders,
+                           # 24-35 conveyors, 2-3 Harvesters, 190-250 heals, and it wins on
+                           # titanium at round 813. We built the same shape at a third of the
+                           # scale. Three Builders cannot mine, mend and hold a belt at once.
 ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
                            # At 140 the menders' own spending (752 heals in one game)
                            # kept the balance under the reserve permanently, so no
                            # titanium ever became ammunition and the ring sat silent
                            # for 348 straight rounds.
 HARVESTER_TARGET = 1       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
-MAX_CHAIN = 12             # longest belt worth laying -- a conveyor is 3 Ti and 1% of scale.
-                           # Six was sized for a rush that had already lost; hildr lays 24-35 in a
-                           # long game. Unbounded, four Builders once laid 21 on paths, so it is
-                           # capped rather than free.
+MAX_CHAIN = 12             # longest belt worth laying. hildr lays 24-35 conveyors in a
+                           # long game; six was sized for a rush that had already lost.
+                           # (unbounded, four Builders laid 21 of them on paths)
 CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
 
 SLOT_BUILT = 0             # Sentinels standing, written by the Builder

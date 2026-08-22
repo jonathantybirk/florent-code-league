@@ -53,28 +53,24 @@ REPAIR_RESERVE = 40
 REPLACE_BUILDER = True     # re-spawn a dead Builder while the ring is unfinished
 UNKNOWN_COST = 3           # what a tile we have never seen costs, against 1 for one we have
 THREAT_COST = 8            # detour a Builder will accept to stay out of a threatened tile
+HOME_GUARDS = 2            # enemy Builders near their Core that make us hold
+GUARD_RADIUS = 4           # what counts as 'near their Core'
+PATIENCE_CAP = 90          # never hold past this; a rush that never fires is not a rush
 ANCHOR_BONUS = 2           # steps of walking each extra buildable neighbour is worth
 USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known pool
 ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their Core by here
 HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
 NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
 SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
-ECON_BUILDERS = 10         # Builders devoted to mining and mending once that happens.
-                           # hildr -- the build currently carrying our ladder rank -- runs the
-                           # IDENTICAL 1-Builder 4-Sentinel rush we do (first turret r20-36) and
-                           # differs ONLY in what it does when that rush fails: 10-11 Builders,
-                           # 24-35 conveyors, 2-3 Harvesters, and it wins on titanium at round 813.
-                           # We had built the same shape at a third of the scale.
+ECON_BUILDERS = 3          # Builders devoted to mining and mending once that happens
 ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
                            # At 140 the menders' own spending (752 heals in one game)
                            # kept the balance under the reserve permanently, so no
                            # titanium ever became ammunition and the ring sat silent
                            # for 348 straight rounds.
 HARVESTER_TARGET = 1       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
-MAX_CHAIN = 12             # longest belt worth laying -- a conveyor is 3 Ti and 1% of scale.
-                           # Six was sized for a rush that had already lost; hildr lays 24-35 in a
-                           # long game. Unbounded, four Builders once laid 21 on paths, so it is
-                           # capped rather than free.
+MAX_CHAIN = 6              # longest belt worth laying -- a conveyor is 3 Ti and 1% of scale
+                           # (unbounded, four Builders laid 21 of them on paths)
 CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
 
 SLOT_BUILT = 0             # Sentinels standing, written by the Builder
@@ -398,17 +394,7 @@ class Player:
                 # seams, laid twenty-nine conveyors, and then sat on 104 titanium at round 200 with
                 # zero heals cast, because the ammo floor stopped conversion and nothing else ever
                 # claimed the money. We mined, hoarded, and died solvent.
-                # Hold back enough to actually RAISE the economy we just decided we need.
-                # Converting everything above ECON_RESERVE starved the econ phase of its own
-                # start-up cost: a Builder is ~60 Ti at scale 2.0 and `_keep_econ` wants
-                # builder_cost + 30, but the balance was pinned at the 60-point reserve every
-                # round, so the first econ Builder was never affordable and the whole phase never
-                # ran. Measured: 1 Builder and 4 Sentinels in a 1000-turn loss, zero heals, while
-                # 2,720 ammunition went out of the barrel.
-                reserve = ECON_RESERVE
-                if self.econ < ECON_BUILDERS:
-                    reserve += ct.get_builder_bot_cost() + 30
-                spare = ct.get_global_resources() - reserve
+                spare = ct.get_global_resources() - ECON_RESERVE
                 if spare < 10:
                     return
                 if ct.can_convert_ammo(spare):
@@ -489,6 +475,18 @@ class Player:
             # the first Sentinel was never built at all -- of which we won zero.
             #
             # One turret firing now is 9 HP/round. A perfect cluster that never materialises is 0.
+            # HOLD while their workforce is still standing on their Core.
+            #
+            # Measured: our first Sentinel lands while their Builders are 2-8 tiles from their own
+            # Core -- i.e. all of them home, all able to mend the instant we open fire. Mending
+            # returns 4 HP per Ti against our shot's 1.8, so opening into a full house is opening
+            # into the one situation the arithmetic says we cannot win.
+            #
+            # Their Builders leave home to rush US. Waiting for them to commit forward trades a few
+            # rounds of their economy for a Core nobody is left to repair.
+            if self.built == 0 and self.round < PATIENCE_CAP and self._guarded(ct):
+                self._advance(ct, here)
+                return
             if self.built == 0 and self._anchor_value((here.x, here.y)):
                 if self._place(ct, here):
                     return
@@ -831,6 +829,23 @@ class Player:
         return (key in self.spots and key not in self.walls
                 and key not in self.occupied
                 and 0 <= key[0] < self.width and 0 <= key[1] < self.height)
+
+    def _guarded(self, ct):
+        """Are HOME_GUARDS or more of their Builders still sitting on their Core?"""
+        near = 0
+        try:
+            mine = ct.get_team()
+            for uid in ct.get_nearby_units():
+                if ct.get_team(uid) == mine:
+                    continue
+                if ct.get_entity_type(uid) != EntityType.BUILDER_BOT:
+                    continue
+                spot = ct.get_position(uid)
+                if (abs(spot.x - self.enemy.x) + abs(spot.y - self.enemy.y)) <= GUARD_RADIUS:
+                    near += 1
+        except Exception:
+            return False
+        return near >= HOME_GUARDS
 
     def _place(self, ct, here):
         """Build on any orthogonally adjacent tile that puts the Core on the new turret's ray.

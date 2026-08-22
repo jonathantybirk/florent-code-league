@@ -28,12 +28,26 @@ def check_file(path):
         if isinstance(node, ast.ExceptHandler):
             if node.type is None:
                 problems.append(f"{path}:{node.lineno}: bare `except:` is not allowed")
-            elif not isinstance(node.type, ast.Name):
-                problems.append(f"{path}:{node.lineno}: except handler types must be plain names")
-            elif node.type.id not in ALLOWED_EXC:
-                problems.append(f"{path}:{node.lineno}: exception name {node.type.id!r} not allowed")
-            elif node.type.id in {"BaseException", "KeyboardInterrupt", "SystemExit"}:
-                problems.append(f"{path}:{node.lineno}: exception name {node.type.id!r} not allowed")
+            else:
+                # `except (ValueError, GameError):` is ordinary Python and the engine
+                # accepts it -- verified by playing a full game with a bot that uses it.
+                # This checker rejected every tuple handler as "not a plain name", which
+                # was our bug, not the bot's: it failed the team's live flagship, a build
+                # sitting on the ladder at 1951 Elo. A validator that is stricter than the
+                # thing it models is worse than no validator, because it rejects work that
+                # would have shipped.
+                handlers = (node.type.elts if isinstance(node.type, ast.Tuple)
+                            else [node.type])
+                for handler in handlers:
+                    if not isinstance(handler, ast.Name):
+                        problems.append(f"{path}:{node.lineno}: except handler types must "
+                                        f"be plain names or a tuple of them")
+                    elif handler.id not in ALLOWED_EXC:
+                        problems.append(f"{path}:{node.lineno}: exception name "
+                                        f"{handler.id!r} not allowed")
+                    elif handler.id in {"BaseException", "KeyboardInterrupt", "SystemExit"}:
+                        problems.append(f"{path}:{node.lineno}: exception name "
+                                        f"{handler.id!r} not allowed")
     return problems, tree
 
 
