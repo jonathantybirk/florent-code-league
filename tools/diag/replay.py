@@ -178,7 +178,10 @@ class Entity:
 @dataclass
 class TurnActions:
     """Everything attributable to a decision in one turn."""
-    moves: dict[int, tuple[int, int]] = field(default_factory=dict)         # id -> to
+    moves: dict[int, tuple[int, int]] = field(default_factory=dict)         # id -> its OWN move
+    move_log: list[tuple[int, tuple[int, int]]] = field(default_factory=list)  # every move, in order
+    throws: dict[int, tuple[int, int]] = field(default_factory=dict)        # id -> where a LAUNCHER
+    #                                                                        put it, not where it walked
     builds: dict[int, tuple[int, int]] = field(default_factory=dict)        # id -> target
     build_kind: dict[int, tuple[str, str | None]] = field(default_factory=dict)  # id -> (kind, dir)
     attacks: dict[int, tuple[int, int]] = field(default_factory=dict)
@@ -310,7 +313,23 @@ class Replay:
                     ta.placed.append(e)
             elif 2 in u:
                 m = parse(u[2][-1])
-                ta.moves[_one(m, 1, 0)] = _pos(_one(m, 2)) or (0, 0)
+                who = _one(m, 1, 0)
+                to = _pos(_one(m, 2)) or (0, 0)
+                ta.move_log.append((who, to))
+                # A Launcher throw is emitted as a SECOND MoveBuilderBot for the victim, inside the
+                # thrower's slice of the update stream. Writing straight into a dict keyed by id
+                # therefore overwrote the Builder's own step with the throw, and every tool built on
+                # `moves` -- detect.py, autopsy.py, ringfloor.py -- saw Builders teleporting. That
+                # hid the largest single source of wasted movement in our bot: 1,238 rounds re-walked
+                # across 240 games, 35 of them livelocked, because the evidence was being discarded
+                # at decode time.
+                #
+                # `moves` now keeps the unit's OWN decision (the first move it makes in a turn);
+                # anything after that in the same turn is something else moving it.
+                if who in ta.moves:
+                    ta.throws[who] = to
+                else:
+                    ta.moves[who] = to
             elif 3 in u:
                 ta.removed.append(_one(parse(u[3][-1]), 1, 0))
             elif 4 in u:
