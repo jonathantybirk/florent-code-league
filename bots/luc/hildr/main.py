@@ -397,16 +397,6 @@ class Player:
             self.go_held = False
         self.go = go
         self._write(ct, SLOT_GO, go)
-        # The Harvester pays for itself in forty rounds.  While the kill is further off than that
-        # on passive income alone, it comes first.
-        econ_first = (not self._read(ct, SLOT_HARVEST) and menders
-                      and (go != 1 or (kill_ammo - bank) > 100))
-
-        # ---- ammunition, lazily
-        self._feed_ammo(ct, alive, go, 0 if finishing else ring_reserve, need_menders,
-                        threatened, mend_first, mend_reserve + (ECON_RESERVE if econ_first else 0),
-                        finishing)
-
         # ---- mining
         # Mining needs a Builder to spare, not a quiet map: enemy turrets beside our Core stay
         # there all game.  Once the menders hold the Core near full, one of them can go.
@@ -415,6 +405,15 @@ class Player:
                    and (built >= SENTINEL_TARGET or self.round >= ECON_ROUND)
                    and not self._read(ct, SLOT_HARVEST))
         self._write(ct, SLOT_ECON_OK, self.round + 1 if econ_ok else 0)
+        # The Harvester pays for itself in forty rounds.  While the kill is further off than that
+        # on passive income alone, it comes first -- but only while someone can actually build it.
+        econ_first = econ_ok and (go != 1 or (kill_ammo - bank) > 100)
+
+        # ---- ammunition, lazily
+        self._feed_ammo(ct, alive, go, 0 if finishing else ring_reserve, need_menders,
+                        threatened, mend_first, mend_reserve + (ECON_RESERVE if econ_first else 0),
+                        finishing)
+
 
     def _builder_cost(self, ct):
         try:
@@ -705,10 +704,12 @@ class Player:
         self._to_post(ct, here)
 
     def _to_post(self, ct, here):
-        if self.post is not None and (here.x, here.y) == self.post:
+        """Stand on a ring tile -- one no enemy turret covers, if there is one.  A Gunner shoots
+        the first Builder on its line, and a mender standing in it is dead in six rounds."""
+        covered = self._threats(ct)
+        if self.post is not None and (here.x, here.y) == self.post and self.post not in covered:
             return
         self._dist, self._came = self._flood(here, None)
-        # closest free ring tile; prefer the side facing the enemy so the walk to mine is short
         best = None
         chosen = None
         for key in _ring(self.mine_tiles):
@@ -719,7 +720,7 @@ class Player:
                 continue
             if self._tile_has_builder(ct, key) and key != (here.x, here.y):
                 continue
-            score = cost
+            score = cost + (20 if key in covered else 0)
             if best is None or score < best:
                 best, chosen = score, key
         self.post = chosen
