@@ -30,6 +30,7 @@ class Player:
     def __init__(self):
         self.gcs: GCS | None = None
         self.num_spawned = 0
+        self._dumped: dict = {}          # last traced map state per tile
 
     def run(self, ct):
         kind = ct.get_entity_type().value
@@ -81,6 +82,17 @@ class Player:
                 ct.move(d)
                 return
 
+    def _map_delta(self):
+        """Tiles whose (state, source, round) changed since last trace —
+        the viewer rebuilds the unit's whole internal map from these."""
+        out = []
+        for (x, y), t in self.gcs.map.tiles.items():
+            rec = (t.state, t.source[0], t.round)
+            if self._dumped.get((x, y)) != rec:
+                self._dumped[(x, y)] = rec
+                out.append([x, y, t.state, t.source[0], t.round])
+        return out
+
     def _trace(self, ct, kind, result, written_before):
         reg = self.gcs.registry
         pos = ct.get_position()
@@ -95,6 +107,7 @@ class Player:
             "slots": {s: d for s, d in result.per_slot.items()},
             "learned": [[f.x, f.y, f.state] for f in result.facts],
             "known": len(self.gcs.map.tiles),
+            "map_delta": self._map_delta(),
             "symmetry": self.gcs.map.symmetry(),
             "enemy_core": self.gcs.map.enemy_core(),
             "resync": reg.resync_write_round, "onboard_until": reg.onboard_until,
