@@ -186,9 +186,13 @@ class Player:
 .venv/bin/python tools/gcs_viz.py probe.replay26 store-scope.html    # open in a browser
 .venv/bin/python tools/gcs_viz.py probe.replay26 --report            # tallies per unit
 ```
-The viewer shows engine truth (unit positions, map) with the chosen unit's picture overlaid: its
-dead-reckoned positions of teammates (green ring = exact, rose = off), tiles it learned through the store
-(rose if they contradict the real map), and the 16 slots as that unit decodes them each round.
+The viewer has three panels. **Engine truth**: the real map and every entity, with the selected unit's
+dead-reckoned positions of teammates overlaid (green ring = exact, rose = off). **Internal map of the
+selected unit**: every tile it knows, coloured by what it believes is there, bordered by how it knows
+(solid = seen, dashed amber = heard via the store, dotted = inferred from symmetry), faded with age, rose
+where the belief disagrees with the truth, plus its derived enemy-Core position. **The store**: the 16 slots
+as that unit decodes them. Click any of our units on the board (or pick from the list) to select it; hover
+any tile on either map for the details.
 
 ## Known limitations / TODO for other modules
 - `has_conveyor_issue`, `has_harvester_issue` (logistics) and `on_directive` (behaviour) are stubs returning
