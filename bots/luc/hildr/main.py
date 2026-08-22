@@ -1263,6 +1263,36 @@ class Player:
             return
 
     # --------------------------------------------------------------- sentinel
+    def _counter_battery(self, ct):
+        """An enemy turret on our ray is digging the ring out: a Gunner dies to two shots.
+
+        The top of the ladder (Erebus, Juusto, Pivot, ph) answers a ring with three to six
+        Gunners and has it down inside ten rounds.  Twenty Ti for a 30-40 Ti Gunner that would
+        otherwise take 36-60 Ti of Sentinel with it is the best trade on the board.
+        """
+        try:
+            mine = ct.get_team()
+            best = None
+            best_hp = None
+            for uid in ct.get_nearby_units():
+                if ct.get_team(uid) == mine:
+                    continue
+                kind = ct.get_entity_type(uid)
+                if kind not in (EntityType.GUNNER, EntityType.SENTINEL):
+                    continue
+                p = ct.get_position(uid)
+                if not ct.can_fire(p):
+                    continue
+                hp = ct.get_hp(uid) + (0 if kind == EntityType.GUNNER else 100)
+                if best_hp is None or hp < best_hp:
+                    best, best_hp = p, hp
+            if best is not None:
+                ct.fire(best)
+                return True
+        except Exception:
+            pass
+        return False
+
     def _sentinel(self, ct):
         if self.enemy is None:
             found = _unpack(self._read(ct, SLOT_ENEMY))
@@ -1281,6 +1311,8 @@ class Player:
         self._write(ct, SLOT_BEAT0 + self.slot, self.round + 1)
         self._report_enemy(ct)
 
+        if self._counter_battery(ct):
+            return
         go = self._read(ct, SLOT_GO, 1)
         if go == 1:
             for key in self.enemy_tiles:
