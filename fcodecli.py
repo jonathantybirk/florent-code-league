@@ -54,6 +54,16 @@ def ladder(limit: int = 100) -> list[dict]:
     return _run_json(["ladder", "--limit", str(limit)])
 
 
+def submissions() -> list[dict]:
+    """Every submission on the account, farm-uploaded or not.
+
+    The farm is not the only thing that uploads to this team: collaborators push
+    builds by hand, and those are exactly the ones the promotion logic used to be
+    blind to. Keys are `version`, `name`, `status` and `isActive`.
+    """
+    return _run_json(["submission", "list"])
+
+
 def active_version() -> int:
     """Version number of the currently active submission."""
     out = _run(["status"])

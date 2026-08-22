@@ -24,6 +24,7 @@ import csv
 import json
 import logging
 import random
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -248,8 +249,44 @@ def closest_opponents(ladder_rows: list[dict], k: int = CLOSEST_K) -> list[dict]
     return sorted(others, key=lambda r: abs(r["rating"] - ours))[:k]
 
 
+def submission_registry(state: dict) -> dict[str, dict]:
+    """Every submission the account holds, keyed by bot_id.
+
+    The farm's own uploads are keyed `name@commit`; a build a collaborator pushed
+    by hand has no commit behind it, so it is keyed `<name>@v<version>`.
+
+    Promotion used to iterate `state["uploads"]` alone, which made every
+    hand-uploaded build invisible to it. On 2026-08-22 that left v70 -- elo 1753,
+    the best bot on the account by 227 and the only one whose lower bound cleared
+    the field -- unpromotable, while the farm laddered on a ~1500 flagship and
+    reasserted it over v70 after every round.
+    """
+    known = dict(state.get("uploads", {}))
+    try:
+        rows = fc.submissions()
+    except fc.FcodeError as error:
+        log.warning("could not list submissions (%s); using farm uploads alone", error)
+        return known
+    seen = {info["version"] for info in known.values()}
+    for row in rows:
+        version = row.get("version")
+        if version is None or version in seen or row.get("status") != "ready":
+            continue
+        name = (row.get("name") or "").strip() or f"v{version}"
+        slug = re.sub(r"[^0-9A-Za-z_]+", "_", name).strip("_") or f"v{version}"
+        known[f"{slug}@v{version}"] = {
+            "version": version,
+            "name": name,
+            "uploaded_at": row.get("uploadedAt"),
+            "reasons": f"uploaded by {row.get('submittedByName') or 'someone else'}",
+            "run": "external",
+        }
+    return known
+
+
 def qualification(bot_id: str, closest: list[dict], state: dict | None = None,
-                  live: dict | None = None) -> tuple[int, bool]:
+                  live: dict | None = None,
+                  registry: dict | None = None) -> tuple[int, bool]:
     """(how many of the closest opponents this build has faced, is that enough).
 
     Counts every match the build has played, not only the ones the farm fired:
@@ -258,7 +295,8 @@ def qualification(bot_id: str, closest: list[dict], state: dict | None = None,
     log only when the feed has nothing for it.
     """
     faced_ids = set()
-    version = (state or {}).get("uploads", {}).get(bot_id, {}).get("version")
+    lookup = registry if registry is not None else (state or {}).get("uploads", {})
+    version = lookup.get(bot_id, {}).get("version")
     if live and version is not None:
         build = livefeed.build_for_version(live, version)
         if build is not None:
@@ -461,9 +499,11 @@ def missing_coverage(bot_id: str, pool: list[dict]) -> list[str]:
     return [r["teamName"] for r in pool if faced.get(r["teamId"], 0) == 0]
 
 
-def build_elo(state: dict, live: dict | None, bot_id: str):
+def build_elo(state: dict, live: dict | None, bot_id: str,
+              registry: dict | None = None):
     """(elo, half-width, games) for a bot, straight from the live feed."""
-    version = state.get("uploads", {}).get(bot_id, {}).get("version")
+    lookup = registry if registry is not None else state.get("uploads", {})
+    version = lookup.get(bot_id, {}).get("version")
     if not live or version is None:
         return None
     build = livefeed.build_for_version(live, version)
@@ -477,7 +517,7 @@ def build_elo(state: dict, live: dict | None, bot_id: str):
 
 def best_challenger(state: dict, stats: dict[str, arms.ArmStats], team_rating: float,
                     closest: list[dict] | None, min_games: int = 25,
-                    live: dict | None = None):
+                    live: dict | None = None, registry: dict | None = None):
     """The qualified bot with the highest expected Elo, if it beats the incumbent.
 
     Estimates come from the live feed, which fits them over every match a build
@@ -488,23 +528,25 @@ def best_challenger(state: dict, stats: dict[str, arms.ArmStats], team_rating: f
     None when no qualified bot has a higher expected Elo than the incumbent.
     """
     flagship = state.get("flagship_version")
-    versions = {info["version"]: bot_id for bot_id, info in state.get("uploads", {}).items()}
+    if registry is None:
+        registry = submission_registry(state)
+    versions = {info["version"]: bot_id for bot_id, info in registry.items()}
     incumbent_id = versions.get(flagship)
-    incumbent = build_elo(state, live, incumbent_id) if incumbent_id else None
+    incumbent = build_elo(state, live, incumbent_id, registry) if incumbent_id else None
     incumbent_elo = incumbent[0] if incumbent else team_rating
 
     best_id, best_est, best_half = None, -1e9, None
-    for bot_id in state.get("uploads", {}):
+    for bot_id in registry:
         if bot_id == incumbent_id:
             continue
-        rated = build_elo(state, live, bot_id)
+        rated = build_elo(state, live, bot_id, registry)
         if rated is None:
             continue
         est, half, games = rated
         if games < min_games:
             continue
         if closest:
-            seen, ok = qualification(bot_id, closest, state, live)
+            seen, ok = qualification(bot_id, closest, state, live, registry)
             if not ok:
                 log.info("%s not qualified: faced %d/%d of the closest %d (need %d)",
                          bot_id, seen, len(closest), CLOSEST_K, QUALIFY_MIN)
@@ -534,18 +576,24 @@ def maybe_promote(state: dict, stats: dict[str, arms.ArmStats], team_rating: flo
 
     Given those, the comparison is on expected Elo: highest estimate is live.
     """
+    registry = submission_registry(state)
     best_id, best_est, best_se, incumbent_id, incumbent_elo = best_challenger(
-        state, stats, team_rating, closest, min_games, live=livefeed.load()
+        state, stats, team_rating, closest, min_games, live=livefeed.load(),
+        registry=registry,
     )
     flagship = state.get("flagship_version")
     if best_id is None:
         return
-    new_version = state["uploads"][best_id]["version"]
+    new_version = registry[best_id]["version"]
     log.warning("PROMOTING %s (v%s): elo %.0f +-%.0f beats incumbent %.0f",
                 best_id, new_version, best_est, best_se, incumbent_elo)
     if dry_run:
         return
     state["flagship_version"] = new_version
+    # A promoted build has to stay addressable: `restore_flagship` maps the
+    # version back through the registry every round, and a hand-uploaded one is
+    # only in there while the platform listing succeeds.
+    state.setdefault("uploads", {}).setdefault(best_id, registry[best_id])
     state.setdefault("promotions", []).append({
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "bot_id": best_id,
@@ -667,7 +715,9 @@ def run_round(dry_run: bool = False) -> None:
     queued = take_queued(state) if not dry_run else (state.get("queue") or [{}])[0].get("bot_id")
     if queued:
         name, _, commit = queued.partition("@")
-        if queued not in state.get("uploads", {}):
+        # Already on the platform -- farm-uploaded or pushed by hand -- means there
+        # is nothing to export: the round just activates that version and fires.
+        if queued not in registry:
             export_dir = HERE / "exports" / queued.replace("@", "_")
             if arms.export_bot(name, commit, export_dir) is None:
                 log.error("queued %s cannot be exported from git, skipping it", queued)
@@ -681,6 +731,7 @@ def run_round(dry_run: bool = False) -> None:
                     "reasons": "queued by hand",
                     "run": "manual",
                 }
+                registry[queued] = state["uploads"][queued]
                 log.info("uploaded queued %s as v%d", queued, version)
                 restore_flagship(state)
     if queued:
@@ -696,10 +747,11 @@ def run_round(dry_run: bool = False) -> None:
     # normal UCB selection stands.
     filling_coverage = False
     closest = closest_opponents(ladder_rows)
-    incumbent_id = {info["version"]: b for b, info in state.get("uploads", {}).items()}.get(
+    registry = submission_registry(state)
+    incumbent_id = {info["version"]: b for b, info in registry.items()}.get(
         state.get("flagship_version"))
     if closest and incumbent_id:
-        seen, ok = qualification(incumbent_id, closest, state, feed)
+        seen, ok = qualification(incumbent_id, closest, state, feed, registry)
         challenger = best_challenger(state, stats, team_rating, closest, live=feed)[0]
         if not ok and challenger is None and not queued:
             filling_coverage = True
@@ -712,7 +764,7 @@ def run_round(dry_run: bool = False) -> None:
         "name": incumbent_id.split("@")[0] if incumbent_id else bot_id.split("@")[0],
         "commit": bot_id.split("@")[-1],
     }
-    version = state.get("uploads", {}).get(bot_id, {}).get("version", -1)
+    version = registry.get(bot_id, {}).get("version", -1)
     build = livefeed.build_for_version(feed, version) if feed else None
     faced_ids = livefeed.faced_team_ids(feed, build) if build else {
         t for t, n in per_bot_opponent_counts().get(bot_id, {}).items() if n > 0
