@@ -1,0 +1,332 @@
+{
+  "opponents": {
+    "00191498-aa36-4f5a-aafb-e432e57607e8": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "Focalground",
+      "rank": 10,
+      "rating": 1962.1392366696757,
+      "stalled": 0,
+      "wins": 0
+    },
+    "017419af-711a-40b0-9826-60cc754bd840": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "Lorem Ipsum",
+      "rank": 12,
+      "rating": 1952.7211063659809,
+      "stalled": 0,
+      "wins": 0
+    },
+    "03ab46df-7058-49ec-a9f5-592f86e9a95a": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "Clankers",
+      "rank": 8,
+      "rating": 2029.37370386802,
+      "stalled": 0,
+      "wins": 0
+    },
+    "0774b1b2-df40-4cf2-915e-5d5a6133a13a": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "Banminary",
+      "rank": 30,
+      "rating": 1686.9343287185582,
+      "stalled": 0,
+      "wins": 0
+    },
+    "12fdece5-48c9-4913-9533-6d95b73e22ab": {
+      "failed": 2,
+      "games": 5,
+      "landed": 3,
+      "name": "HTTP 418",
+      "rank": 7,
+      "rating": 2035.9148239735123,
+      "stalled": 0,
+      "wins": 3
+    },
+    "20064efa-c6a9-4c46-acb7-3f7ea9f9b1c9": {
+      "failed": 4,
+      "games": 5,
+      "landed": 1,
+      "name": "Pivot",
+      "rank": 4,
+      "rating": 2126.954378407526,
+      "stalled": 0,
+      "wins": 1
+    },
+    "25288fdb-f3a0-4ae2-964f-2fd7eb9b11d7": {
+      "failed": 3,
+      "games": 5,
+      "landed": 2,
+      "name": "farming_200s",
+      "rank": 22,
+      "rating": 1795.7150227474626,
+      "stalled": 0,
+      "wins": 2
+    },
+    "26286680-d861-4f9e-9073-a6201bd48d3b": {
+      "failed": 2,
+      "games": 5,
+      "landed": 1,
+      "name": "Leviathan",
+      "rank": 13,
+      "rating": 1950.220326302084,
+      "stalled": 2,
+      "wins": 3
+    },
+    "32087804-2dde-4265-acb2-b6ec9039fbee": {
+      "failed": 5,
+      "games": 10,
+      "landed": 4,
+      "name": "Juusto",
+      "rank": 29,
+      "rating": 1702.0064902259878,
+      "stalled": 1,
+      "wins": 5
+    },
+    "379a5d80-9921-4c9e-949b-f9b1dcba16be": {
+      "failed": 2,
+      "games": 5,
+      "landed": 2,
+      "name": "OpenSverige",
+      "rank": 21,
+      "rating": 1798.2247774287837,
+      "stalled": 1,
+      "wins": 3
+    },
+    "3a7b78b8-5d79-4e55-94a3-7732fcaa4105": {
+      "failed": 0,
+      "games": 5,
+      "landed": 5,
+      "name": "Pantheon",
+      "rank": 5,
+      "rating": 2095.0065322316946,
+      "stalled": 0,
+      "wins": 5
+    },
+    "4691bd56-45c2-460c-a5a5-eb7563c594cb": {
+      "failed": 2,
+      "games": 5,
+      "landed": 3,
+      "name": "DinooniD",
+      "rank": 25,
+      "rating": 1741.962050058289,
+      "stalled": 0,
+      "wins": 3
+    },
+    "47803c19-e264-4492-bd62-fbdd58cfd7e6": {
+      "failed": 0,
+      "games": 5,
+      "landed": 5,
+      "name": "Bean counters",
+      "rank": 2,
+      "rating": 2212.965930622868,
+      "stalled": 0,
+      "wins": 5
+    },
+    "5283c84d-69b0-437b-8dc0-dcb8437a5e48": {
+      "failed": 3,
+      "games": 5,
+      "landed": 2,
+      "name": "ph",
+      "rank": 3,
+      "rating": 2141.948771204842,
+      "stalled": 0,
+      "wins": 2
+    },
+    "57175ea4-e87f-44ed-a8c4-d5ee8ba31ecd": {
+      "failed": 2,
+      "games": 5,
+      "landed": 3,
+      "name": "sporks",
+      "rank": 6,
+      "rating": 2065.242745494231,
+      "stalled": 0,
+      "wins": 3
+    },
+    "5734f3eb-4098-49f5-bbf1-49531d0ce811": {
+      "failed": 3,
+      "games": 5,
+      "landed": 2,
+      "name": "TRRR",
+      "rank": 24,
+      "rating": 1782.1654152935664,
+      "stalled": 0,
+      "wins": 2
+    },
+    "648d1d5b-5443-4257-a0aa-7048661b612d": {
+      "failed": 1,
+      "games": 10,
+      "landed": 9,
+      "name": "team lazy",
+      "rank": 28,
+      "rating": 1707.218487085205,
+      "stalled": 0,
+      "wins": 9
+    },
+    "6634407e-0c49-4330-89e7-e4179bb691bf": {
+      "failed": 0,
+      "games": 5,
+      "landed": 5,
+      "name": "jmc",
+      "rank": 33,
+      "rating": 1662.8251317106458,
+      "stalled": 0,
+      "wins": 5
+    },
+    "7419695b-3b8f-4a50-8cce-e545b086c670": {
+      "failed": 2,
+      "games": 5,
+      "landed": 3,
+      "name": "O(1)",
+      "rank": 11,
+      "rating": 1955.7711422551024,
+      "stalled": 0,
+      "wins": 3
+    },
+    "74ae65ff-96ae-4da5-a43e-692eb6fee38f": {
+      "failed": 2,
+      "games": 5,
+      "landed": 3,
+      "name": "0033",
+      "rank": 23,
+      "rating": 1790.9861328326049,
+      "stalled": 0,
+      "wins": 3
+    },
+    "78b72cb2-22c7-4e17-bd36-2883eb5a8524": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "The Flotte Experience",
+      "rank": 16,
+      "rating": 1909.3950752831838,
+      "stalled": 0,
+      "wins": 0
+    },
+    "805df4d2-53cb-40d0-b538-af8772b3ae3d": {
+      "failed": 3,
+      "games": 5,
+      "landed": 2,
+      "name": "Jacobs Code",
+      "rank": 26,
+      "rating": 1737.5158680710297,
+      "stalled": 0,
+      "wins": 2
+    },
+    "86d0b484-783c-47dc-99d9-6ed9af2794f8": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "lingling_40h",
+      "rank": 19,
+      "rating": 1820.931509126473,
+      "stalled": 0,
+      "wins": 0
+    },
+    "8cf9b751-00d3-484a-b0ed-e3073ae1d46f": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "Jython",
+      "rank": 14,
+      "rating": 1946.5342395655487,
+      "stalled": 0,
+      "wins": 0
+    },
+    "9810ba35-66a9-4af3-9a2f-06651aef4109": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "Erebus",
+      "rank": 15,
+      "rating": 1930.7227110782544,
+      "stalled": 0,
+      "wins": 0
+    },
+    "a5631594-3000-457e-890d-29d547f9de93": {
+      "failed": 3,
+      "games": 5,
+      "landed": 2,
+      "name": "Ouroboros",
+      "rank": 20,
+      "rating": 1801.0402972263464,
+      "stalled": 0,
+      "wins": 2
+    },
+    "b61a01d3-b5e0-465a-9b1b-f541862bb5c4": {
+      "failed": 5,
+      "games": 10,
+      "landed": 5,
+      "name": "Atlas",
+      "rank": 31,
+      "rating": 1677.2847248654843,
+      "stalled": 0,
+      "wins": 5
+    },
+    "bfbb9a68-b37a-4a61-b0ea-d36369c8f65a": {
+      "failed": 1,
+      "games": 5,
+      "landed": 4,
+      "name": "I Stone",
+      "rank": 27,
+      "rating": 1726.3314470438377,
+      "stalled": 0,
+      "wins": 4
+    },
+    "c7571c87-f960-4c88-a13d-14340bb3200f": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "kladde chatte tville (och oss)",
+      "rank": 9,
+      "rating": 1968.8990228829236,
+      "stalled": 0,
+      "wins": 0
+    },
+    "e9be6a8c-fb2a-4fd2-970e-5f19352b6d48": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "Besvikomat",
+      "rank": 17,
+      "rating": 1862.074076259241,
+      "stalled": 0,
+      "wins": 0
+    },
+    "ebd8d82a-7365-4ccb-af0b-defea3a1ac4d": {
+      "failed": 0,
+      "games": 0,
+      "landed": 0,
+      "name": "gsxWins",
+      "rank": 18,
+      "rating": 1859.2181808945086,
+      "stalled": 0,
+      "wins": 0
+    },
+    "fb0e7053-f8f3-4cc8-a38f-1856a518c7d2": {
+      "failed": 5,
+      "games": 5,
+      "landed": 0,
+      "name": "not adgato",
+      "rank": 1,
+      "rating": 2335.685100726274,
+      "stalled": 0,
+      "wins": 0
+    }
+  },
+  "our_rating": 1561.0,
+  "pending": {
+    "43b148a6-7614-4274-bc82-057ae5d7591e": "bfbb9a68-b37a-4a61-b0ea-d36369c8f65a",
+    "611e0849-a7ea-44c1-8dca-6948525f0c44": "32087804-2dde-4265-acb2-b6ec9039fbee",
+    "6183c9a9-9112-4c07-be87-ac04641a6ff9": "0774b1b2-df40-4cf2-915e-5d5a6133a13a",
+    "b54deaa1-18c4-450f-aa8e-3fe4c39116a1": "805df4d2-53cb-40d0-b538-af8772b3ae3d",
+    "f68255ca-1a7f-43e5-ad46-59df5ad847f1": "4691bd56-45c2-460c-a5a5-eb7563c594cb"
+  }
+}
