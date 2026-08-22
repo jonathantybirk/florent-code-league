@@ -22,6 +22,7 @@
   "coverage_bots": [],
   "_coverage_bots": "Bot ids whose rounds pick opponents by coverage instead of by information: the teams closest to us in rating that this build has not played yet, topped up from the pool if there are fewer than five. Same selection the flagship falls back to when it drops below the qualification bar.",
   "test_next": [
+    "hildr@d87329b:2",
     "sentinel_rush_cluster@v70:2",
     "steward@v9:2",
     "sentinel_rush_4x@v69:2",
