@@ -70,7 +70,7 @@ sharing is per slot via `(period, phase)` carried in ASSIGN: the owner writes on
 `round % period == phase`.
 
 ## Reserved raw values (top of the u32 range)
-`IDLE_A`/`IDLE_B` — alternating zero-payload heartbeat; two values free; a 512-value block for the Core's
+`IDLE_A`/`IDLE_B` — reserved, unused (the store never idles); two values free; a 512-value block for the Core's
 **exact HP**, written only when HP has drifted > 50 from the last published value (HP starts at 500, which
 everyone knows, so nothing is announced until it drifts). Payload space is `2^32 − 516`.
 
@@ -79,11 +79,13 @@ A live unit never writes the same u32 two rounds running. An unchanged slot on a
 scheduled to write ⇒ the owner is dead and the slot is reclaimed at once. Exemptions: off-phase
 round-robin turns, the resync round, turret slots during onboarding, and slot 0.
 
-A unit with nothing new to say does **not** send a bare idle value: it sends an empty standard message,
-so its `move`/`turn` digit still goes out, with the filler fact's FOV index toggled (0/1) as a parity bit
-(receivers ignore `UNKNOWN`-state facts whatever their index). The raw `IDLE_A`/`IDLE_B` values are only
-the fallback when no message can be built. This was found by the visualiser: a builder that idled once lost
-that round's move and its reckoned position drifted for the rest of the match.
+**The store never idles.** A unit with nothing new to say restates knowledge it already holds — cycling
+through its known facts two at a time in standard format, or via `REMOTE` for facts outside its FOV — so
+the `move`/`turn` digit always goes out, the value never repeats, and latecomers keep picking up old facts.
+Only a completely empty map falls back to an empty standard message with the filler fact's FOV index toggled
+as a parity bit (receivers ignore `UNKNOWN`-state facts). The raw `IDLE_A`/`IDLE_B` values are reserved but
+unused. (The visualiser found the original bug: a builder that idled once lost that round's move and its
+reckoned position drifted for the rest of the match.)
 
 ## Per-sender layouts (most-significant first; `fact = FOV × 106`)
 - Builder: `move(5) · fact_a · fact_b · aux(16)` — 1.004× full. `aux` = slot granted to a friendly

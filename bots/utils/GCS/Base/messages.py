@@ -38,6 +38,12 @@ from .protocol import (
 )
 
 UNKNOWN = STATE_CODE["UNKNOWN"]
+N_REAL_STATES = len(STATE_CODE)          # codes at/above this are spare or escapes
+
+
+def _valid(f: "Fact", map_w: int, map_h: int) -> bool:
+    """A decoded fact is kept only if it names a real tile state on the map."""
+    return 0 < f.state < N_REAL_STATES and 0 <= f.x < map_w and 0 <= f.y < map_h
 # cardinal order used by the RUN escape and the move digit: N, E, S, W
 CARDINAL_DELTAS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 
@@ -198,7 +204,7 @@ def decode_standard(kind: str, value: int, sender_pos, map_w: int, map_h: int) -
 
     for key in ("fact_a", "fact_b"):
         f = _decode_fact(kind, sender_pos, digits[key])
-        if f is not None and 0 <= f.x < map_w and 0 <= f.y < map_h:
+        if f is not None and _valid(f, map_w, map_h):
             out.facts.append(f)
     return out
 
@@ -260,15 +266,15 @@ def _decode_escape(kind, state, digits, sender_pos, map_w, map_h, out: Decoded):
         sx, sy = sender_pos[0] + dx0, sender_pos[1] + dy0
         ddx, ddy = CARDINAL_DELTAS[d]
         for i in range(length_m1 + 1):
-            x, y = sx + i * ddx, sy + i * ddy
-            if 0 <= x < map_w and 0 <= y < map_h:
-                out.facts.append(Fact(x, y, run_state))
+            f = Fact(sx + i * ddx, sy + i * ddy, run_state)
+            if _valid(f, map_w, map_h):
+                out.facts.append(f)
 
     elif state == ESCAPE_REMOTE:
         combined = idx * after + trailing
         x, rest = divmod(combined, map_h * S_ALPHABET)
         y, r_state = divmod(rest, S_ALPHABET)
-        if 0 <= x < map_w and 0 <= y < map_h:
+        if _valid(Fact(x, y, r_state), map_w, map_h):
             out.facts.append(Fact(x, y, r_state))
 
     elif state == ESCAPE_CONTROL:
@@ -353,7 +359,7 @@ def decode_resync(kind: str, value: int, map_w: int, map_h: int) -> Decoded:
     pos = divmod(pos_v, map_h)
     out = Decoded(position=pos)
     f = _decode_fact(kind, pos, fact_digit)
-    if f is not None and 0 <= f.x < map_w and 0 <= f.y < map_h:
+    if f is not None and _valid(f, map_w, map_h):
         out.facts.append(f)
     return out
 
@@ -425,12 +431,12 @@ def decode_onboard(value: int, map_w: int, map_h: int, borrowed_slot: bool) -> D
     pos_v, state = divmod(abs_digit, S_ALPHABET)
     x, y = divmod(pos_v, map_h)
     out = Decoded(speaker=1)
-    if 0 <= x < map_w and 0 <= y < map_h:
+    if _valid(Fact(x, y, state), map_w, map_h):
         out.facts.append(Fact(x, y, state))
     if rel_digit:
         off_i, rel_state = divmod(rel_digit - 1, S_ALPHABET)
         dx, dy = _delta_offsets(r)[off_i]
-        rx, ry = x + dx, y + dy
-        if 0 <= rx < map_w and 0 <= ry < map_h:
-            out.facts.append(Fact(rx, ry, rel_state))
+        f = Fact(x + dx, y + dy, rel_state)
+        if _valid(f, map_w, map_h):
+            out.facts.append(f)
     return out

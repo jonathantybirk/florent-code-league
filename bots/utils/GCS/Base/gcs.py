@@ -25,8 +25,6 @@ from .protocol import (
     CTRL_ASSIGN,
     CTRL_DIRECTIVE,
     CTRL_SYMMETRY,
-    IDLE_A,
-    IDLE_B,
     NEWBORN_FIRST_RUN_DELAY,
     SLOT_CORE,
     STORE_SIZE,
@@ -62,7 +60,7 @@ class GCS:
         self.pos: tuple[int, int] | None = None
         self.last_pub_pos: tuple[int, int] | None = None   # where we last wrote from
         self.last_written: int | None = None
-        self.idle_flip = False
+        self.restate_cursor = 0                # cycles through known facts
         self.queued: list[tuple[float, OutMessage]] = []
         # Core only: everyone knows HP starts at CORE_HP_MAX, so the first
         # announcement happens only once the Core has drifted from it
@@ -131,7 +129,10 @@ class GCS:
             return self._publish(ct, message)
         except Exception as exc:                          # decision 7
             print(f"[GCS] publish failed: {exc!r}")
-            self._write_idle(ct)
+            try:
+                self._publish_restate(ct, self._move_digit())
+            except Exception as exc2:
+                print(f"[GCS] fallback failed too: {exc2!r}")
             return []
 
     def _publish(self, ct, message) -> list[Fact]:
@@ -166,8 +167,7 @@ class GCS:
         if self.kind == "core" and reg.in_onboard_window(round_no):
             if message is not None:
                 self.queued.append((100.0, message))   # keep it for later
-            if not self._core_stream(ct, round_no, skip_own=False):
-                self._write_idle(ct)         # own-slot heartbeat regardless
+            self._core_stream(ct, round_no, skip_own=False)
             return []
 
         if message is not None:
@@ -180,40 +180,55 @@ class GCS:
         value, used = messages.encode_standard(
             self.kind, self.pos, candidates, move=move, aux=0)
         if value is None or not used:
-            # nothing fits the FOV-relative format: fall back to one
-            # absolute-coordinate fact via the REMOTE escape — but only if we
-            # have no move to report, since escapes of static senders are
-            # fine while a builder's move digit must never be lost
-            if move == 0:
-                for f in candidates:
-                    value = messages.encode_remote(self.kind, f, self.registry.map_w,
-                                                   self.registry.map_h)
-                    if value is not None and value != self.last_written:
-                        self._write(ct, self.slot, value)
-                        self.map.note_shared([f])
-                        return [f]
-            # nothing to say: still send our move/turn digits, with the
-            # filler parity toggled so the value never repeats
-            return self._publish_empty(ct, move)
+            # nothing new fits the FOV-relative format: one new fact via the
+            # REMOTE escape (escapes keep the move/turn prefix, so nothing
+            # is lost), else restate old knowledge
+            for f in candidates:
+                value = messages.encode_remote(self.kind, f, self.registry.map_w,
+                                               self.registry.map_h, move=move)
+                if value is not None and value != self.last_written:
+                    self._write(ct, self.slot, value)
+                    self.map.note_shared([f])
+                    return [f]
+            return self._publish_restate(ct, move)
         if value == self.last_written:      # liveness: never repeat a value
             value, used = messages.encode_standard(
                 self.kind, self.pos, candidates, move=move, parity=1)
             if value is None or value == self.last_written:
-                return self._publish_empty(ct, move)
+                return self._publish_restate(ct, move)
         self._write(ct, self.slot, value)
         self.map.note_shared(used)
         return used
 
-    def _publish_empty(self, ct, move: int) -> list[Fact]:
-        """A standard message with no facts: carries move/turn and a parity
-        filler chosen so the value differs from our previous write."""
+    def _publish_restate(self, ct, move: int) -> list[Fact]:
+        """Nothing new to say: the store never idles, so restate something
+        already known — cycling through known facts so teammates that
+        missed them (newborns, latecomers) pick them up and the value never
+        repeats.  In-FOV facts go out two at a time in standard format; a
+        fact outside the FOV goes via REMOTE.  Only a completely empty map
+        falls back to an empty standard message (move/turn still carried)."""
+        known = self.map.known_facts()
+        w, h = self.registry.map_w, self.registry.map_h
+        for _ in range(max(1, len(known))):
+            if known:
+                i = self.restate_cursor % len(known)
+                self.restate_cursor += 1
+                pair = known[i:i + 2] if i + 1 < len(known) else known[i:i + 1] + known[:1]
+                value, used = messages.encode_standard(self.kind, self.pos, pair, move=move)
+                if (value is None or not used):
+                    value = messages.encode_remote(self.kind, known[i], w, h, move=move)
+                if value is not None and value != self.last_written:
+                    self._write(ct, self.slot, value)
+                    return []
+            else:
+                break
         for parity in (0, 1):
             value, _ = messages.encode_standard(self.kind, self.pos, [],
                                                 move=move, parity=parity)
             if value is not None and value != self.last_written:
                 self._write(ct, self.slot, value)
                 return []
-        self._write_idle(ct)
+        print("[GCS] could not produce a distinct value this round")
         return []
 
     def _publish_message(self, ct, m: OutMessage) -> list[Fact]:
@@ -234,8 +249,8 @@ class GCS:
         elif m.type == "raw" and m.raw is not None:
             value = m.raw
         if value is None or value == self.last_written:
-            print(f"[GCS] message {m.type} unencodable or repeated; sending empty")
-            return self._publish_empty(ct, move)
+            print(f"[GCS] message {m.type} unencodable or repeated; restating instead")
+            return self._publish_restate(ct, move)
         self._write(ct, self.slot, value)
         if used:
             self.map.note_shared(used)
@@ -247,8 +262,7 @@ class GCS:
         value = messages.encode_resync(self.kind, self.pos, best,
                                        self.registry.map_w, self.registry.map_h)
         if value is None:
-            self._write_idle(ct)
-            return []
+            return self._publish_restate(ct, 0)
         self._write(ct, self.slot, value)
         if best is not None:
             self.map.note_shared([best])
@@ -309,10 +323,19 @@ class GCS:
         # PLACEHOLDER ordering: the internal-map module should rank by value
         # and prefer tiles behind each receiver's direction of travel.
         archive = self.map.pending_facts(64)
+        all_known = self.map.known_facts()
         for slot, borrowed in targets:
             known = reg.known.get(slot, set())
             fresh = [f for f in archive if (f.x, f.y) not in known]
+            if not fresh and slot == SLOT_CORE and all_known:
+                # own slot must change every round and stays in chain
+                # format for the whole window: restate, cycling
+                i = self.restate_cursor % len(all_known)
+                self.restate_cursor += 1
+                fresh = all_known[i:i + 2] or all_known[:2]
             if not fresh:
+                if slot == SLOT_CORE:
+                    self._publish_restate(ct, 0)   # empty map: parity message
                 continue
             abs_fact = fresh[0]
             rel_fact = fresh[1] if len(fresh) > 1 else None
@@ -349,13 +372,6 @@ class GCS:
             self.last_written = value
             self.last_pub_pos = self.pos
 
-    def _write_idle(self, ct) -> None:
-        if self.slot is None:
-            return
-        value = IDLE_B if self.idle_flip else IDLE_A
-        self.idle_flip = not self.idle_flip
-        self._write(ct, self.slot, value)
-        self.last_written = value
 
 
 def _pos_of(ct):
