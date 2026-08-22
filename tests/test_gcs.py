@@ -138,8 +138,9 @@ def test_codec_rejects_out_of_range():
         codec.unpack(PAYLOAD_SPACE, (10, 10))
 
 
-def test_publish_never_raises_and_degrades_to_idle():
-    """A poisoned map source cannot kill the turn: publish idles instead."""
+def test_publish_never_raises_and_still_writes():
+    """A poisoned map source cannot kill the turn: publish falls back to
+    restating and still writes a payload (never a raw idle value)."""
 
     class Poisoned(DictMapSource):
         def pending_facts(self, budget):
@@ -148,11 +149,11 @@ def test_publish_never_raises_and_degrades_to_idle():
     store = Store()
     unit = Unit("core", (5, 5))
     unit.gcs.map = Poisoned()
+    unit.gcs.map.apply_fact(Fact(6, 5, ORE), from_gcs=True)
     ct = FakeController(store, unit.pos, 0)
     unit.gcs.absorb(ct)
-    unit.gcs.last_hp_announced = 500        # suppress the HP announcement path
     unit.gcs.publish(ct)                    # must not raise
-    assert store.pending[SLOT_CORE] in (IDLE_A, IDLE_B)
+    assert messages.classify_raw(store.pending[SLOT_CORE])[0] == "payload"
 
 
 # ---------------------------------------------------------------------------
@@ -223,10 +224,28 @@ def test_gunner_turn_digit():
 # 4. liveness
 # ---------------------------------------------------------------------------
 
-def test_nothing_to_say_still_changes_value_every_round():
-    """With nothing new, a unit sends an empty standard message whose filler
-    parity toggles — never the same value twice, never a bare idle that
-    would lose a builder's move digit."""
+def test_nothing_new_restates_known_facts_never_idles():
+    """With nothing new, a unit restates facts it already holds, cycling so
+    the value never repeats and a raw idle value is never written."""
+    world = World()
+    core = Unit("core", (2, 2))
+    world.units.append(core)
+    for xy in ((3, 2), (2, 4), (4, 4)):
+        core.gcs.map.apply_fact(Fact(*xy, ORE), from_gcs=True)   # all already published
+    seen = []
+    for _ in range(6):
+        world.step()
+        seen.append(world.store.values[SLOT_CORE])
+    assert all(a != b for a, b in zip(seen, seen[1:]))
+    restated = set()
+    for v in seen:
+        assert v not in (IDLE_A, IDLE_B)
+        for f in messages.decode_standard("core", v, (2, 2), W, H).facts:
+            restated.add((f.x, f.y))
+    assert restated == {(3, 2), (2, 4), (4, 4)}
+
+
+def test_empty_map_still_changes_value():
     world = World()
     core = Unit("core", (2, 2))
     world.units.append(core)
@@ -235,9 +254,7 @@ def test_nothing_to_say_still_changes_value_every_round():
         world.step()
         seen.append(world.store.values[SLOT_CORE])
     assert all(a != b for a, b in zip(seen, seen[1:]))
-    for v in seen:
-        assert messages.classify_raw(v)[0] == "payload"
-        assert messages.decode_standard("core", v, (2, 2), W, H).facts == []
+    assert all(messages.classify_raw(v)[0] == "payload" for v in seen)
 
 
 def test_builder_move_survives_empty_round():
@@ -516,3 +533,27 @@ def test_onboard_chain_params_match_plan():
     assert r_core == 9 and r_turret == 6
     r_small, _ = messages.chain_params(8, 8, borrowed_slot=True)
     assert r_small >= 6                       # small maps: window grows
+
+
+def test_core_slot_stays_chain_format_during_onboarding():
+    """With nothing fresh to stream, the Core still writes chain format into
+    its own slot for the whole onboarding window (restating), so readers
+    never decode a standard message as a chain."""
+    world = World()
+    core = Unit("core", (2, 2))
+    world.units.append(core)
+    core.gcs.map.apply_fact(Fact(3, 2, ORE), from_gcs=True)    # known, nothing fresh
+    world.step()
+    core.gcs.core_announce_assign(1)
+    world.step()                                       # spawn round: ASSIGN
+    builder = Unit("builder_bot", (3, 2))
+    world.units.append(builder)
+    world.step()                                       # resync round
+    for _ in range(6):                                 # inside the window
+        world.step()
+        v = world.store.values[SLOT_CORE]
+        got = messages.decode_onboard(v, W, H, borrowed_slot=False)
+        assert got.facts == [Fact(3, 2, ORE)]
+    # and the builder absorbed only real tile states
+    for (x, y), st in builder.gcs.map.tiles.items():
+        assert 0 < st < len(protocol.TILE_STATES)

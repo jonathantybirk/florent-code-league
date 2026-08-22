@@ -60,6 +60,10 @@ class MapSource(Protocol):
     def symmetry(self) -> int | None:
         """The map's symmetry kind (protocol.SYMMETRY_KINDS index) if known."""
 
+    def known_facts(self) -> list[Fact]:
+        """Everything the map holds, published or not — used to restate old
+        knowledge when there is nothing new to say (the store never idles)."""
+
 
 class DictMapSource:
     """Dict-backed MapSource so the GCS runs and tests standalone.
@@ -92,6 +96,9 @@ class DictMapSource:
 
     def symmetry(self) -> int | None:
         return self._symmetry
+
+    def known_facts(self) -> list[Fact]:
+        return [Fact(x, y, st) for (x, y), st in self.tiles.items()]
 
 
 # ---------------------------------------------------------------------------
