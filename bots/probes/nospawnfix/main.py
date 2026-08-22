@@ -331,38 +331,18 @@ class Player:
         self._spawn_one(ct)
 
     def _spawn_one(self, ct):
-        """Spawn on the legal tile NEAREST THE ENEMY, not the first one offered.
-
-        get_nearby_tiles returns tiles in position order, so taking the first legal one puts the
-        Builder on whichever side of the Core the coordinate system happens to reach first. For a
-        Core in the north-west that is the far side; for one in the south-east it is the near side.
-        The two seats therefore start with different-length walks on maps that are otherwise
-        exactly symmetric, and the rush is a race: measured against `idle`, seat B killed 3 to 5
-        rounds sooner than seat A on every single map in the pool, and in a mirror the earlier ring
-        wins outright.
-
-        Picking by distance to the enemy Core costs nothing and is the same choice from both seats.
-        """
+        """CONTROL ARM: the original first-legal-tile spawn, to isolate the spawn fix."""
         try:
             if ct.get_global_resources() < ct.get_builder_bot_cost():
                 return False
-            if self.enemy is None:
-                self.sym, self.enemy = _enemy_core(ct, ct.get_position())
-            best = None
-            chosen = None
             for tile in ct.get_nearby_tiles(2):
-                if not ct.can_spawn(tile):
-                    continue
-                gap = abs(tile.x - self.enemy.x) + abs(tile.y - self.enemy.y)
-                if best is None or gap < best:
-                    best, chosen = gap, tile
-            if chosen is None:
-                return False
-            ct.spawn_builder(chosen)
-            self.spawned += 1
-            return True
+                if ct.can_spawn(tile):
+                    ct.spawn_builder(tile)
+                    self.spawned += 1
+                    return True
         except Exception:
             return False
+        return False
 
     def _feed_ammo(self, ct, built):
         """Convert titanium into ammunition, but never into the ring's own build cost.
@@ -446,18 +426,9 @@ class Player:
         if self.built < SENTINEL_TARGET:
             # Place first. A build and a move are mutually exclusive in one round, and a turret
             # shooting the Core is worth more than a step toward a tidier spot for one.
-            # Choose the anchor BEFORE building, and do not build on a worse tile than the one we
-            # are walking to. Placing first meant the Builder never arrived: it took whatever
-            # firing spot happened to be beside it en route, and on helheim that was (10,6), which
-            # supports two turrets, when (11,5) one tile further supports three. It then spent
-            # fifteen rounds walking around the Core for the rest of the ring. Ordering the two
-            # calls the other way round is the whole fix -- a turret placed a round earlier is
-            # worth 9 HP/round, and a cluster stranded is worth fifteen rounds.
+            if self._place(ct, here):
+                return
             self.goal = self._next_stand(here)
-            at_anchor = self.goal is None or (here.x, here.y) == self.goal
-            if at_anchor or self._anchor_value((here.x, here.y)) >= self._anchor_value(self.goal):
-                if self._place(ct, here):
-                    return
             if self._advance(ct, here):
                 return
             self._break_through(ct, here)
@@ -796,30 +767,13 @@ class Player:
     def _place(self, ct, here):
         """Build on any orthogonally adjacent tile that puts the Core on the new turret's ray.
 
-        No lane and no committed geometry -- just "is this neighbour a firing spot, and will the
-        engine let me build there". But the ORDER matters, because turrets are impassable and we
-        can wall ourselves out of our own cluster.
-
-        Measured on helheim: the Builder stands on (10,6), whose two firing-spot neighbours are
-        (10,5) and (11,6), and correctly builds both. (10,5) was also the only tile from which
-        (10,4) and (11,5) could be reached -- so placing a turret on it sealed off the other half
-        of the cluster, and the Builder then walked fifteen rounds around the Core to finish the
-        ring. The floor for that map is 13 rounds; we took 30.
-
-        So prefer the candidate whose loss costs us the fewest FUTURE spots. Degree is the wrong
-        proxy -- (10,5) has only two onward neighbours and is still the doorway -- what matters is
-        whether blocking the tile cuts us off, which is an articulation question. So for each
-        candidate we block it and count how many free spots we could still stand next to. Four
-        small sweeps on the rounds we are actually building; nothing during the walk.
+        No lane, no ordering, no committed geometry -- just "is this neighbour a firing spot, and
+        will the engine let me build there". Turrets are impassable, so each one placed nudges the
+        Builder to use a different neighbour next round, which is the retreat pattern falling out
+        for free instead of being scripted.
         """
-        options = []
         for _d, dx, dy in CARDINALS:
             key = (here.x + dx, here.y + dy)
-            if not self._free_spot(key):
-                continue
-            options.append((-self._reach_after(here, key), key))
-        options.sort()
-        for _reach, key in options:
             if not self._free_spot(key):
                 continue
             facing = self.spots[key]
@@ -840,38 +794,6 @@ class Player:
                 pass
             return True
         return False
-
-    def _reach_after(self, here, blocked_key):
-        """How many free firing spots would still be usable if we built on `blocked_key`.
-
-        Usable means: some tile we can still walk to is orthogonally adjacent to it. Placing a
-        turret on a doorway can strand half a cluster, and the Builder then walks the long way
-        round -- fifteen rounds of it on helheim.
-        """
-        start = (here.x, here.y)
-        seen = {start}
-        frontier = [start]
-        while frontier:
-            nxt = []
-            for key in frontier:
-                for _d, dx, dy in CARDINALS:
-                    step = (key[0] + dx, key[1] + dy)
-                    if step in seen or step == blocked_key:
-                        continue
-                    if not self._passable(step):
-                        continue
-                    seen.add(step)
-                    nxt.append(step)
-            frontier = nxt
-        usable = 0
-        for spot in self.spots:
-            if spot == blocked_key or not self._free_spot(spot):
-                continue
-            for _d, dx, dy in CARDINALS:
-                if (spot[0] + dx, spot[1] + dy) in seen:
-                    usable += 1
-                    break
-        return usable
 
     def _next_stand(self, here):
         """The anchor: a tile to stand on whose NEIGHBOURS are firing spots -- as many as possible.

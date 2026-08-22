@@ -59,7 +59,7 @@ ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their C
 HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
 NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
 SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
-ECON_BUILDERS = 3          # Builders devoted to mining and mending once that happens
+ECON_BUILDERS = 0          # Builders devoted to mining and mending once that happens
 ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
                            # At 140 the menders' own spending (752 heals in one game)
                            # kept the balance under the reserve permanently, so no

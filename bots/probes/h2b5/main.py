@@ -59,13 +59,13 @@ ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their C
 HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
 NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
 SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
-ECON_BUILDERS = 3          # Builders devoted to mining and mending once that happens
+ECON_BUILDERS = 5          # Builders devoted to mining and mending once that happens
 ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
                            # At 140 the menders' own spending (752 heals in one game)
                            # kept the balance under the reserve permanently, so no
                            # titanium ever became ammunition and the ring sat silent
                            # for 348 straight rounds.
-HARVESTER_TARGET = 1       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
+HARVESTER_TARGET = 2       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
 MAX_CHAIN = 6              # longest belt worth laying -- a conveyor is 3 Ti and 1% of scale
                            # (unbounded, four Builders laid 21 of them on paths)
 CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
