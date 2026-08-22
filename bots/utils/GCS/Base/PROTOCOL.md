@@ -3,7 +3,7 @@
 ## Reserved raw values
 
 - payload space: 0 .. 4294966779
-- IDLE_A=4294967295, IDLE_B=4294967294 (alternating heartbeat)
+- IDLE_A=4294967295, IDLE_B=4294967294 (fallback heartbeat; normally an empty standard message with toggled filler parity is sent instead)
 - free: 4294967293, 4294967292
 - Core HP block: 4294966780 + h (h=0..500), announced on >50 HP drift
 

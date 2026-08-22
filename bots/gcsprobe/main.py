@@ -2,97 +2,59 @@
 
 Exercises the GCS module inside a real match: the Core spawns builders and
 announces their slots through the store; builders wander, record the walls
-and ore they see, and publish them; every unit absorbs each round.  A line
-starting with [probe] is printed whenever a unit learns a tile it has never
-seen with its own eyes — proof the fact travelled through the store.
+and ore they see, and publish them; every unit absorbs each round.
 
-Not a competitive bot: it only fights for verification step 9 of the GCS plan.
+Every unit prints one `GCSTRACE {...}` JSON line per round (prints are kept
+verbatim in the .replay26).  tools/gcs_viz.py turns a replay into a
+side-by-side visualisation of the game and the store.
+
+Not a competitive bot: it exists for verification of the GCS module.
+`utils` is a symlink to ../utils (the engine only loads code found inside the
+bot's own directory).
 """
 
+import json
 import random
 
+from fcode import Direction, EntityType, Environment
 
-from fcode import Direction, EntityType, Environment, GameError  # noqa: E402
-
-from utils.GCS.Base.gcs import GCS  # noqa: E402
-from utils.GCS.Base.messages import Fact  # noqa: E402
-from utils.GCS.Base.protocol import STATE_CODE  # noqa: E402
+from utils.GCS.Base.gcs import GCS
+from utils.GCS.Base.messages import Fact
+from utils.GCS.Base.protocol import STATE_CODE
 
 CARDINALS = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST]
-_KIND = {EntityType.CORE: "core", EntityType.BUILDER_BOT: "builder_bot",
-         EntityType.GUNNER: "gunner", EntityType.SENTINEL: "sentinel",
-         EntityType.LAUNCHER: "launcher"}
-
 MAX_BUILDERS = 3
-REPORT_ROUND = 400
-_LOG: list[str] = []        # shared by the whole team (one interpreter per team)
+STOP_ROUND = 300            # resign here: enough rounds for the visualiser
 
 
 class Player:
     def __init__(self):
         self.gcs: GCS | None = None
-        self.seen: set[tuple[int, int]] = set()   # tiles this unit saw itself
         self.num_spawned = 0
-        self.spawned_ids: dict[int, int] = {}     # slot -> unit id (core only)
 
     def run(self, ct):
-        try:
-            self._run(ct)
-        except Exception as exc:
-            import traceback
-            ct.resign("PROBE CRASH: " + traceback.format_exc()[-1500:])
-
-    def _run(self, ct):
-        etype = ct.get_entity_type()
-        kind = _KIND.get(etype)
-        if kind is None:
+        kind = ct.get_entity_type().value
+        if kind not in ("core", "builder_bot", "gunner", "sentinel", "launcher"):
             return
         if self.gcs is None:
             self.gcs = GCS(kind)
-            _LOG.append(f"r={ct.get_current_round()} {kind} id={ct.get_id()} first run")
 
-        before = set(self.gcs.map.tiles)
         result = self.gcs.absorb(ct)
-        for f in result.facts:
-            if (f.x, f.y) not in self.seen and (f.x, f.y) not in before \
-                    and len(_LOG) < 40:
-                _LOG.append(f"r={ct.get_current_round()} {kind} slot={self.gcs.slot} "
-                            f"learned ({f.x},{f.y})={f.state} via GCS")
-        if result.assigned_slot is not None:
-            _LOG.append(f"r={ct.get_current_round()} {kind} spawn_round="
-                        f"{self.gcs.spawn_round} got slot {result.assigned_slot}")
-        if kind == "core" and ct.get_current_round() == REPORT_ROUND:
-            reg = self.gcs.registry
-            rows = []
-            for s, o in reg.owners.items():
-                if o.kind != "builder_bot":
-                    continue
-                uid = self.spawned_ids.get(s)
-                try:
-                    truth = ct.get_position(uid) if uid is not None else None
-                    truth = (truth.x, truth.y) if truth is not None else None
-                except GameError:
-                    truth = "out of vision"
-                verdict = "?" if isinstance(truth, str) else ("OK" if o.pos == truth else "MISMATCH")
-                rows.append(f"slot {s}: reckoned={o.pos} truth={truth} {verdict}")
-            cx, cy = ct.get_position().x, ct.get_position().y
-            far = [xy for xy in self.gcs.map.tiles
-                   if (xy[0]-cx)**2 + (xy[1]-cy)**2 > 36]
-            ct.resign(f"PROBE REPORT r={REPORT_ROUND}\n" + "\n".join(rows)
-                      + f"\nfar tiles learned from builders: {len(far)} e.g. {sorted(far)[:6]}")
-
         self._observe(ct)
         if kind == "core":
             self._core(ct)
         elif kind == "builder_bot":
             self._builder(ct)
+        written_before = self.gcs.last_written
         self.gcs.publish(ct)
+        self._trace(ct, kind, result, written_before)
+
+        if kind == "core" and ct.get_current_round() == STOP_ROUND:
+            ct.resign("probe finished")
 
     def _observe(self, ct):
         """Feed own eyesight into the map as unpublished facts."""
         for tile in ct.get_nearby_tiles():
-            xy = (tile.x, tile.y)
-            self.seen.add(xy)
             env = ct.get_tile_env(tile)
             if env == Environment.WALL:
                 self.gcs.map.apply_fact(Fact(tile.x, tile.y, STATE_CODE["WALL"]),
@@ -103,9 +65,9 @@ class Player:
 
     def _core(self, ct):
         reg = self.gcs.registry
-        if (self.num_spawned >= MAX_BUILDERS
-                or reg.in_onboard_window(ct.get_current_round())
-                or reg.is_resync_round(ct.get_current_round())):
+        r = ct.get_current_round()
+        if (self.num_spawned >= MAX_BUILDERS or reg.in_onboard_window(r)
+                or reg.is_resync_round(r)):
             return
         if ct.get_global_resources() < ct.get_builder_bot_cost():
             return
@@ -116,8 +78,7 @@ class Player:
                 slot = reg.pick_builder_slot()
                 if slot is None:
                     return
-                new_id = ct.spawn_builder(spawn_pos)
-                self.spawned_ids[slot] = new_id
+                ct.spawn_builder(spawn_pos)
                 self.num_spawned += 1
                 self.gcs.core_announce_assign(slot)
                 return
@@ -131,3 +92,22 @@ class Player:
             if ct.can_move(d):
                 ct.move(d)
                 return
+
+    def _trace(self, ct, kind, result, written_before):
+        reg = self.gcs.registry
+        pos = ct.get_position()
+        wrote = self.gcs.last_written if self.gcs.last_written != written_before else None
+        line = {
+            "r": ct.get_current_round(), "id": ct.get_id(), "kind": kind,
+            "slot": self.gcs.slot, "pos": [pos.x, pos.y],
+            "wrote": wrote,
+            "store": [ct.read_store(i) for i in range(16)],
+            "owners": {s: [o.kind, list(o.pos) if o.pos else None, o.has_written]
+                       for s, o in reg.owners.items()},
+            "slots": {s: d for s, d in result.per_slot.items()},
+            "learned": [[f.x, f.y, f.state] for f in result.facts],
+            "known": len(self.gcs.map.tiles),
+            "resync": reg.resync_write_round, "onboard_until": reg.onboard_until,
+            "core_hp": reg.core_hp,
+        }
+        print("GCSTRACE " + json.dumps(line, separators=(",", ":")))

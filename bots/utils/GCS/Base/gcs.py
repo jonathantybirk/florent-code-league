@@ -176,30 +176,45 @@ class GCS:
 
     def _publish_facts(self, ct) -> list[Fact]:
         candidates = self.map.pending_facts(8)
+        move = self._move_digit()
         value, used = messages.encode_standard(
-            self.kind, self.pos, candidates, move=self._move_digit(), aux=0)
+            self.kind, self.pos, candidates, move=move, aux=0)
         if value is None or not used:
             # nothing fits the FOV-relative format: fall back to one
-            # absolute-coordinate fact via the REMOTE escape
-            for f in candidates:
-                value = messages.encode_remote(self.kind, f, self.registry.map_w,
-                                               self.registry.map_h,
-                                               move=self._move_digit())
-                if value is not None and value != self.last_written:
-                    self._write(ct, self.slot, value)
-                    self.map.note_shared([f])
-                    return [f]
-            self._write_idle(ct)
-            return []
+            # absolute-coordinate fact via the REMOTE escape — but only if we
+            # have no move to report, since escapes of static senders are
+            # fine while a builder's move digit must never be lost
+            if move == 0:
+                for f in candidates:
+                    value = messages.encode_remote(self.kind, f, self.registry.map_w,
+                                                   self.registry.map_h)
+                    if value is not None and value != self.last_written:
+                        self._write(ct, self.slot, value)
+                        self.map.note_shared([f])
+                        return [f]
+            # nothing to say: still send our move/turn digits, with the
+            # filler parity toggled so the value never repeats
+            return self._publish_empty(ct, move)
         if value == self.last_written:      # liveness: never repeat a value
             value, used = messages.encode_standard(
-                self.kind, self.pos, candidates[1:], move=self._move_digit())
-            if value is None or value == self.last_written or not used:
-                self._write_idle(ct)
-                return []
+                self.kind, self.pos, candidates, move=move, parity=1)
+            if value is None or value == self.last_written:
+                return self._publish_empty(ct, move)
         self._write(ct, self.slot, value)
         self.map.note_shared(used)
         return used
+
+    def _publish_empty(self, ct, move: int) -> list[Fact]:
+        """A standard message with no facts: carries move/turn and a parity
+        filler chosen so the value differs from our previous write."""
+        for parity in (0, 1):
+            value, _ = messages.encode_standard(self.kind, self.pos, [],
+                                                move=move, parity=parity)
+            if value is not None and value != self.last_written:
+                self._write(ct, self.slot, value)
+                return []
+        self._write_idle(ct)
+        return []
 
     def _publish_message(self, ct, m: OutMessage) -> list[Fact]:
         move = self._move_digit()
@@ -219,9 +234,8 @@ class GCS:
         elif m.type == "raw" and m.raw is not None:
             value = m.raw
         if value is None or value == self.last_written:
-            print(f"[GCS] message {m.type} unencodable or repeated; idling")
-            self._write_idle(ct)
-            return []
+            print(f"[GCS] message {m.type} unencodable or repeated; sending empty")
+            return self._publish_empty(ct, move)
         self._write(ct, self.slot, value)
         if used:
             self.map.note_shared(used)

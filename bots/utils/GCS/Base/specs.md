@@ -60,7 +60,8 @@ dump_protocol; print(dump_protocol())"`), so that file cannot drift from the enc
 | `gcs.py` | per-unit facade: `absorb`, `publish`, `queue`, `send_raw`, Core helpers |
 | `interfaces.py` | placeholders for the internal-map / logistics / behaviour modules |
 | `tests/test_gcs.py` | headless tests (pytest) |
-| `../../../gcsprobe/` | real-engine probe bot used for end-to-end verification |
+| `bots/gcsprobe/` | real-engine probe bot used for end-to-end verification; prints a `GCSTRACE` JSON line per unit per round |
+| `tools/gcs_viz.py` | turns a probe replay into **Store Scope**, a side-by-side viewer of the board and the decoded store; `--report` prints reckoning/learned-fact tallies |
 
 ## Slots
 Engine indices 0–15. **0 = Core** (never reclaimed). Builders take 1, 2, … upward; turrets/launchers take
@@ -77,6 +78,12 @@ everyone knows, so nothing is announced until it drifts). Payload space is `2^32
 A live unit never writes the same u32 two rounds running. An unchanged slot on a round its owner was
 scheduled to write ⇒ the owner is dead and the slot is reclaimed at once. Exemptions: off-phase
 round-robin turns, the resync round, turret slots during onboarding, and slot 0.
+
+A unit with nothing new to say does **not** send a bare idle value: it sends an empty standard message,
+so its `move`/`turn` digit still goes out, with the filler fact's FOV index toggled (0/1) as a parity bit
+(receivers ignore `UNKNOWN`-state facts whatever their index). The raw `IDLE_A`/`IDLE_B` values are only
+the fallback when no message can be built. This was found by the visualiser: a builder that idled once lost
+that round's move and its reckoned position drifted for the rest of the match.
 
 ## Per-sender layouts (most-significant first; `fact = FOV × 106`)
 - Builder: `move(5) · fact_a · fact_b · aux(16)` — 1.004× full. `aux` = slot granted to a friendly
@@ -150,6 +157,16 @@ class Player:
         self.gcs.publish(ct)                      # call LAST, after moving
 ```
 `bots/gcsprobe/main.py` is a complete working example.
+
+## Verifying visually
+```
+.venv/bin/fcode run gcsprobe starter maps/frostgate.map26 --seed 3 --replay probe.replay26
+.venv/bin/python tools/gcs_viz.py probe.replay26 store-scope.html    # open in a browser
+.venv/bin/python tools/gcs_viz.py probe.replay26 --report            # tallies per unit
+```
+The viewer shows engine truth (unit positions, map) with the chosen unit's picture overlaid: its
+dead-reckoned positions of teammates (green ring = exact, rose = off), tiles it learned through the store
+(rose if they contradict the real map), and the 16 slots as that unit decodes them each round.
 
 ## Known limitations / TODO for other modules
 - `interfaces.DictMapSource` is a stand-in for the internal map; `has_conveyor_issue`, `has_harvester_issue`
