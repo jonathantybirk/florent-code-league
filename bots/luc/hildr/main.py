@@ -66,6 +66,7 @@ BURST_SLACK = 0.85         # GO when the bank covers this fraction of the finish
 ECON_ROUND = 40            # no Harvester before this unless the ring is already up
 ECON_MARGIN = 40           # titanium kept over the build cost before the miner starts a job
 GO_LOW_HP = 120            # always finish a Core this low if we out-damage the menders
+TIE_FLOOR = 5              # titanium never converted: the dead-heat tiebreak
 
 # communication store
 SLOT_BUILT = 0             # Sentinels placed, written by the attack Builder
@@ -189,6 +190,12 @@ class Player:
         self.seen_turrets = {}      # enemy turret id -> round first seen near our Core
         self.eta = 0
         self.plan = None            # 'race' or 'mend', decided once their ring is in sight
+        self.prev_ehp = None
+        self.prev_ammo = None
+        self.converted = 0
+        self.heals = []
+        self.shots = []
+        self.go_held = False
         self.plan_round = 0
         # builder
         self.home = None
@@ -284,8 +291,23 @@ class Player:
         self._write(ct, SLOT_THREAT, self.round + 1 if threatened else 0)
 
         # ---- the books
-        eheal = 4 * self._read(ct, SLOT_EHEAL)
+        # Their mending is measured, not assumed: what their Core gained since last round plus
+        # what our shots took off it.  Four menders are 16 HP/round only while they have the
+        # titanium, and most rushers do not.
         ehp = self._read(ct, SLOT_EHP) or 500
+        menders_seen = self._read(ct, SLOT_EHEAL)
+        spent = max(0, self.prev_ammo + self.converted - ammo) if self.prev_ammo is not None else 0
+        if self.prev_ehp is not None:
+            self.heals.append(max(0.0, (ehp - self.prev_ehp) + 1.8 * spent))
+            self.shots.append(spent)
+            del self.heals[:-6]
+            del self.shots[:-6]
+        self.prev_ehp = ehp
+        self.prev_ammo = ammo
+        self.converted = 0
+        eheal = 4 * menders_seen
+        if menders_seen and sum(self.shots) >= 20 and self.heals:
+            eheal = min(eheal, sum(self.heals) / len(self.heals))
         our_dps = 9 * alive
         net_us = our_dps - eheal
         self.eta = self._read(ct, SLOT_ETA)
@@ -321,7 +343,8 @@ class Player:
             if our_eta > their_eta + 4 and hp < 400:
                 self.plan = 'mend'
         mend_first = self.plan == 'mend' and threatened
-        mend_reserve = MEND_RESERVE if (threatened and menders) else 0
+        finishing = ehp <= GO_LOW_HP
+        mend_reserve = min(MEND_RESERVE, 3 * menders) if (threatened and menders and not finishing) else 0
 
         # What the kill costs from here, if the ring is to keep shooting.
         full = 9 * SENTINEL_TARGET
@@ -358,17 +381,21 @@ class Player:
 
         # ---- GO / HOLD for the ring
         go = 1
-        if alive and eheal > 0:
+        if alive and eheal > 0 and not finishing:
             if net_us <= 0:
                 go = 0
             else:
-                slack = BURST_SLACK * (0.6 if self.go else 1.0)
-                go = 1 if (bank >= slack * kill_ammo or ehp <= GO_LOW_HP) else 0
+                slack = BURST_SLACK * (0.6 if (self.go and self.go_held) else 1.0)
+                go = 1 if bank >= slack * kill_ammo else 0
+            self.go_held = True
+        else:
+            self.go_held = False
         self.go = go
         self._write(ct, SLOT_GO, go)
 
         # ---- ammunition, lazily
-        self._feed_ammo(ct, alive, go, ring_reserve, need_menders, threatened, mend_first)
+        self._feed_ammo(ct, alive, go, 0 if finishing else ring_reserve, need_menders,
+                        threatened, mend_first, mend_reserve, finishing)
 
         # ---- mining
         econ_ok = (not threatened and self.round - self.last_hit > 12
@@ -535,28 +562,35 @@ class Player:
         except Exception:
             return False
 
-    def _feed_ammo(self, ct, alive, go, ring_reserve, need_menders, threatened, mend_first):
+    def _feed_ammo(self, ct, alive, go, ring_reserve, need_menders, threatened, mend_first,
+                   mend_reserve, finishing):
         """Keep two shots per living Sentinel banked, and nothing more: titanium is flexible,
-        ammunition is not.  The burst is paid for the round the Core says GO."""
+        ammunition is not.  The burst is paid for the round the Core says GO, and a Core within
+        reach of the finish gets every point we have."""
         try:
             ammo = ct.get_global_ammo()
             ti = ct.get_global_resources()
-            reserve = ring_reserve + (MEND_RESERVE if threatened else 0)
-            if need_menders and mend_first:
+            reserve = ring_reserve + mend_reserve
+            if need_menders and mend_first and not finishing:
                 reserve += self._builder_cost(ct)
             if alive == 0:
-                # nothing can shoot yet; a small float so the first turret fires the round it stands
                 want = 20 if ammo < 20 else 0
+            elif finishing:
+                want = ti
             elif go:
                 want = AMMO_PER_SENTINEL * alive - ammo
             else:
                 want = 10 - ammo                   # one sniping shot at a time
+                reserve = ring_reserve             # sniping is never blocked by the mend reserve
             if want <= 0:
                 return
-            spare = ti - reserve
+            # Both Cores dying in one round is settled on titanium stored, and an all-in rusher
+            # stores nothing: a few points kept back win every dead heat.
+            spare = ti - reserve - TIE_FLOOR
             amount = min(want, spare)
             if amount >= 10 and ct.can_convert_ammo(amount):
                 ct.convert_ammo(amount)
+                self.converted = amount
         except Exception:
             return
 
