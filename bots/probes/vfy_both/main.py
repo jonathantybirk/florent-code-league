@@ -200,7 +200,7 @@ class Player:
         self.height = 0
         self.spots = {}             # tile -> facing that puts the Core on its ray
         self.turrets = {}           # enemy turret id -> (pos, facing, covered tiles)
-        self.thrown_from = set()    # tiles an enemy Launcher has actually grabbed us from
+        self.thrown_from = set()    # tiles an enemy launcher has grabbed us from
         self.last_pos = None
         self.goal = None            # this round's destination tile
         self.path = []              # cached route, held until genuinely obstructed
@@ -436,11 +436,7 @@ class Player:
             except Exception:
                 self.role = 'attack'
 
-        # Learn where we got thrown. The static pickup ring only covers Launchers we have SEEN;
-        # a jump of more than one tile in a round proves one reached us from somewhere, whether we
-        # spotted it or not. Remembering the tile we were grabbed from is evidence no amount of
-        # modelling supplies, and the cached route is void anyway once we are somewhere else.
-        last = self.last_pos
+        last = getattr(self, 'last_pos', None)
         if last is not None and abs(last[0] - here.x) + abs(last[1] - here.y) > 1:
             self.thrown_from.add(last)
             self.path = []
@@ -464,14 +460,6 @@ class Player:
             # fifteen rounds walking around the Core for the rest of the ring. Ordering the two
             # calls the other way round is the whole fix -- a turret placed a round earlier is
             # worth 9 HP/round, and a cluster stranded is worth fifteen rounds.
-            # ALWAYS place the first turret if this tile can hold one. Holding out for a better
-            # anchor is right for turrets 2-4 and catastrophic for the first: the anchor-first rule
-            # above made the Builder refuse to build until it reached a higher-scoring tile, and
-            # when an enemy Builder parked on the route it simply never arrived. Measured: it sat
-            # idle from round 11 to 27 on helheim, and across the panel there were 15 games where
-            # the first Sentinel was never built at all -- of which we won zero.
-            #
-            # One turret firing now is 9 HP/round. A perfect cluster that never materialises is 0.
             if self.built == 0 and self._anchor_value((here.x, here.y)):
                 if self._place(ct, here):
                     return
