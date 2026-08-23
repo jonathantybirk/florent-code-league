@@ -35,6 +35,7 @@ from .model import (
     Terrain,
     Tile,
 )
+from .strategies import MiningStrategies
 
 _LOG = logging.getLogger(__name__)
 _HARVESTER_RATE = 10 / 4
@@ -47,9 +48,11 @@ class MiningPlanner:
         self,
         policy: MiningPolicy | None = None,
         debug_sink: Callable[[DebugEvent], None] | None = None,
+        strategies: MiningStrategies | None = None,
     ) -> None:
         self.policy = policy or MiningPolicy()
         self._debug_sink = debug_sink
+        self.strategies = strategies or MiningStrategies()
 
     def plan(self, context: MiningContext, previous_plan: MiningPlan | None = None) -> MiningPlan:
         epoch = 1 if previous_plan is None else previous_plan.epoch + 1
@@ -79,16 +82,50 @@ class MiningPlanner:
             note(1, "plan.disabled", "mining disabled by global constraints")
             return self._empty_plan(context, epoch, available, debug)
 
-        decisions = self._score_deposits(context, note)
-        lanes, decisions = self._group_lanes(context, decisions, note)
-        jobs = self._build_jobs(context, lanes, decisions, note)
+        deposit_planner = self.strategies.deposits or self._score_deposits
+        lane_planner = self.strategies.lanes or self._group_lanes
+        job_planner = self.strategies.jobs or self._build_jobs
+        blind_planner = self.strategies.blind_expansion or self._plan_corridors
+        assignment_planner = self.strategies.assignments or self._assign
+
+        decisions = deposit_planner(context, note)
+        lanes, decisions = lane_planner(context, decisions, note)
+        jobs = job_planner(context, lanes, decisions, note)
 
         corridors: tuple[ExplorationCorridor, ...] = ()
         if context.constraints.expansion_allowed and len(jobs) < len(available):
-            corridors = self._plan_corridors(context, lanes, len(available) - len(jobs), note)
+            corridors = blind_planner(context, lanes, len(available) - len(jobs), note)
+            claimed = {
+                step.tile
+                for job in jobs
+                for step in job.construction_steps
+            }
+            filtered_corridors = []
+            for corridor in corridors:
+                committed = tuple(
+                    step for step in corridor.committed_steps if step.tile not in claimed
+                )
+                if len(committed) != len(corridor.committed_steps):
+                    note(
+                        1,
+                        "corridor.claim_conflict",
+                        "removed blind steps already owned by lane jobs",
+                        corridor_id=corridor.corridor_id,
+                        removed_steps=len(corridor.committed_steps) - len(committed),
+                    )
+                filtered_corridors.append(replace(corridor, committed_steps=committed))
+                claimed.update(step.tile for step in committed)
+            corridors = tuple(filtered_corridors)
             jobs += tuple(self._corridor_job(corridor) for corridor in corridors)
 
-        assignments = self._assign(context, jobs, available, epoch, previous_plan, note)
+        assignments = assignment_planner(
+            context,
+            jobs,
+            available,
+            epoch,
+            previous_plan,
+            note,
+        )
         planned_income = self._planned_income(context, decisions)
         preemption = self._preemption(available, jobs, assignments)
         unassigned_jobs = max(0, len(jobs) - len(assignments))

@@ -100,6 +100,25 @@ plan = planner.plan(context, previous_plan=None)
 directive = planner.next_builder_directive(context, plan, builder_id)
 ```
 
+Alternative strategies may replace individual planning stages without
+forking the planner or changing these entry points:
+
+```python
+planner = MiningPlanner(
+    policy,
+    strategies=MiningStrategies(
+        blind_expansion=my_opening,
+        jobs=my_build_schedule,
+    ),
+)
+```
+
+`MiningStrategies` exposes hooks for deposit selection, lane layout, job/build
+scheduling, blind expansion, and Builder assignment. Missing hooks use the
+current deterministic implementation exactly. Epochs, semantic directives,
+income projection, pre-emption reporting, and diagnostics remain shared, so a
+strategy variant only owns the decision it replaces.
+
 `plan` may be called by the Core or by any unit with the complete input. For
 performance, integrations should globally replan only after a meaningful map,
 roster, economy, or construction revision. Ordinary Builder turns should call
@@ -333,6 +352,8 @@ event name plus structured data suitable for replay traces.
 
 - `model.py`: dependency-free enums, immutable snapshots, protocols, plans,
   and directives.
+- `strategies.py`: optional stage hooks for alternative opening/economy
+  strategies.
 - `planner.py`: deterministic deposit, lane, corridor, job, assignment, and
   next-action logic.
 - `__init__.py`: the public import surface.

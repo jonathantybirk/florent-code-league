@@ -37,5 +37,6 @@ from .model import (
     WorldTile,
 )
 from .planner import MiningPlanner
+from .strategies import MiningStrategies
 
 __all__ = [name for name in globals() if not name.startswith("_")]
