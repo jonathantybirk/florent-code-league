@@ -52,10 +52,27 @@ def run(player, ct) -> None:
     if brain.index is None:
         brain.index = store.claim_index(ct)
         debug.log(f"r{brain.round} b{ct.get_id()} INDEX={brain.index}")
+    _gossip(brain, ct)
 
     if _mend(player, ct):
         return
     _mine(player, ct)
+
+
+def _gossip(brain, ct) -> None:
+    """Read the ore bulletin, then add one deposit of our own to it.
+
+    Traced on stavkirke, Builders spawned on rounds 2-4 wandered until round
+    12 with no deposit in sight, while the Core -- which sees radius 6 from
+    round 0 -- had been looking at ore the whole time and had no way to say
+    so. Sharing deposits is the cheapest thing the store can carry and it is
+    what the opening was missing.
+    """
+    board = store.ore_board(ct)
+    brain.learn_ore(board)
+    spare = brain.unreported_ore(board)
+    if spare is not None:
+        store.publish_ore(ct, brain.index, spare)
 
 
 # ----------------------------------------------------------------------
@@ -200,7 +217,8 @@ def _advance(brain, ct, job) -> None:
         target = Position(*need)
         facing = facings[need]
         if facing is not None and ct.can_build_conveyor(target, facing):
-            _try(ct.build_conveyor, target, facing)
+            if _try(ct.build_conveyor, target, facing):
+                debug.log(f"r{brain.round} b{ct.get_id()} CONV {need}")
             return
         # Cannot afford it yet, or something arrived on the tile: wait rather
         # than walk away, so the lane does not get abandoned half-built.
@@ -223,7 +241,8 @@ def _finish(brain, ct, deposit, route) -> None:
     if _orthogonal(me, deposit):
         target = Position(*deposit)
         if ct.can_build_harvester(target):
-            _try(ct.build_harvester, target)
+            if _try(ct.build_harvester, target):
+                debug.log(f"r{brain.round} b{ct.get_id()} HARV {deposit}")
         return
     step = _step_toward(brain, me, deposit, exact=False)
     if step is not None:

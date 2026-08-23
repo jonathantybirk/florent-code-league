@@ -18,6 +18,8 @@ splitters do not), with two corrections applied here:
     bots, so those tiles are re-blocked.
 """
 
+from utils.GCS.Base.interfaces import Fact
+from utils.GCS.Base.protocol import STATE_CODE
 from utils.internal_map.Base.internal_map import InternalMap
 from utils.pathfinding import Terrain
 
@@ -145,6 +147,32 @@ class Brain:
         """The four tiles of our Core, expanded from its 2x2 anchor."""
         anchor = self.imap.our_core if self.imap else None
         return _block(anchor)
+
+    def learn_ore(self, tiles) -> None:
+        """Record deposits a teammate reported.
+
+        InternalMap.apply_fact is the module's own route for a fact that
+        arrived over the store, and it already does the right thing with it:
+        our own fresh eyes beat a teammate's report, and the fact is marked
+        published on arrival because the whole team has it. Feeding the
+        bulletin in here rather than keeping a second list means every
+        downstream query -- free_ore, is_passable, the route ban set --
+        sees a shared deposit exactly as it sees one we found ourselves.
+        """
+        code = STATE_CODE["ORE_FREE"]
+        for x, y in tiles:
+            if not (0 <= x < self.width and 0 <= y < self.height):
+                continue
+            if self.imap.state_at(x, y) is None:
+                self.imap.apply_fact(Fact(x, y, code), from_gcs=True)
+
+    def unreported_ore(self, reported) -> tuple[int, int] | None:
+        """A deposit we know and the bulletin does not, nearest first."""
+        known = set(reported)
+        mine = [tile for tile in self.free_ore() if tile not in known]
+        if not mine:
+            return None
+        return min(mine, key=lambda t: abs(t[0] - self.me[0]) + abs(t[1] - self.me[1]))
 
     def free_ore(self) -> list[tuple[int, int]]:
         """Known ore tiles with nothing built on them."""
