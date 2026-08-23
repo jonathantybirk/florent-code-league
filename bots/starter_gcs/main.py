@@ -4,7 +4,9 @@ Identical play to bots/starter, but every unit runs the Global Communication
 Store module and an InternalMap: the Core hands out slots when it spawns,
 builders publish what they see, gunners get their slot granted by the builder
 that placed them, and everyone prints a GCSTRACE line for tools/gcs_viz.py.
-The starter's own four slots move to 12..15; the GCS owns 0..11.
+The starter's four ad-hoc slots are gone: the Core's position comes from the
+GCS registry (every unit learns it in the resync round), the harvester count
+and ore locations come from the internal map.  All 16 slots belong to the GCS.
 
 Starter bot — economy-first strategy with light defense.
 
@@ -22,12 +24,7 @@ Strategy:
 
 Entity types used:  Core, Builder Bot, Harvester, Conveyor, Gunner
 
-Communication store slots:
-  0  SLOT_CORE_X          Core X position (written by core on round 1)
-  1  SLOT_CORE_Y          Core Y position
-  2  SLOT_HARVESTER_COUNT Total harvesters built by the team
-  3  SLOT_ORE_LOCATION    Packed (x, y) of an uncovered ore tile
-  Slots 4-15 are free — use them for your own coordination logic.
+Communication: entirely through the GCS (see bots/utils/GCS).
 
 Ideas for improvement:
   - Build full conveyor chains from distant harvesters back to the core
@@ -42,12 +39,11 @@ import random
 
 from fcode import Controller, Direction, EntityType, Environment, GameConstants, Position
 
-from utils.GCS.Base import protocol as P
 from utils.GCS.Base.gcs import GCS
+from utils.GCS.Base.protocol import STATE_CODE
 from utils.GCS.Base.trace import Tracer
 from utils.internal_map.Base.internal_map import InternalMap
 
-P.GCS_SLOTS = 12      # GCS owns slots 0..11; this bot keeps 12..15 (set before any GCS exists)
 _GCS_KINDS = {EntityType.CORE: "core", EntityType.BUILDER_BOT: "builder_bot",
               EntityType.GUNNER: "gunner", EntityType.SENTINEL: "sentinel",
               EntityType.LAUNCHER: "launcher"}
@@ -64,14 +60,8 @@ DIRECTIONS = [d for d in Direction if d != Direction.CENTRE]
 # on screen -- see its corner compass.
 CARDINALS = [Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST]
 
-# --- Communication store slot assignments ---
-# The store has 16 slots (indices 0-15), each holding a u32 value.
-# Writes are buffered: a write_store() call becomes visible to all units
-# at the start of the *next* round.
-SLOT_CORE_X = 12
-SLOT_CORE_Y = 13
-SLOT_HARVESTER_COUNT = 14
-SLOT_ORE_LOCATION = 15
+_ORE = STATE_CODE["ORE"]
+_OUR_HARVESTER = STATE_CODE["OUR_HARVESTER"]
 
 # How many builder bots the core will spawn over the course of the game
 MAX_BUILDERS = 5
@@ -84,21 +74,6 @@ TARGET_HARVESTERS = 3
 # converting titanium 1:1 with convert_ammo(), at most once per turn.
 AMMO_BUFFER = 20
 
-
-def pack_pos(pos: Position) -> int:
-    """Encode a position into a single u32 for the communication store.
-
-    We offset by +1 so that position (0, 0) doesn't encode as 0,
-    which we reserve to mean "no data".
-    """
-    return ((pos.x + 1) << 16) | (pos.y + 1)
-
-
-def unpack_pos(val: int) -> Position | None:
-    """Decode a position from the communication store. Returns None if empty (0)."""
-    if val == 0:
-        return None
-    return Position((val >> 16) - 1, (val & 0xFFFF) - 1)
 
 
 def nearest_cardinal(d: Direction) -> Direction:
@@ -184,11 +159,7 @@ class Player:
         """Core logic: publish our position so builder bots can orient toward us,
         then try to spawn a builder bot each round until we hit the cap.
         """
-        # Write our position into the store every round so newly spawned bots
-        # can read it. Store writes are buffered — they become visible next round.
         pos = ct.get_position()
-        ct.write_store(SLOT_CORE_X, pos.x)
-        ct.write_store(SLOT_CORE_Y, pos.y)
 
         # Keep the gunners supplied: top the global ammo pool up to AMMO_BUFFER
         # whenever we have titanium to spare (we reserve enough for a builder
@@ -245,10 +216,12 @@ class Player:
         """
         pos = ct.get_position()
 
-        # On our first turn, read the core's position from the store.
-        # We cache it so we don't have to read every round.
+        # The Core's position comes from the GCS registry (learned in the
+        # resync round after our spawn).
         if self.core_pos is None:
-            self._read_core_pos(ct)
+            core = self.gcs.registry.owners[0].pos
+            if core is not None:
+                self.core_pos = Position(*core)
 
         # Stuck detection: if we haven't moved in 3 rounds, we'll pick a new
         # target in _move_toward_target to avoid getting permanently stuck.
@@ -263,8 +236,7 @@ class Player:
         if ct.get_action_cooldown() == 0:
             if not self._try_build_harvester(ct):
                 # Only build gunners once our economy is up (enough harvesters)
-                harvester_count = ct.read_store(SLOT_HARVESTER_COUNT)
-                if harvester_count >= TARGET_HARVESTERS:
+                if self._harvester_count() >= TARGET_HARVESTERS:
                     self._try_build_gunner(ct)
 
         # If we still have an action left (didn't build anything), heal nearby
@@ -274,20 +246,14 @@ class Player:
         # --- Move phase (requires move cooldown == 0) ---
         self._move_toward_target(ct)
 
-        # --- Communication phase (no cooldown needed) ---
-        # Share any visible ore location with teammates
-        self._share_ore(ct)
+        # Visible ore is shared automatically: it lands in the internal map as
+        # an unpublished fact and the GCS publishes it.
 
-    def _read_core_pos(self, ct: Controller) -> None:
-        """Read the core's position from the communication store.
-
-        The core writes its position on round 1, so on round 1 these will
-        still be 0. We skip storing (0, 0) unless the core really is there.
-        """
-        x = ct.read_store(SLOT_CORE_X)
-        y = ct.read_store(SLOT_CORE_Y)
-        if x > 0 or y > 0:
-            self.core_pos = Position(x, y)
+    def _harvester_count(self) -> int:
+        """Harvesters the team has, as far as this unit's map knows (own
+        sightings plus everything heard on the store)."""
+        return sum(1 for t in self.gcs.map.tiles.values()
+                   if t.building and t.building.state == _OUR_HARVESTER)
 
     def _try_build_harvester(self, ct: Controller) -> bool:
         """Try to build a harvester on an adjacent ore tile.
@@ -307,9 +273,6 @@ class Player:
             build_pos = pos.add(d)
             if ct.can_build_harvester(build_pos):
                 ct.build_harvester(build_pos)
-                # Update the shared harvester counter so other bots know
-                count = ct.read_store(SLOT_HARVESTER_COUNT)
-                ct.write_store(SLOT_HARVESTER_COUNT, count + 1)
                 # Try to add a conveyor next to the harvester to route resources
                 self._try_build_conveyor_toward_core(ct, build_pos)
                 # Clear our target so we move on instead of lingering near this
@@ -499,33 +462,23 @@ class Player:
         # 2. Once we have enough harvesters, head back to the core so we can
         #    build gunners nearby.  _try_build_gunner requires being within
         #    distance² 18 of the core, so we navigate there.
-        harvester_count = ct.read_store(SLOT_HARVESTER_COUNT)
-        if harvester_count >= TARGET_HARVESTERS and self.core_pos is not None:
+        if self._harvester_count() >= TARGET_HARVESTERS and self.core_pos is not None:
             if pos.distance_squared(self.core_pos) > 8:
                 return self.core_pos
 
-        # 3. Check the store for an ore location shared by a teammate
-        shared = unpack_pos(ct.read_store(SLOT_ORE_LOCATION))
-        if shared is not None and pos.distance_squared(shared) > 4:
-            return shared
+        # 3. Ore a teammate reported (in our map via the store), nearest first,
+        #    skipping tiles we know already carry a harvester
+        known_ore = [Position(x, y) for (x, y), t in self.gcs.map.tiles.items()
+                     if t.terrain and t.terrain.state == _ORE
+                     and not (t.building and t.building.state == _OUR_HARVESTER)]
+        known_ore = [o for o in known_ore if pos.distance_squared(o) > 4]
+        if known_ore:
+            return min(known_ore, key=pos.distance_squared)
 
         # 4. No known ore — pick a random position to explore
         w, h = ct.get_map_width(), ct.get_map_height()
         return Position(random.randrange(w), random.randrange(h))
 
-    def _share_ore(self, ct: Controller) -> None:
-        """Broadcast a visible uncovered ore tile to teammates via the store.
-
-        Any builder bot that sees ore without a building on it writes the
-        location to SLOT_ORE_LOCATION. Other bots can read this to navigate
-        toward ore they haven't seen yet.
-        """
-        pos = ct.get_position()
-        for tile in ct.get_nearby_tiles():
-            if ct.get_tile_env(tile) == Environment.ORE_TITANIUM:
-                if ct.get_tile_building_id(tile) is None:
-                    ct.write_store(SLOT_ORE_LOCATION, pack_pos(tile))
-                    return
 
     # ------------------------------------------------------------------
     # Gunner
