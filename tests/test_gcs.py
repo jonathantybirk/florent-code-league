@@ -571,3 +571,71 @@ def test_assign_outranks_deferred_symmetry():
     v = world.store.values[SLOT_CORE]
     out = messages.decode_standard("core", v, (2, 2), W, H)
     assert out.events and out.events[0].kind == CTRL_ASSIGN
+
+
+def test_grant_control_roundtrip_and_stranger_resync_decode():
+    # GRANT in absolute coordinates
+    args = messages.grant_args(11, 12, 9, 0, 3, H)            # gunner facing E at (11,12) -> slot 9
+    value = messages.encode_control("builder_bot", protocol.CTRL_GRANT, args, move=2)
+    out = messages.decode_standard("builder_bot", value, (10, 12), W, H)
+    assert out.events == [messages.ControlEvent(protocol.CTRL_GRANT, (11, 12, 9, 0, 3))]
+    assert out.aux == 0 and out.move == 2                     # trailing digits are payload, not a grant
+    # a resync message is self-describing: a stranger learns kind and position
+    v = messages.encode_resync("gunner", (4, 5), None, W, H)
+    got = messages.decode_resync(v, W, H)
+    assert got.kind == "gunner" and got.position == (4, 5)
+
+
+def test_newborn_turret_takes_its_grant_and_collisions_resolve():
+    from bots.utils.GCS.Base import protocol as P
+    world = World()
+    core = Unit("core", (2, 2)); world.units.append(core); world.step()
+    core.gcs.core_announce_assign(1); world.step()
+    b1 = Unit("builder_bot", (3, 2)); world.units.append(b1)
+    for _ in range(12):
+        world.step()
+    core.gcs.core_announce_assign(2); world.step()
+    b2 = Unit("builder_bot", (2, 3)); world.units.append(b2)
+    for _ in range(12):
+        world.step()
+    # both builders grant the SAME slot in the same round (no spread)
+    s1 = b1.gcs.registry.pick_turret_slot()
+    b1.gcs.grant_turret(4, 2, "gunner", 2, s1)
+    b2.gcs.grant_turret(2, 4, "gunner", 0, s1)
+    world.step()
+    g1 = Unit("gunner", (4, 2)); g2 = Unit("gunner", (2, 4))
+    world.units += [g1, g2]
+    for _ in range(4):
+        world.step()
+    assert g1.gcs.slot == s1                                  # lowest sender slot wins
+    assert g2.gcs.slot is not None and g2.gcs.slot != s1      # loser was re-granted elsewhere
+    owners = core.gcs.registry.owners
+    assert owners[g1.gcs.slot].pos == (4, 2) and owners[g2.gcs.slot].pos == (2, 4)
+
+
+def test_untaken_grant_is_reclaimed_after_grace():
+    from bots.utils.GCS.Base.protocol import TAKEOVER_GRACE
+    world = World()
+    core = Unit("core", (2, 2)); world.units.append(core); world.step()
+    core.gcs.core_announce_assign(1); world.step()
+    b = Unit("builder_bot", (3, 2)); world.units.append(b)
+    for _ in range(12):
+        world.step()
+    s = b.gcs.registry.pick_turret_slot()
+    b.gcs.grant_turret(4, 2, "gunner", 2, s)                  # but no gunner ever appears
+    world.step(); world.step()
+    assert s in core.gcs.registry.owners
+    for _ in range(TAKEOVER_GRACE + 2):
+        world.step()
+    assert s not in core.gcs.registry.owners
+
+
+def test_periodic_resync_round():
+    from bots.utils.GCS.Base.protocol import RESYNC_PERIOD
+    world = World()
+    core = Unit("core", (2, 2)); world.units.append(core)
+    for _ in range(RESYNC_PERIOD + 1):
+        world.step()
+    v = world.store.values[SLOT_CORE]                         # written in round RESYNC_PERIOD
+    got = messages.decode_resync(v, W, H)
+    assert got.kind == "core" and got.position == (2, 2)

@@ -15,6 +15,8 @@ Data sources (all inside the replay):
 
 from __future__ import annotations
 
+import base64
+import gzip
 import json
 import sys
 from pathlib import Path
@@ -124,6 +126,10 @@ def parse_replay(path: str) -> dict:
                     traces[d[1]] = json.loads(text[9:])
         for uid in [u for u, e in entities.items() if e["hp"] <= 0]:
             del entities[uid]
+        for t in traces.values():                       # compact: drop what the viewer defaults
+            t.pop("store", None)
+            t["slots"] = {k: v for k, v in t.get("slots", {}).items()
+                          if v.get("facts") or v.get("events") or v.get("format") not in ("stale", "empty", "-")}
         rounds.append({
             "ents": [{"id": uid, **e, "pos": list(e["pos"])} for uid, e in entities.items()],
             "traces": traces,
@@ -256,8 +262,13 @@ td.raw.changed{color:var(--text)}
   </section>
 </main>
 
-<script>
-const DATA = __DATA__;
+<script type="module">
+const DATA = await (async () => {
+  const bytes = Uint8Array.from(atob("__DATA__"), c => c.charCodeAt(0));
+  const ds = new DecompressionStream("gzip");
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  return JSON.parse(await new Response(stream).text());
+})();
 const STATES = DATA.states;
 const R = DATA.rounds, W = DATA.w, H = DATA.h;
 const FOV_R2 = {core:36, builder_bot:20, gunner:13, sentinel:32, launcher:26};
@@ -266,8 +277,8 @@ const MOVES = ["", "N", "E", "S", "W"];
 const SYM = ["left-right mirror", "top-bottom mirror", "180° rotation"];
 const SRC = {s:"seen with own eyes", g:"heard via the store", i:"inferred from symmetry"};
 
-const slotOf = {}, kindOf = {};
-R.forEach(rd => { for (const [id, t] of Object.entries(rd.traces)) { if (t.slot !== null) slotOf[id] = t.slot; kindOf[id] = t.kind; } });
+const slotOf = {}, kindOf = {}, holder = [];   // holder[r][slot] = unit id claiming it that round
+R.forEach(rd => { const h = {}; for (const [id, t] of Object.entries(rd.traces)) { if (t.slot !== null) { slotOf[id] = t.slot; h[t.slot] = +id; } kindOf[id] = t.kind; } holder.push(h); });
 const viewers = Object.keys(kindOf).map(Number).sort((a,b)=>a-b);
 
 // the selected unit's internal map, rebuilt from per-round deltas
@@ -342,7 +353,8 @@ function drawTruth() {
     const cx = g.ox+(e.pos[0]+.5)*g.size, cy = g.oy+(e.pos[1]+.5)*g.size, color = e.team==="A" ? C.truth : C.enemy;
     if (["builder_bot","gunner","launcher","sentinel"].includes(e.type)) {
       ctx.beginPath(); ctx.arc(cx, cy, g.size*.36, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
-      if (e.team==="A" && slotOf[e.id] !== undefined) { ctx.fillStyle = C.panel; ctx.font = `500 ${Math.max(9,g.size*.5)}px "IBM Plex Mono",monospace`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(slotOf[e.id], cx, cy+0.5); }
+      const slotNow = (rd.traces[e.id] || {}).slot;
+      if (e.team==="A" && slotNow !== null && slotNow !== undefined) { ctx.fillStyle = C.panel; ctx.font = `500 ${Math.max(9,g.size*.5)}px "IBM Plex Mono",monospace`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(slotNow, cx, cy+0.5); }
     } else { ctx.fillStyle = color; ctx.globalAlpha = .45; ctx.fillRect(cx-g.size*.3, cy-g.size*.3, g.size*.6, g.size*.6); ctx.globalAlpha = 1; }
   }
   if (me) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(g.ox+(me.pos[0]+.5)*g.size, g.oy+(me.pos[1]+.5)*g.size, g.size*.5, 0, Math.PI*2); ctx.stroke(); }
@@ -351,7 +363,7 @@ function drawTruth() {
   let ok = 0, bad = 0, unknown = 0;
   if (t) for (const [slot, [kind, pos]] of Object.entries(t.owners)) {
     if (!pos || kind==="core") continue;
-    const id = Object.keys(slotOf).find(i => slotOf[i] == slot && kindOf[i] === kind);
+    const id = round > 0 ? holder[round-1][slot] : undefined;
     const truth = id !== undefined ? (prevPos[id] || null) : null;
     const match = truth && truth[0]===pos[0] && truth[1]===pos[1];
     if (!truth) unknown++; else if (match) ok++; else bad++;
@@ -529,11 +541,15 @@ def report(data: dict) -> str:
     reckoned positions are checked against the previous round's entities."""
     rounds, states = data["rounds"], data["states"]
     slot_of, kind_of = {}, {}
+    holder = []          # per round: slot -> unit id that claimed it that round
     for rd in rounds:
+        h = {}
         for uid, t in rd["traces"].items():
             if t["slot"] is not None:
                 slot_of[int(uid)] = t["slot"]
+                h[t["slot"]] = int(uid)
             kind_of[int(uid)] = t["kind"]
+        holder.append(h)
     lines = []
     for viewer in sorted(kind_of):
         ok = bad = unknown = 0
@@ -546,7 +562,7 @@ def report(data: dict) -> str:
             for slot, (kind, pos, _) in t["owners"].items():
                 if not pos or kind == "core":
                     continue
-                uid = next((u for u, s in slot_of.items() if s == int(slot) and kind_of[u] == kind), None)
+                uid = holder[r - 1].get(int(slot)) if r else None
                 truth = prev.get(uid)
                 if truth is None:
                     unknown += 1
@@ -578,7 +594,9 @@ def main():
     if sys.argv[2] == "--report":
         print(report(data))
         return
-    html = TEMPLATE.replace("__DATA__", json.dumps(data, separators=(",", ":")))
+    raw = json.dumps(data, separators=(",", ":")).encode()
+    packed = base64.b64encode(gzip.compress(raw, 9)).decode()
+    html = TEMPLATE.replace("__DATA__", packed)
     Path(sys.argv[2]).write_text(html)
     n_tr = sum(len(r["traces"]) for r in data["rounds"])
     print(f"{sys.argv[2]}: {data['w']}x{data['h']} map, {len(data['rounds'])} rounds, "
