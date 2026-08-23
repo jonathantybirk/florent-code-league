@@ -19,6 +19,8 @@
     ]
   },
   "_opponents_for": "bot_id -> ordered team names, five played per round, the rest carried in state.opponents_pending. Overrides the policy entirely. v70 has already faced all 20 of its nearest teams, so this is the nine unfaced teams rated above us (1810-2036) plus not adgato, the team it has seen least (one game).",
+  "coverage_k": 15,
+  "_coverage_k": "How many of the nearest teams a coverage round tries to fill, default 10. Only affects opponent choice once a round has already decided to fill coverage -- the promotion bar still uses the closest 10 and QUALIFY_MIN, so widening this changes who the flagship plays, not who we trust enough to promote.",
   "coverage_bots": [],
   "_coverage_bots": "Bot ids whose rounds pick opponents by coverage instead of by information: the teams closest to us in rating that this build has not played yet, topped up from the pool if there are fewer than five. Same selection the flagship falls back to when it drops below the qualification bar.",
   "test_next": [

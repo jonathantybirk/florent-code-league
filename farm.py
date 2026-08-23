@@ -780,17 +780,33 @@ def run_round(dry_run: bool = False) -> None:
     # normal UCB selection stands.
     filling_coverage = False
     closest = closest_opponents(ladder_rows)
+    # Coverage may reach wider than the promotion bar does. `closest`/QUALIFY_MIN decide
+    # whether a build is trustworthy enough to promote and are deliberately left alone;
+    # `coverage_pool` is only ever used to pick opponents once we have decided to fill
+    # coverage, so widening it changes who we play, never who we trust.
+    coverage_k = int(config.get("coverage_k") or CLOSEST_K)
+    coverage_pool = (closest if coverage_k == CLOSEST_K
+                     else closest_opponents(ladder_rows, coverage_k))
     incumbent_id = {info["version"]: b for b, info in registry.items()}.get(
         state.get("flagship_version"))
     if closest and incumbent_id:
         seen, ok = qualification(incumbent_id, closest, state, feed, registry)
+        faced_incumbent = faced_for(incumbent_id, state, feed, registry)
+        unmet_coverage = [r for r in coverage_pool
+                          if r["teamId"] not in faced_incumbent]
         challenger = best_challenger(state, stats, team_rating, closest, live=feed)[0]
-        if not ok and challenger is None and not queued:
+        # Still gated on there being nothing better to do -- an untested challenger or a
+        # queued bot always wins the round. This only changes what an otherwise idle
+        # round does: keep filling the flagship out to `coverage_k` rather than stopping
+        # at the promotion bar, so the teams ranked just outside it stop being invisible.
+        if (not ok or unmet_coverage) and challenger is None and not queued:
             filling_coverage = True
             if bot_id != incumbent_id:
                 bot_id = incumbent_id
             why = (f"flagship unqualified ({seen}/{len(closest)} of the closest "
-                   f"{CLOSEST_K}), filling its own coverage")
+                   f"{CLOSEST_K}), filling its own coverage" if not ok else
+                   f"flagship coverage: {len(unmet_coverage)} of the closest "
+                   f"{coverage_k} unplayed")
 
     # Coverage on request. The rule above only reaches for it when the flagship has
     # fallen below the bar, and never for a queued bot -- but "play the teams at our
@@ -798,9 +814,9 @@ def run_round(dry_run: bool = False) -> None:
     # and the policy already implements exactly that.
     if bot_id in (config.get("coverage_bots") or []):
         filling_coverage = True
-        unmet = len([r for r in closest if r["teamId"] not in faced_for(
-            bot_id, state, feed, registry)]) if closest else 0
-        why = f"{why}; coverage_bots: {unmet} of the closest {CLOSEST_K} unmet"
+        unmet = len([r for r in coverage_pool if r["teamId"] not in faced_for(
+            bot_id, state, feed, registry)]) if coverage_pool else 0
+        why = f"{why}; coverage_bots: {unmet} of the closest {coverage_k} unmet"
 
     cand = by_id.get(bot_id) or {
         "name": incumbent_id.split("@")[0] if incumbent_id else bot_id.split("@")[0],
@@ -815,7 +831,7 @@ def run_round(dry_run: bool = False) -> None:
         ladder=ladder_rows,
         me=next((r for r in ladder_rows if r["teamId"] == fc.TEAM_ID), None),
         pool=sampling_pool(ladder_rows),
-        closest=closest,
+        closest=coverage_pool if filling_coverage else closest,
         n=CHALLENGES_PER_ROUND,
         bot_id=bot_id,
         faced_ids=faced_ids,
