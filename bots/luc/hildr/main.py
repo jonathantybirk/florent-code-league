@@ -70,7 +70,7 @@ GO_LOW_HP = 120            # always finish a Core this low if we out-damage the 
 TIE_FLOOR = 5              # titanium never converted: the dead-heat tiebreak
 STALL_ROUNDS = 15          # HOLD this long with a quiet home means the game is now an income race
 RING_EXTRA_MAX = 2         # Sentinels added past four when the stall bank outgrows the burst
-MINERS_STALL = 2           # home Builders hired for the long game
+MINERS_STALL = 3           # home Builders hired for the long game
 ATTACKER_DIG_REACH = 0     # steps the attack Builder walks to dig out a turret shooting the ring
 
 # communication store
@@ -81,7 +81,7 @@ SLOT_THREAT = 3            # round + 1 while something that can hit our Core is 
 SLOT_BEAT0 = 4             # Sentinel heartbeats, one slot each: round + 1
 SLOT_BEATS = 5             # slots 4..8
 SLOT_HARVEST = 9           # Harvesters the miner has laid
-HARVESTERS_MAX = 3         # the miner keeps laying them while the Core pays
+HARVESTERS_MAX = 5         # the miner keeps laying them while the Core pays
 SLOT_EHEAL = 10            # enemy Builders beside the enemy Core, written by the Sentinels
 SLOT_GO = 11               # 1: shoot the Core.  0: hold, snipe menders, bank
 SLOT_EHP = 12              # enemy Core HP, written by the Sentinels (0 = unknown)
