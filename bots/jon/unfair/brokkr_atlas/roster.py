@@ -41,13 +41,13 @@ ATTACKERS = 2
 # a whole lane, and a second Builder standing in their base is a second
 # Builder not laying ours -- the value is in the lane severed, not in the
 # number of hands severing it.
-HARASSER_INDEX = 1
+HARASSERS = 2
 
 
 def is_harasser(index: int, target: int, allowed: bool) -> bool:
     if not allowed or index is None or target <= 3:
         return False               # too small a roster to spare anybody
-    return index == HARASSER_INDEX
+    return 1 <= index <= HARASSERS
 
 
 def is_attacker(index: int, target: int, siege_open: bool) -> bool:
