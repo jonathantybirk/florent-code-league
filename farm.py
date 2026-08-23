@@ -40,6 +40,7 @@ FIXTURES = HERE / "fixtures"
 STATE_PATH = HERE / "state.json"
 SERIES_CSV = HERE / "data" / "series.csv"
 GAMES_CSV = HERE / "data" / "games.csv"
+PREDICTIONS_CSV = HERE / "data" / "predictions.csv"
 PAUSE_FILE = HERE / "PAUSE"
 CONFIG_PATH = HERE / "config.json"
 LOG_PATH = HERE / "farm.log"
@@ -55,6 +56,14 @@ SERIES_FIELDS = [
     "fired_at", "collected_at", "bot_id", "bot_name", "bot_commit", "version",
     "match_id", "opponent", "opponent_id", "opponent_rank", "opponent_rating",
     "opponent_version", "our_score", "their_score", "our_side",
+]
+# One row per build per round: the delta-Elo the flagship decision saw, at the
+# moment it saw it. Join to the rated series the ladder creates next (the one
+# with `version == flagship_after`, created after `at` and before the next row)
+# to score the prediction against what actually happened.
+PREDICTION_FIELDS = [
+    "at", "round", "team_rating", "bot_id", "version", "delta_elo", "se",
+    "is_incumbent", "flagship_after",
 ]
 GAMES_FIELDS = [
     "match_id", "bot_id", "opponent", "opponent_rating", "game_number", "map",
@@ -550,8 +559,9 @@ def best_challenger(state: dict, stats: dict[str, arms.ArmStats], team_rating: f
     good record against opponents the ladder already expects us to beat: those
     wins score near zero because the expected score is already high.
 
-    Returns (bot_id, delta, se, incumbent_id, incumbent_delta); bot_id is None
-    when no qualified bot has a higher delta than the incumbent.
+    Returns (bot_id, delta, se, incumbent_id, incumbent_delta, scores); bot_id
+    is None when no qualified bot has a higher delta than the incumbent, and
+    scores maps every simulated bot_id (incumbent included) to (delta, se).
     """
     flagship = state.get("flagship_version")
     if registry is None:
@@ -577,6 +587,9 @@ def best_challenger(state: dict, stats: dict[str, arms.ArmStats], team_rating: f
 
     incumbent = delta(incumbent_id) if incumbent_id else None
     incumbent_delta = incumbent[0] if incumbent else 0.0
+    scores: dict[str, tuple[float, float]] = {}
+    if incumbent:
+        scores[incumbent_id] = incumbent
 
     best_id, best_delta, best_se = None, -1e9, None
     for bot_id in registry:
@@ -598,12 +611,13 @@ def best_challenger(state: dict, stats: dict[str, arms.ArmStats], team_rating: f
         if scored is None:
             log.info("%s has no current-build records; cannot simulate a delta", bot_id)
             continue
+        scores[bot_id] = scored
         if scored[0] > best_delta:
             best_id, best_delta, best_se = bot_id, scored[0], scored[1]
 
     if best_id is None or best_delta <= incumbent_delta:
-        return None, None, None, incumbent_id, incumbent_delta
-    return best_id, best_delta, best_se, incumbent_id, incumbent_delta
+        return None, None, None, incumbent_id, incumbent_delta, scores
+    return best_id, best_delta, best_se, incumbent_id, incumbent_delta, scores
 
 
 def maybe_promote(state: dict, stats: dict[str, arms.ArmStats], team_rating: float,
@@ -626,14 +640,24 @@ def maybe_promote(state: dict, stats: dict[str, arms.ArmStats], team_rating: flo
     `best_challenger` for why that is the more useful ranking here.
     """
     registry = submission_registry(state)
-    best_id, best_est, best_se, incumbent_id, incumbent_elo = best_challenger(
+    best_id, best_est, best_se, incumbent_id, incumbent_elo, scores = best_challenger(
         state, stats, team_rating, closest, min_games, live=livefeed.load(),
         registry=registry, ladder_rows=ladder_rows,
     )
     flagship = state.get("flagship_version")
+    new_version = registry[best_id]["version"] if best_id is not None else flagship
+    if scores and not dry_run:
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        append_csv(PREDICTIONS_CSV, PREDICTION_FIELDS, [{
+            "at": now, "round": state.get("rounds", 0) + 1,
+            "team_rating": round(team_rating, 2), "bot_id": bot_id,
+            "version": registry[bot_id]["version"],
+            "delta_elo": round(d, 3), "se": round(se, 4),
+            "is_incumbent": int(bot_id == incumbent_id),
+            "flagship_after": new_version,
+        } for bot_id, (d, se) in scores.items()])
     if best_id is None:
         return
-    new_version = registry[best_id]["version"]
     log.warning("PROMOTING %s (v%s): delta elo %+.2f +-%.2f beats incumbent %+.2f",
                 best_id, new_version, best_est, best_se, incumbent_elo)
     if dry_run:
