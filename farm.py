@@ -227,6 +227,12 @@ POOL_DEPTH = 25  # everyone we are willing to sample
 CLOSEST_K = 10
 QUALIFY_MIN = 7
 
+# Careers to average when scoring a build's one-round delta elo. The Monte Carlo
+# error at this count is ~0.09 Elo against gaps of 0.5-5 between neighbouring
+# builds, so the ranking is resolved well past the point more samples would help.
+# The remaining spread is real matchup uncertainty and does not shrink with count.
+DELTA_SIMS = 10000
+
 
 def sampling_pool(ladder_rows: list[dict]) -> list[dict]:
     """The teams the farm draws from: the top of the ladder plus our neighbourhood."""
@@ -531,32 +537,59 @@ def build_elo(state: dict, live: dict | None, bot_id: str,
 
 def best_challenger(state: dict, stats: dict[str, arms.ArmStats], team_rating: float,
                     closest: list[dict] | None, min_games: int = 25,
-                    live: dict | None = None, registry: dict | None = None):
-    """The qualified bot with the highest expected Elo, if it beats the incumbent.
+                    live: dict | None = None, registry: dict | None = None,
+                    ladder_rows: list[dict] | None = None):
+    """The qualified bot with the highest DELTA ELO, if that delta is positive.
 
-    Estimates come from the live feed, which fits them over every match a build
-    has played -- rated ladder games included -- rather than over the handful of
-    series this farm happened to fire.
+    Delta elo is the expected one-round rating change, simulated over the real
+    pairing distribution: `arms.simulated_rating` puts the build at our current
+    rating, draws the opponent it would actually be matched against, plays the
+    series against a Beta posterior over our record with that opponent, and
+    applies the ladder's own update rule.
 
-    Returns (bot_id, elo, half_width, incumbent_id, incumbent_elo); bot_id is
-    None when no qualified bot has a higher expected Elo than the incumbent.
+    This ranks differently from expected Elo, and more usefully for the question
+    the farm actually asks -- which build should be live for the NEXT round.
+    A build's Elo estimate says where it would settle eventually; delta elo says
+    what it does now, from where we currently sit. It also cannot be gamed by a
+    good record against opponents the ladder already expects us to beat: those
+    wins score near zero because the expected score is already high.
+
+    Returns (bot_id, delta, se, incumbent_id, incumbent_delta); bot_id is None
+    when no qualified bot has a higher delta than the incumbent.
     """
     flagship = state.get("flagship_version")
     if registry is None:
         registry = submission_registry(state)
     versions = {info["version"]: bot_id for bot_id, info in registry.items()}
     incumbent_id = versions.get(flagship)
-    incumbent = build_elo(state, live, incumbent_id, registry) if incumbent_id else None
-    incumbent_elo = incumbent[0] if incumbent else team_rating
 
-    best_id, best_est, best_half = None, -1e9, None
+    if not ladder_rows:
+        raise ValueError("best_challenger needs ladder_rows to simulate a delta")
+
+    def delta(bot_id):
+        """Expected one-round rating change, or None when it cannot be simulated."""
+        version = registry.get(bot_id, {}).get("version")
+        if not live or version is None:
+            return None
+        build = livefeed.build_for_version(live, version)
+        if build is None or not arms.matchup_rates(live, build["key"]):
+            return None
+        mean, _sd, se = arms.simulated_rating(
+            live, build["key"], ladder_rows, start_rating=team_rating,
+            sim_length=1, sim_count=DELTA_SIMS)
+        return mean - team_rating, se
+
+    incumbent = delta(incumbent_id) if incumbent_id else None
+    incumbent_delta = incumbent[0] if incumbent else 0.0
+
+    best_id, best_delta, best_se = None, -1e9, None
     for bot_id in registry:
         if bot_id == incumbent_id:
             continue
         rated = build_elo(state, live, bot_id, registry)
         if rated is None:
             continue
-        est, half, games = rated
+        _est, _half, games = rated
         if games < min_games:
             continue
         if closest:
@@ -565,18 +598,22 @@ def best_challenger(state: dict, stats: dict[str, arms.ArmStats], team_rating: f
                 log.info("%s not qualified: faced %d/%d of the closest %d (need %d)",
                          bot_id, seen, len(closest), CLOSEST_K, QUALIFY_MIN)
                 continue
-        if est > best_est:
-            best_id, best_est, best_half = bot_id, est, half
+        scored = delta(bot_id)
+        if scored is None:
+            log.info("%s has no current-build records; cannot simulate a delta", bot_id)
+            continue
+        if scored[0] > best_delta:
+            best_id, best_delta, best_se = bot_id, scored[0], scored[1]
 
-    if best_id is None or best_est <= incumbent_elo:
-        return None, None, None, incumbent_id, incumbent_elo
-    return best_id, best_est, best_half, incumbent_id, incumbent_elo
+    if best_id is None or best_delta <= incumbent_delta:
+        return None, None, None, incumbent_id, incumbent_delta
+    return best_id, best_delta, best_se, incumbent_id, incumbent_delta
 
 
 def maybe_promote(state: dict, stats: dict[str, arms.ArmStats], team_rating: float,
-                  closest: list[dict] | None = None,
-                  min_games: int = 25, dry_run: bool = False) -> None:
-    """Make the highest expected-Elo bot the live one.
+                  closest: list[dict] | None = None, min_games: int = 25,
+                  dry_run: bool = False, ladder_rows: list[dict] | None = None) -> None:
+    """Make the highest DELTA-ELO bot the live one.
 
     Two guards:
 
@@ -588,18 +625,20 @@ def maybe_promote(state: dict, stats: dict[str, arms.ArmStats], team_rating: flo
       neighbourhood is what makes two estimates commensurable.
     * it needs `min_games` games behind the estimate.
 
-    Given those, the comparison is on expected Elo: highest estimate is live.
+    Given those, the comparison is on DELTA ELO -- the expected one-round rating
+    change from where we currently sit -- not on the settled Elo estimate. See
+    `best_challenger` for why that is the more useful ranking here.
     """
     registry = submission_registry(state)
     best_id, best_est, best_se, incumbent_id, incumbent_elo = best_challenger(
         state, stats, team_rating, closest, min_games, live=livefeed.load(),
-        registry=registry,
+        registry=registry, ladder_rows=ladder_rows,
     )
     flagship = state.get("flagship_version")
     if best_id is None:
         return
     new_version = registry[best_id]["version"]
-    log.warning("PROMOTING %s (v%s): elo %.0f +-%.0f beats incumbent %.0f",
+    log.warning("PROMOTING %s (v%s): delta elo %+.2f +-%.2f beats incumbent %+.2f",
                 best_id, new_version, best_est, best_se, incumbent_elo)
     if dry_run:
         return
@@ -612,9 +651,9 @@ def maybe_promote(state: dict, stats: dict[str, arms.ArmStats], team_rating: flo
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "bot_id": best_id,
         "version": new_version,
-        "elo": round(best_est, 1),
-        "se": round(best_se, 1),
-        "incumbent_elo": round(incumbent_elo, 1),
+        "delta_elo": round(best_est, 3),
+        "se": round(best_se, 4),
+        "incumbent_delta_elo": round(incumbent_elo, 3),
         "previous_version": flagship,
     })
     restore_flagship(state)
@@ -784,7 +823,8 @@ def run_round(dry_run: bool = False) -> None:
         state.get("flagship_version"))
     if closest and incumbent_id:
         seen, ok = qualification(incumbent_id, closest, state, feed, registry)
-        challenger = best_challenger(state, stats, team_rating, closest, live=feed)[0]
+        challenger = best_challenger(state, stats, team_rating, closest, live=feed,
+                                     ladder_rows=ladder_rows)[0]
         if not ok and challenger is None and not queued:
             filling_coverage = True
             if bot_id != incumbent_id:
@@ -944,7 +984,8 @@ def run_decision(dry_run: bool = False) -> None:
     ladder_rows = fc.ladder(100)
     team_rating = next((r["rating"] for r in ladder_rows if r["teamId"] == fc.TEAM_ID), 1800.0)
     maybe_promote(state, read_arm_stats(), team_rating,
-                  closest=closest_opponents(ladder_rows), dry_run=dry_run)
+                  closest=closest_opponents(ladder_rows), dry_run=dry_run,
+                  ladder_rows=ladder_rows)
 
     # A hand-run test or another agent may have left something else active.
     if fc.active_version() != state["flagship_version"] and not dry_run:
