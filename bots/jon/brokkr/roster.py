@@ -10,7 +10,15 @@ back to a lane instead of healing.
 
 LARGE_MAP_AREA = 500
 BUILDER_TARGET_SMALL = 4
-BUILDER_TARGET_LARGE = 6
+# Five, measured, not guessed. Every Builder adds 20% to the cost of every
+# later build, and an intent trace on glacierkeep showed the sixth was pure
+# tax: it drove the team's scale factor to about 4.1 while the Builders that
+# were working waited on Harvesters they could not afford (56 Ti against a
+# base of 20). On the pool at 90 games a matchup, against hildr and steward:
+#   4 builders -> 87/90 and 23/90   (110/180)
+#   5 builders -> 90/90 and 24/90   (114/180)
+#   6 builders -> 78/90 and 28/90   (106/180)
+BUILDER_TARGET_LARGE = 5
 
 
 def econ_target(width: int, height: int) -> int:
