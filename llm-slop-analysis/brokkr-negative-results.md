@@ -68,3 +68,33 @@ so the deposits are there; what we lack is knowing about them early enough to
 ring the Core with short lanes before anyone wanders. That points at ore
 discovery, not at build order -- and the map-fingerprint idea would answer it
 directly, since a known map means every deposit is known on round 0.
+
+## Bean's two-ended lane, tried three ways, all worse (2026-08-23)
+
+Laying belt costs two rounds a tile -- the engine makes moving and acting
+mutually exclusive within a round -- while walking costs one. So one Builder
+cannot beat `2k` rounds for a `k`-tile lane, and two Builders working from
+opposite ends should approach `k`. Bean counters visibly do this: on midgard
+two Builders planted Harvesters on turn 3 while two more laid belt outward
+from the Core, reaching 410 titanium by turn 50 against our 160.
+
+Economy at the checkpoints, uncontested over the 15-map pool:
+
+| | t25 | t50 | t100 | t200 | final |
+|---|---|---|---|---|---|
+| baseline | 30 | 180 | 734 | 1956 | 11744 |
+| idle Builders plant on a claimed deposit | 19 | 136 | ~ | ~ | 10456 |
+| helper takes the far end once deposits run out | 26 | 141 | 526 | 1398 | 8456 |
+| fixed pairs, 1 owns / 2 helps, 3 owns / 4 helps | 25 | 144 | 568 | 1334 | 8219 |
+
+**Why it fails here and works for them.** `plan_lane` routes to the *nearest
+sink*, and the sink set is "the Core plus every conveyor we own" -- so it
+changes as the lane is built. Two Builders recomputing it independently do not
+converge on one route; they converge on two, and lay both. The waste is
+visible in the ratio: 53 conveyors for 8.7 Harvesters against the baseline's
+even worse contested figure of 19-27 per Harvester, where the top ten run 5-6.
+
+A working version needs the route itself shared, not re-derived. The 16-slot
+store cannot carry a route cheaply, which is what the GCS module in
+`bots/utils/GCS` exists for. That is the prerequisite, and it should be built
+before this is attempted a fourth time.
