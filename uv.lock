@@ -25,18 +25,18 @@ wheels = [
 
 [[package]]
 name = "fcode"
-version = "2.3.6"
+version = "2.3.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "rich" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/11/36950d9cf69b3d7dbf89f2c48309fd4b871f5ff9a04b52d2f8ec6187c99e/fcode-2.3.6-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:92cfbc963aa1c818cdaa7394314eb322a3c4e6925d445ea4415c5bb68f31a15e", size = 23544090, upload-time = "2026-08-05T12:44:34.621Z" },
-    { url = "https://files.pythonhosted.org/packages/91/99/f605e605419d0ff01ff244791e72f282c1da55f94f535a68c1aa0991c600/fcode-2.3.6-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:7a9aad9f86ce41b14944ab0433735b30bf14c13fa3a5dc1ad6030263ef4b02ad", size = 23529898, upload-time = "2026-08-05T12:44:38.169Z" },
-    { url = "https://files.pythonhosted.org/packages/d8/30/1a16c41b562df5de5b6f17364d068bcc4d131c80529accc40a3b7c8996a5/fcode-2.3.6-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:de9b083f073acfb048b3ae62be8350b3928b7ae206d2a1399ac1fb7b5bc793f0", size = 23602606, upload-time = "2026-08-05T12:44:41.839Z" },
-    { url = "https://files.pythonhosted.org/packages/96/d2/2413bcd4abf3484f8bc35aa06c7216a19909d961ded03c37add07e688d73/fcode-2.3.6-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:93e2fbaf58ad7333d3e92c0d2917f7e5c43d868da052b7d0af700b55a5d1ec66", size = 23609343, upload-time = "2026-08-05T12:44:45.206Z" },
-    { url = "https://files.pythonhosted.org/packages/b5/45/219878c3c72b2bb7540050e6259f8850ee47d5c8bf5b2949dda75c8e2c6e/fcode-2.3.6-cp313-cp313-win_amd64.whl", hash = "sha256:7f08e21d1b4f719a8c661d86fc1bef59be632bf8144b912f61b522020fa5b3e9", size = 23435605, upload-time = "2026-08-05T12:44:48.802Z" },
+    { url = "https://files.pythonhosted.org/packages/93/83/a6f79996900ca392e7a24a4af0422386e12d9326d4c3a4919d40a06592c2/fcode-2.3.9-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:e4ab3445c3fbcdac5849ec4fa36a24bdd6fe673553693dca9769355fb2952813", size = 23957686, upload-time = "2026-08-20T09:08:40.117Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/80/3fcfdaa40fb8a313f0f022a90feed4299915a7f47253a58c36e976b09f0f/fcode-2.3.9-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:e25799afdaa656f6f43b42ee5ce7541cf98714507b7da7aa78b9bc9e68f62901", size = 23943034, upload-time = "2026-08-20T09:08:44.722Z" },
+    { url = "https://files.pythonhosted.org/packages/49/f4/1e358af09308c2b935e67c623c7c78add996c411fdd7bb3f1c8359b26bc8/fcode-2.3.9-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a1c56857197b67390a155a35cf9b0e5192d88d7c649070baed521a1ed1fedea8", size = 24015488, upload-time = "2026-08-20T09:08:49.863Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/76/69bf4a38dc942206819133648c56a6be59e71dd838e6ceddf742e1efcd3f/fcode-2.3.9-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ae6216414e96b0adad8ae735560880694d3aee318e3210debb6ad5ab1b25f6b4", size = 24022728, upload-time = "2026-08-20T09:08:54.664Z" },
+    { url = "https://files.pythonhosted.org/packages/df/10/f1e4010b4ed3b2b8852855c944a660108323618ddf7b5e36091aa6426ca1/fcode-2.3.9-cp313-cp313-win_amd64.whl", hash = "sha256:840b83f71a0dd24e78ef3fdcf248f2566979b6843999064502e8a471ac06a2c4", size = 23848842, upload-time = "2026-08-20T09:08:58.949Z" },
 ]
 
 [[package]]
@@ -47,8 +47,25 @@ dependencies = [
     { name = "fcode" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
 [package.metadata]
-requires-dist = [{ name = "fcode", specifier = "==2.3.6" }]
+requires-dist = [{ name = "fcode", specifier = "==2.3.9" }]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.1.1" }]
+
+[[package]]
+name = "iniconfig"
+version = "2.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
+]
 
 [[package]]
 name = "markdown-it-py"
@@ -72,12 +89,46 @@ wheels = [
 ]
 
 [[package]]
+name = "packaging"
+version = "26.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce895c0e6303a5ab7d53da063554f534556b134a54d6093/packaging-26.3.tar.gz", hash = "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79", size = 313412, upload-time = "2026-08-04T18:15:28.737Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c", size = 129956, upload-time = "2026-08-04T18:15:27.159Z" },
+]
+
+[[package]]
+name = "pluggy"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
+]
+
+[[package]]
 name = "pygments"
 version = "2.20.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c3/b2/bc9c9196916376152d655522fdcebac55e66de6603a76a02bca1b6414f6c/pygments-2.20.0.tar.gz", hash = "sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f", size = 4955991, upload-time = "2026-03-29T13:29:33.898Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176", size = 1231151, upload-time = "2026-03-29T13:29:30.038Z" },
+]
+
+[[package]]
+name = "pytest"
+version = "9.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "iniconfig" },
+    { name = "packaging" },
+    { name = "pluggy" },
+    { name = "pygments" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e4/47/b9efed96c114afcfa3c9d3fe98a76a1d14c74a9e266d397cf6eb64be5e01/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/25/1de2678b631f5a49215c6c96fff41ba892b0a34df68d6d80292b1b48aa7f/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
 ]
 
 [[package]]
