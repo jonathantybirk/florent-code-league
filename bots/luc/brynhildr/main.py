@@ -1195,7 +1195,9 @@ class Player:
 
         if self.built >= self.ring_target:
             self.ring_done_once = True
-        paused = self.round < self.pause_until and self.ring_done_once
+        stalled_build = (self.built < self.ring_target and self.built > 0
+                         and self.round - self.last_place > 50)
+        paused = (self.round < self.pause_until and self.ring_done_once) or stalled_build
         if paused and self.round % 10 == 0:
             self._write(ct, SLOT_BUILT, self.built | SLOT_BUILT_PAUSED)
         if self.built < self.ring_target and not (hold_rebuild and self.ring_done_once) and not ring_hold and not paused:
@@ -2378,6 +2380,17 @@ class Player:
             score = cost - ANCHOR_BONUS * min(usable, want)
             if best is None or score < best:
                 best, chosen = score, key
+        if chosen is None:
+            # Nothing outside the pad's reach: a fling restarts the walk, a corner ends it.
+            # On bifrost the attacker sat at (17,0) for 180 rounds with two spots left, all
+            # grab-adjacent, while the ring reserve strangled the economy at home.
+            for key, cost in self._dist.items():
+                usable = self._anchor_value(key)
+                if not usable:
+                    continue
+                score = cost - ANCHOR_BONUS * min(usable, want)
+                if best is None or score < best:
+                    best, chosen = score, key
         if chosen is not None:
             return chosen
         return self._closest_to_core()
