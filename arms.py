@@ -212,7 +212,9 @@ class ArmStats:
 
     @property
     def wins(self) -> int:
-        return sum(1 for _, won in self.games if won)
+        # games are (opponent_rating, we_won, played_at); unpacking as a pair raised
+        # ValueError on every call, which is why nothing that touched win_rate ever ran.
+        return sum(1 for g in self.games if g[1])
 
     @property
     def win_rate(self) -> float:
@@ -459,6 +461,48 @@ def ucb_select(
                 f"ucb={score:.3f} (win_rate={st.win_rate:.3f} + bonus={bonus:.3f}, n={st.n_games})",
             )
     return best, detail
+
+
+# A bot is "measured" once this much fresh evidence stands behind it. Below it, a good
+# win rate is not yet trustworthy and is worth spending a round to confirm.
+MEASURED_N = 25.0
+
+
+def tiered_select(stats, candidates, team_rating=1500.0, epoch=None, recency=None,
+                  top_n=5, measured_n=MEASURED_N):
+    """Pick the next bot to test. Returns (bot_id, why).
+
+    Three tiers, in Lucas's order:
+
+    1. **Never tested.** Their uncertainty is unbounded, not merely large, and a build
+       nobody has played is the cheapest information on the board. Newest first, so a
+       burst of uploads is worked newest-to-oldest rather than in dict order.
+    2. **Promising but unproven.** The best `top_n` by win rate that are still under
+       `measured_n` games of fresh evidence. This tier is self-limiting: confirming one
+       pushes it past the bar and out of the tier, so it cannot monopolise the budget
+       the way an unbounded "always test the winners" rule would.
+    3. **Everything else**, by widest interval -- `uncertainty_select` below.
+    """
+    recency = recency or {}
+    unplayed = [b for b in candidates if stats.get(b) is None or stats[b].n_games == 0]
+    if unplayed:
+        ranked = sorted(unplayed, key=lambda b: -recency.get(b, 0))[:top_n]
+        return ranked[0], (f"never tested online (unbounded uncertainty; "
+                           f"{len(unplayed)} untested, newest of top {len(ranked)})")
+
+    now = time.time()
+    played = [b for b in candidates if stats.get(b) and stats[b].n_games]
+    by_win = sorted(played, key=lambda b: -stats[b].win_rate)[:top_n]
+    unproven = [b for b in by_win if stats[b].effective_n(now=now, epoch=epoch) < measured_n]
+    if unproven:
+        pick = max(unproven, key=lambda b: stats[b].elo(team_rating, now=now, epoch=epoch)[1])
+        st = stats[pick]
+        return pick, ("top-%d win rate but unproven: win_rate=%.3f over n=%d "
+                      "(%.1f fresh, need %.0f)"
+                      % (top_n, st.win_rate, st.n_games,
+                         st.effective_n(now=now, epoch=epoch), measured_n))
+
+    return uncertainty_select(stats, candidates, team_rating, epoch)
 
 
 def uncertainty_select(stats, candidates, team_rating=1500.0, epoch=None):
