@@ -79,8 +79,21 @@ def targets(brain, enemy_core):
     return [(key, kind) for _rank, key, kind in out]
 
 
-def ready(round_number: int, titanium: int) -> bool:
-    return round_number >= START_ROUND and titanium >= MIN_TITANIUM
+# Harassment is paid for out of the same balance the economy is built from --
+# 2 Ti a hit, and a harasser is a Builder not laying lane. Against the ladder's
+# top economies that trade inverts: they reach 10-12 Harvesters while we
+# flatline at 3-4, and once our economy is dead we cannot afford to harass
+# either, which is how a 0-5 sweep starts. So the squad only goes out while
+# the economy it is spending is actually running.
+#
+# Passive income alone is 2.5 Ti a round, so this bar means "Harvesters are
+# delivering", not merely "time has passed".
+MIN_INCOME = 3.2
+
+
+def ready(round_number: int, titanium: int, income: float) -> bool:
+    return (round_number >= START_ROUND and titanium >= MIN_TITANIUM
+            and income >= MIN_INCOME)
 
 
 def still_there(brain, tile) -> bool:

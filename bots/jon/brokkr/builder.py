@@ -159,7 +159,8 @@ def _harass(player, ct) -> bool:
     if brain.index is None:
         return False
     target_count = roster.econ_target(brain.width, brain.height)
-    allowed = harass.ready(brain.round, ct.get_global_resources())
+    allowed = harass.ready(brain.round, ct.get_global_resources(),
+                           store.team_income(ct))
     if not roster.is_harasser(brain.index, target_count, allowed):
         return False
 

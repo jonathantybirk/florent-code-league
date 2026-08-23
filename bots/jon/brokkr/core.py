@@ -156,6 +156,7 @@ def _open_siege(player, ct) -> None:
         return
     brain = player.brain
     income = _income(player, ct)
+    store.note_economy(ct, store.siege_sentinels(ct), income)
     if siege.ready(brain, ct.get_global_resources(), income,
                    ct.get_current_round(), ct.get_sentinel_cost()):
         debug.log(f"r{ct.get_current_round()} CORE SIEGE-OPEN "

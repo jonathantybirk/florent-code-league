@@ -85,6 +85,24 @@ def claimed(ct, index) -> set:
     return out
 
 
+# The siege slot carries two numbers, because there are only 16 and they are
+# all spoken for: sentinels in the high field, our team's measured income in
+# tenths of a titanium per round in the low one. Income has to travel because
+# only the Core can measure it (it watches the team balance) and only a
+# harasser, twenty tiles away in the enemy half, needs to act on it.
+_INCOME_RADIX = 4096
+
+
+def team_income(ct) -> float:
+    """Titanium a round arriving, as the Core last measured it."""
+    return (_read(ct, SLOT_SIEGE) % _INCOME_RADIX) / 10.0
+
+
+def note_economy(ct, sentinels: int, income: float) -> None:
+    tenths = max(0, min(_INCOME_RADIX - 1, int(income * 10)))
+    _write(ct, SLOT_SIEGE, sentinels * _INCOME_RADIX + tenths)
+
+
 def siege_sentinels(ct) -> int:
     """Sentinels our attackers have planted at the enemy Core.
 
@@ -92,11 +110,11 @@ def siege_sentinels(ct) -> int:
     far outside its vision -- so it cannot decide whether to convert
     ammunition without being told. This is that channel.
     """
-    return _read(ct, SLOT_SIEGE)
+    return _read(ct, SLOT_SIEGE) // _INCOME_RADIX
 
 
 def note_sentinel(ct, built: int) -> None:
-    _write(ct, SLOT_SIEGE, built)
+    _write(ct, SLOT_SIEGE, built * _INCOME_RADIX + (_read(ct, SLOT_SIEGE) % _INCOME_RADIX))
 
 
 # ----------------------------------------------------------------------
