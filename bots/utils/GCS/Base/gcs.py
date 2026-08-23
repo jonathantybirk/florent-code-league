@@ -133,6 +133,14 @@ class GCS:
         core_pos = self.registry.owners[SLOT_CORE].pos
         if core_pos is not None and hasattr(self.map, "note_core_block"):
             self.map.note_core_block(core_pos)        # the whole 2x2, exactly
+        # teammates' dead-reckoned positions go into the map's unit layer
+        if hasattr(self.map, "note_teammate"):
+            owners = self.registry.owners
+            for slot, o in owners.items():
+                if o.kind == "builder_bot" and slot != self.slot:
+                    self.map.note_teammate(slot, o.pos)
+            for slot in result.deaths:
+                self.map.note_teammate(slot, None)
         self._dispatch_directives(result)
         return result
 

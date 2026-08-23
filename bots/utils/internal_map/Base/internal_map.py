@@ -102,6 +102,7 @@ class InternalMap:
         self._symmetry: int | None = None
         self._sym_alive = set(range(len(SYMMETRY_KINDS)))  # candidates not yet contradicted
         self._last_hp: int | None = None
+        self._teammates: dict = {}           # key -> tile where the GCS last placed a teammate
 
     # ------------------------------------------------------------------
     # input 1: own eyesight
@@ -292,6 +293,24 @@ class InternalMap:
         if self._symmetry is None or ours is None:
             return None
         return self._mirror_block(ours)
+
+    def note_teammate(self, key, pos: tuple[int, int] | None) -> None:
+        """Place a teammate (identified by `key`, e.g. its GCS slot) at the
+        position the GCS dead-reckons for it, clearing where we last put it.
+        Our own bots are never broadcast as facts, so this is how the map
+        learns where they are.  pos=None removes it (dead or unknown)."""
+        last = self._teammates.get(key)
+        if last == pos:
+            return
+        if last is not None:
+            t = self.tiles.get(last)
+            if t and t.unit and t.unit.state == OUR_BUILDER_BOT:
+                t.unit = Record(EMPTY, self.round, GCS, True)
+        if pos is not None:
+            self._record(pos, OUR_BUILDER_BOT, GCS, layer="unit", published=True)
+            self._teammates[key] = pos
+        else:
+            self._teammates.pop(key, None)
 
     def note_core_block(self, anchor: tuple[int, int], ours: bool = True) -> None:
         """Record a whole 2x2 Core block from its anchor (e.g. the position the
