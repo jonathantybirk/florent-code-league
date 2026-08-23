@@ -9,7 +9,7 @@ from bots.utils.internal_map.Base.internal_map import (
 )
 
 W, H = 12, 10
-EMPTY, WALL, ORE = STATE_CODE["EMPTY"], STATE_CODE["WALL"], STATE_CODE["ORE_FREE"]
+EMPTY, WALL, ORE = STATE_CODE["EMPTY"], STATE_CODE["WALL"], STATE_CODE["ORE"]
 
 
 def enum(name, value):
@@ -61,8 +61,43 @@ def test_observe_records_terrain_and_entities_with_facing():
     m.observe(FakeCt((5, 5), terrain, ents))
     assert m.state_at(6, 5) == WALL and m.state_at(7, 5) == ORE
     assert TILE_STATES[m.state_at(6, 6)] == "ENEMY_GUNNER_NE"
-    assert TILE_STATES[m.state_at(5, 6)] == "OUR_BOT_ON_CONVEYOR_E"
+    # conveyor and the bot on it are two independent facts
+    assert TILE_STATES[m.building_at(5, 6)] == "OUR_CONVEYOR_E"
+    assert TILE_STATES[m.unit_at(5, 6)] == "OUR_BUILDER_BOT"
     assert m.state_at(5, 5) == EMPTY                          # own tile: self skipped
+    facts = {f.state for f in m.pending_facts(50) if (f.x, f.y) == (5, 6)}
+    assert facts == {STATE_CODE["OUR_CONVEYOR_E"]}          # our own bots are never announced
+
+
+def test_ore_survives_a_building_on_top():
+    """Ore is terrain; a building on it is a separate occupant fact, and a
+    later EMPTY (the building is gone) never touches the ore."""
+    m = InternalMap(W, H)
+    m.apply_fact(Fact(4, 4, ORE), from_gcs=True)
+    m.apply_fact(Fact(4, 4, STATE_CODE["ENEMY_HARVESTER"]), from_gcs=True)
+    assert m.terrain_at(4, 4) == ORE
+    assert TILE_STATES[m.building_at(4, 4)] == "ENEMY_HARVESTER"
+    assert m.state_at(4, 4) == STATE_CODE["ENEMY_HARVESTER"]
+    m.apply_fact(Fact(4, 4, EMPTY), from_gcs=True)            # harvester destroyed
+    assert m.terrain_at(4, 4) == ORE and m.building_at(4, 4) == EMPTY
+    # and seeing it ourselves produces both facts
+    ents = {1: ("builder_bot", "A", (5, 5), None), 2: ("harvester", "B", (6, 5), None)}
+    m2 = InternalMap(W, H)
+    m2.observe(FakeCt((5, 5), {(6, 5): "ore"}, ents))
+    states = {f.state for f in m2.pending_facts(20) if (f.x, f.y) == (6, 5)}
+    assert states == {ORE, STATE_CODE["ENEMY_HARVESTER"]}
+
+
+def test_core_fills_its_2x2_block():
+    ents = {1: ("builder_bot", "A", (5, 5), None), 9: ("core", "A", (6, 6), None)}
+    m = InternalMap(W, H)
+    m.observe(FakeCt((5, 5), {}, ents))
+    for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+        assert TILE_STATES[m.building_at(6 + dx, 6 + dy)] == "OUR_CORE"
+    assert m.our_core == (6, 6)
+    m2 = InternalMap(W, H)
+    m2.note_core_block((6, 6))
+    assert m2.our_core == (6, 6) and m2.building_at(7, 7) == STATE_CODE["OUR_CORE"]
 
 
 def test_pending_prefers_enemy_turret_and_excludes_plain_empty():
@@ -88,13 +123,14 @@ def test_negative_fact_is_published_when_building_disappears():
 
 def test_gcs_fact_is_published_on_arrival_and_loses_to_fresh_eyes():
     m = InternalMap(W, H)
-    m.apply_fact(Fact(3, 3, ORE), from_gcs=True)
-    assert m.tiles[(3, 3)].published and m.tiles[(3, 3)].source == GCS
+    m.apply_fact(Fact(3, 3, STATE_CODE["ENEMY_BARRIER"]), from_gcs=True)
+    rec = m.tiles[(3, 3)].building
+    assert rec.published and rec.source == GCS
     assert m.pending_facts(5) == []
-    m.observe(FakeCt((3, 4), {(3, 3): "wall"}, {1: ("builder_bot", "A", (3, 4), None)}, round_no=5))
-    assert m.state_at(3, 3) == WALL and m.tiles[(3, 3)].source == SEEN
-    m.apply_fact(Fact(3, 3, ORE), from_gcs=True)              # stale teammate report
-    assert m.state_at(3, 3) == WALL                           # our fresh eyes win
+    m.observe(FakeCt((3, 4), {}, {1: ("builder_bot", "A", (3, 4), None)}, round_no=5))
+    assert m.building_at(3, 3) == EMPTY and m.tiles[(3, 3)].building.source == SEEN
+    m.apply_fact(Fact(3, 3, STATE_CODE["ENEMY_BARRIER"]), from_gcs=True)   # stale report
+    assert m.building_at(3, 3) == EMPTY                       # our fresh eyes win
 
 
 def test_age_and_freshness_scoring():
@@ -103,9 +139,9 @@ def test_age_and_freshness_scoring():
     m.observe(FakeCt((5, 5), {}, ents, round_no=0))
     m.round = 40
     assert m.age(6, 5) == 40
-    old = m._score(m.tiles[(6, 5)])
+    old = m._score(m.tiles[(6, 5)].unit)
     m.round = 0
-    assert m._score(m.tiles[(6, 5)]) > old                    # enemy sightings decay
+    assert m._score(m.tiles[(6, 5)].unit) > old               # enemy sightings decay
 
 
 def test_symmetry_inferred_from_terrain_and_mirrors():
@@ -124,21 +160,23 @@ def test_symmetry_inferred_from_terrain_and_mirrors():
     # an unseen twin of a seen wall is inferred and marked published
     m.tiles.pop((W-3, 9), None)
     m._record((2, 9), WALL, SEEN)
-    assert m.tiles[(W-3, 9)].source == INFERRED and m.tiles[(W-3, 9)].published
+    twin = m.tiles[(W-3, 9)].terrain
+    assert twin.source == INFERRED and twin.published
 
 
 def test_enemy_core_from_symmetry():
     m = InternalMap(20, 20)
-    m.our_core = (2, 9)
+    m.note_core_block((2, 9))
     m.set_symmetry(0)                                         # MIRROR_X
     assert m.enemy_core() == (16, 9)                          # 2x2 block mirrored
-    m.set_symmetry(2)                                         # ROT_180
+    m._symmetry = 2                                           # ROT_180
     assert m.enemy_core() == (16, 9)
 
 
 def test_builder_learns_our_core_and_derives_enemy_core():
     m = InternalMap(20, 20)
-    m.apply_fact(Fact(2, 9, STATE_CODE["OUR_CORE"]), from_gcs=True)
+    for xy in ((2, 9), (3, 9), (2, 10), (3, 10)):
+        m.apply_fact(Fact(*xy, STATE_CODE["OUR_CORE"]), from_gcs=True)
     assert m.our_core == (2, 9)
     m.set_symmetry(0)
     assert m.enemy_core() == (16, 9)
@@ -157,7 +195,25 @@ def test_is_passable():
     m.apply_fact(Fact(1, 1, WALL))
     m.apply_fact(Fact(2, 1, STATE_CODE["OUR_CONVEYOR_N"]))
     m.apply_fact(Fact(3, 1, STATE_CODE["ENEMY_HARVESTER"]))
+    m.apply_fact(Fact(4, 1, STATE_CODE["OUR_CONVEYOR_N"]))
+    m.apply_fact(Fact(4, 1, STATE_CODE["ENEMY_BUILDER_BOT"]))
     assert m.is_passable(1, 1) is False
     assert m.is_passable(2, 1) is True
     assert m.is_passable(3, 1) is False
+    assert m.is_passable(4, 1) is False                       # a bot stands on the conveyor
     assert m.is_passable(9, 9) is None
+
+
+def test_bot_leaving_conveyor_is_not_broadcast_but_conveyor_loss_is():
+    ents = {1: ("builder_bot", "A", (5, 5), None),
+            2: ("conveyor", "B", (6, 5), "EAST"), 3: ("builder_bot", "B", (6, 5), None)}
+    m = InternalMap(W, H)
+    m.observe(FakeCt((5, 5), {}, ents, round_no=0))
+    m.note_shared(m.pending_facts(20))
+    del ents[3]                                               # the bot walked away
+    m.observe(FakeCt((5, 5), {}, ents, round_no=1))
+    assert m.unit_at(6, 5) == EMPTY
+    assert m.pending_facts(20) == []                          # not news: bots move
+    del ents[2]                                               # conveyor destroyed
+    m.observe(FakeCt((5, 5), {}, ents, round_no=2))
+    assert m.pending_facts(20) == [Fact(6, 5, EMPTY)]         # that IS news

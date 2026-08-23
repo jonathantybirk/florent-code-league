@@ -15,6 +15,8 @@ Data sources (all inside the replay):
 
 from __future__ import annotations
 
+import base64
+import gzip
 import json
 import sys
 from pathlib import Path
@@ -124,6 +126,10 @@ def parse_replay(path: str) -> dict:
                     traces[d[1]] = json.loads(text[9:])
         for uid in [u for u, e in entities.items() if e["hp"] <= 0]:
             del entities[uid]
+        for t in traces.values():                       # compact: drop what the viewer defaults
+            t.pop("store", None)
+            t["slots"] = {k: v for k, v in t.get("slots", {}).items()
+                          if v.get("facts") or v.get("events") or v.get("format") not in ("stale", "empty", "-")}
         rounds.append({
             "ents": [{"id": uid, **e, "pos": list(e["pos"])} for uid, e in entities.items()],
             "traces": traces,
@@ -245,7 +251,7 @@ td.raw.changed{color:var(--text)}
       <span><i class="dash" style="color:var(--accent)"></i>heard via the store</span>
       <span><i class="dash" style="color:var(--muted)"></i>inferred from symmetry</span>
       <span><i style="background:var(--bad)"></i>disagrees with truth</span>
-      <span>faded = old information</span>
+      <span>faded = old information · ground colour, building glyph and bot dot are three separate facts</span>
     </div>
     <div class="status" id="status"></div>
   </section>
@@ -256,8 +262,13 @@ td.raw.changed{color:var(--text)}
   </section>
 </main>
 
-<script>
-const DATA = __DATA__;
+<script type="module">
+const DATA = await (async () => {
+  const bytes = Uint8Array.from(atob("__DATA__"), c => c.charCodeAt(0));
+  const ds = new DecompressionStream("gzip");
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  return JSON.parse(await new Response(stream).text());
+})();
 const STATES = DATA.states;
 const R = DATA.rounds, W = DATA.w, H = DATA.h;
 const FOV_R2 = {core:36, builder_bot:20, gunner:13, sentinel:32, launcher:26};
@@ -266,8 +277,8 @@ const MOVES = ["", "N", "E", "S", "W"];
 const SYM = ["left-right mirror", "top-bottom mirror", "180° rotation"];
 const SRC = {s:"seen with own eyes", g:"heard via the store", i:"inferred from symmetry"};
 
-const slotOf = {}, kindOf = {};
-R.forEach(rd => { for (const [id, t] of Object.entries(rd.traces)) { if (t.slot !== null) slotOf[id] = t.slot; kindOf[id] = t.kind; } });
+const slotOf = {}, kindOf = {}, holder = [];   // holder[r][slot] = unit id claiming it that round
+R.forEach(rd => { const h = {}; for (const [id, t] of Object.entries(rd.traces)) { if (t.slot !== null) { slotOf[id] = t.slot; h[t.slot] = +id; } kindOf[id] = t.kind; } holder.push(h); });
 const viewers = Object.keys(kindOf).map(Number).sort((a,b)=>a-b);
 
 // the selected unit's internal map, rebuilt from per-round deltas
@@ -278,7 +289,11 @@ function mapUpTo(viewer, r) {
   if (r < c.upto) { c.upto = -1; c.tiles = new Map(); }
   for (let i = c.upto + 1; i <= r; i++) {
     const t = R[i].traces[viewer];
-    if (t && t.map_delta) for (const [x,y,st,src,rnd] of t.map_delta) c.tiles.set(x+","+y, {st, src, rnd, at:i});
+    if (t && t.map_delta) for (const [x,y,st,src,rnd,layer] of t.map_delta) {
+      const k = x+","+y, cur = c.tiles.get(k) || {};
+      cur[layer] = {st, src, rnd, at:i};          // "t" terrain, "b" building, "u" unit
+      c.tiles.set(k, cur);
+    }
   }
   c.upto = r;
   return c.tiles;
@@ -291,9 +306,13 @@ let round = 0, viewer = viewers[0], timer = null, C = {};
 const geo = cv => { const size = Math.min(cv.width / W, cv.height / H); return {size, ox:(cv.width-size*W)/2, oy:(cv.height-size*H)/2}; };
 
 function stateName(st){ return STATES[st] || ("#"+st); }
-function terrainOf(name){ return name==="WALL" ? 1 : name==="ORE_FREE" ? 2 : name==="EMPTY" ? 0 : null; }
+function terrainOf(name){ return name==="WALL" ? 1 : name==="ORE" ? 2 : name==="EMPTY" ? 0 : null; }
 
 function drawGrid(ctx, g) {
+  // axis labels: x runs right, y runs down, (0,0) top-left — the engine's own convention
+  ctx.fillStyle = C.muted; ctx.font = `${Math.max(8, g.size*.38)}px "IBM Plex Mono",monospace`; ctx.textAlign = "left"; ctx.textBaseline = "top";
+  for (let x=0;x<W;x++) ctx.fillText(x, g.ox+x*g.size+2, g.oy+1);
+  for (let y=1;y<H;y++) ctx.fillText(y, g.ox+2, g.oy+y*g.size+1);
   ctx.strokeStyle = C.line; ctx.lineWidth = 0.5; ctx.globalAlpha = .6;
   for (let x=0;x<=W;x++){ctx.beginPath();ctx.moveTo(g.ox+x*g.size,g.oy);ctx.lineTo(g.ox+x*g.size,g.oy+H*g.size);ctx.stroke();}
   for (let y=0;y<=H;y++){ctx.beginPath();ctx.moveTo(g.ox,g.oy+y*g.size);ctx.lineTo(g.ox+W*g.size,g.oy+y*g.size);ctx.stroke();}
@@ -301,7 +320,7 @@ function drawGrid(ctx, g) {
 }
 function glyph(ctx, cx, cy, size, name, color) {
   // units: circle; buildings: square; turrets/conveyors get a facing tick
-  const unit = name.endsWith("BUILDER_BOT") || name.includes("BOT_ON_CONVEYOR");
+  const unit = name.endsWith("BUILDER_BOT");
   ctx.fillStyle = color;
   if (unit) { ctx.beginPath(); ctx.arc(cx, cy, size*.3, 0, Math.PI*2); ctx.fill(); }
   else if (name.endsWith("CORE")) ctx.fillRect(cx-size*.42, cy-size*.42, size*.84, size*.84);
@@ -334,7 +353,8 @@ function drawTruth() {
     const cx = g.ox+(e.pos[0]+.5)*g.size, cy = g.oy+(e.pos[1]+.5)*g.size, color = e.team==="A" ? C.truth : C.enemy;
     if (["builder_bot","gunner","launcher","sentinel"].includes(e.type)) {
       ctx.beginPath(); ctx.arc(cx, cy, g.size*.36, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
-      if (e.team==="A" && slotOf[e.id] !== undefined) { ctx.fillStyle = C.panel; ctx.font = `500 ${Math.max(9,g.size*.5)}px "IBM Plex Mono",monospace`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(slotOf[e.id], cx, cy+0.5); }
+      const slotNow = (rd.traces[e.id] || {}).slot;
+      if (e.team==="A" && slotNow !== null && slotNow !== undefined) { ctx.fillStyle = C.panel; ctx.font = `500 ${Math.max(9,g.size*.5)}px "IBM Plex Mono",monospace`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(slotNow, cx, cy+0.5); }
     } else { ctx.fillStyle = color; ctx.globalAlpha = .45; ctx.fillRect(cx-g.size*.3, cy-g.size*.3, g.size*.6, g.size*.6); ctx.globalAlpha = 1; }
   }
   if (me) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(g.ox+(me.pos[0]+.5)*g.size, g.oy+(me.pos[1]+.5)*g.size, g.size*.5, 0, Math.PI*2); ctx.stroke(); }
@@ -343,7 +363,7 @@ function drawTruth() {
   let ok = 0, bad = 0, unknown = 0;
   if (t) for (const [slot, [kind, pos]] of Object.entries(t.owners)) {
     if (!pos || kind==="core") continue;
-    const id = Object.keys(slotOf).find(i => slotOf[i] == slot && kindOf[i] === kind);
+    const id = round > 0 ? holder[round-1][slot] : undefined;
     const truth = id !== undefined ? (prevPos[id] || null) : null;
     const match = truth && truth[0]===pos[0] && truth[1]===pos[1];
     if (!truth) unknown++; else if (match) ok++; else bad++;
@@ -361,36 +381,58 @@ function drawInternal() {
   const tiles = mapUpTo(viewer, round);
   ctx.fillStyle = C.unknown; ctx.fillRect(0,0,imap.width,imap.height);
   let known = 0, seen = 0, heard = 0, inferred = 0, wrong = 0, terrainKnown = 0;
-  const entsNow = new Map(); for (const e of rd.ents) entsNow.set(e.pos[0]+","+e.pos[1], e);
-  for (const [k, rec] of tiles) {
-    const [x, y] = k.split(",").map(Number), name = stateName(rec.st);
-    known++; if (rec.src==="s") seen++; else if (rec.src==="g") heard++; else inferred++;
-    const terr = terrainOf(name), truthTerr = DATA.tiles[y][x];
-    const age = round - rec.rnd, alpha = terr !== null ? 1 : Math.max(.35, 1 - age/60);
-    const px = g.ox+x*g.size, py = g.oy+y*g.size;
-    // base: what the unit believes the ground is
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = name==="WALL" ? C.wall : name==="ORE_FREE" ? C.ore : C.floor;
-    ctx.fillRect(px, py, g.size, g.size);
-    let disagree = false;
-    if (terr !== null) { terrainKnown++; if (terr !== truthTerr) disagree = true; }
-    else {
-      // a building/unit belief: compare against what is really there now
-      const e = entsNow.get(k), ours = name.startsWith("OUR_");
-      if (!e && !name.endsWith("CORE")) disagree = age > 0 && !name.startsWith("TOOK_FIRE");   // stale sighting
-      else if (e && ((e.team==="A") !== ours)) disagree = true;
-      ctx.globalAlpha = alpha;
-      glyph(ctx, px+g.size/2, py+g.size/2, g.size, name, ours ? C.ours : name.startsWith("ENEMY_") ? C.theirs : C.muted);
-      ctx.globalAlpha = 1;
-    }
-    if (disagree) { wrong++; ctx.fillStyle = C.bad; ctx.globalAlpha = .45; ctx.fillRect(px+1, py+1, g.size-2, g.size-2); ctx.globalAlpha = 1; }
-    // source as border style
+  // truth per tile, split by layer: a conveyor and the bot on it are both there
+  const entsNow = new Map();
+  for (const e of rd.ents) { const k = e.pos[0]+","+e.pos[1], cur = entsNow.get(k) || {};
+    if (e.type === "builder_bot") cur.unit = e; else cur.building = e; entsNow.set(k, cur); }
+  const border = (rec, px, py) => {
     ctx.lineWidth = 1.5;
     if (rec.src === "s") { ctx.setLineDash([]); ctx.strokeStyle = C.text; ctx.globalAlpha = .35; }
     else if (rec.src === "g") { ctx.setLineDash([3,2]); ctx.strokeStyle = C.accent; ctx.globalAlpha = .9; }
     else { ctx.setLineDash([1,2]); ctx.strokeStyle = C.muted; ctx.globalAlpha = .8; }
     ctx.strokeRect(px+1.5, py+1.5, g.size-3, g.size-3); ctx.setLineDash([]); ctx.globalAlpha = 1;
-    if (rec.at === round) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.strokeRect(px+1, py+1, g.size-2, g.size-2); }
+  };
+  const live = rec => rec && stateName(rec.st) !== "EMPTY" ? rec : null;
+  for (const [k, tile] of tiles) {
+    const [x, y] = k.split(",").map(Number), px = g.ox+x*g.size, py = g.oy+y*g.size;
+    const terr = tile.t, bld = live(tile.b), unit = live(tile.u);
+    known++;
+    const top = unit || bld || terr || tile.b || tile.u;
+    if (top.src==="s") seen++; else if (top.src==="g") heard++; else inferred++;
+    // terrain layer: what the unit believes the ground is
+    const tname = terr ? stateName(terr.st) : null;
+    ctx.fillStyle = tname==="WALL" ? C.wall : tname==="ORE" ? C.ore : C.floor;
+    ctx.fillRect(px, py, g.size, g.size);
+    let disagree = false;
+    if (terr) { terrainKnown++; if (terrainOf(tname) !== DATA.tiles[y][x]) disagree = true; }
+    const truth = entsNow.get(k) || {};
+    // building layer
+    if (bld) {
+      const name = stateName(bld.st), ours = name.startsWith("OUR_"), age = round - bld.rnd;
+      const onCore = DATA.cores.some(c => x>=c.pos[0] && x<=c.pos[0]+1 && y>=c.pos[1] && y<=c.pos[1]+1 && (c.owner===1)===ours);
+      const e = truth.building;
+      if (name.endsWith("CORE")) { if (!onCore) disagree = true; }
+      else if (name.startsWith("TOOK_FIRE") || name.endsWith("_ISSUE")) {}
+      else if (!e) disagree = age > 0;
+      else if ((e.team==="A") !== ours) disagree = true;
+      ctx.globalAlpha = Math.max(.35, 1 - age/60);
+      glyph(ctx, px+g.size/2, py+g.size/2, g.size, name, ours ? C.ours : C.theirs);
+      ctx.globalAlpha = 1;
+    }
+    // unit layer: a bot on top, drawn smaller so the building stays visible
+    if (unit) {
+      const name = stateName(unit.st), ours = name.startsWith("OUR_"), age = round - unit.rnd;
+      const e = truth.unit;
+      if (!e) disagree = disagree || age > 0; else if ((e.team==="A") !== ours) disagree = true;
+      ctx.globalAlpha = Math.max(.35, 1 - age/60);
+      ctx.fillStyle = ours ? C.ours : C.theirs; ctx.beginPath(); ctx.arc(px+g.size/2, py+g.size/2, g.size*.22, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = C.panel; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    if (disagree) { wrong++; ctx.fillStyle = C.bad; ctx.globalAlpha = .45; ctx.fillRect(px+1, py+1, g.size-2, g.size-2); ctx.globalAlpha = 1; }
+    border(top, px, py);
+    const at = Math.max(...[tile.t, tile.b, tile.u].filter(Boolean).map(r => r.at));
+    if (at === round) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.strokeRect(px+1, py+1, g.size-2, g.size-2); }
   }
   drawGrid(ctx, g);
   const me = rd.ents.find(e => e.id === viewer);
@@ -463,10 +505,11 @@ board.addEventListener('click', ev => { const p = tileAt(board, ev); if (!p) ret
   const id = e ? e.id : core ? viewers.find(v => kindOf[v]==="core") : null;
   if (id !== null && id !== undefined) { viewer = id; document.getElementById('viewer').value = id; draw(); } });
 imap.addEventListener('mousemove', ev => { const p = tileAt(imap, ev); const el = document.getElementById('inspectMap'); if (!p) return;
-  const rec = mapUpTo(viewer, round).get(p[0]+","+p[1]);
-  if (!rec) { el.innerHTML = `(${p}) <b>never heard of</b>`; return; }
+  const tile = mapUpTo(viewer, round).get(p[0]+","+p[1]);
+  if (!tile) { el.innerHTML = `(${p}) <b>never heard of</b>`; return; }
   const v = DATA.tiles[p[1]][p[0]];
-  el.innerHTML = `(${p}) believes <b>${stateName(rec.st)}</b> · ${SRC[rec.src]} · information from round ${rec.rnd} (${round-rec.rnd} rounds old) · learned in round ${rec.at} · truth: ${v===1?'wall':v===2?'ore':'empty'}`; });
+  const desc = rec => `<b>${stateName(rec.st)}</b> (${SRC[rec.src]}, from round ${rec.rnd}, ${round-rec.rnd} old)`;
+  el.innerHTML = `(${p}) ground: ${tile.t ? desc(tile.t) : '<b>unknown</b>'} · building: ${tile.b ? desc(tile.b) : '<b>unknown</b>'} · bot: ${tile.u ? desc(tile.u) : '<b>unknown</b>'} · truth ground: ${v===1?'wall':v===2?'ore':'empty'}`; });
 
 // transport
 const scrub = document.getElementById('scrub'); scrub.max = R.length-1;
@@ -498,11 +541,15 @@ def report(data: dict) -> str:
     reckoned positions are checked against the previous round's entities."""
     rounds, states = data["rounds"], data["states"]
     slot_of, kind_of = {}, {}
+    holder = []          # per round: slot -> unit id that claimed it that round
     for rd in rounds:
+        h = {}
         for uid, t in rd["traces"].items():
             if t["slot"] is not None:
                 slot_of[int(uid)] = t["slot"]
+                h[t["slot"]] = int(uid)
             kind_of[int(uid)] = t["kind"]
+        holder.append(h)
     lines = []
     for viewer in sorted(kind_of):
         ok = bad = unknown = 0
@@ -515,7 +562,7 @@ def report(data: dict) -> str:
             for slot, (kind, pos, _) in t["owners"].items():
                 if not pos or kind == "core":
                     continue
-                uid = next((u for u, s in slot_of.items() if s == int(slot) and kind_of[u] == kind), None)
+                uid = holder[r - 1].get(int(slot)) if r else None
                 truth = prev.get(uid)
                 if truth is None:
                     unknown += 1
@@ -529,8 +576,8 @@ def report(data: dict) -> str:
         for (x, y), st in learned.items():
             name = states[st] if st < len(states) else ""
             v = data["tiles"][y][x]
-            if name in ("WALL", "ORE_FREE", "EMPTY"):
-                if (name, v) in (("WALL", 1), ("ORE_FREE", 2), ("EMPTY", 0)):
+            if name in ("WALL", "ORE"):          # EMPTY means "no occupant", not ground
+                if (name, v) in (("WALL", 1), ("ORE", 2)):
                     agree += 1
                 else:
                     contradict += 1
@@ -547,7 +594,9 @@ def main():
     if sys.argv[2] == "--report":
         print(report(data))
         return
-    html = TEMPLATE.replace("__DATA__", json.dumps(data, separators=(",", ":")))
+    raw = json.dumps(data, separators=(",", ":")).encode()
+    packed = base64.b64encode(gzip.compress(raw, 9)).decode()
+    html = TEMPLATE.replace("__DATA__", packed)
     Path(sys.argv[2]).write_text(html)
     n_tr = sum(len(r["traces"]) for r in data["rounds"])
     print(f"{sys.argv[2]}: {data['w']}x{data['h']} map, {len(data['rounds'])} rounds, "
