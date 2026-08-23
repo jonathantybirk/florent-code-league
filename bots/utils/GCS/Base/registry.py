@@ -33,7 +33,6 @@ from .protocol import (
     CTRL_GRANT,
     CTRL_SYMMETRY,
     GRANT_KINDS,
-    RESYNC_PERIOD,
     TAKEOVER_GRACE,
     ONBOARD_ROUNDS,
     SLOT_CORE,
@@ -176,6 +175,8 @@ class SlotRegistry:
             return
 
         if owner is None:
+            # a slot whose owner we have not learned yet cannot be interpreted
+            # safely — skip until the next resync round tells us
             detail["format"] = "empty" if value == 0 else "unknown owner"
             if value and self.grant_probe_pos is not None:
                 self._probe_grant(slot, value, wrote_round, result, detail)
@@ -317,14 +318,9 @@ class SlotRegistry:
         return round_no % owner.period == owner.phase
 
     def is_resync_round(self, round_no: int) -> bool:
-        """Writes in round_no are RESYNC format: the round after an ASSIGN is
-        readable, or a calendar round (every RESYNC_PERIOD) outside a spawn
-        window."""
-        if self.resync_write_round == round_no:
-            return True
-        return (round_no > 0 and round_no % RESYNC_PERIOD == 0
-                and not self._in_onboard_window(round_no)
-                and self.resync_write_round != round_no)
+        """Writes in round_no are RESYNC format: the round after an ASSIGN
+        became readable."""
+        return self.resync_write_round == round_no
 
     def _in_onboard_window(self, round_no: int) -> bool:
         return (self.onboard_until is not None

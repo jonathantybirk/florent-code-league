@@ -77,11 +77,6 @@ def turret_slots_from() -> int:
 # (speaker=1); those units stay silent and are exempt from liveness
 # reclamation for the duration.
 ONBOARD_ROUNDS = 8               # hyperparameter W
-# Besides the spawn-triggered resync, every unit also writes RESYNC format on
-# rounds that are a multiple of RESYNC_PERIOD (unless a spawn window is
-# open), so latecomers — newly built turrets above all — get everyone's kind
-# and exact position within a bounded time, and any reckoning drift heals.
-RESYNC_PERIOD = 25
 # An owner that has not written within this many rounds of being assigned or
 # granted a slot is presumed never to have taken it; the slot is reclaimed.
 # Longer than an onboarding window, during which turrets are silenced.
@@ -287,13 +282,14 @@ RUN_DIR_RADIX = 4
 # ---------------------------------------------------------------------------
 # RESYNC round format
 # ---------------------------------------------------------------------------
-# The round after an ASSIGN becomes readable, and every RESYNC_PERIOD-th
-# round, every unit writes
-#   pos(W*H) * kind(5) * fact(FOV*S)
-# — its absolute position, its entity kind (so a reader that has never heard
-# of this slot can decode it and learn who owns it), plus one ordinary fact.
-# The newborn's first-ever message uses the same format.  Readers know the
-# round from the ASSIGN or the calendar, so the format costs no header.
+# The round after an ASSIGN becomes readable, every unit writes
+#   pos(W*H) * kind(5) * fact(FOV_max*S)
+# — its absolute position, its entity kind, plus one ordinary fact.  The kind
+# is there because the fact's radix depends on the sender's kind: without it
+# a unit that has never heard who owns a slot (a newborn) could not split the
+# number and would learn nothing from the resync.  The newborn's first-ever
+# message uses the same format.  Readers know the round from having decoded
+# the ASSIGN, so the format costs no header.
 RESYNC_KINDS = ("core", "builder_bot", "gunner", "sentinel", "launcher")
 
 # ---------------------------------------------------------------------------

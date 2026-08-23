@@ -121,9 +121,9 @@ addressed to that builder slot (Core only), 16–18 = BUILD/SCOUT/DEFEND_HERE).
 1. Core spawns in round R and writes `ASSIGN(slot)` the same round (outranks the HP announcement).
 2. **The engine first runs the newborn in round R+1** (verified live) — the round the ASSIGN is readable.
    It matches on `first_run − 1 == R` and takes the slot.
-3. Round R+1 is the **resync round**: every unit (Core included) writes `pos(W·H) · kind(5) · fact`. Readers
-   decode the R+2 snapshot as resync format; dead reckoning restarts from exact positions and any reader
-   learns every slot's owner kind. The same happens every `RESYNC_PERIOD` rounds outside spawn windows.
+3. Round R+1 is the **resync round**: every unit (Core included) writes `pos(W·H) · kind(5) · fact`.
+   Readers decode the R+2 snapshot as resync format; dead reckoning restarts from exact positions, and a
+   reader that never heard of a slot learns its owner's kind from it.
 4. Rounds R+2 … R+1+`ONBOARD_ROUNDS` (8): the Core streams absolute-coordinate **chains** (one absolute fact +
    one fact relative to it, window radius 9 in its own slot / 6 in a borrowed turret slot on 30×30) through
    its own slot and every turret/launcher slot; turrets stay silent. The Core keeps a per-slot model of what
@@ -214,7 +214,7 @@ any tile on either map for the details.
 - `has_conveyor_issue`, `has_harvester_issue` (logistics) and `on_directive` (behaviour) are stubs returning
   nothing.
 - A builder sharing a slot (`period > 1`) that moves more than once between writes drifts in readers'
-  reckoning until the next resync round (at most `RESYNC_PERIOD` rounds away).
+  reckoning until the next resync round.
   reckoning until the next resync round.
 - Enemy-builder movement inference (the TODO above) is not implemented; enemy bots are plain tile states.
 - A message deferred by a resync/onboarding round keeps its priority; `ASSIGN` is queued at priority 1000 so
