@@ -141,7 +141,9 @@
   "_opponents_for": "bot_id -> ordered team names, five played per round, the rest carried in state.opponents_pending. Overrides the policy entirely. v70 has already faced all 20 of its nearest teams, so this is the nine unfaced teams rated above us (1810-2036) plus not adgato, the team it has seen least (one game).",
   "coverage_k": 15,
   "_coverage_k": "How many of the nearest teams a coverage round tries to fill, default 10. Only affects opponent choice once a round has already decided to fill coverage -- the promotion bar still uses the closest 10 and QUALIFY_MIN, so widening this changes who the flagship plays, not who we trust enough to promote.",
-  "coverage_bots": [],
+  "coverage_bots": [
+    "hildr@7a6d86c"
+  ],
   "_coverage_bots": "Bot ids whose rounds pick opponents by coverage instead of by information: the teams closest to us in rating that this build has not played yet, topped up from the pool if there are fewer than five. Same selection the flagship falls back to when it drops below the qualification bar.",
   "test_next": [
     "hildr@7a6d86c:2",
@@ -193,6 +195,7 @@
   ],
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally.",
   "queue_front": [
+    "hildr@7a6d86c:3",
     "brokkr@ecc064a:2"
   ],
   "_queue_front": "Like test_next, but the entry is moved to the front of the queue so it plays on the next round. Each entry is honoured once."
