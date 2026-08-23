@@ -12,6 +12,7 @@ for why the rounds of warning are worth that much.
 
 from fcode import EntityType, GameError
 
+import debug
 import defence
 import store
 
@@ -26,6 +27,17 @@ LARGE_MAP_AREA = 500
 # Titanium held back from spawning so a Builder that reaches its deposit can
 # actually pay for the lane it walked to.
 ECON_RESERVE = 45
+
+# Under siege the Core spawns menders past the economic Builder target. What
+# limits healing is Builder actions, not titanium: each Builder heals 4 HP a
+# round for 1 Ti, so a Core on 28 HP sitting on 350 Ti -- traced on stavkirke
+# -- was short of hands, not money. A mender born on the spawn ring is already
+# adjacent to the Core and heals the round it appears. The reserve is what
+# those hands then spend; spawning down to nothing buys menders who cannot
+# afford to heal.
+MEND_RESERVE = 70
+SIEGE_BUILDER_CAP = 12
+NEAR_CORE = 3
 
 # Once the alarm is up it stays up for this many rounds past the last damage.
 # Flapping it would send menders home and back out again, which spends the
@@ -76,6 +88,8 @@ def _alarm(player, ct) -> None:
               and round_number - player.last_threat <= ALARM_HOLD)
     hurt = (player.last_damage is not None
             and round_number - player.last_damage <= ALARM_HOLD)
+    debug.log(f"r{round_number} CORE hp={hp} dps={dps} want={wanted} "
+              f"eb={len(builders)} turrets={len(_turrets)} ti={ct.get_global_resources()}")
     if wanted:
         store.raise_alarm(ct, wanted)
     elif recent or hurt:
@@ -110,19 +124,53 @@ def _spawn(player, ct) -> None:
     target = (BUILDER_TARGET_LARGE
               if brain.width * brain.height >= LARGE_MAP_AREA
               else BUILDER_TARGET_SMALL)
-    if player.spawned >= target:
-        return
     cost = ct.get_builder_bot_cost()
+    if player.spawned >= target:
+        if not _needs_menders(player, ct, cost):
+            return
+        return _place(player, ct)
     # The first Builder is bought before the reserve applies: with no Builder
     # there is nothing to reserve titanium for.
     floor = 0 if player.spawned == 0 else ECON_RESERVE
     if ct.get_global_resources() < cost + floor:
         return
+    _place(player, ct)
+
+
+def _needs_menders(player, ct, cost) -> bool:
+    """True when the siege wants another pair of hands and we can pay for it."""
+    wanted = store.alarm_level(ct)
+    if not wanted or player.spawned >= SIEGE_BUILDER_CAP:
+        return False
+    if ct.get_global_resources() < cost + MEND_RESERVE:
+        return False
+    return _menders_home(player.brain) < wanted
+
+
+def _menders_home(brain) -> int:
+    core = brain.core_tiles()
+    if not core:
+        return 0
+    count = 0
+    for key, tile in brain.imap.tiles.items():
+        name = _STATES[tile.state]
+        if not name.startswith(("OUR_BUILDER_BOT", "OUR_BOT_ON_CONVEYOR")):
+            continue
+        if min(abs(key[0] - c[0]) + abs(key[1] - c[1]) for c in core) <= NEAR_CORE:
+            count += 1
+    return count
+
+
+def _place(player, ct) -> None:
     for tile in ct.get_nearby_tiles(dist_sq=2):
         if ct.can_spawn(tile):
             if _try(ct.spawn_builder, tile):
-                player.spawned += 1
+                # Publish the 0-based index of the Builder just spawned, not
+                # the new total. Its first run() is the round after the spawn,
+                # so what it reads is this write -- post-incrementing here made
+                # every index one too high and left index 0 matching nobody.
                 store.note_spawn(ct, player.spawned)
+                player.spawned += 1
             return
 
 

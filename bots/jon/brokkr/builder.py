@@ -33,6 +33,15 @@ CPU_BUDGET_US = 6000
 # is worth more finishing its lane than spending twenty rounds walking back.
 MEND_RECALL_DIST = 14
 
+# The first Builder is the home guard: it only takes deposits inside this
+# radius, so it is always a few rounds from the Core. Traced against a Sentinel
+# rush on stavkirke, the alarm went up on round 17 and the first mender arrived
+# on round 36, by which point the Core was on 28 of 500 HP -- it survived only
+# because the attacker ran out of ammunition first. A Builder that never left
+# would have been healing from round 18.
+GUARD_INDEX = 0
+GUARD_RADIUS = 7
+
 
 def run(player, ct) -> None:
     brain = player.brain
@@ -40,6 +49,7 @@ def run(player, ct) -> None:
 
     if brain.index is None:
         brain.index = store.claim_index(ct)
+        debug.log(f"r{brain.round} b{ct.get_id()} INDEX={brain.index}")
 
     if _mend(player, ct):
         return
@@ -67,9 +77,12 @@ def _mend(player, ct) -> bool:
         if (target.x, target.y) in brain.core_tiles():
             if ct.can_heal(target):
                 _try(ct.heal, target)
+                debug.log(f"r{brain.round} b{ct.get_id()} HEAL at{me}")
                 return True
+            debug.log(f"r{brain.round} b{ct.get_id()} HEAL-BROKE at{me}")
             return True          # adjacent but cannot afford it: hold position
     step = _step_toward(brain, me, home, exact=False)
+    debug.log(f"r{brain.round} b{ct.get_id()} WALKHOME at{me} home={home} step={step}")
     if step is not None:
         _try(ct.move, step)
     return True
@@ -88,6 +101,10 @@ def _mine(player, ct) -> None:
             return
         job = brain.job = _choose_job(brain, ct)
     if job is None:
+        if brain.index == GUARD_INDEX:
+            debug.log(f"r{brain.round} b{ct.get_id()} GUARD-HOLD at{brain.me}")
+            _hold_home(brain, ct)
+            return
         debug.log(f"r{brain.round} b{ct.get_id()} at{brain.me} NOJOB ore={len(brain.free_ore())} core={sorted(brain.core_tiles())}")
         _explore(brain, ct)
         return
@@ -118,6 +135,13 @@ def _choose_job(brain, ct):
         return None
 
     me = brain.me
+    if brain.index == GUARD_INDEX:
+        core = brain.core_tiles()
+        if core:
+            free = [d for d in free
+                    if min(_manhattan(d, c) for c in core) <= GUARD_RADIUS]
+            if not free:
+                return None
     free.sort(key=lambda d: _manhattan(d, me))
     best = None
     for deposit in free[:3]:
@@ -187,6 +211,24 @@ def _finish(brain, ct, deposit, route) -> None:
             _try(ct.build_harvester, target)
         return
     step = _step_toward(brain, me, deposit, exact=False)
+    if step is not None:
+        _try(ct.move, step)
+
+
+def _hold_home(brain, ct) -> None:
+    """The guard with no nearby deposit waits beside the Core.
+
+    Standing still is the point: its value is being one action away from
+    healing, not the tiles it would otherwise reveal.
+    """
+    core = brain.core_tiles()
+    if not core:
+        return
+    me = brain.me
+    if any(_orthogonal(me, tile) for tile in core):
+        return
+    home = min(core, key=lambda t: _manhattan(t, me))
+    step = _step_toward(brain, me, home, exact=False)
     if step is not None:
         _try(ct.move, step)
 
