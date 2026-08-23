@@ -814,9 +814,7 @@ def run_round(dry_run: bool = False) -> None:
 
     # An unqualified flagship stays live -- it is still the best bot we can
     # defend -- but it becomes the bot under test, so it fills in the closest
-    # opponents it has not faced. The exception is a qualified challenger that
-    # already beats it, which the decision pass will have promoted; in that case
-    # normal UCB selection stands.
+    # opponents it has not faced.
     filling_coverage = False
     closest = closest_opponents(ladder_rows)
     # Coverage may reach wider than the promotion bar does. `closest`/QUALIFY_MIN decide
@@ -833,13 +831,13 @@ def run_round(dry_run: bool = False) -> None:
         faced_incumbent = faced_for(incumbent_id, state, feed, registry)
         unmet_coverage = [r for r in coverage_pool
                           if r["teamId"] not in faced_incumbent]
-        challenger = best_challenger(state, stats, team_rating, closest, live=feed,
-                                     ladder_rows=ladder_rows)[0]
-        # Still gated on there being nothing better to do -- an untested challenger or a
-        # queued bot always wins the round. This only changes what an otherwise idle
-        # round does: keep filling the flagship out to `coverage_k` rather than stopping
-        # at the promotion bar, so the teams ranked just outside it stop being invisible.
-        if (not ok or unmet_coverage) and challenger is None and not queued:
+        # Priority is: a queued bot, then the flagship's own coverage, then UCB. Coverage
+        # used to also require that no promotable challenger existed, which in practice
+        # put it *below* UCB -- the farm is rarely idle, so the coverage round never came
+        # and the teams outside the promotion bar stayed unplayed for good. Only a queued
+        # bot outranks it now. Still self-limiting: once the flagship has met all
+        # `coverage_k`, `unmet_coverage` is empty and UCB selection resumes.
+        if (not ok or unmet_coverage) and not queued:
             filling_coverage = True
             if bot_id != incumbent_id:
                 bot_id = incumbent_id
