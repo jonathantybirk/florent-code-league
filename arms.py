@@ -34,6 +34,7 @@ import os
 import random
 import subprocess
 import time
+import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -317,6 +318,13 @@ PAIRING_TABLE = Path(os.environ.get(
 # observed weight, so it only matters where the table is empty.
 PAIRING_FLOOR = 0.5
 
+# Careers averaged when scoring a one-round delta. At this count the standard error of the
+# mean is about 0.09 Elo against gaps of 0.5 to 5 between neighbouring builds, so the
+# ordering is settled well past the point more samples would buy anything. Lives here rather
+# than in farm.py because the live feed scores builds with the same number: the site must
+# show the value promotion actually uses.
+DELTA_SIMS = 10000
+
 
 def _require(d: dict, key: str, what: str):
     """Nothing here defaults. A plausible number computed from a guessed k-factor
@@ -403,7 +411,11 @@ def simulated_rating(
     if not known:
         raise ValueError(
             f"build {key} has no current-build record against anyone on the ladder")
-    rng = random.Random() if rng is None else rng
+    # Seeded from the build key by default, not from the clock: the live feed publishes this
+    # number and the farm promotes on it, and the two must agree to the digit or the site is
+    # lying about what will be promoted. crc32 rather than hash(), whose string hashing is
+    # randomised per process.
+    rng = random.Random(zlib.crc32(key.encode())) if rng is None else rng
 
     finals: list[float] = []
     for _ in range(sim_count):
