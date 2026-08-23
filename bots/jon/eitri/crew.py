@@ -19,6 +19,11 @@ lane, so its opening round is a build, not a walk.
 
 from board import STEPS
 
+# The match, and how a Harvester pays out over it.
+ROUNDS = 1000
+STACK = 10
+EVERY = 4
+
 # The opening crew.  Four is what 500 Ti affords alongside the conveyors and
 # Harvesters they lay (30 + 36 + 43 + 52 = 161 Ti of Builders), and it is the
 # number the top economy ladders open with.
@@ -26,14 +31,16 @@ OPENING = 4
 
 
 def assign(board, lanes, count=OPENING):
-    """(work, spawns): the lane indices each Builder owns, and its spawn tile.
+    """(work, spawns, done) for a crew of `count`.
 
-    `work[i]` is in the order Builder i should do them; `spawns[i]` is None if
-    there was no lane for that Builder to take.
+    `work[i]` is the lane indices Builder i owns, in the order it does them;
+    `spawns[i]` is its spawn tile, or None if it got no lane; `done[j]` is the
+    round lane j's Harvester is expected to go up.
     """
     work = [[] for _ in range(count)]
     free = list(range(count))             # the round each Builder can first act
     where = [None] * count                # where its last lane leaves it
+    done = [0] * len(lanes)
     for index, lane in enumerate(lanes):
         best = None
         for who in range(count):
@@ -43,9 +50,25 @@ def assign(board, lanes, count=OPENING):
                 best = (finish, who)
         _, who = best
         work[who].append(index)
-        free[who] = best[0]
+        free[who] = done[index] = best[0]
         where[who] = lane.stand
-    return work, _spawns(board, lanes, work, count)
+    return work, _spawns(board, lanes, work, count), done
+
+
+def value(lanes, done, rounds=ROUNDS):
+    """Titanium this plan lands in the Core by round `rounds`.
+
+    A Harvester ships its first stack on the round it is built and one every
+    four after, and each stack spends a round on every conveyor tile between
+    the deposit and home -- so a long lane is not only slower to build, it
+    delivers late for the rest of the match.
+    """
+    total = 0
+    for index, lane in enumerate(lanes):
+        first = done[index] + len(lane.tiles)
+        if first <= rounds:
+            total += STACK * ((rounds - first) // EVERY + 1)
+    return total
 
 
 def _walk(here, there):

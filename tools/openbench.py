@@ -46,6 +46,19 @@ PER_STACK = 10
 EVERY = 4
 
 
+def _best(board):
+    """The lanes eitri would actually pick: the better of the two lay orders."""
+    picks, field = network.survey(board)
+    best = None
+    for order in (picks, picks[::-1]):
+        lanes = network.lay(board, order, field)
+        work, spawns, done = crew_mod.assign(board, lanes)
+        worth = crew_mod.value(lanes, done)
+        if best is None or worth > best[0]:
+            best = (worth, lanes)
+    return best[1]
+
+
 def make(name, seat=0):
     width, height, rows, seats = atlas_data.MAPS[name]
     return board_mod.Board(name, width, height, rows,
@@ -193,8 +206,8 @@ def main():
     rows = []
     for name in names:
         board = make(name)
-        lanes, _ = network.plan(board)
-        work, spawns = crew_mod.assign(board, lanes)
+        lanes = _best(board)
+        work, spawns, _ = crew_mod.assign(board, lanes)
         want = perfect(board, lanes, work, spawns)
         top = ceiling(board)
         result = measure(args.bot, name)

@@ -67,6 +67,13 @@ def _build(ct, home):
     board = atlas.identify(ct, home)
     if board is None:
         return None
-    lanes, _ = network.plan(board)
-    work, spawns = crew.assign(board, lanes)
+    picks, field = network.survey(board)
+    best = None
+    for order in (picks, picks[::-1]):
+        lanes = network.lay(board, order, field)
+        work, spawns, done = crew.assign(board, lanes)
+        worth = crew.value(lanes, done)
+        if best is None or worth > best[0]:
+            best = (worth, lanes, work, spawns)
+    _, lanes, work, spawns = best
     return Plan(board, lanes, work, spawns)

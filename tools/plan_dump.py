@@ -21,7 +21,7 @@ def show(name, seat=0, draw=False):
     board = make(name, seat)
     start = time.perf_counter()
     lanes, home = network.plan(board)
-    work, spawns = crew.assign(board, lanes)
+    work, spawns, _ = crew.assign(board, lanes)
     took = (time.perf_counter() - start) * 1000
     print(f"{name} {board.width}x{board.height} core{board.home} "
           f"ore {len(board.ore)} lanes {len(lanes)}  plan {took:.1f}ms")
