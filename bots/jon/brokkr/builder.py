@@ -20,6 +20,7 @@ from fcode import Direction, EntityType, GameError, Position
 import debug
 import defence
 import lanes
+import roster
 import store
 from brain import CARDINALS, DELTA
 
@@ -63,7 +64,11 @@ def run(player, ct) -> None:
 def _mend(player, ct) -> bool:
     """Return True if this Builder spent its turn on the Core's HP."""
     brain = player.brain
-    if not store.alarm(ct):
+    wanted = store.alarm_level(ct)
+    if not wanted:
+        return False
+    target = roster.econ_target(brain.width, brain.height)
+    if brain.index is None or not roster.is_mender(brain.index, wanted, target):
         return False
     if brain.imap.our_core is None:
         return False
