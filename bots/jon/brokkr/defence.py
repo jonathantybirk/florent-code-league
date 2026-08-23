@@ -63,21 +63,22 @@ def survey(brain):
         return 0.0, [], []
     dps = 0.0
     builders, turrets = [], []
-    for key, tile in brain.imap.tiles.items():
-        name = _STATES[tile.state]
-        if not name.startswith("ENEMY_"):
-            continue
+    imap = brain.imap
+    for key in imap.tiles:
         if _near(key, core) > THREAT_RADIUS:
             continue
-        if name.startswith("ENEMY_BUILDER_BOT") or name.startswith("ENEMY_BOT_ON_CONVEYOR"):
+        unit = imap.unit_at(*key)
+        if unit is not None and _STATES[unit].startswith("ENEMY_"):
             builders.append(key)
-        else:
-            family = name.rsplit("_", 1)[0] if name[-2:-1] == "_" else name
-            for prefix, rate in TURRET_DPS.items():
-                if name.startswith(prefix):
-                    dps += rate
-                    turrets.append(key)
-                    break
+        building = imap.building_at(*key)
+        if building is None:
+            continue
+        name = _STATES[building]
+        for prefix, rate in TURRET_DPS.items():
+            if name.startswith(prefix):
+                dps += rate
+                turrets.append(key)
+                break
     turrets.sort(key=lambda t: _near(t, core))
     builders.sort(key=lambda b: _near(b, core))
     return dps, builders, turrets
@@ -119,7 +120,7 @@ def diggable(brain, turrets):
 
 
 def _dps_of(brain, tile) -> float:
-    name = _STATES[brain.imap.state_at(*tile) or 0]
+    name = _STATES[brain.imap.building_at(*tile) or 0]
     for prefix, rate in TURRET_DPS.items():
         if name.startswith(prefix):
             return rate

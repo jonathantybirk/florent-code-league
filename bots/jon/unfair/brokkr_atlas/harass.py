@@ -56,8 +56,11 @@ def targets(brain, enemy_core):
     if not enemy_core:
         return []
     out = []
-    for key, tile in brain.imap.tiles.items():
-        name = _STATES[tile.state]
+    for key in brain.imap.tiles:
+        building = brain.imap.building_at(*key)
+        if building is None:
+            continue
+        name = _STATES[building]
         kind = None
         for prefix in TARGET_HITS:
             if name.startswith(prefix):
@@ -82,7 +85,7 @@ def ready(round_number: int, titanium: int) -> bool:
 
 def still_there(brain, tile) -> bool:
     """Whether our target is still an enemy building worth hitting."""
-    state = brain.imap.state_at(*tile)
+    state = brain.imap.building_at(*tile)
     if state is None:
         return True                    # out of sight; assume until disproved
     name = _STATES[state]

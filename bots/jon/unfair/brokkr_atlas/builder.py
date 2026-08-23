@@ -335,9 +335,18 @@ def _mine(player, ct) -> None:
 def _job_valid(brain, job) -> bool:
     """A job dies when its deposit is taken or its route is built on."""
     deposit = job["deposit"]
-    state = brain.imap.state_at(*deposit)
-    if state is not None and _name(state) not in ("ORE_FREE", "UNKNOWN"):
-        return _name(state) == "OUR_HARVESTER" and False
+    state = brain.imap.building_at(*deposit)
+    name = None if state is None else _name(state)
+    if job.get("repair"):
+        # A repair is finished when the belt reaches the Core again, and dead
+        # if somebody destroyed the Harvester we were reconnecting.
+        if name is not None and name != "OUR_HARVESTER":
+            return False
+        return deposit in set(lanes.orphaned_harvesters(brain))
+    # The deposit is still ours to take while nothing is built on it. EMPTY is
+    # the answer the building layer gives for free ore, so it belongs here.
+    if name is not None and name != "EMPTY":
+        return False
     blocked = brain.terrain.blocked
     return not any(tile in blocked for tile in job["route"] if tile != brain.me)
 
@@ -348,6 +357,23 @@ def _choose_job(brain, ct):
     if not free:
         return None
     taken = store.claimed(ct, brain.index) | brain.blacklist
+
+    # Reconnect a Harvester of ours whose belt has been cut, before laying any
+    # new lane. It is already paid for, so re-linking it is the cheapest
+    # titanium on the board -- and leaving it severed is exactly what makes
+    # cutting our belt worth more to them than cutting theirs is to us.
+    for harvester in lanes.orphaned_harvesters(brain):
+        if harvester in taken:
+            continue
+        planned = lanes.plan_lane(brain, harvester)
+        if planned is None:
+            continue
+        route, sink = planned
+        if not route:
+            continue
+        return {"deposit": harvester, "route": route, "sink": sink,
+                "repair": True}
+
     free = [d for d in free if d not in taken]
     if not free:
         return None
@@ -390,6 +416,11 @@ def _advance(brain, ct, job) -> None:
             break
 
     if need is None:
+        if job.get("repair"):
+            debug.intent(brain, ct, "mine", f"REPAIRED {deposit}",
+                         "belt reconnected")
+            brain.job = None
+            return
         _finish(brain, ct, deposit, route)
         return
 
@@ -494,7 +525,7 @@ def _explore(brain, ct) -> None:
 # helpers
 # ----------------------------------------------------------------------
 def _has_conveyor(brain, tile, facing) -> bool:
-    state = brain.imap.state_at(*tile)
+    state = brain.imap.building_at(*tile)
     if state is None:
         return False
     name = _name(state)
