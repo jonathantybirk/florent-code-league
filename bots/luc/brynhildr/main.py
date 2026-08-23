@@ -141,6 +141,7 @@ ORD_QUIET = 16             # nothing has hit us for a while (miners may roam)
 ORD_MINERS_SHIFT = 5       # bits 5-6: home Builders (by slot) that may mine, 0-3
 ORD_HARVEST_SHIFT = 7      # bits 7-9: Harvesters standing, 0-7, as tallied by the miners
 ORD_SAVE = 1 << 10         # a counter-turret is wanted and not yet affordable: no 1 Ti heals while the Core can take it
+ORD_RACE = 1 << 11         # the ring is shooting and the kill is funded: menders mend, nothing else
 
 
 def _pack(pos, extra=0):
@@ -806,6 +807,8 @@ class Player:
             flags |= ORD_QUIET
         if turret_wanted and not turret_ok and hp >= 250 and self.sentinels_on_us > 0:
             flags |= ORD_SAVE                      # Big O's one Sentinel cost 500 rounds of heals
+        if racing:
+            flags |= ORD_RACE
         flags |= min(3, self.miners_hwm if econ_ok else 0) << ORD_MINERS_SHIFT
         flags |= min(7, harvesters) << ORD_HARVEST_SHIFT
         self._write(ct, SLOT_ORDERS, (self.round + 1) + 65536 * flags)
@@ -1452,7 +1455,8 @@ class Player:
             if dig is not None and (core_hp is None or core_hp >= 100) and ct.can_fire(dig):
                 ct.fire(dig)
                 return
-            if dig is None and threatened and (core_hp is None or core_hp >= 150) and self._dig_near_core(ct, here):
+            if (dig is None and threatened and (core_hp is None or core_hp >= 150)
+                    and not (flags & ORD_RACE) and self._dig_near_core(ct, here)):
                 return
             for _d, dx, dy in CARDINALS:
                 key = (here.x + dx, here.y + dy)
@@ -2759,7 +2763,8 @@ class Player:
             return
 
     def _tended(self, ct, spot, mine):
-        """A barrier with an enemy Builder beside it is rebuilt for 3 Ti the round we break it."""
+        """A barrier with an enemy Builder beside it (any of the eight) is rebuilt for 3 Ti the
+        round we break it, and a turret with one beside it is mended as we dig."""
         try:
             for dx in (-1, 0, 1):
                 for dy in (-1, 0, 1):
@@ -2771,6 +2776,18 @@ class Player:
         except Exception:
             pass
         return False
+
+    def _tenders(self, ct, spot, mine):
+        """Enemy Builders orthogonally beside a tile -- the ones that can heal it."""
+        n = 0
+        try:
+            for _d, dx, dy in CARDINALS:
+                bid = ct.get_tile_builder_bot_id(Position(spot.x + dx, spot.y + dy))
+                if bid is not None and ct.get_team(bid) != mine:
+                    n += 1
+        except Exception:
+            pass
+        return n
 
     def _act(self, ct):
         if self._counter_battery(ct):
@@ -2804,8 +2821,8 @@ class Player:
                 if rank is None:
                     continue
                 p = ct.get_position(uid)
-                if self._tended(ct, p, mine):
-                    continue
+                if self._tenders(ct, p, mine) >= 2:
+                    continue                       # 18 a shot every 4 rounds loses to 8 HP a round of mending
                 if (best_rank is None or rank < best_rank) and ct.can_fire(p):
                     best, best_rank = p, rank
             if best_rank != 0:
