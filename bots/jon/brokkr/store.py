@@ -72,6 +72,22 @@ def claim(ct, index, deposit) -> None:
     _write(ct, CLAIM_BASE + index % CLAIM_SLOTS, _pack(deposit))
 
 
+def release_claim(ct, index) -> None:
+    """Give a deposit back.
+
+    A claim is only ever refreshed by a Builder that is mining, so a Builder
+    that stops mining used to hold its deposit for the rest of the match. With
+    three of five Builders harassing, that reserved most of the ore on the map
+    for units that would never come back for it: the intent trace shows 777
+    turns of a miner logging "no job; 8 ore known" while every one of those
+    eight was claimed by a harasser. It is the direct cause of brokkr building
+    3-4 Harvesters where the ladder's economies build 10-12.
+    """
+    if index is None:
+        return
+    _write(ct, CLAIM_BASE + index % CLAIM_SLOTS, 0)
+
+
 def claimed(ct, index) -> set:
     """Deposits other Builders have claimed."""
     mine = None if index is None else CLAIM_BASE + index % CLAIM_SLOTS
