@@ -2788,7 +2788,9 @@ class Player:
             return
         if go != 2:
             return
-        # A volley: Harvester first, then a mender on the ring, then a belt.
+        # A volley: Harvester first, then a mender on the ring, then a belt -- never a building
+        # with their Builder beside it: 0033 healed one conveyor with three Builders for 600
+        # rounds while our last Sentinel spent exactly the passive income on it.
         try:
             mine = ct.get_team()
             ring = set(_ring(self.enemy_tiles))
@@ -2802,6 +2804,8 @@ class Player:
                 if rank is None:
                     continue
                 p = ct.get_position(uid)
+                if self._tended(ct, p, mine):
+                    continue
                 if (best_rank is None or rank < best_rank) and ct.can_fire(p):
                     best, best_rank = p, rank
             if best_rank != 0:
