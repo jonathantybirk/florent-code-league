@@ -34,6 +34,69 @@ Two dataclasses, forming a tree rooted at the Core:
 the expected/actual flow at this specific tile the Core can currently see"
 is an O(1) lookup, not a search.
 
+## `self.map` assumptions
+
+`self.map` is meant to be a locally-maintained cache of what this team's
+units have observed, **not** a live view of the engine — `_contruct_map`
+only allocates an empty grid; nothing in this file populates it from `ct`
+or from builder reports (see [Limitations](#limitations)). Everything
+downstream (`_build_paths`, `_find_entry`, `_observe_flow`) is built
+entirely on the following assumptions about that cache, none of which are
+currently enforced or validated by the code:
+
+1. **Shape**: row-major `list[list]`, indexed `self.map[y][x]` — y (row)
+   first, x (column) second. Matches `Position`'s `x`/`y` convention
+   (compass: x east, y south), just transposed for indexing.
+2. **Cell contents**: each cell is either `None` or a duck-typed "entity
+   object" exposing `.type` (an `EntityType`) and, for `CONVEYOR`/
+   `SPLITTER` only, `.direction` (a `Direction`). This is **not** `fcode`'s
+   real entity, and not `tests/fake_controller.Entity` either — that one
+   uses `.etype`, not `.type`, and also carries `.pos`/`.team`/`.hp`/etc.
+   Whatever populates `self.map` must produce objects with exactly
+   `.type`/`.direction` or every method here breaks. No other attribute is
+   ever read.
+3. **`None` means "unknown," not "confirmed empty"** — and the code cannot
+   tell the difference. A conveyor that exists but was never observed (or
+   was observed once and has since gone stale) looks identical to
+   genuinely empty ground: both are `None`, both are treated as a dead end.
+   This matters a lot given `bots/test/vision_probe`'s finding (see the
+   project's `CLAUDE.md`) that the real engine raises `GameError` for
+   anything outside current vision — a tile leaving vision doesn't
+   downgrade to "stale but present," it just becomes unqueryable, and
+   whatever `self.map` recorded from before is the *only* memory of it.
+   There is currently no staleness/last-seen tracking at all.
+4. **No team field, so no team filtering** — `self.map` is implicitly
+   assumed to contain *only friendly* entities. If an enemy conveyor/
+   splitter ever ended up recorded here, `_build_paths` would happily treat
+   it as a valid link in the reachability tree, silently merging enemy and
+   friendly conveyor networks. Nothing here guards against that; it has to
+   be enforced by whatever populates the map.
+5. **A harvester's own tile is expected to be `None`** in the map —
+   `_find_entry` only ever looks at a harvester's four cardinal
+   *neighbors*, never `self.map` at the harvester's own coordinates. A
+   harvester is treated purely as a source, never as something that itself
+   receives.
+6. **The Core's 2×2 footprint must be populated on all 4 tiles
+   independently** — `_build_paths` scans the whole map for any cell with
+   `.type == CORE` to seed its search. Confirmed empirically
+   (`vision_probe`) that the real engine returns the *same* building id for
+   all four footprint tiles, so a populating routine that discovers the
+   Core via one tile should mark all four it can see, not just an anchor
+   corner — otherwise reachability into a partially-recorded footprint can
+   silently fail depending on which corner a route approaches from.
+7. **Entities are assumed current, with no notion of "when observed."** If
+   a conveyor is destroyed after being recorded, nothing invalidates that
+   map entry. Same caveat as point 3, worth calling out separately since
+   it's a staleness problem, not just an unknown-vs-empty ambiguity.
+8. **Splitters are modeled as if all 3 outputs are simultaneously live**
+   for reachability purposes (`_out_dirs` returns all three non-back
+   directions unconditionally) — a modeling choice, not a map-fidelity
+   issue (see the Splitter bullet under [Limitations](#limitations)), but
+   worth noting here too: the map doesn't need to (and doesn't) track a
+   Splitter's live rotation state for this logic to run. Only
+   `_observe_flow` separately reads `get_stored_resource_id` for its own
+   purpose, and that goes through `ct` live, not through `self.map`.
+
 ## Why per-tile, not per-harvester
 
 An earlier version of this tracked one flow number per harvester. That
@@ -234,7 +297,9 @@ can't be confirmed from here.
   `_contruct_map` allocates an empty grid; nothing here fills it in from
   `ct` or from builder reports, and nothing appends to
   `harvester_positions`. Both are assumed to already be correct by the time
-  `_update_harvesters`/`_observe_flow` are called.
+  `_update_harvesters`/`_observe_flow` are called — see
+  [`self.map` assumptions](#selfmap-assumptions) for exactly what "correct"
+  means here.
 - **Not wired into a `run()`.** Nothing here calls `_update_harvesters` or
   `_observe_flow` on a schedule; there's no unit that would trigger them
   each round.
