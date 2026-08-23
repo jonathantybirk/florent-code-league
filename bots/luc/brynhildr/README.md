@@ -19,7 +19,8 @@ actually showed.
 | v70 sentinel_rush_cluster | 75/90 (83%) | 25/30 | 11/30 |
 
 Maps won in both seats: 11/15 against hildr78, 9/15 against steward, 10/15 against gefn.
-(Goal rows re-measured on the income-war build; spar_wall 56/90, spar_sentinel 70/90.)
+(Goal rows re-measured on the planned-ring build, seeds 1-2 of 60: hildr78 54/60, steward
+52/60, gefn 50/60; spar_wall 38/60, spar_sentinel 50/60, brokkr 49/60.)
 Off the pool (sweden, bridge, quarry, duel, showdown, vault) it runs without the bundled
 terrain and without crashing; 7/12 against steward and brokkr. Worst unit-turn on a 30x30
 map: 2.7 ms against the 10 ms limit (about 4.3 ms at the ladder's 1.6x).
@@ -125,6 +126,35 @@ faster than it kills one: nine went up and came down on holmgang); the opening m
 unconditionally (brokkr 28/30 and every rush matchup lost); a mend plan against Gunners (the
 hold never releases and they out-mine us); threat-aware routing that feared Sentinel rays
 (the menders walked instead of healing and the mirror went 25 to 18).
+
+## The planned ring, and the burst that can be sustained (the Big O sweep)
+
+Big O swept `229b821` 0-5 and the replays showed both halves of the same disease.  The
+attacker dropped its first Sentinel on the first spot it touched -- on a Core webbed with
+conveyors the rest of the ring was a march between scattered spots, tens of rounds the
+menders used.  And the burst was priced against the menders that happened to be standing
+there, so a Core caught empty was fired on with a budget three walked-back Builders undid
+(while an over-measured heal ring at a defended Core priced the kill at 500 ammo and starved
+our own menders to death reserving for it -- game 2 died in 56 rounds to one parked Sentinel
+with 98 Ti banked).
+
+Three rules, all gated to PATIENT MODE -- the attacker has scouted their economy and seen no
+rush signs (`econ_seen and not rush_seen`, hildr's own opening-miner discriminator).  Against
+a rusher every one of them switches off and the tempo game is byte-for-byte hildr's: a
+dead-heat mirror is decided by two rounds, and every variant that taxed the opening lost
+paths A and B on the spot.
+
+* The ring is planned as a cluster: `_next_stand` weighs free spots within two steps of the
+  stand (CLUSTER_BONUS) beside the adjacent ones, the opening stand is committed rather than
+  re-derived each round (the danger field breathes with vision -- an uncommitted goal
+  dithered between two stands while no ring went down), and a first Sentinel only goes down
+  on arrival where the neighbourhood holds three ring spots.
+* The kill is priced against the heal ring they can raise, not the one that is home:
+  `max(eheal, HEAL_ASSUMED=12)` until the burst is running -- the builders walk back, or new
+  ones are spawned, the round the ring opens up.
+* A mender is never starved by a phantom burst: while damage lands, the hold has already
+  declared a stall, and the kill is not close, the `kill_ammo - ammo` reservation yields to
+  the mender purchase.
 
 ## The income war (the verdict)
 
