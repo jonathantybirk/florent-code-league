@@ -156,7 +156,8 @@ def _open_siege(player, ct) -> None:
         return
     brain = player.brain
     income = _income(player, ct)
-    if siege.ready(brain, ct.get_global_resources(), income):
+    if siege.ready(brain, ct.get_global_resources(), income,
+                   ct.get_current_round()):
         debug.log(f"r{ct.get_current_round()} CORE SIEGE-OPEN "
                   f"income={income:.1f} ti={ct.get_global_resources()} "
                   f"enemy={brain.imap.enemy_core()}")

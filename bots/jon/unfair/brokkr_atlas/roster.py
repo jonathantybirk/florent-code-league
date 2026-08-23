@@ -34,7 +34,7 @@ def econ_target(width: int, height: int) -> int:
 # Builders sent to plant the Sentinel line at the enemy Core. Two is enough:
 # the walk is most of the cost and a third only adds cost scaling, since the
 # line's damage is limited by ammunition rather than by turret count.
-ATTACKERS = 2
+ATTACKERS = 3
 
 
 def is_attacker(index: int, target: int, siege_open: bool) -> bool:
