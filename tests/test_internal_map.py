@@ -217,3 +217,14 @@ def test_bot_leaving_conveyor_is_not_broadcast_but_conveyor_loss_is():
     del ents[2]                                               # conveyor destroyed
     m.observe(FakeCt((5, 5), {}, ents, round_no=2))
     assert m.pending_facts(20) == [Fact(6, 5, EMPTY)]         # that IS news
+
+
+def test_teammate_reckoned_position_moves_in_the_map():
+    m = InternalMap(W, H)
+    m.note_teammate(1, (4, 4))
+    assert TILE_STATES[m.unit_at(4, 4)] == "OUR_BUILDER_BOT"
+    assert m.pending_facts(10) == []                          # never broadcast
+    m.note_teammate(1, (5, 4))
+    assert m.unit_at(4, 4) == EMPTY and TILE_STATES[m.unit_at(5, 4)] == "OUR_BUILDER_BOT"
+    m.note_teammate(1, None)
+    assert m.unit_at(5, 4) == EMPTY
