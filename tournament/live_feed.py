@@ -128,6 +128,11 @@ EVIDENCE_HALF_LIFE_HOURS = 6.0
 SIM_RUNS = 24
 SIM_TICKS = 300
 SIM_BURN_IN = 100
+
+# Careers averaged for the one-round delta. At this count the standard error of the mean is
+# about 0.09 Elo, against gaps of 0.5 to 5 between neighbouring builds, so the ordering is
+# settled well past the point more samples would buy anything.
+DELTA_RUNS = 10000
 # Pseudo-games pulling a thin per-opponent record toward what the fitted strength predicts.
 # Without it a 0-5 against one opponent claims we never beat them.
 MATCHUP_PRIOR_GAMES = 4.0
@@ -385,6 +390,73 @@ def _fit_selection_bonus(rows: list[dict]) -> float:
     return bonus
 
 
+def _draw_opponent(
+    pool: list[tuple[float, float]], rating: float, rng: random.Random
+) -> tuple[float, float] | None:
+    """One opponent, drawn through the measured kernel at our current rating.
+
+    Rank position is recomputed from `rating` on every call, so climbing into a harder
+    neighbourhood changes who we meet. The kernel is renormalised over the opponents we
+    actually have a record against: filling the rest in from a rating guess would anchor
+    the walk to where it started, which is the thing these simulations exist to question.
+    """
+    order = sorted(pool + [(rating, None)], key=lambda e: -e[0])
+    us = next(i for i, e in enumerate(order) if e[1] is None)
+    draw: list[tuple[tuple[float, float | None], float]] = []
+    for offset, probability in PAIRING_KERNEL.items():
+        reachable = [i for i in (us - offset, us + offset)
+                     if 0 <= i < len(order) and i != us]
+        for i in reachable:
+            draw.append((order[i], probability / len(reachable)))
+    if not draw:
+        return None
+    total = sum(w for _, w in draw)
+    pick = rng.random() * total
+    chosen = draw[-1][0]
+    for entry, weight in draw:
+        pick -= weight
+        if pick <= 0:
+            chosen = entry
+            break
+    return chosen  # type: ignore[return-value]
+
+
+def _one_round_delta(
+    matchups: dict[object, tuple[float, float]], start: float, seed: int
+) -> tuple[float, float] | None:
+    """Expected rating change over the NEXT round, and the standard error of that mean.
+
+    `_simulate_settled_rating` answers where a build ends up eventually. This answers what
+    it does now, from where we are sitting today, which is the question when choosing what
+    to run for the next round rather than what to back for the week.
+
+    The two rank builds differently and neither is wrong. A build can be stronger in the
+    long run yet gain less this round because the opponents it beats are ones the ladder
+    already expects it to beat: those wins score near zero against the Elo expectation. A
+    raw win rate cannot see that at all.
+
+    Returned as (mean, standard error of the mean). The standard error says how precisely
+    the mean has been computed, not how certain the matchups are: it shrinks with
+    DELTA_RUNS and would reach zero given enough compute. The spread that does not shrink
+    lives in the per-opponent records.
+    """
+    pool = [(rating, p) for rating, p in matchups.values()]
+    if len(pool) < 3:
+        return None
+    rng = random.Random(seed)
+    deltas: list[float] = []
+    for _ in range(DELTA_RUNS):
+        chosen = _draw_opponent(pool, start, rng)
+        if chosen is None:
+            return None
+        opponent_rating, probability = chosen
+        won = sum(1 for _ in range(SERIES_GAMES) if rng.random() < probability)
+        deltas.append(K_FACTOR * (won / SERIES_GAMES - _expected(start, opponent_rating)))
+    mean = sum(deltas) / len(deltas)
+    variance = sum((d - mean) ** 2 for d in deltas) / max(len(deltas) - 1, 1)
+    return mean, math.sqrt(variance / len(deltas))
+
+
 def _simulate_settled_rating(
     matchups: dict[object, tuple[float, float]], start: float, seed: int
 ) -> float | None:
@@ -416,24 +488,9 @@ def _simulate_settled_rating(
         rating = start
         seen: list[float] = []
         for tick in range(SIM_TICKS):
-            order = sorted(pool + [(rating, None)], key=lambda e: -e[0])
-            us = next(i for i, e in enumerate(order) if e[1] is None)
-            draw: list[tuple[tuple[float, float | None], float]] = []
-            for offset, probability in PAIRING_KERNEL.items():
-                reachable = [i for i in (us - offset, us + offset)
-                             if 0 <= i < len(order) and i != us]
-                for i in reachable:
-                    draw.append((order[i], probability / len(reachable)))
-            if not draw:
+            chosen = _draw_opponent(pool, rating, rng)
+            if chosen is None:
                 break
-            total = sum(w for _, w in draw)
-            pick = rng.random() * total
-            chosen = draw[-1][0]
-            for entry, weight in draw:
-                pick -= weight
-                if pick <= 0:
-                    chosen = entry
-                    break
             opponent_rating, probability = chosen
             won = sum(1 for _ in range(SERIES_GAMES) if rng.random() < probability)
             rating += K_FACTOR * (won / SERIES_GAMES - _expected(rating, opponent_rating))
@@ -940,6 +997,9 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
             settled = _simulate_settled_rating(
                 matchups, us_rating, seed=abs(hash(key)) % 100000
             )
+            one_round = _one_round_delta(
+                matchups, us_rating, seed=abs(hash(key)) % 100000
+            )
             headline = settled if settled is not None else strength
             # The interval comes from the bootstrap around the fit and is carried across to sit
             # on the headline. It is the right *width* -- the same evidence -- but it is not a
@@ -949,6 +1009,8 @@ def build(site_repo: Path, cache_path: Path = DEFAULT_CACHE, cold_pages: int = 4
                 "elo": headline,
                 "elo_strength_fit": strength,
                 "elo_simulated": settled,
+                "delta_elo": (one_round[0] if one_round else None),
+                "delta_elo_se": (one_round[1] if one_round else None),
                 "elo_if_matchups_persist": _equilibrium(current_cells, strength, active_ratings),
                 "matchup_dispersion": _overdispersion(current_cells, strength),
                 "elo_lo": (span[0] + shift) if span else None,
