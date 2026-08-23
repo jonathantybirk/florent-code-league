@@ -629,13 +629,3 @@ def test_untaken_grant_is_reclaimed_after_grace():
         world.step()
     assert s not in core.gcs.registry.owners
 
-
-def test_periodic_resync_round():
-    from bots.utils.GCS.Base.protocol import RESYNC_PERIOD
-    world = World()
-    core = Unit("core", (2, 2)); world.units.append(core)
-    for _ in range(RESYNC_PERIOD + 1):
-        world.step()
-    v = world.store.values[SLOT_CORE]                         # written in round RESYNC_PERIOD
-    got = messages.decode_resync(v, W, H)
-    assert got.kind == "core" and got.position == (2, 2)

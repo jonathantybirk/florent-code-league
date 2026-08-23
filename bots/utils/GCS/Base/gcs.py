@@ -206,6 +206,13 @@ class GCS:
             self._core_stream(ct, round_no, skip_own=False)
             return []
 
+        # a GRANT mid-onboarding would make the new turret write into a slot
+        # the Core may be streaming through: hold it until the window closes
+        if (message is not None and message.type == "control" and message.control
+                and message.control[0] == CTRL_GRANT and reg.in_onboard_window(round_no)):
+            self.queued.append((priority, message))
+            message = None
+
         if message is not None:
             return self._publish_message(ct, message)
         return self._publish_facts(ct)
