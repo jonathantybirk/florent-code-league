@@ -63,11 +63,30 @@ class Lane:
         self.cost = 2 * len(tiles) + 1
 
 
-def plan(board, limit=None):
-    """The lanes to build, cheapest first, with the tree they share."""
+def survey(board, limit=None):
+    """(deposits worth a lane, nearest first; their distance field)."""
     home = flood(board, board.home_tiles, blocked=board.ore)
     away = flood(board, board.away_tiles, blocked=board.ore)
-    picks = choose(board, home, away, limit)
+    return choose(board, home, away, limit), home
+
+
+def lay(board, picks, home):
+    """The lanes for `picks`, routed in the order given.
+
+    The order matters more than it looks.  A lane is a wall to every later
+    lane, so short lanes laid first pack tight around the Core and box the
+    remaining ring tiles out of reach; long lanes laid first take the
+    corridors and leave the short ones to squeeze in afterwards.  Neither
+    order wins everywhere -- nearest-first routes five more deposits on
+    midgard, farthest-first four more on snowflake -- which is why the caller
+    lays both and keeps whichever delivers more titanium.
+    """
+    return _lanes(board, picks, home)
+
+
+def plan(board, limit=None):
+    """The lanes to build, nearest deposit first."""
+    picks, home = survey(board, limit)
     return _lanes(board, picks, home), home
 
 
@@ -162,7 +181,7 @@ def _connect(board, stand, tree, parent, load):
     cannot be drained at all.
     """
     if stand in tree:
-        return ([], stand) if _room(stand, parent, load) else ([], None)
+        return ([], stand) if _room(board, stand, parent, load) else ([], None)
     came = {stand: None}
     frontier = [stand]
     while frontier:
@@ -175,7 +194,7 @@ def _connect(board, stand, tree, parent, load):
                 # Core footprint is a perfectly good place to deliver into and
                 # is the one tree tile a Builder can never stand on.
                 if spot in tree:
-                    if _room(spot, parent, load):
+                    if _room(board, spot, parent, load):
                         return _unwind(came, tile), spot
                     continue
                 if spot in came or spot in board.ore:
@@ -197,9 +216,15 @@ def _unwind(came, tile):
     return out
 
 
-def _room(tile, parent, load) -> bool:
-    """Whether one more Harvester fits through here and everything below it."""
-    while tile is not None:
+def _room(board, tile, parent, load) -> bool:
+    """Whether one more Harvester fits through here and everything below it.
+
+    The Core is the sink, not a conveyor: it has no stack to hold and no
+    limit worth modelling. Counting its footprint as a four-Harvester tile
+    stopped every map at eight lanes -- two entry tiles' worth -- however much
+    open ground was left around it.
+    """
+    while tile is not None and tile not in board.home_tiles:
         if load.get(tile, 0) >= CAPACITY:
             return False
         tile = parent.get(tile)
@@ -208,7 +233,7 @@ def _room(tile, parent, load) -> bool:
 
 def _charge(board, tile, parent, load):
     """Book one more Harvester against every tile between here and the Core."""
-    while tile is not None:
+    while tile is not None and tile not in board.home_tiles:
         load[tile] = load.get(tile, 0) + 1
         tile = parent.get(tile)
 
