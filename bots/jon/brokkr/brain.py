@@ -62,7 +62,9 @@ class Brain:
         # ending up. Per-unit, not shared: a lane unreachable for a Builder
         # stranded in the enemy half is perfectly reachable for one at home.
         self.blacklist: set[tuple[int, int]] = set()
+        self.frozen = 0           # consecutive turns that failed to move
         self.harass_target: tuple[int, int] | None = None
+        self.station: tuple[int, int] | None = None   # relay tile we committed to
         self.map_name: str | None = None   # set once the atlas recognises it
         self.atlas_done = False
 
@@ -225,8 +227,17 @@ class Brain:
         shared = store.symmetry(ct)
         if mine is None and shared is not None:
             self.imap.set_symmetry(shared)
-        elif mine is not None and shared != mine:
-            store.publish_symmetry(ct, mine)
+        # Our own Core's anchor travels with the symmetry: a turret is born
+        # blind and may never see home, and without it it cannot mirror
+        # anything.
+        anchor = self.imap.our_core
+        if anchor is None:
+            told = store.home_anchor(ct)
+            if told is not None:
+                self.imap.note_core_block(told, ours=True)
+        elif mine is not None and (shared != mine
+                                   or store.home_anchor(ct) != anchor):
+            store.publish_symmetry(ct, mine, anchor)
 
     def learn_ore(self, tiles) -> None:
         """Record deposits a teammate reported.
@@ -292,6 +303,10 @@ class Brain:
             return False
         building = self.imap.building_at(*tile)
         return building is None or _STATE_NAME[building] == "EMPTY"
+
+    def our_launchers(self) -> list[tuple[int, int]]:
+        return [key for key in self.imap.tiles
+                if _name_or_none(self.imap.building_at(*key)) == "OUR_LAUNCHER"]
 
     def our_harvesters(self) -> list[tuple[int, int]]:
         return [key for key in self.imap.tiles

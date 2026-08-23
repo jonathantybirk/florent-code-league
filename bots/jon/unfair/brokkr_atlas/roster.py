@@ -41,6 +41,11 @@ BUILDER_TARGET_LARGE = 5
 HARASSER_MARGIN = 2
 
 
+# The harasser that also founds the Launcher relay. One owns it so two do not
+# both detour to the same tile.
+RELAY_BUILDER = 1
+
+
 def harassers(target: int) -> int:
     """How many Builders may harass, leaving the guard and a miner behind."""
     return max(1, target - HARASSER_MARGIN)

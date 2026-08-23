@@ -33,8 +33,29 @@ def orthogonal(tile):
 
 
 def sink_tiles(brain) -> set[tuple[int, int]]:
-    """Tiles a finished lane may deliver into: the Core, or our own belt."""
-    return brain.core_tiles() | brain.our_conveyors()
+    """Tiles a finished lane may deliver into: the Core, or belt that reaches it.
+
+    "Our own belt" is not good enough, and the difference is the whole
+    economy. A conveyor we own that no longer reaches the Core delivers
+    nothing, and joining a lane to it produces a Harvester feeding a dead
+    stub. Once an enemy cuts the belt at the Core mouth -- which is exactly
+    where a competent harasser cuts -- every lane planned afterwards attaches
+    to the severed half and the team never earns another titanium.
+
+    Traced on auroraveil against hildr_best: the conveyors laid on rounds 4-10
+    at (9, 3), (9, 4), (9, 5) were gone by round 50, and the next 400 rounds
+    built four Harvesters and a dozen conveyors onto the orphaned remainder
+    for a final score of zero titanium collected, in both seats.
+
+    `connected` already answers "does this tile reach the Core"; it just was
+    not being asked. It is cached per round because plan_lane calls this once
+    per candidate deposit.
+    """
+    core = brain.core_tiles()
+    if not core:
+        # We do not know where home is, so we cannot tell live belt from dead.
+        return brain.our_conveyors()
+    return core | connected(brain)
 
 
 def plan_lane(brain, deposit):
@@ -97,6 +118,9 @@ def connected(brain):
     core = brain.core_tiles()
     if not core:
         return set()
+    cached = getattr(brain, "_live_belt", None)
+    if cached is not None and cached[0] == brain.round:
+        return cached[1]
     ours = brain.our_conveyors()
     reached = set()
     frontier = [tile for tile in core]
@@ -109,6 +133,7 @@ def connected(brain):
             seen.add(nb)
             reached.add(nb)
             frontier.append(nb)
+    brain._live_belt = (brain.round, reached)
     return reached
 
 
