@@ -343,6 +343,17 @@ class Player:
                 return
         self._spawn_one(ct)
 
+    def _builder_gone(self, ct):
+        """Has our Builder stopped reporting? The heartbeat is written on the round it acts, and a
+        write lands even on the round its author dies, so a stamp two rounds stale means gone."""
+        try:
+            beat = ct.read_store(SLOT_BUILDER)
+        except Exception:
+            return True
+        if not beat:
+            return self.round >= 4
+        return self.round - (beat - 1) >= 3
+
     def _spawn_one(self, ct):
         """Spawn on the legal tile NEAREST THE ENEMY, not the first one offered.
 
@@ -426,7 +437,12 @@ class Player:
             if remaining > 0:
                 unit = ct.get_sentinel_cost()
                 reserve += remaining * unit + 3 * remaining * (remaining - 1)
-                if REPLACE_BUILDER:
+                if REPLACE_BUILDER and self._builder_gone(ct):
+                    # Reserve a replacement's fare only once the Builder has ACTUALLY stopped
+                    # reporting. Holding it for the whole rush is ~36 Ti -- three shots, 54 HP --
+                    # withheld from a kill budget whose whole slack is about 60 Ti, in the normal
+                    # case where the Builder never dies at all: `death.py` reports "our first
+                    # Builder died: -" in most losses.
                     reserve += ct.get_builder_bot_cost()
             spare = ct.get_global_resources() - reserve
             if spare < 10:
