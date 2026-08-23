@@ -227,11 +227,6 @@ POOL_DEPTH = 25  # everyone we are willing to sample
 CLOSEST_K = 10
 QUALIFY_MIN = 7
 
-# Careers to average when scoring a build's one-round delta elo. The Monte Carlo
-# error at this count is ~0.09 Elo against gaps of 0.5-5 between neighbouring
-# builds, so the ranking is resolved well past the point more samples would help.
-# The remaining spread is real matchup uncertainty and does not shrink with count.
-DELTA_SIMS = 10000
 
 
 def sampling_pool(ladder_rows: list[dict]) -> list[dict]:
@@ -576,7 +571,7 @@ def best_challenger(state: dict, stats: dict[str, arms.ArmStats], team_rating: f
             return None
         mean, _sd, se = arms.simulated_rating(
             live, build["key"], ladder_rows, start_rating=team_rating,
-            sim_length=1, sim_count=DELTA_SIMS)
+            sim_length=1, sim_count=arms.DELTA_SIMS)
         return mean - team_rating, se
 
     incumbent = delta(incumbent_id) if incumbent_id else None
