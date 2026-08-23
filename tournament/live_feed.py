@@ -728,7 +728,7 @@ def _load_arms():
 
 
 def _attach_delta_elo(feed: dict) -> None:
-    """Fill `delta_elo` on every build, using the farm's own simulation.
+    """Fill `delta_elo` and the coverage verdict on every build, using the farm's own code.
 
     Runs after the feed is assembled because the simulation reads `matchups` and
     `opponents` off the finished payload, exactly as the farm does. Bots with no
@@ -743,7 +743,16 @@ def _attach_delta_elo(feed: dict) -> None:
          "matchesPlayed": 1, "ladderBanned": False}
         for o in feed["opponents"]
     ]
+    field = arms.active_field(rows, feed["team"]["id"])
+    rating = feed["team"]["rating"]
     for bot in feed["bots"]:
+        # Published for every bot, estimate or not: coverage is why a build is ineligible,
+        # and that has to be visible or the farm looks like it ignored its own metric.
+        seen, needed, ok = arms.qualification(feed, bot["key"], field, rating)
+        bot["qualified"] = ok
+        bot["faced_closest"] = seen
+        bot["closest_k"] = arms.CLOSEST_K
+        bot["qualify_min"] = needed
         estimate = bot.get("estimate")
         if not estimate:
             continue
