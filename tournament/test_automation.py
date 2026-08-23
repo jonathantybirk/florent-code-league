@@ -1110,43 +1110,45 @@ def test_each_requeue_asks_for_more_walltime_than_the_one_that_died(tmp_path, mo
     """An element that busts a budget set from the worst batch ever seen needs more room, not luck.
 
     Re-queueing under the same limit killed v3-newmaps-20260806 three times over and then stalled
-    it for a human with 115 matches unrun.
+    it for a human with 115 matches unrun. Walltime is now requested per job, so the escalation
+    is a multiplier on that per-job figure rather than a flat replacement.
     """
     from tournament import automation
 
     root = tmp_path / "runs"
     _stranded_run(root, "auto-slow", merged=40, scheduled=100)
     monkeypatch.setattr(automation.planning, "RUNS_ROOT", root)
-    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu", "walltime": "10"})
+    monkeypatch.setattr(automation.hpc, "config", lambda: {"host": "dtu", "chunk": 400})
     monkeypatch.setattr(automation.hpc, "status", lambda tid, s=None: {
         "total": 100, "done": 40, "job_ids": ["111"], "bjobs": _bjobs_missing("111"),
     })
     monkeypatch.setattr(automation.hpc, "fetch", lambda tid, settings=None: None)
     seen = []
     monkeypatch.setattr(automation.hpc, "submit",
-                        lambda tid, settings=None: seen.append(settings["walltime"]))
+                        lambda tid, settings=None: seen.append(settings["walltime_scale"]))
 
     for _ in range(automation.MAX_RESUBMITS):
         automation.resubmit_abandoned_runs(["auto-slow"])
-    assert seen == ["20", "40", "80"], seen
+    assert seen == [2.0, 4.0, 8.0], seen
 
 
 def test_walltime_escalation_is_capped():
     from tournament import automation
 
-    settings = {"walltime": "10"}
-    assert automation._escalated_walltime(settings, 99)["walltime"] == str(
+    settings = {"chunk": 400}
+    scale = automation._escalated_walltime(settings, 99)["walltime_scale"]
+    largest = 2 * settings["chunk"] - 1
+    assert automation.hpc.walltime_minutes(largest, scale) <= (
         automation.MAX_RESUBMIT_WALLTIME_MINUTES
     )
-    # A malformed walltime must not crash a recovery path.
-    assert automation._escalated_walltime({"walltime": "bogus"}, 1) == {"walltime": "bogus"}
+    # A malformed scale must not crash a recovery path.
+    assert automation._escalated_walltime({"walltime_scale": "bogus"}, 1)["walltime_scale"] == 2.0
 
 
-def test_walltime_escalation_never_reduces_a_validated_base_above_the_cap():
+def test_walltime_escalation_never_shrinks_the_request():
     from tournament import automation
 
-    settings = {"walltime": "2000"}
-    assert automation._escalated_walltime(settings, 1)["walltime"] == "2000"
+    assert automation._escalated_walltime({"walltime_scale": 4.0}, 1)["walltime_scale"] >= 4.0
 
 
 def test_a_failed_requeue_still_counts_against_the_cap(tmp_path, monkeypatch):

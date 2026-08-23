@@ -569,7 +569,9 @@ def test_default_batch_is_sized_over_fifteen_minutes_at_the_fastest_observed_rat
 
     settings = config()
     assert settings["chunk"] >= settings["minimum_matches_per_worker"]
-    assert settings["minimum_matches_per_worker"] >= 500
+    # 400 is the smallest window size whose fastest observed run (18.1m over 507,498 cluster
+    # matches, 2026-08-23) still clears the 15-minute floor. Lower needs a re-measurement.
+    assert settings["minimum_matches_per_worker"] >= 400
     assert settings["minimum_runtime_seconds"] == 15 * 60
     assert settings["workers_per_job"] <= settings["max_worker_slots"]
     # The `hpc` queue reports TASKLIMIT 128. Asking for more than it will ever grant does not
@@ -614,8 +616,8 @@ def test_shipped_remote_root_is_inside_the_assigned_scratch_directory():
         remote_root({**settings, "remote_root": "florent-tournament"})
 
 
-def test_shipped_walltime_covers_the_default_chunk():
-    """Walltime covers the largest batch balancing can create around its boundary."""
+def test_shipped_walltime_cap_covers_the_default_chunk():
+    """The cap covers the largest batch balancing can create around its boundary."""
     from tournament.hpc import check_walltime, config
 
     settings = config()
@@ -623,13 +625,35 @@ def test_shipped_walltime_covers_the_default_chunk():
     check_walltime(settings, largest_balanced_batch)  # must not raise
 
 
-def test_walltime_guard_rejects_an_element_that_cannot_finish():
-    from tournament.hpc import BATCH_BUDGET_SECONDS_PER_MATCH, HpcError, check_walltime
+def test_walltime_is_requested_per_job_not_flat():
+    """A small job must ask for a small walltime, or LSF cannot backfill it."""
+    from tournament.hpc import config, walltime_minutes
 
-    settings = {"walltime": "22"}
-    fits = 22 * 60 // BATCH_BUDGET_SECONDS_PER_MATCH
+    settings = config()
+    small = walltime_minutes(settings["minimum_matches_per_worker"])
+    large = walltime_minutes(2 * settings["minimum_matches_per_worker"] - 1)
+    assert small < large
+    # The flat 960 this replaced was more than four times what a floor-sized worker needs.
+    assert small < int(settings["walltime_cap_minutes"]) / 3
+
+
+def test_walltime_covers_the_slowest_window_ever_recorded():
+    """400 matches per core: the slowest observed worker run was 197 minutes."""
+    from tournament.hpc import walltime_minutes
+
+    assert walltime_minutes(400) >= 197
+    assert walltime_minutes(500) >= 232
+
+
+def test_walltime_guard_rejects_a_batch_over_the_cap():
+    from tournament.hpc import HpcError, check_walltime, walltime_minutes
+
+    settings = {"walltime_cap_minutes": "60"}
+    fits = 1
+    while walltime_minutes(fits + 1) <= 60:
+        fits += 1
     check_walltime(settings, fits)
-    with pytest.raises(HpcError, match="cannot cover"):
+    with pytest.raises(HpcError, match="over the"):
         check_walltime(settings, fits + 1)
 
 
@@ -637,10 +661,10 @@ def test_job_script_runs_a_dynamic_pool_from_the_worklist():
     from tournament.hpc import job_script
 
     settings = {
-        "queue": "hpc", "cores": 1, "memory": "2GB", "walltime": "22",
+        "queue": "hpc", "cores": 1, "memory": "2GB", "walltime_cap_minutes": "960",
         "minimum_runtime_seconds": 900,
     }
-    script = job_script("t", settings, "n", "t/work_X.txt", 3, "t/runtime/stop_X.txt")
+    script = job_script("t", settings, "n", "t/work_X.txt", 3, "t/runtime/stop_X.txt", 238)
     assert "#BSUB -n 3" in script
     assert "python3 -m tournament.worker" in script
     assert "--worklist t/work_X.txt" in script
@@ -652,10 +676,10 @@ def test_job_script_disables_shared_filesystem_bytecode_writes():
     from tournament.hpc import job_script
 
     settings = {
-        "queue": "hpc", "cores": 1, "memory": "2GB", "walltime": "22",
+        "queue": "hpc", "cores": 1, "memory": "2GB", "walltime_cap_minutes": "960",
         "minimum_runtime_seconds": 900,
     }
-    script = job_script("t", settings, "n", "t/work_X.txt", 3, "t/runtime/stop_X.txt")
+    script = job_script("t", settings, "n", "t/work_X.txt", 3, "t/runtime/stop_X.txt", 238)
     assert "export PYTHONDONTWRITEBYTECODE=1" in script
 
 
@@ -666,7 +690,7 @@ def test_job_script_signals_peers_and_leaves_a_marker_when_too_short():
         "queue": "hpc", "cores": 1, "memory": "2GB", "walltime": "600",
         "minimum_runtime_seconds": 900,
     }
-    script = job_script("t", settings, "n", "t/work_X.txt", 3, "t/runtime/stop_X.txt")
+    script = job_script("t", settings, "n", "t/work_X.txt", 3, "t/runtime/stop_X.txt", 238)
     assert 'if [ "$elapsed" -lt 900 ]' in script
     assert "runtime/short_${LSB_JOBID}.txt" in script
     assert "mv \"$stop_tmp\" t/runtime/stop_X.txt" in script

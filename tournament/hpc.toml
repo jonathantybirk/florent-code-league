@@ -29,50 +29,48 @@ max_worker_slots = 96
 # more matches.
 workers_per_job = 8
 
-# Target matches per worker slot. Recomputed 2026-08-10 from 702,474 recorded durations across
-# 54 schedules, using every fully-observed contiguous window (so this measures the actual fast
-# tail, not just averages):
-#   300 matches: minimum 606.4s (10.11m) -- unsafe
-#   400 matches: minimum 821.7s (13.70m) -- unsafe
-#   450 matches: minimum 928.5s (15.47m) -- too little margin
-#   500 matches: minimum 1037.9s (17.30m)
-#   600 matches: minimum 1254.1s (20.90m)
-# A hard minimum of 500 is therefore the smallest measured size with useful margin over 15m;
-# 600 is the normal target. Worker slots are striped across the schedule and dynamically share
-# their LSF job's worklist. A remainder below 500 is finished locally and is never submitted as a
-# short HPC job.
-chunk = 600
-minimum_matches_per_worker = 500
+# Target matches per worker slot. Re-measured 2026-08-23 over 507,498 cluster matches, taking
+# every contiguous window *within* one (schedule, LSF job) group -- the run a single worker slot
+# actually experiences -- and reporting the fastest such window ever recorded:
+#   300 matches: fastest 13.3m -- under the floor
+#   350 matches: fastest 15.7m -- clears it by 42 seconds, no margin
+#   400 matches: fastest 18.1m -- clears it by 3.1m
+#   500 matches: fastest 23.2m (the previous minimum)
+#   600 matches: fastest 28.4m (the previous target)
+# 400 is therefore the smallest size at which no observed worker run finishes inside 15 minutes,
+# and target = minimum keeps every job as short as the floor allows: shorter jobs backfill into
+# the queue sooner, and the median worker run is still ~44m. Anything below 350 puts jobs under
+# 15 minutes, which is what the account was capped for in the first place.
+#
+# The 2026-08-10 figures this replaces (400 -> 13.70m, 500 -> 17.30m) were measured on a bot
+# population that no longer exists; the same windows today run 30% longer. Re-measure before
+# moving these numbers again -- and never below 400 without doing so.
+chunk = 400
+minimum_matches_per_worker = 400
 
 # Fail closed if real behavior contradicts the sizing estimate. Each worker job records its elapsed
 # workload time under <run>/runtime. A job below 15 minutes writes a durable `short_` marker,
 # signals sibling jobs to stop taking work, and prevents automation from re-submitting that run.
 minimum_runtime_seconds = 900
 
-# Walltime is a HARD KILL and must cover a whole worker job. It is budgeted on the p99 of a real
-# batch, not on chunk x the slowest match ever seen -- the old rule assumed every match in an
-# element could simultaneously be the worst one, which by 2026-08-06 demanded 7 hours for chunk=20
-# and would have forced chunk=1.
+# Walltime is a HARD KILL, requested per job from that job's own busiest core rather than as one
+# flat number for every submission. hpc.walltime_minutes() sizes it as
+# largest_per_core x BATCH_BUDGET_SECONDS_PER_MATCH x WALLTIME_MARGIN, floored at 60 minutes.
 #
-# Re-measured 2026-08-06 over 7,507 real contiguous batches of 10 drawn from 75,086 matches on the
-# 33-map v3 pool, with spar_econ retired:
-#   batch of 10:  median 81s   p95 216s   p99 315s   p99.9 450s   max 502s
-# The per-match budget is the observed MAXIMUM plus 10%: 502s x 1.1 / 10, rounded up to 56s.
-# Balanced batches can be as large as 999 around the one-element/two-element boundary, requiring
-# 933 minutes under that deliberately conservative linear bound; 960 minutes leaves headroom.
-# The previous constants (mean 8.8s, max 64s) were
-# measured on a bot population that no longer exists and were wrong by 19x at the tail; that is
-# what killed 108 elements in v3-newmaps-20260806 alone.
+# The per-match figure is re-derived (see hpc.py) from the slowest window ever recorded at real
+# worker sizes: 29.6s/match at 400, 27.7s at 500, so 31s covers every size we submit, and the
+# 15% margin sits on top of an observed maximum rather than a percentile -- a killed job is not
+# just its own work lost, it is a re-queue cycle, and three of those exhaust MAX_RESUBMITS.
+# A batch of 400 therefore asks for 238 minutes against a 197-minute observed worst case.
 #
-# A margin over the observed max, rather than a percentile, because the tail is what actually
-# costs: a killed element is not just its own work lost, it is a re-queue cycle, and three of
-# those exhaust MAX_RESUBMITS and stall the run for a human to sort out.
+# The flat 960 this replaces was ~5x what a 400-match worker needs, and LSF cannot backfill a
+# 16-hour reservation into a short gap: the first v4 submission sat PEND behind 2,887 queued jobs
+# asking eleven times the walltime it would have used. Sizing the request to the work is what
+# makes a small run start quickly, and it is why chunk can safely sit at the 15-minute floor.
 #
-# Nothing is lost permanently when an element is killed anyway: its matches simply have no result
-# file, `hpc submit` re-queues exactly those, resubmit_abandoned_runs() does it automatically, and
-# each retry now escalates the walltime (see RESUBMIT_WALLTIME_FACTOR) so a batch that outgrew
-# this budget gets room rather than dying at the same wall three times.
-walltime = "960"
+# This cap is a backstop, not the request: a batch needing more than this is refused at submit
+# time rather than silently reserving most of a day.
+walltime_cap_minutes = "960"
 memory = "2GB"        # per core; measured max RSS is 193 MB, so this is ample headroom.
 
 # One core per MATCH, always. A worker job requests several cores only to run several independent

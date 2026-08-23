@@ -13,6 +13,7 @@ hanging thousands of commands on a passphrase prompt that nothing can answer.
 from __future__ import annotations
 
 import json
+import math
 import shlex
 import subprocess
 import time
@@ -174,7 +175,13 @@ def push(tid: str, settings: dict | None = None, bootstrap: bool = False) -> Non
 
 
 def job_script(
-    tid: str, settings: dict, name: str, worklist: str, workers: int, stop_file: str
+    tid: str,
+    settings: dict,
+    name: str,
+    worklist: str,
+    workers: int,
+    stop_file: str,
+    walltime: int,
 ) -> str:
     """One long LSF job whose cores dynamically drain `worklist`.
 
@@ -228,7 +235,7 @@ mv "$marker_tmp" "$marker"
 #BSUB -n {workers}
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem={settings["memory"]}]"
-#BSUB -W {settings["walltime"]}
+#BSUB -W {walltime}
 #BSUB -o {tid}/logs/%J.out
 #BSUB -e {tid}/logs/%J.err
 
@@ -274,8 +281,8 @@ def compress_indices(indices: list[int]) -> str:
 # Seconds per match to budget for an element, taken from the largest REAL batch ever measured plus
 # a 10% margin, rather than from the slowest single match. Measured 2026-08-06 over 7,507
 # contiguous batches of 10 (75,086 matches, 33-map v3 pool, spar_econ retired): the worst batch
-# took 502s, so 552s with the margin, i.e. 55.2s per match; 56 rounds up. See hpc.toml for the
-# full distribution.
+# took 502s, so 552s with the margin, i.e. 55.2s per match; 56 rounded up. That figure is
+# superseded by the re-derivation below, and is kept only to explain where 56 came from.
 #
 # The old model multiplied chunk by the single slowest match ever seen, which assumes every match
 # in an element is simultaneously the worst one. That bound is ~16x the worst batch actually
@@ -283,7 +290,27 @@ def compress_indices(indices: list[int]) -> str:
 # could only ever be satisfied by chunk=1. Meanwhile the constant itself had gone stale (66s
 # against a real 1,258s), so the guard was certifying budgets that could not hold: 108 elements
 # died in one run.
-BATCH_BUDGET_SECONDS_PER_MATCH = 56
+#
+# Re-derived 2026-08-23 at the size a worker slot actually runs, rather than extrapolated from
+# batches of 10. Every contiguous window within a single (schedule, LSF job) group, over 507,498
+# cluster matches in 80 groups -- the slowest window ever recorded, per window size:
+#   300 -> 169.4m (33.9s/match)   400 -> 197.0m (29.6s/match)   500 -> 231.1m (27.7s/match)
+# The per-match bound falls as the window grows, because a longer window averages its own tail;
+# extrapolating from batches of 10 is what made 56s nearly double what a real worker needs. 31s
+# is the observed worst at 300+ rounded up, and WALLTIME_MARGIN puts a further 15% on top.
+BATCH_BUDGET_SECONDS_PER_MATCH = 31
+
+# Walltime is requested per job from its own largest per-core batch, not from a flat config value.
+# A fixed 960-minute request made every job -- however small -- ask for 16 hours of a shared
+# queue, which LSF cannot backfill into short gaps: the 7-core v4 submission sat PEND behind 2,887
+# jobs while asking 11x the walltime it needed. The request now tracks the work, so a small job
+# looks small to the scheduler and starts sooner.
+WALLTIME_MARGIN = 1.15
+MINIMUM_WALLTIME_MINUTES = 60
+# Ceiling on any single request, escalated retries included. A job asking beyond this is not a
+# budget any more, it is a reservation nobody schedules; submit-time check_walltime() refuses
+# anything over the (lower) configured cap long before this bites.
+MAXIMUM_WALLTIME_MINUTES = 1440
 
 
 def balanced_batches(total: int, target: int, minimum: int) -> list[tuple[int, int]]:
@@ -351,6 +378,19 @@ def worker_worklists(
     return groups
 
 
+def walltime_minutes(largest_per_core: int, scale: float = 1.0) -> int:
+    """Minutes to request for a job whose busiest core holds `largest_per_core` matches.
+
+    Sized on the slowest window ever observed at that size plus WALLTIME_MARGIN. Walltime is a
+    hard kill, so this errs high -- but it errs high against a *measured* worst case rather than
+    against a bound assembled out of worst-case single matches.
+    """
+    needed = largest_per_core * BATCH_BUDGET_SECONDS_PER_MATCH * WALLTIME_MARGIN * scale / 60
+    return min(
+        MAXIMUM_WALLTIME_MINUTES, max(MINIMUM_WALLTIME_MINUTES, math.ceil(needed))
+    )
+
+
 def check_walltime(settings: dict, chunk: int) -> None:
     """Refuse to submit an element whose walltime cannot cover a batch of `chunk` matches.
 
@@ -361,13 +401,13 @@ def check_walltime(settings: dict, chunk: int) -> None:
     it was measured at. It gets *conservative* as chunk grows, because a longer batch concentrates
     around its mean, so erring here costs headroom rather than dead elements.
     """
-    minutes = int(str(settings["walltime"]).split(":")[0])
-    needed = chunk * BATCH_BUDGET_SECONDS_PER_MATCH
-    if needed > minutes * 60:
+    cap = int(str(settings["walltime_cap_minutes"]).split(":")[0])
+    needed = walltime_minutes(chunk, float(settings.get("walltime_scale", 1)))
+    if needed > cap:
         raise HpcError(
-            f"walltime {minutes} min cannot cover a batch of {chunk} matches "
-            f"({chunk} x {BATCH_BUDGET_SECONDS_PER_MATCH}s = {needed / 60:.1f} min). "
-            f"Raise `walltime` in hpc.toml or lower --chunk."
+            f"a batch of {chunk} matches needs {needed} min of walltime, over the "
+            f"{cap} min cap in hpc.toml ({chunk} x {BATCH_BUDGET_SECONDS_PER_MATCH}s x "
+            f"{WALLTIME_MARGIN} margin). Raise `walltime_cap_minutes` or lower --chunk."
         )
 
 
@@ -455,8 +495,12 @@ def submit(
         worklist_path = local / f"work_{stamp}_{number}.txt"
         worklist_path.write_text("\n".join(str(i) for i in group_indices) + "\n")
         rsync(str(worklist_path), f"{host}:{root}/{group_worklist}")
+        job_walltime = walltime_minutes(
+            (len(group_indices) + workers - 1) // workers,
+            float(settings.get("walltime_scale", 1)),
+        )
         script = job_script(
-            tid, settings, name, group_worklist, workers, stop_file
+            tid, settings, name, group_worklist, workers, stop_file, job_walltime
         )
         script_path = local / f"job_{stamp}_{number}.sh"
         script_path.write_text(script)
