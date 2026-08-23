@@ -21,6 +21,7 @@ import debug
 import defence
 import harass
 import lanes
+import relay
 import roster
 import siege
 import store
@@ -44,6 +45,18 @@ CPU_BUDGET_US = 6000
 # Launcher's ring, walking hard and arriving nowhere, while the game was lost
 # 0 titanium to 1700.
 STUCK_LIMIT = 8
+
+# Rounds of failing to move before a Builder takes a step that does not help,
+# purely to break out of whatever is pinning it, and rounds before it gives up
+# on the deposit entirely.
+#
+# Counting failed moves is the only measure that catches this. The distance
+# counter above cannot: it lives on the job, and every role switch clears
+# `brain.job` and the count with it. Traced on auroraveil, Builder 7 sat on
+# (10, 12) from round 328 to the end of the match re-deciding to walk to
+# (10, 4) every round and never taking a step.
+UNSTICK_AFTER = 2
+UNSTICK_ABANDON = 10
 
 # How far from home a Builder will still answer the mend alarm. Beyond this it
 # is worth more finishing its lane than spending twenty rounds walking back.
@@ -175,7 +188,63 @@ def _harass(player, ct) -> bool:
     enemy_core = siege.enemy_core_tiles(brain)
     if not enemy_core:
         return False
+    if _build_relay(player, ct, enemy_core):
+        return True
     return _harass_action(player, ct, enemy_core)
+
+
+def _build_relay(player, ct, enemy_core) -> bool:
+    """Put a Launcher on the corridor if we are standing next to a station.
+
+    Built opportunistically by whoever is passing, rather than by sending
+    somebody: the harassers already walk this line every trip, so the cost is
+    one build action from a Builder that was going that way anyway.
+    """
+    brain = player.brain
+
+    # Once a Builder commits to founding a station it stays committed until
+    # the Launcher exists. Re-deciding every turn on the current balance made
+    # it oscillate: harassment spends titanium at 2 Ti a hit, so the reserve
+    # test flickered and the Builder turned back every second round. Six
+    # detours were started on midgard and none ever arrived.
+    if brain.station is not None and relay.has_launcher_near(brain, brain.station):
+        brain.station = None
+    if brain.station is None:
+        if ct.get_global_resources() < ct.get_launcher_cost() + relay.RESERVE:
+            return False
+        for wanted in relay.station_targets(brain, enemy_core):
+            if relay.has_launcher_near(brain, wanted):
+                continue
+            spot = relay.free_station(brain, wanted)
+            if spot is not None and _manhattan(brain.me, spot) <= relay.DETOUR:
+                brain.station = spot
+                break
+        if brain.station is None:
+            return False
+
+    spot = brain.station
+    if _orthogonal(brain.me, spot):
+        position = Position(*spot)
+        if ct.can_build_launcher(position):
+            if _try(ct.build_launcher, position):
+                debug.intent(brain, ct, "harass", f"LAUNCHER {spot}",
+                             "relay station")
+                brain.station = None
+                return True
+        return True                     # in place; wait for the titanium
+
+    stands = [t for t in lanes.orthogonal(spot)
+              if brain.terrain.inside(t) and t not in brain.terrain.blocked]
+    if not stands:
+        brain.station = None
+        return False
+    stands.sort(key=lambda t: _manhattan(t, brain.me))
+    debug.intent(brain, ct, "harass", f"STATION->{spot}", "founding the relay")
+    for stand in stands:
+        if _walk(brain, ct, stand, exact=True):
+            return True
+    brain.station = None
+    return False
 
 
 def _harass_action(player, ct, enemy_core) -> bool:
@@ -217,7 +286,7 @@ def _harass_action(player, ct, enemy_core) -> bool:
                     else min(enemy_core, key=lambda t: _manhattan(t, brain.me)))
         debug.intent(brain, ct, "harass", f"SCOUT->{approach}",
                      "mirrored guess" if guesses else "no target known")
-        _walk(brain, ct, approach, exact=False)
+        _walk(brain, ct, approach, exact=False, hops=True)
         return True
 
     if _orthogonal(brain.me, spot):
@@ -229,7 +298,7 @@ def _harass_action(player, ct, enemy_core) -> bool:
         debug.intent(brain, ct, "harass", "WAIT", "cannot afford to fire")
         return True
     debug.intent(brain, ct, "harass", f"WALK->{spot}", "closing on the belt")
-    if not _walk(brain, ct, spot, exact=False):
+    if not _walk(brain, ct, spot, exact=False, hops=True):
         brain.harass_target = None
     return True
 
@@ -303,7 +372,7 @@ def _besiege(player, ct) -> bool:
                      f"have {ct.get_global_resources()}")
         return True
     debug.intent(brain, ct, "attack", f"WALK->{spot}", "closing on a firing spot")
-    _walk(brain, ct, spot, exact=True)
+    _walk(brain, ct, spot, exact=True, hops=True)
     return True
 
 
@@ -320,6 +389,13 @@ def _mine(player, ct) -> None:
             brain.stuck = 0
         else:
             brain.stuck += 1
+    if job is not None and brain.frozen >= UNSTICK_ABANDON:
+        debug.intent(brain, ct, "mine", "ABANDON",
+                     f"pinned {brain.frozen} turns, giving up {job['deposit']}")
+        brain.blacklist.add(job["deposit"])
+        job = brain.job = None
+        brain.stuck = 0
+        brain.frozen = 0
     if job is not None and (not _job_valid(brain, job) or brain.stuck >= STUCK_LIMIT):
         if brain.stuck >= STUCK_LIMIT:
             debug.intent(brain, ct, "mine", "ABANDON",
@@ -395,10 +471,15 @@ def _choose_job(brain, ct):
     if brain.index == GUARD_INDEX:
         core = brain.core_tiles()
         if core:
-            free = [d for d in free
+            near = [d for d in free
                     if min(_manhattan(d, c) for c in core) <= GUARD_RADIUS]
-            if not free:
-                return None
+            # The radius is a preference, not a prohibition. Enforcing it
+            # absolutely put 1392 of auroraveil's unit-turns into GUARD-HOLD:
+            # every deposit on that map is about twelve tiles out, so the
+            # guard stood beside the Core for the whole match. Staying home is
+            # worth something; it is not worth the guard's entire output.
+            if near:
+                free = near
     free.sort(key=lambda d: _manhattan(d, me))
     best = None
     for deposit in free[:3]:
@@ -569,21 +650,29 @@ def _manhattan(a, b) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
-def _step_toward(brain, source, target, exact: bool):
-    """First cardinal step of a safe route, or None if there is no route."""
+def _step_toward(brain, source, target, exact: bool, hops: bool = False):
+    """First cardinal step of a safe route, or None if there is no route.
+
+    With `hops`, the route may begin with a Launcher throw, which shows up as
+    a next tile that is not adjacent. The Builder cannot act on that -- only
+    the Launcher can throw -- so it walks toward the pickup ring instead and
+    lets the Launcher do the rest.
+    """
     from utils.pathfinding import first_step
     try:
-        nxt = first_step(brain.terrain, source, target, exact=exact, hops=False)
+        nxt = first_step(brain.terrain, source, target, exact=exact, hops=hops)
     except Exception:
         return None
     if nxt is None or nxt == source:
         return None
     step = (nxt[0] - source[0], nxt[1] - source[1])
+    if abs(step[0]) + abs(step[1]) != 1:
+        return None                     # a throw: stand still and be thrown
     from brain import STEP_DIR
     return STEP_DIR.get(step)
 
 
-def _walk(brain, ct, target, exact: bool) -> bool:
+def _walk(brain, ct, target, exact: bool, hops: bool = False) -> bool:
     """Take a step toward `target`, and actually verify that it happened.
 
     The route comes from our own map, which is optimistic about ground nobody
@@ -597,9 +686,9 @@ def _walk(brain, ct, target, exact: bool) -> bool:
     Any legal cardinal step that closes the distance is better than none, so
     the refusal falls back to those before giving up.
     """
-    step = _step_toward(brain, brain.me, target, exact=exact)
+    step = _step_toward(brain, brain.me, target, exact=exact, hops=hops)
     if step is not None and ct.can_move(step):
-        return _try(ct.move, step)
+        return _moved(brain, _try(ct.move, step))
     me = brain.me
     best = None
     for direction in CARDINALS:
@@ -610,8 +699,22 @@ def _walk(brain, ct, target, exact: bool) -> bool:
         if best is None or gap < best[0]:
             best = (gap, direction)
     if best is not None and best[0] < _manhattan(me, target):
-        return _try(ct.move, best[1])
+        return _moved(brain, _try(ct.move, best[1]))
+    # Nothing helps. If this has gone on, take the least bad legal step
+    # anyway: a Builder pinned by its own team only comes free if somebody
+    # gives ground, and standing still is worth nothing either way.
+    brain.frozen += 1
+    if best is not None and brain.frozen >= UNSTICK_AFTER:
+        debug.intent(brain, ct, "move", "UNSTICK",
+                     f"pinned {brain.frozen} turns short of {target}")
+        return _moved(brain, _try(ct.move, best[1]))
     return False
+
+
+def _moved(brain, ok: bool) -> bool:
+    """Record whether a step actually happened. See UNSTICK_AFTER."""
+    brain.frozen = 0 if ok else brain.frozen + 1
+    return ok
 
 
 def _try(action, *args) -> bool:

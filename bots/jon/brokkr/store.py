@@ -54,13 +54,33 @@ def clear_alarm(ct) -> None:
     _write(ct, SLOT_ALARM, 0)
 
 
-def publish_symmetry(ct, kind: int) -> None:
-    _write(ct, SLOT_SYMMETRY, kind + 1)
+# The symmetry slot carries the map's symmetry *and* our Core's anchor, packed
+# together. A turret is born knowing nothing and sees only a few tiles, so a
+# Launcher seven tiles from home cannot see our Core, cannot mirror it, and so
+# cannot work out which way the enemy is -- it has no way to orient at all
+# without being told. One slot answers both questions for every unit.
+_SYM_RADIX = 4
+
+
+def publish_symmetry(ct, kind: int, anchor=None) -> None:
+    packed = kind + 1
+    if anchor is not None:
+        packed += _SYM_RADIX * (anchor[0] * 32 + anchor[1] + 1)
+    _write(ct, SLOT_SYMMETRY, packed)
 
 
 def symmetry(ct):
-    value = _read(ct, SLOT_SYMMETRY)
+    value = _read(ct, SLOT_SYMMETRY) % _SYM_RADIX
     return value - 1 if value else None
+
+
+def home_anchor(ct):
+    """Our Core's 2x2 anchor, as published. None until somebody says."""
+    value = _read(ct, SLOT_SYMMETRY) // _SYM_RADIX
+    if not value:
+        return None
+    value -= 1
+    return (value // 32, value % 32)
 
 
 # ----------------------------------------------------------------------
