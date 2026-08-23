@@ -32,6 +32,18 @@ CPU_BUDGET_US = 6000
 
 
 
+# Turns without getting any closer to the job before a Builder gives it up.
+#
+# Progress has to be measured as distance to the goal, and neither of the two
+# obvious alternatives works. Counting failed moves misses everything: an
+# enemy Launcher picks a Builder up and throws it back, so the move succeeds
+# every round. Counting repeated tiles misses it too, because the Builder is
+# thrown to a slightly different tile each time and oscillates between two.
+# On helheim one Builder spent 120 of a 284-round game inside an enemy
+# Launcher's ring, walking hard and arriving nowhere, while the game was lost
+# 0 titanium to 1700.
+STUCK_LIMIT = 8
+
 # How far from home a Builder will still answer the mend alarm. Beyond this it
 # is worth more finishing its lane than spending twenty rounds walking back.
 MEND_RECALL_DIST = 14
@@ -185,8 +197,20 @@ def _besiege(player, ct) -> bool:
 def _mine(player, ct) -> None:
     brain = player.brain
     job = brain.job
-    if job is not None and not _job_valid(brain, job):
+    if job is not None:
+        gap = _manhattan(brain.me, job["deposit"])
+        if gap < job.get("closest", 10 ** 6):
+            job["closest"] = gap
+            brain.stuck = 0
+        else:
+            brain.stuck += 1
+    if job is not None and (not _job_valid(brain, job) or brain.stuck >= STUCK_LIMIT):
+        if brain.stuck >= STUCK_LIMIT:
+            debug.intent(brain, ct, "mine", "ABANDON",
+                         f"no closer to {job['deposit']} in {brain.stuck} turns")
+            brain.blacklist.add(job["deposit"])
         job = brain.job = None
+        brain.stuck = 0
     if job is None:
         if ct.get_cpu_time_elapsed() > CPU_BUDGET_US:
             return
@@ -220,7 +244,7 @@ def _choose_job(brain, ct):
     free = brain.free_ore()
     if not free:
         return None
-    taken = store.claimed(ct, brain.index)
+    taken = store.claimed(ct, brain.index) | brain.blacklist
     free = [d for d in free if d not in taken]
     if not free:
         return None
@@ -268,12 +292,10 @@ def _advance(brain, ct, job) -> None:
 
     forward = _after(route, need, deposit)
     if me == need:
-        step = _step_toward(brain, me, forward, exact=True)
+        step = None
         debug.intent(brain, ct, "mine", f"STEPOFF->{forward}",
-                     f"lane {deposit} needs {need}, standing on it"
-                     + ("" if step else "; NO ROUTE"))
-        if step is not None:
-            _try(ct.move, step)
+                     f"lane {deposit} needs {need}, standing on it")
+        _walk(brain, ct, forward, exact=True)
         return
     if _orthogonal(me, need):
         target = Position(*need)
@@ -289,12 +311,9 @@ def _advance(brain, ct, job) -> None:
                      f"conveyor costs {ct.get_conveyor_cost()}, "
                      f"have {ct.get_global_resources()}")
         return
-    step = _step_toward(brain, me, forward, exact=True)
     debug.intent(brain, ct, "mine", f"WALK->{forward}",
-                 f"lane {deposit} needs {need}"
-                 + ("" if step else "; NO ROUTE"))
-    if step is not None:
-        _try(ct.move, step)
+                 f"lane {deposit} needs {need}")
+    _walk(brain, ct, forward, exact=True)
 
 
 def _finish(brain, ct, deposit, route) -> None:
@@ -415,6 +434,37 @@ def _step_toward(brain, source, target, exact: bool):
     step = (nxt[0] - source[0], nxt[1] - source[1])
     from brain import STEP_DIR
     return STEP_DIR.get(step)
+
+
+def _walk(brain, ct, target, exact: bool) -> bool:
+    """Take a step toward `target`, and actually verify that it happened.
+
+    The route comes from our own map, which is optimistic about ground nobody
+    has looked at and stale about ground somebody has left. So the step it
+    returns is a proposal, and `ct.move` refusing it has to be handled rather
+    than swallowed. It was not: on helheim a Builder thrown across the map by
+    an enemy Launcher recomputed the same illegal step for 120 of the game's
+    284 rounds, standing on one tile, while the log cheerfully recorded that
+    it was walking home.
+
+    Any legal cardinal step that closes the distance is better than none, so
+    the refusal falls back to those before giving up.
+    """
+    step = _step_toward(brain, brain.me, target, exact=exact)
+    if step is not None and ct.can_move(step):
+        return _try(ct.move, step)
+    me = brain.me
+    best = None
+    for direction in CARDINALS:
+        spot = (me[0] + DELTA[direction][0], me[1] + DELTA[direction][1])
+        if not ct.can_move(direction):
+            continue
+        gap = _manhattan(spot, target)
+        if best is None or gap < best[0]:
+            best = (gap, direction)
+    if best is not None and best[0] < _manhattan(me, target):
+        return _try(ct.move, best[1])
+    return False
 
 
 def _try(action, *args) -> bool:
