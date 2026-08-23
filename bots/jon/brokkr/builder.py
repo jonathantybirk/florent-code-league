@@ -106,9 +106,9 @@ def _mend(player, ct) -> bool:
         if (target.x, target.y) in brain.core_tiles():
             if ct.can_heal(target):
                 _try(ct.heal, target)
-                debug.log(f"r{brain.round} b{ct.get_id()} HEAL at{me}")
+                debug.intent(brain, ct, "mend", "HEAL")
                 return True
-            debug.log(f"r{brain.round} b{ct.get_id()} HEAL-BROKE at{me}")
+            debug.intent(brain, ct, "mend", "HOLD", "cannot afford to heal")
             return True          # adjacent but cannot afford it: hold position
     # Exact: a heal spot is a specific tile, and the eight tiles around one
     # include the three that cannot reach the Core at all.
@@ -118,7 +118,8 @@ def _mend(player, ct) -> bool:
             step = _step_toward(brain, me, spot, exact=True)
             if step is not None:
                 break
-    debug.log(f"r{brain.round} b{ct.get_id()} WALKHOME at{me} home={home} step={step}")
+    debug.intent(brain, ct, "mend", f"WALK->{home}",
+                 "no route home" if step is None else "coming home")
     if step is not None:
         _try(ct.move, step)
     return True
@@ -195,12 +196,12 @@ def _mine(player, ct) -> None:
             debug.log(f"r{brain.round} b{ct.get_id()} GUARD-HOLD at{brain.me}")
             _hold_home(brain, ct)
             return
-        debug.log(f"r{brain.round} b{ct.get_id()} at{brain.me} NOJOB ore={len(brain.free_ore())} core={sorted(brain.core_tiles())}")
+        debug.intent(brain, ct, "mine", "EXPLORE",
+                     f"no job; {len(brain.free_ore())} ore known")
         _explore(brain, ct)
         return
 
     store.claim(ct, brain.index, job["deposit"])
-    debug.log(f"r{brain.round} b{ct.get_id()} at{brain.me} dep{job['deposit']} route{job['route']}")
     _advance(brain, ct, job)
 
 
@@ -268,6 +269,9 @@ def _advance(brain, ct, job) -> None:
     forward = _after(route, need, deposit)
     if me == need:
         step = _step_toward(brain, me, forward, exact=True)
+        debug.intent(brain, ct, "mine", f"STEPOFF->{forward}",
+                     f"lane {deposit} needs {need}, standing on it"
+                     + ("" if step else "; NO ROUTE"))
         if step is not None:
             _try(ct.move, step)
         return
@@ -276,12 +280,19 @@ def _advance(brain, ct, job) -> None:
         facing = facings[need]
         if facing is not None and ct.can_build_conveyor(target, facing):
             if _try(ct.build_conveyor, target, facing):
-                debug.log(f"r{brain.round} b{ct.get_id()} CONV {need}")
+                debug.intent(brain, ct, "mine", f"CONV {need}",
+                             f"lane {deposit}, {len(route)} tiles")
             return
         # Cannot afford it yet, or something arrived on the tile: wait rather
         # than walk away, so the lane does not get abandoned half-built.
+        debug.intent(brain, ct, "mine", f"WAIT for {need}",
+                     f"conveyor costs {ct.get_conveyor_cost()}, "
+                     f"have {ct.get_global_resources()}")
         return
     step = _step_toward(brain, me, forward, exact=True)
+    debug.intent(brain, ct, "mine", f"WALK->{forward}",
+                 f"lane {deposit} needs {need}"
+                 + ("" if step else "; NO ROUTE"))
     if step is not None:
         _try(ct.move, step)
 
@@ -300,7 +311,11 @@ def _finish(brain, ct, deposit, route) -> None:
         target = Position(*deposit)
         if ct.can_build_harvester(target):
             if _try(ct.build_harvester, target):
-                debug.log(f"r{brain.round} b{ct.get_id()} HARV {deposit}")
+                debug.intent(brain, ct, "mine", f"HARV {deposit}", "lane complete")
+            return
+        debug.intent(brain, ct, "mine", f"WAIT harvester {deposit}",
+                     f"costs {ct.get_harvester_cost()}, "
+                     f"have {ct.get_global_resources()}")
         return
     step = _step_toward(brain, me, deposit, exact=False)
     if step is not None:

@@ -106,6 +106,26 @@ def heal_spots(brain):
     return spots
 
 
+def diggable(brain, turrets):
+    """Enemy turrets orthogonally adjacent to us, worst first.
+
+    Attack, like heal and build, reaches orthogonally only.
+    """
+    me = brain.me
+    out = [t for t in turrets
+           if abs(t[0] - me[0]) + abs(t[1] - me[1]) == 1]
+    out.sort(key=lambda t: -_dps_of(brain, t))
+    return out
+
+
+def _dps_of(brain, tile) -> float:
+    name = _STATES[brain.imap.state_at(*tile) or 0]
+    for prefix, rate in TURRET_DPS.items():
+        if name.startswith(prefix):
+            return rate
+    return 0.0
+
+
 def menders_wanted(dps: float, enemy_builders: int) -> int:
     """How many Builders should come home.
 
