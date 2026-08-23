@@ -272,7 +272,20 @@ const DATA = await (async () => {
 const STATES = DATA.states;
 const R = DATA.rounds, W = DATA.w, H = DATA.h;
 const FOV_R2 = {core:36, builder_bot:20, gunner:13, sentinel:32, launcher:26};
-const CTRL = ["ASSIGN","SYMMETRY","DIRECTIVE"];
+const CTRL = ["ASSIGN","SYMMETRY","DIRECTIVE","GRANT","STATUS"];
+const GRANT_KINDS = ["gunner","sentinel","launcher"], DIRS8 = ["N","NE","E","SE","S","SW","W","NW"];
+const STATUS_FIELDS = ["CORE_FLAGS","ETA","ENEMY_CORE_HP","ENEMY_MENDERS"];
+const TASKS = {0:"FIX_HARVESTER",16:"BUILD_HERE",17:"SCOUT_HERE",18:"DEFEND_HERE"};
+function ctrlText(k, a) {
+  if (k===0) return `<b>ASSIGN</b> slot ${a[0]}${a[1]>1 ? ` (every ${a[1]} rounds, phase ${a[2]})` : ''}`;
+  if (k===1) return `<b>SYMMETRY</b> ${SYM[a[0]]}`;
+  if (k===2) { const t = a[2]; const name = TASKS[t] || (t>=1 && t<=15 ? `FIX_CONVEYOR → slot ${t}` : `task ${t}`); return `<b>DIRECTIVE</b> ${name} at (${a[0]},${a[1]})`; }
+  if (k===3) return `<b>GRANT</b> slot ${a[2]} to the ${GRANT_KINDS[a[3]]||'turret'} at (${a[0]},${a[1]})${a[4] ? ' facing '+DIRS8[a[4]-1] : ''}`;
+  if (k===4) { const f = STATUS_FIELDS[a[0]] || `field ${a[0]}`, v = a[1];
+    if (a[0]===0) return `<b>STATUS</b> CORE_FLAGS: go=${v&1} econ_ok=${(v>>1)&1} threat=${(v>>2)&1} ring_extra=${v>>3}`;
+    return `<b>STATUS</b> ${f} = ${v}`; }
+  return `<b>ctrl${k}</b>(${a.join(', ')})`;
+}
 const MOVES = ["", "N", "E", "S", "W"];
 const SYM = ["left-right mirror", "top-bottom mirror", "180° rotation"];
 const SRC = {s:"seen with own eyes", g:"heard via the store", i:"inferred from symmetry"};
@@ -482,7 +495,7 @@ function renderSlots(t) {
     const owner = t.owners[s];
     const ownerTxt = owner ? `${owner[0]}${owner[1] ? ' @('+owner[1]+')' : ''}` : '<span class="decoded">free</span>';
     const parts = [];
-    if (d.events && d.events.length) for (const [k,a] of d.events) parts.push(`<b>${CTRL[k]||'ctrl'+k}</b>(${k===1 ? SYM[a[0]] : a.join(', ')})`);
+    if (d.events && d.events.length) for (const [k,a] of d.events) parts.push(ctrlText(k, a));
     if (d.position) parts.push(`<b>pos</b> (${d.position})`);
     if (d.move) parts.push(`move <b>${MOVES[d.move]}</b>`);
     if (d.turn) parts.push(`turn <b>${d.turn===1?'CW':'CCW'}</b>`);
