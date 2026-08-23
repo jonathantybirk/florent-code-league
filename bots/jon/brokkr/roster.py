@@ -34,7 +34,20 @@ def econ_target(width: int, height: int) -> int:
 # Builders sent to plant the Sentinel line at the enemy Core. Two is enough:
 # the walk is most of the cost and a third only adds cost scaling, since the
 # line's damage is limited by ammunition rather than by turret count.
-ATTACKERS = 3
+ATTACKERS = 2
+
+
+# One Builder cuts belt in the enemy half. One, not more: the first cut denies
+# a whole lane, and a second Builder standing in their base is a second
+# Builder not laying ours -- the value is in the lane severed, not in the
+# number of hands severing it.
+HARASSER_INDEX = 1
+
+
+def is_harasser(index: int, target: int, allowed: bool) -> bool:
+    if not allowed or index is None or target <= 3:
+        return False               # too small a roster to spare anybody
+    return index == HARASSER_INDEX
 
 
 def is_attacker(index: int, target: int, siege_open: bool) -> bool:

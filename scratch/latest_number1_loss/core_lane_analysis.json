@@ -1,0 +1,2086 @@
+[
+  {
+    "file": "4dd3e84a-171d-44ed-b16e-d096fa705d49_game_1.replay26",
+    "width": 16,
+    "height": 16,
+    "teams": [
+      {
+        "core": [
+          7,
+          1
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 3,
+        "peak_physical_lane_turn": 4,
+        "peak_physical_lanes": [
+          {
+            "intake": [
+              6,
+              2
+            ],
+            "side": "west"
+          },
+          {
+            "intake": [
+              7,
+              3
+            ],
+            "side": "south"
+          },
+          {
+            "intake": [
+              8,
+              3
+            ],
+            "side": "south"
+          }
+        ],
+        "lane_count": 2,
+        "sides_used": [
+          "south",
+          "west"
+        ],
+        "lanes": [
+          {
+            "intake": [
+              6,
+              2
+            ],
+            "side": "west",
+            "harvesters": [
+              [
+                4,
+                2
+              ]
+            ],
+            "harvester_count": 1
+          },
+          {
+            "intake": [
+              7,
+              3
+            ],
+            "side": "south",
+            "harvesters": [
+              [
+                7,
+                5
+              ],
+              [
+                7,
+                6
+              ]
+            ],
+            "harvester_count": 2
+          }
+        ],
+        "placements": [
+          {
+            "turn": 2,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              2
+            ],
+            "builder_candidates": [
+              5,
+              6
+            ]
+          },
+          {
+            "turn": 3,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              7,
+              3
+            ],
+            "builder_candidates": [
+              6,
+              8
+            ]
+          },
+          {
+            "turn": 4,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              8,
+              3
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 5,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              4,
+              2
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 7,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              5,
+              2
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 10,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              7,
+              5
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 12,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              7,
+              4
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 21,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              7,
+              6
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 25,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              6
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 27,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              5
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 29,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              4
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 65,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              8,
+              6
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 67,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              8,
+              7
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 69,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              7,
+              7
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 71,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              7
+            ],
+            "builder_candidates": [
+              6
+            ]
+          }
+        ],
+        "exact_builder_attributions": 9,
+        "ambiguous_builder_attributions": 2,
+        "builder_lane_objects": {
+          "5": {
+            "(6, 2)": 1,
+            "(7, 3)": 1
+          },
+          "6": {
+            "(7, 3)": 3
+          }
+        }
+      },
+      {
+        "core": [
+          7,
+          13
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 0,
+        "peak_physical_lane_turn": 0,
+        "peak_physical_lanes": [],
+        "lane_count": 0,
+        "sides_used": [],
+        "lanes": [],
+        "placements": [],
+        "exact_builder_attributions": 0,
+        "ambiguous_builder_attributions": 0,
+        "builder_lane_objects": {}
+      }
+    ]
+  },
+  {
+    "file": "4dd3e84a-171d-44ed-b16e-d096fa705d49_game_2.replay26",
+    "width": 26,
+    "height": 12,
+    "teams": [
+      {
+        "core": [
+          2,
+          5
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 4,
+        "peak_physical_lane_turn": 25,
+        "peak_physical_lanes": [
+          {
+            "intake": [
+              1,
+              5
+            ],
+            "side": "west"
+          },
+          {
+            "intake": [
+              2,
+              4
+            ],
+            "side": "north"
+          },
+          {
+            "intake": [
+              2,
+              7
+            ],
+            "side": "south"
+          },
+          {
+            "intake": [
+              3,
+              7
+            ],
+            "side": "south"
+          }
+        ],
+        "lane_count": 2,
+        "sides_used": [
+          "north",
+          "south"
+        ],
+        "lanes": [
+          {
+            "intake": [
+              2,
+              4
+            ],
+            "side": "north",
+            "harvesters": [
+              [
+                1,
+                1
+              ],
+              [
+                10,
+                1
+              ],
+              [
+                11,
+                1
+              ]
+            ],
+            "harvester_count": 3
+          },
+          {
+            "intake": [
+              2,
+              7
+            ],
+            "side": "south",
+            "harvesters": [
+              [
+                1,
+                10
+              ]
+            ],
+            "harvester_count": 1
+          }
+        ],
+        "placements": [
+          {
+            "turn": 2,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              4
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 3,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              7
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 4,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              3,
+              7
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 5,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              1,
+              1
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 6,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              1,
+              10
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 7,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              1
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 8,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              9
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 9,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              2
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 10,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              8
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 11,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              3
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 12,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              7
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 24,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              10,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 25,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              5
+            ],
+            "builder_candidates": [
+              28
+            ]
+          },
+          {
+            "turn": 26,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              9,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 28,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              8,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 30,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              7,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 32,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              1
+            ],
+            "builder_candidates": [
+              6,
+              8
+            ]
+          },
+          {
+            "turn": 34,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              12,
+              7
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 34,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              5,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 36,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              12,
+              8
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 36,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              4,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 38,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              12,
+              9
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 38,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              3,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 40,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              11,
+              9
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 40,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              11,
+              1
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 42,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              10,
+              9
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 42,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              11,
+              0
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 44,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              9,
+              9
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 44,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              10,
+              0
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 46,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              9,
+              10
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 46,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              9,
+              0
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 48,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              8,
+              10
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 50,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              7,
+              10
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 52,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              10
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 54,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              5,
+              10
+            ],
+            "builder_candidates": [
+              5,
+              28
+            ]
+          },
+          {
+            "turn": 56,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              4,
+              10
+            ],
+            "builder_candidates": [
+              5,
+              28
+            ]
+          },
+          {
+            "turn": 58,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              3,
+              10
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 60,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              3,
+              9
+            ],
+            "builder_candidates": [
+              5
+            ]
+          }
+        ],
+        "exact_builder_attributions": 30,
+        "ambiguous_builder_attributions": 3,
+        "builder_lane_objects": {
+          "5": {
+            "(2, 4)": 4
+          },
+          "6": {
+            "(2, 7)": 4,
+            "(2, 4)": 3
+          },
+          "8": {
+            "(2, 4)": 6
+          }
+        }
+      },
+      {
+        "core": [
+          22,
+          5
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 0,
+        "peak_physical_lane_turn": 0,
+        "peak_physical_lanes": [],
+        "lane_count": 0,
+        "sides_used": [],
+        "lanes": [],
+        "placements": [],
+        "exact_builder_attributions": 0,
+        "ambiguous_builder_attributions": 0,
+        "builder_lane_objects": {}
+      }
+    ]
+  },
+  {
+    "file": "4dd3e84a-171d-44ed-b16e-d096fa705d49_game_3.replay26",
+    "width": 22,
+    "height": 22,
+    "teams": [
+      {
+        "core": [
+          9,
+          2
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 4,
+        "peak_physical_lane_turn": 9,
+        "peak_physical_lanes": [
+          {
+            "intake": [
+              8,
+              3
+            ],
+            "side": "west"
+          },
+          {
+            "intake": [
+              9,
+              4
+            ],
+            "side": "south"
+          },
+          {
+            "intake": [
+              10,
+              1
+            ],
+            "side": "north"
+          },
+          {
+            "intake": [
+              11,
+              2
+            ],
+            "side": "east"
+          }
+        ],
+        "lane_count": 2,
+        "sides_used": [
+          "east",
+          "west"
+        ],
+        "lanes": [
+          {
+            "intake": [
+              8,
+              3
+            ],
+            "side": "west",
+            "harvesters": [
+              [
+                2,
+                1
+              ],
+              [
+                4,
+                4
+              ]
+            ],
+            "harvester_count": 2
+          },
+          {
+            "intake": [
+              11,
+              2
+            ],
+            "side": "east",
+            "harvesters": [
+              [
+                17,
+                4
+              ],
+              [
+                19,
+                1
+              ]
+            ],
+            "harvester_count": 2
+          }
+        ],
+        "placements": [
+          {
+            "turn": 2,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              8,
+              3
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 3,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              11,
+              2
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 4,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              10,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 8,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              4,
+              4
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 9,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              9,
+              4
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 10,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              4,
+              3
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 11,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              2,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 12,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              5,
+              3
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 12,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              17,
+              4
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 13,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              3,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 14,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              3
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 14,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              17,
+              3
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 15,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              4,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 16,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              7,
+              3
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 16,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              17,
+              2
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 17,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              4,
+              2
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 18,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              16,
+              2
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 20,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              15,
+              2
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 22,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              14,
+              2
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 24,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              13,
+              2
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 26,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              12,
+              2
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 31,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              11,
+              9
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 33,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              11,
+              10
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 35,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              19,
+              1
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 35,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              10,
+              10
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 37,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              19,
+              2
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 37,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              9,
+              10
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 39,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              18,
+              2
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 40,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              8,
+              10
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 42,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              7,
+              10
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 44,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              10
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 46,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              9
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 48,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              8
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 50,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              7
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 52,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              6
+            ],
+            "builder_candidates": [
+              11
+            ]
+          },
+          {
+            "turn": 54,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              7,
+              6
+            ],
+            "builder_candidates": [
+              11
+            ]
+          }
+        ],
+        "exact_builder_attributions": 31,
+        "ambiguous_builder_attributions": 0,
+        "builder_lane_objects": {
+          "5": {
+            "(8, 3)": 5
+          },
+          "6": {
+            "(11, 2)": 10
+          },
+          "8": {
+            "(8, 3)": 3
+          }
+        }
+      },
+      {
+        "core": [
+          9,
+          18
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 0,
+        "peak_physical_lane_turn": 0,
+        "peak_physical_lanes": [],
+        "lane_count": 0,
+        "sides_used": [],
+        "lanes": [],
+        "placements": [],
+        "exact_builder_attributions": 0,
+        "ambiguous_builder_attributions": 0,
+        "builder_lane_objects": {}
+      }
+    ]
+  },
+  {
+    "file": "4dd3e84a-171d-44ed-b16e-d096fa705d49_game_4.replay26",
+    "width": 24,
+    "height": 24,
+    "teams": [
+      {
+        "core": [
+          1,
+          11
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 4,
+        "peak_physical_lane_turn": 33,
+        "peak_physical_lanes": [
+          {
+            "intake": [
+              1,
+              10
+            ],
+            "side": "north"
+          },
+          {
+            "intake": [
+              1,
+              13
+            ],
+            "side": "south"
+          },
+          {
+            "intake": [
+              2,
+              10
+            ],
+            "side": "north"
+          },
+          {
+            "intake": [
+              3,
+              12
+            ],
+            "side": "east"
+          }
+        ],
+        "lane_count": 3,
+        "sides_used": [
+          "east",
+          "north",
+          "south"
+        ],
+        "lanes": [
+          {
+            "intake": [
+              1,
+              10
+            ],
+            "side": "north",
+            "harvesters": [
+              [
+                0,
+                8
+              ]
+            ],
+            "harvester_count": 1
+          },
+          {
+            "intake": [
+              1,
+              13
+            ],
+            "side": "south",
+            "harvesters": [
+              [
+                0,
+                16
+              ]
+            ],
+            "harvester_count": 1
+          },
+          {
+            "intake": [
+              3,
+              12
+            ],
+            "side": "east",
+            "harvesters": [
+              [
+                10,
+                11
+              ],
+              [
+                10,
+                12
+              ]
+            ],
+            "harvester_count": 2
+          }
+        ],
+        "placements": [
+          {
+            "turn": 2,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              10
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 3,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              13
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 4,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              3,
+              12
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 6,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              0,
+              8
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 8,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              8
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 8,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              0,
+              16
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 10,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              9
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 10,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              16
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 12,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              15
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 14,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              14
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 15,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              10,
+              11
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 17,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              9,
+              11
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 19,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              9,
+              12
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 21,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              8,
+              12
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 23,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              7,
+              12
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 25,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              6,
+              12
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 27,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              5,
+              12
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 28,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              4,
+              12
+            ],
+            "builder_candidates": [
+              6,
+              8
+            ]
+          },
+          {
+            "turn": 33,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              10
+            ],
+            "builder_candidates": [
+              42
+            ]
+          },
+          {
+            "turn": 41,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              10,
+              12
+            ],
+            "builder_candidates": [
+              5
+            ]
+          }
+        ],
+        "exact_builder_attributions": 15,
+        "ambiguous_builder_attributions": 1,
+        "builder_lane_objects": {
+          "5": {
+            "(1, 10)": 3
+          },
+          "6": {
+            "(1, 13)": 4
+          },
+          "8": {
+            "(3, 12)": 7
+          }
+        }
+      },
+      {
+        "core": [
+          21,
+          11
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 0,
+        "peak_physical_lane_turn": 0,
+        "peak_physical_lanes": [],
+        "lane_count": 0,
+        "sides_used": [],
+        "lanes": [],
+        "placements": [],
+        "exact_builder_attributions": 0,
+        "ambiguous_builder_attributions": 0,
+        "builder_lane_objects": {}
+      }
+    ]
+  },
+  {
+    "file": "4dd3e84a-171d-44ed-b16e-d096fa705d49_game_5.replay26",
+    "width": 20,
+    "height": 20,
+    "teams": [
+      {
+        "core": [
+          2,
+          1
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 4,
+        "peak_physical_lane_turn": 33,
+        "peak_physical_lanes": [
+          {
+            "intake": [
+              1,
+              2
+            ],
+            "side": "west"
+          },
+          {
+            "intake": [
+              2,
+              3
+            ],
+            "side": "south"
+          },
+          {
+            "intake": [
+              3,
+              3
+            ],
+            "side": "south"
+          },
+          {
+            "intake": [
+              4,
+              1
+            ],
+            "side": "east"
+          }
+        ],
+        "lane_count": 1,
+        "sides_used": [
+          "south"
+        ],
+        "lanes": [
+          {
+            "intake": [
+              2,
+              3
+            ],
+            "side": "south",
+            "harvesters": [
+              [
+                1,
+                5
+              ],
+              [
+                2,
+                7
+              ],
+              [
+                2,
+                8
+              ]
+            ],
+            "harvester_count": 3
+          }
+        ],
+        "placements": [
+          {
+            "turn": 2,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              3
+            ],
+            "builder_candidates": [
+              5,
+              6
+            ]
+          },
+          {
+            "turn": 3,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              3,
+              3
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 4,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              1,
+              5
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 4,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              4,
+              1
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 6,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              4
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 7,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              2,
+              7
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 8,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              3
+            ],
+            "builder_candidates": [
+              5
+            ]
+          },
+          {
+            "turn": 9,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              6
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 11,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              5
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 13,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              2,
+              4
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 18,
+            "team": 0,
+            "kind": "harvester",
+            "position": [
+              2,
+              8
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 22,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              7
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 22,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              8
+            ],
+            "builder_candidates": [
+              8
+            ]
+          },
+          {
+            "turn": 24,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              6
+            ],
+            "builder_candidates": [
+              6
+            ]
+          },
+          {
+            "turn": 33,
+            "team": 0,
+            "kind": "conveyor",
+            "position": [
+              1,
+              2
+            ],
+            "builder_candidates": [
+              39
+            ]
+          }
+        ],
+        "exact_builder_attributions": 11,
+        "ambiguous_builder_attributions": 1,
+        "builder_lane_objects": {
+          "5": {
+            "(2, 3)": 2
+          },
+          "6": {
+            "(2, 3)": 5
+          },
+          "8": {
+            "(2, 3)": 1
+          }
+        }
+      },
+      {
+        "core": [
+          16,
+          17
+        ],
+        "blocked_sides": [],
+        "peak_physical_lane_count": 0,
+        "peak_physical_lane_turn": 0,
+        "peak_physical_lanes": [],
+        "lane_count": 0,
+        "sides_used": [],
+        "lanes": [],
+        "placements": [],
+        "exact_builder_attributions": 0,
+        "ambiguous_builder_attributions": 0,
+        "builder_lane_objects": {}
+      }
+    ]
+  }
+]
