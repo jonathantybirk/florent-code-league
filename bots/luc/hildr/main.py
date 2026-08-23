@@ -69,6 +69,7 @@ SNIPE_BANK = 20            # ammunition banked before the ring snipes: two shots
 GO_LOW_HP = 120            # always finish a Core this low if we out-damage the menders
 TIE_FLOOR = 5              # titanium never converted: the dead-heat tiebreak
 STALL_ROUNDS = 15          # HOLD this long with a quiet home means the game is now an income race
+RING_EXTRA_MAX = 2         # Sentinels added past four when the stall bank outgrows the burst
 MINERS_STALL = 2           # home Builders hired for the long game
 ATTACKER_DIG_REACH = 0     # steps the attack Builder walks to dig out a turret shooting the ring
 
@@ -89,12 +90,17 @@ SLOT_ECON_OK = 14          # round + 1 while the Core is willing to pay for mini
 SLOT_ETA = 15              # attack Builder: steps to its anchor + 1 (0 = unknown / done)
 
 
-def _pack(pos):
-    return (pos.x + 1) * 64 + pos.y
+def _pack(pos, extra=0):
+    return (pos.x + 1) * 64 + pos.y + extra * 65536
 
 
 def _unpack(word):
+    word %= 65536
     return None if word <= 0 else (word // 64 - 1, word % 64)
+
+
+def _extra(word):
+    return word // 65536
 
 
 CARDINALS = (
@@ -202,8 +208,9 @@ class Player:
         self.heals = []
         self.shots = []
         self.go_held = False
-        self.hold_since = None
+        self.hold_total = 0
         self.spawn_total = 0
+        self.ring_extra = 0
         self.plan_round = 0
         self.ring_seen = 0
         # builder
@@ -230,6 +237,7 @@ class Player:
         self.path = []
         self._dist = {}
         self._came = {}
+        self.ring_target = SENTINEL_TARGET
         # sentinel
         self.slot = None
         self.core_id = None
@@ -274,7 +282,7 @@ class Player:
             except Exception:
                 self.enemy = None
         if self.enemy is not None:
-            self._write(ct, SLOT_ENEMY, _pack(self.enemy))
+            self._write(ct, SLOT_ENEMY, _pack(self.enemy, self.ring_extra))
 
         built = self._read(ct, SLOT_BUILT)
         alive = self._sentinels_alive(ct)
@@ -389,12 +397,16 @@ class Player:
         # ---- the stall: the rush is banked behind their menders, so the game is an income race.
         # The burst that ends these games costs ~500 Ti of ammunition; passive income reaches it
         # fifty rounds after round 1000.  Two miners and three Harvesters reach it by ~150.
-        stuck = (built >= SENTINEL_TARGET and self.hold_since is not None
-                 and self.round - self.hold_since > STALL_ROUNDS
-                 and self.round - self.last_hit > 20)
+        stuck = (built >= SENTINEL_TARGET and self.hold_total > STALL_ROUNDS
+                 and self.round - self.last_hit > 12)
         if stuck and home_builders < MINERS_STALL and self._read(ct, SLOT_HARVEST) < HARVESTERS_MAX:
             want_menders = max(want_menders, home_builders + 1)
             need_menders = max(0, want_menders - home_builders)
+        # A fifth Sentinel out of surplus: +9 dps against their fixed mending shortens the burst
+        # and cuts its cost.  Only from money the burst does not need.
+        if (stuck and self.ring_extra < RING_EXTRA_MAX
+                and bank > kill_ammo + self._sentinel_cost(ct) + 120):
+            self.ring_extra += 1
 
         # ---- the attack Builder, then menders, then ammunition
         spawned_now = self._keep_attacker(ct, built)
@@ -427,13 +439,10 @@ class Player:
             self.go_held = True
             if go == 0 and ammo >= SNIPE_BANK:
                 go = 2                             # a volley at a mender, then bank again
-            if go != 1 and self.hold_since is None:
-                self.hold_since = self.round
-            elif go == 1:
-                self.hold_since = None
+            if go != 1:
+                self.hold_total += 1
         else:
             self.go_held = False
-            self.hold_since = None
         self.go = go
         self._write(ct, SLOT_GO, go)
         # ---- mining
@@ -452,7 +461,7 @@ class Player:
         # ---- ammunition, lazily
         self._feed_ammo(ct, alive, go, 0 if finishing else ring_reserve, need_menders,
                         threatened, mend_first, mend_reserve + (ECON_RESERVE if econ_first else 0),
-                        finishing)
+                        finishing, stuck)
 
 
     def _builder_cost(self, ct):
@@ -460,6 +469,12 @@ class Player:
             return ct.get_builder_bot_cost()
         except Exception:
             return 60
+
+    def _sentinel_cost(self, ct):
+        try:
+            return ct.get_sentinel_cost()
+        except Exception:
+            return 70
 
     def _ring_reserve(self, ct, remaining):
         if remaining <= 0:
@@ -568,7 +583,7 @@ class Player:
         return t_us, t_them
 
     def _keep_attacker(self, ct, built):
-        if built >= SENTINEL_TARGET:
+        if built >= SENTINEL_TARGET + self.ring_extra:
             # The ring is up -- or was.  Four turrets dug out and a dead Builder left v78 sitting
             # on 2000 Ti for 800 rounds.  No heartbeat from any Sentinel for a while means start over.
             alive = self._sentinels_alive(ct)
@@ -627,7 +642,7 @@ class Player:
             return False
 
     def _feed_ammo(self, ct, alive, go, ring_reserve, need_menders, threatened, mend_first,
-                   mend_reserve, finishing):
+                   mend_reserve, finishing, stuck=False):
         """Keep two shots per living Sentinel banked, and nothing more: titanium is flexible,
         ammunition is not.  The burst is paid for the round the Core says GO, and a Core within
         reach of the finish gets every point we have."""
@@ -641,7 +656,13 @@ class Player:
                 want = 20 if ammo < 20 else 0
             elif finishing:
                 want = ti
-            elif go:
+            elif stuck and go != 1:
+                # The stall is an income race: titanium stays titanium (the burst bank), the
+                # ammunition float stays one volley deep, and the miner is paid before either.
+                want = SNIPE_BANK - ammo
+                if need_menders:
+                    reserve += self._builder_cost(ct)
+            elif go == 1:
                 want = AMMO_PER_SENTINEL * alive - ammo
             elif go == 2:
                 want = 0
@@ -670,7 +691,7 @@ class Player:
         if self.role is None:
             # The Core spawns an attacker only while no attacker is reporting and the ring is
             # unfinished; everything else it spawns minds the Core.  Same snapshot, same rule.
-            ring_done = self._read(ct, SLOT_BUILT) >= SENTINEL_TARGET
+            ring_done = self._read(ct, SLOT_BUILT) >= SENTINEL_TARGET + _extra(self._read(ct, SLOT_ENEMY))
             attacker_alive = _fresh(self._read(ct, SLOT_BUILDER), self.round, 2)
             self.role = 'home' if (ring_done or attacker_alive) else 'attack'
 
@@ -682,7 +703,8 @@ class Player:
         self._observe(ct, here)
         self._dist, self._came = self._flood(here, self._threats(ct))
 
-        if self.built < SENTINEL_TARGET:
+        self.ring_target = SENTINEL_TARGET + _extra(self._read(ct, SLOT_ENEMY))
+        if self.built < self.ring_target:
             self.goal = self._next_stand(here)
             walk = self._dist.get(self.goal, 99) if self.goal is not None else 99
             if self._anchor_value((here.x, here.y)):
@@ -786,15 +808,13 @@ class Player:
                     return
         except Exception:
             pass
-        # 2. mining, if the Core is paying and nobody else is on it
+        # 2. mining, if the Core is paying.  Every idle home Builder mines -- one Harvester per
+        #    stall game was the bank growing at passive rate and the burst arriving after r1000.
         if _fresh(self._read(ct, SLOT_ECON_OK), self.round, 1):
-            miner = self._read(ct, SLOT_MINER)
-            mine_is_me = self.chain is not None and self.chain != []
-            if mine_is_me or not _fresh(miner, self.round, 2):
-                self._dist, self._came = self._flood(here, None)
-                if self._mine(ct, here):
-                    self._write(ct, SLOT_MINER, self.round + 1)
-                    return
+            self._dist, self._came = self._flood(here, None)
+            if self._mine(ct, here):
+                self._write(ct, SLOT_MINER, self.round + 1)
+                return
         # 3. mend anything of ours beside us
         try:
             for _d, dx, dy in CARDINALS:
@@ -1004,7 +1024,7 @@ class Player:
                 if key in self.ore and key not in self.occupied:
                     goal = key
                     break
-                if dist[key] > 12:
+                if dist[key] > 18:
                     continue
                 for _d, dx, dy in CARDINALS:
                     step = (key[0] + dx, key[1] + dy)
@@ -1118,7 +1138,7 @@ class Player:
                 continue
             if not at_goal and self.goal is not None and not self._still_reachable(here, key):
                 continue
-            if self.built + 1 < SENTINEL_TARGET and not self._exit_besides(here, key):
+            if self.built + 1 < self.ring_target and not self._exit_besides(here, key):
                 continue                           # three turrets and a wall make a cell
             facing = self.spots[key]
             spot = Position(key[0], key[1])
@@ -1156,7 +1176,7 @@ class Player:
         return after is not None and after <= before + 1
 
     def _next_stand(self, here):
-        want = SENTINEL_TARGET - self.built
+        want = self.ring_target - self.built
         best = None
         chosen = None
         for key, cost in self._dist.items():
@@ -1182,7 +1202,7 @@ class Player:
                 exits += 1
             if self._free_spot(step):
                 usable += 1
-        want = SENTINEL_TARGET - self.built
+        want = self.ring_target - self.built
         if usable < want:
             usable = min(usable, exits - 1)
         return max(0, usable)
