@@ -19,15 +19,18 @@ from dataclasses import dataclass
 from . import interfaces, messages
 from .messages import Fact
 from .registry import RoundResult, SlotRegistry
+from . import protocol as P
 from .protocol import (
     CORE_HP_ANNOUNCE_DRIFT,
     CORE_HP_MAX,
     CTRL_ASSIGN,
     CTRL_DIRECTIVE,
+    CTRL_GRANT,
     CTRL_SYMMETRY,
+    GRANT_KINDS,
     NEWBORN_FIRST_RUN_DELAY,
     SLOT_CORE,
-    STORE_SIZE,
+    STATE_CODE,
     TASK_FIX_CONVEYOR_BASE,
     TASK_FIX_HARVESTER,
 )
@@ -74,7 +77,8 @@ class GCS:
         try:
             return self._absorb(ct)
         except Exception as exc:                          # decision 7
-            print(f"[GCS] absorb failed: {exc!r}")
+            import traceback
+            print(f"[GCS] absorb failed: {exc!r} | " + traceback.format_exc().replace("\n", " | ")[-600:])
             return RoundResult()
 
     def _absorb(self, ct) -> RoundResult:
@@ -89,7 +93,11 @@ class GCS:
             self.registry.owners[SLOT_CORE].pos = tuple(_pos_of(ct))
         self.pos = tuple(_pos_of(ct))
 
-        snapshot = [ct.read_store(i) for i in range(STORE_SIZE)]
+        if self.slot is None and self.kind not in ("core", "builder_bot"):
+            self.registry.grant_probe_pos = self.pos       # listen for our GRANT
+        else:
+            self.registry.grant_probe_pos = None
+        snapshot = [ct.read_store(i) for i in range(P.GCS_SLOTS)]
         result = self.registry.absorb_snapshot(snapshot, round_no)
 
         if self.slot is None:
@@ -102,6 +110,19 @@ class GCS:
         for _slot, ev in result.events:
             if ev.kind == CTRL_SYMMETRY and hasattr(self.map, "set_symmetry"):
                 self.map.set_symmetry(ev.args[0])
+            elif ev.kind == CTRL_GRANT:
+                x, y, _s, gkind, facing = ev.args
+                name = "OUR_" + GRANT_KINDS[gkind].upper()
+                if facing:
+                    name += "_" + ("N", "NE", "E", "SE", "S", "SW", "W", "NW")[facing - 1]
+                self.map.apply_fact(Fact(x, y, STATE_CODE[name]), from_gcs=True)
+        # a grant of ours lost a same-round collision: grant again, elsewhere
+        for sender, args in result.lost_grants:
+            if sender == self.slot:
+                x, y, lost_slot, gkind, facing = args
+                new = self.registry.pick_turret_slot(spread=self.slot or 0, avoid=(lost_slot,))
+                if new is not None:
+                    self.grant_turret(x, y, GRANT_KINDS[gkind], (facing - 1) if facing else None, new)
         core_pos = self.registry.owners[SLOT_CORE].pos
         if core_pos is not None and hasattr(self.map, "note_core_block"):
             self.map.note_core_block(core_pos)        # the whole 2x2, exactly
@@ -315,6 +336,16 @@ class GCS:
     def core_announce_symmetry(self, kind: int):
         """Queue a SYMMETRY announcement (any unit may send one)."""
         self.queue(OutMessage("control", control=(CTRL_SYMMETRY, kind)), priority=90.0)
+
+    def grant_turret(self, x: int, y: int, kind: str, facing: int | None, slot: int):
+        """Builder: announce the friendly turret/launcher we just built at
+        (x, y) and grant it `slot`, in absolute coordinates (CONTROL/GRANT) —
+        the turret's own registry is empty when it reads this, so a
+        FOV-relative fact would mean nothing to it.
+        kind: 'gunner' / 'sentinel' / 'launcher'; facing: 0..7 (N,NE,..) or None."""
+        args = messages.grant_args(x, y, slot, GRANT_KINDS.index(kind),
+                                   0 if facing is None else facing + 1, self.registry.map_h)
+        self.queue(OutMessage("control", control=(CTRL_GRANT, args)), priority=500.0)
 
     def send_directive(self, x: int, y: int, task: int):
         """Core: any task.  Builders: FIX_HARVESTER only (protocol rule)."""

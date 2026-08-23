@@ -105,6 +105,7 @@
 | ASSIGN | slot(16) · period(8) · phase(8) |
 | SYMMETRY | kind(3): MIRROR_X / MIRROR_Y / ROT_180 |
 | DIRECTIVE | x(W) · y(H) · task(24) |
+| GRANT | x(W) · y(H) · slot(16) · kind(3) · facing(9) |
 
 task: 0=FIX_HARVESTER (unaddressed, any sender), 1-15=FIX_CONVEYOR for the builder in that slot (Core only), 16=BUILD_HERE, 17=SCOUT_HERE, 18=DEFEND_HERE, 19-23 spare
 

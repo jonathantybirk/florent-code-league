@@ -25,29 +25,25 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from . import messages
-from .messages import ControlEvent, Decoded, Fact
+from .messages import ControlEvent, Fact
+from . import protocol as P
 from .protocol import (
     BUILDER_SLOTS_FROM,
     CTRL_ASSIGN,
+    CTRL_GRANT,
     CTRL_SYMMETRY,
-    GRANT_STATES,
+    GRANT_KINDS,
+    RESYNC_PERIOD,
+    TAKEOVER_GRACE,
     ONBOARD_ROUNDS,
     SLOT_CORE,
     STATE_CODE,
-    STORE_SIZE,
     TURRET_RESERVED_SLOTS,
-    TURRET_SLOTS_FROM,
 )
 
 _MOVE_DELTAS = {1: (0, -1), 2: (1, 0), 3: (0, 1), 4: (-1, 0)}   # N, E, S, W
 _EIGHT = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 
-# state-code -> (kind, facing index) for the grantable friendly-turret states
-_GRANT_KIND: dict[int, tuple[str, int | None]] = {}
-for _i, _d in enumerate(_EIGHT):
-    _GRANT_KIND[STATE_CODE[f"OUR_GUNNER_{_d}"]] = ("gunner", _i)
-    _GRANT_KIND[STATE_CODE[f"OUR_SENTINEL_{_d}"]] = ("sentinel", _i)
-_GRANT_KIND[STATE_CODE["OUR_LAUNCHER"]] = ("launcher", None)
 
 
 @dataclass
@@ -69,6 +65,9 @@ class RoundResult:
     core_hp: int | None = None
     deaths: list[int] = field(default_factory=list)                       # slots
     assigned_slot: int | None = None    # set on the round OUR unit learns its slot
+    # grants that lost a same-snapshot collision: (sender slot, args); the
+    # sender re-grants with a fresh pick
+    lost_grants: list[tuple[int, tuple]] = field(default_factory=list)
     # per-slot decode detail (for tooling/visualisation): slot -> dict with
     # raw, changed, format, facts, move/turn/aux, events
     per_slot: dict[int, dict] = field(default_factory=dict)
@@ -88,6 +87,10 @@ class SlotRegistry:
         # the Core's per-slot model of what each unit already knows
         self.known: dict[int, set[tuple[int, int]]] = {}
         self.symmetry_heard: bool = False       # a SYMMETRY has been on the store
+        # set by a turret/launcher that has no slot yet: unknown-owner slots
+        # are then read speculatively as builder messages, keeping only a
+        # GRANT that names this exact tile (builders are the only granters)
+        self.grant_probe_pos: tuple[int, int] | None = None
 
     # ------------------------------------------------------------------
     # per-round decode of the whole store
@@ -99,12 +102,11 @@ class SlotRegistry:
         """
         result = RoundResult()
         wrote_round = round_no - 1
-        resync = self.resync_write_round == wrote_round
-        onboard = (self.onboard_until is not None
-                   and self.resync_write_round is not None
-                   and self.resync_write_round < wrote_round <= self.onboard_until)
+        resync = self.is_resync_round(wrote_round)
+        onboard = self._in_onboard_window(wrote_round)
 
-        for slot in range(STORE_SIZE):
+        self._grants: list[tuple[int, tuple]] = []      # (sender slot, args)
+        for slot in range(P.GCS_SLOTS):
             value = snapshot[slot]
             prev = self.prev_snapshot[slot] if self.prev_snapshot else None
             detail = {"raw": value, "changed": prev is not None and value != prev,
@@ -120,6 +122,7 @@ class SlotRegistry:
             detail["facts"] = [(f.x, f.y, f.state) for f in result.facts[n_facts:]]
             detail["events"] = [(ev.kind, list(ev.args)) for _, ev in result.events[n_events:]]
 
+        self._settle_grants(wrote_round, result)
         self._liveness(snapshot, wrote_round, resync, onboard, result)
         self._apply_windows(result, wrote_round)
         self.prev_snapshot = list(snapshot)
@@ -157,19 +160,25 @@ class SlotRegistry:
             result.facts.extend(decoded.facts)
             return
 
-        if owner is None:
-            # a slot whose owner we have not learned yet (e.g. we are the
-            # newborn) cannot be interpreted safely — skip until we know
-            detail["format"] = "empty" if value == 0 else "unknown owner"
-            return
-
         if resync:
+            # self-describing: position + kind, so even a slot we have never
+            # heard of becomes a known owner
             detail["format"] = "resync"
-            decoded = messages.decode_resync(owner.kind, value, self.map_w, self.map_h)
+            decoded = messages.decode_resync(value, self.map_w, self.map_h)
+            if owner is None or owner.kind != decoded.kind:
+                owner = Owner(decoded.kind, spawn_round=wrote_round)
+                self.owners[slot] = owner
+                self.known.setdefault(slot, set())
             owner.pos = decoded.position
             owner.has_written = True
             detail["position"] = decoded.position
             result.facts.extend(decoded.facts)
+            return
+
+        if owner is None:
+            detail["format"] = "empty" if value == 0 else "unknown owner"
+            if value and self.grant_probe_pos is not None:
+                self._probe_grant(slot, value, wrote_round, result, detail)
             return
 
         # standard format — dead-reckon builders before resolving FOV indices
@@ -198,19 +207,48 @@ class SlotRegistry:
                 self._on_assign(ev, wrote_round)
             elif ev.kind == CTRL_SYMMETRY:
                 self.symmetry_heard = True
-        self._apply_grants(decoded, result)
+            elif ev.kind == CTRL_GRANT:
+                self._grants.append((slot, ev.args))
 
-    def _apply_grants(self, decoded: Decoded, result: RoundResult):
-        """A builder fact naming a friendly turret + aux!=0 assigns that slot."""
-        if not decoded.aux:
+    def _settle_grants(self, wrote_round, result):
+        """Apply this snapshot's GRANTs.  Two builders may have picked the
+        same free slot in the same round; everyone resolves it identically:
+        the grant from the lowest sender slot stands, the others are lost
+        and their senders re-grant."""
+        taken: dict[int, int] = {}
+        for sender, args in sorted(self._grants, key=lambda g: g[0]):
+            x, y, gslot, gkind, facing = args
+            if gslot in taken:
+                result.lost_grants.append((sender, args))
+                continue
+            taken[gslot] = sender
+            self.owners[gslot] = Owner(GRANT_KINDS[gkind], spawn_round=wrote_round,
+                                       pos=(x, y), facing=(facing - 1) if facing else None)
+            self.known.setdefault(gslot, set())
+
+    def _probe_grant(self, slot, value, wrote_round, result, detail):
+        """We are a slotless turret: read an unknown slot as a builder message
+        and take a GRANT for our own tile if there is one."""
+        try:
+            decoded = messages.decode_standard("builder_bot", value, (0, 0),
+                                               self.map_w, self.map_h)
+        except ValueError:
             return
-        for f in decoded.facts:
-            if f.state in GRANT_STATES:
-                kind, facing = _GRANT_KIND[f.state]
-                self.owners[decoded.aux] = Owner(kind, spawn_round=0,
-                                                 pos=(f.x, f.y), facing=facing)
-                self.known.setdefault(decoded.aux, set())
-                break
+        for ev in decoded.events:
+            if ev.kind != CTRL_GRANT:
+                continue
+            x, y, gslot, gkind, facing = ev.args
+            plausible = (0 <= x < self.map_w and 0 <= y < self.map_h and gkind < len(GRANT_KINDS)
+                         and facing <= 8 and SLOT_CORE < gslot < P.GCS_SLOTS and gslot != slot)
+            if not plausible:
+                continue
+            # every grant counts for collision settlement, not just ours;
+            # only a grant for our own tile proves this slot is a builder's
+            if (x, y) == self.grant_probe_pos:
+                self.owners.setdefault(slot, Owner("builder_bot", spawn_round=0))
+                detail["format"] = "grant (probed)"
+            self._grants.append((slot, ev.args))
+            result.events.append((slot, ev))
 
     def _on_assign(self, ev: ControlEvent, wrote_round: int):
         slot, period, phase = ev.args
@@ -227,7 +265,13 @@ class SlotRegistry:
         for slot, owner in list(self.owners.items()):
             if slot == SLOT_CORE:
                 continue                     # the Core is never reclaimed
-            if snapshot[slot] != self.prev_snapshot[slot] or not owner.has_written:
+            if not owner.has_written:
+                if wrote_round - owner.spawn_round > TAKEOVER_GRACE and not onboard:
+                    result.deaths.append(slot)       # never took the slot
+                    del self.owners[slot]
+                    self.known.pop(slot, None)
+                continue
+            if snapshot[slot] != self.prev_snapshot[slot]:
                 continue
             if onboard and owner.kind != "builder_bot" and slot != SLOT_CORE:
                 continue                     # turret silent while the Core borrows
@@ -273,7 +317,14 @@ class SlotRegistry:
         return round_no % owner.period == owner.phase
 
     def is_resync_round(self, round_no: int) -> bool:
-        return self.resync_write_round == round_no
+        """Writes in round_no are RESYNC format: the round after an ASSIGN is
+        readable, or a calendar round (every RESYNC_PERIOD) outside a spawn
+        window."""
+        if self.resync_write_round == round_no:
+            return True
+        return (round_no > 0 and round_no % RESYNC_PERIOD == 0
+                and not self._in_onboard_window(round_no)
+                and self.resync_write_round != round_no)
 
     def _in_onboard_window(self, round_no: int) -> bool:
         return (self.onboard_until is not None
@@ -287,8 +338,8 @@ class SlotRegistry:
     # ------------------------------------------------------------------
     def pick_builder_slot(self) -> int | None:
         """Lowest free builder slot, evicting turrets down to the reserved pool."""
-        turret_floor = TURRET_SLOTS_FROM - TURRET_RESERVED_SLOTS + 1
-        for slot in range(BUILDER_SLOTS_FROM, STORE_SIZE):
+        turret_floor = P.turret_slots_from() - TURRET_RESERVED_SLOTS + 1
+        for slot in range(BUILDER_SLOTS_FROM, P.GCS_SLOTS):
             owner = self.owners.get(slot)
             if owner is None:
                 return slot
@@ -296,12 +347,16 @@ class SlotRegistry:
                 return slot                  # builders may evict turrets here
         return None                          # store full: round-robin territory
 
-    def pick_turret_slot(self) -> int | None:
-        """Highest free turret-pool slot (grows downward from 15)."""
-        for slot in range(TURRET_SLOTS_FROM, SLOT_CORE, -1):
-            if slot not in self.owners:
-                return slot
-        return None
+    def pick_turret_slot(self, spread: int = 0, avoid=()) -> int | None:
+        """A free turret-pool slot (the pool grows downward from the top).
+        `spread` (the granting builder's own slot) staggers which free slot
+        different builders pick in the same round, so same-round collisions
+        are rare; `avoid` excludes slots just lost to a collision."""
+        free = [s for s in range(P.turret_slots_from(), SLOT_CORE, -1)
+                if s not in self.owners and s not in avoid]
+        if not free:
+            return None
+        return free[spread % len(free)]
 
     def core_unknown(self, slot: int, tiles) -> list[tuple[int, int]]:
         """Of `tiles`, those the unit in `slot` does not know yet (the Core

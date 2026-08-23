@@ -61,7 +61,9 @@ the encoder.
 | `gcs.py` | per-unit facade: `absorb`, `publish`, `queue`, `send_raw`, Core helpers |
 | `interfaces.py` | the `MapSource` contract the internal map fulfils, plus placeholders for the logistics / behaviour modules |
 | `tests/test_gcs.py` (repo root) | headless tests: `.venv/bin/python -m pytest tests/test_gcs.py` |
-| `bots/gcsprobe/` | real-engine probe bot used for end-to-end verification; prints a `GCSTRACE` JSON line per unit per round |
+| `trace.py` | `Tracer.emit()` — the per-round `GCSTRACE` line any bot can print for the visualiser |
+| `bots/gcsprobe/` | random-walk probe bot for end-to-end verification |
+| `bots/starter_gcs/` | the starter bot running on the GCS — the real-logic verification build |
 | `tools/gcs_viz.py` | turns a probe replay into **Store Scope**, a side-by-side viewer of the board and the decoded store; `--report` prints reckoning/learned-fact tallies |
 
 ## Slots
@@ -119,8 +121,9 @@ addressed to that builder slot (Core only), 16–18 = BUILD/SCOUT/DEFEND_HERE).
 1. Core spawns in round R and writes `ASSIGN(slot)` the same round (outranks the HP announcement).
 2. **The engine first runs the newborn in round R+1** (verified live) — the round the ASSIGN is readable.
    It matches on `first_run − 1 == R` and takes the slot.
-3. Round R+1 is the **resync round**: every unit (Core included) writes `pos(W·H) · fact`. Readers decode
-   the R+2 snapshot as resync format; dead reckoning restarts from exact positions.
+3. Round R+1 is the **resync round**: every unit (Core included) writes `pos(W·H) · kind(5) · fact`. Readers
+   decode the R+2 snapshot as resync format; dead reckoning restarts from exact positions and any reader
+   learns every slot's owner kind. The same happens every `RESYNC_PERIOD` rounds outside spawn windows.
 4. Rounds R+2 … R+1+`ONBOARD_ROUNDS` (8): the Core streams absolute-coordinate **chains** (one absolute fact +
    one fact relative to it, window radius 9 in its own slot / 6 in a borrowed turret slot on 30×30) through
    its own slot and every turret/launcher slot; turrets stay silent. The Core keeps a per-slot model of what
@@ -211,6 +214,7 @@ any tile on either map for the details.
 - `has_conveyor_issue`, `has_harvester_issue` (logistics) and `on_directive` (behaviour) are stubs returning
   nothing.
 - A builder sharing a slot (`period > 1`) that moves more than once between writes drifts in readers'
+  reckoning until the next resync round (at most `RESYNC_PERIOD` rounds away).
   reckoning until the next resync round.
 - Enemy-builder movement inference (the TODO above) is not implemented; enemy bots are plain tile states.
 - A message deferred by a resync/onboarding round keeps its priority; `ASSIGN` is queued at priority 1000 so
