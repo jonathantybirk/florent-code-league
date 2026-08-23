@@ -18,6 +18,7 @@ home. Four menders add ~16 HP a round to a 500 HP Core, which is more than the
 from fcode import Direction, EntityType, GameError, Position
 
 import debug
+import defence
 import lanes
 import store
 from brain import CARDINALS, DELTA
@@ -64,11 +65,13 @@ def _mend(player, ct) -> bool:
     brain = player.brain
     if not store.alarm(ct):
         return False
-    core = brain.imap.our_core
-    if core is None:
+    if brain.imap.our_core is None:
         return False
     me = brain.me
-    home = min(brain.core_tiles(), key=lambda t: _manhattan(t, me))
+    spots = defence.heal_spots(brain)
+    if not spots:
+        return False
+    home = min(spots, key=lambda t: _manhattan(t, me))
     if _manhattan(home, me) > MEND_RECALL_DIST:
         return False
 
@@ -81,7 +84,14 @@ def _mend(player, ct) -> bool:
                 return True
             debug.log(f"r{brain.round} b{ct.get_id()} HEAL-BROKE at{me}")
             return True          # adjacent but cannot afford it: hold position
-    step = _step_toward(brain, me, home, exact=False)
+    # Exact: a heal spot is a specific tile, and the eight tiles around one
+    # include the three that cannot reach the Core at all.
+    step = _step_toward(brain, me, home, exact=True)
+    if step is None:
+        for spot in sorted(spots, key=lambda t: _manhattan(t, me)):
+            step = _step_toward(brain, me, spot, exact=True)
+            if step is not None:
+                break
     debug.log(f"r{brain.round} b{ct.get_id()} WALKHOME at{me} home={home} step={step}")
     if step is not None:
         _try(ct.move, step)

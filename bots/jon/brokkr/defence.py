@@ -77,6 +77,29 @@ def survey(brain):
     return dps, builders, turrets
 
 
+def heal_spots(brain):
+    """Tiles a mender can actually heal the Core from.
+
+    Heal, like build and attack, reaches orthogonally only -- the four
+    diagonal tiles touching a Core corner are useless to a mender. Walking
+    home with `exact=False` treats all eight as arrival, so a Builder that
+    reached a corner tile stood there for the rest of the match healing
+    nothing while the Core died: traced on helheim, two of four menders were
+    parked that way from round 60 to the loss on round 73.
+    """
+    core = brain.core_tiles()
+    spots = set()
+    for tile in core:
+        for delta in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+            spot = (tile[0] + delta[0], tile[1] + delta[1])
+            if spot in core or not brain.terrain.inside(spot):
+                continue
+            if spot in brain.terrain.blocked and spot != brain.me:
+                continue
+            spots.add(spot)
+    return spots
+
+
 def menders_wanted(dps: float, enemy_builders: int) -> int:
     """How many Builders should come home.
 
