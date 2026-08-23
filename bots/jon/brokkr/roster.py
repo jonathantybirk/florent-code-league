@@ -23,6 +23,25 @@ def econ_target(width: int, height: int) -> int:
             else BUILDER_TARGET_SMALL)
 
 
+# Builders sent to plant the Sentinel line at the enemy Core. Two is enough:
+# the walk is most of the cost and a third only adds cost scaling, since the
+# line's damage is limited by ammunition rather than by turret count.
+ATTACKERS = 2
+
+
+def is_attacker(index: int, target: int, siege_open: bool) -> bool:
+    """Whether this Builder should be at the enemy Core rather than a lane.
+
+    The last economic Builders are chosen, not the first: index 0 is the home
+    guard and the low indices hold the oldest, longest lanes, so taking those
+    would strand the most infrastructure. Siege Builders spawned past the
+    economic target are menders, not attackers -- see `is_mender`.
+    """
+    if not siege_open or index >= target:
+        return False
+    return index >= max(1, target - ATTACKERS)
+
+
 def is_mender(index: int, wanted: int, target: int) -> bool:
     """Whether the Builder at `index` should be healing rather than mining.
 

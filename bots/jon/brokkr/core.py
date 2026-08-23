@@ -15,6 +15,7 @@ from fcode import EntityType, GameError
 import debug
 import defence
 import roster
+import siege
 import store
 
 # Titanium held back from spawning so a Builder that reaches its deposit can
@@ -29,13 +30,24 @@ ECON_RESERVE = 45
 # those hands then spend; spawning down to nothing buys menders who cannot
 # afford to heal.
 MEND_RESERVE = 70
-SIEGE_BUILDER_CAP = 14
+# The engine's team cap is 50 units including the Core; staying well under it
+# leaves room and keeps cost scaling survivable.
+SIEGE_UNIT_CAP = 16
+
+# Stop replacing menders once this many of our units have died. See
+# `_needs_menders` for why losses rather than a spawn count.
+MAX_MENDER_LOSSES = 6
 NEAR_CORE = 3
 
 # Once the alarm is up it stays up for this many rounds past the last damage.
 # Flapping it would send menders home and back out again, which spends the
 # walk twice and heals nothing.
 ALARM_HOLD = 40
+
+# Rounds of titanium history the income estimate averages over. Long enough
+# that a Harvester's 10 Ti every 4 rounds is several samples, short enough to
+# notice an economy being destroyed.
+INCOME_WINDOW = 40
 
 
 def run(player, ct) -> None:
@@ -49,10 +61,13 @@ def run(player, ct) -> None:
         player.last_damage = None
         player.last_threat = None
         player.prev_hp = ct.get_max_hp()
+        player.prev_delta = 0
+        player.prev_balance = ct.get_global_resources()
+        player.income_gains = []
 
     _alarm(player, ct)
-    _publish(player, ct)
     _gossip(player, ct)
+    _open_siege(player, ct)
     _ammo(player, ct)
     _spawn(player, ct)
 
@@ -76,6 +91,7 @@ def _alarm(player, ct) -> None:
     floor = defence.menders_wanted(dps, len(builders))
     delta = hp - player.prev_hp
     player.prev_hp = hp
+    player.prev_delta = delta
     wanted = defence.adjust(store.alarm_level(ct), floor, delta) if (floor or delta < 0) else 0
     if wanted:
         player.last_threat = round_number
@@ -102,6 +118,7 @@ def _gossip(player, ct) -> None:
     bulletin. It uses the last slot, which no Builder index reaches until the
     roster passes seven."""
     brain = player.brain
+    brain.sync_symmetry(ct, store)
     board = store.ore_board(ct)
     brain.learn_ore(board)
     spare = brain.unreported_ore(board)
@@ -109,25 +126,63 @@ def _gossip(player, ct) -> None:
         store.publish_ore(ct, store.ORE_SLOTS - 1, spare)
 
 
-def _publish(player, ct) -> None:
-    kind = player.brain.imap.symmetry()
-    if kind is not None and store.symmetry(ct) != kind:
-        store.publish_symmetry(ct, kind)
-
-
 def _ammo(player, ct) -> None:
-    """Convert titanium to ammunition only for turrets that exist.
+    """Feed the Sentinel line, and nothing else.
 
     Ammunition is a one-way door -- converted titanium cannot buy a Harvester
-    -- so an economy converts nothing until it owns something that fires.
+    back -- so an economy converts nothing until it owns something that fires.
+    The Core cannot see the siege line, which stands five tiles from the enemy
+    base, so it reads the count off the store rather than off its own map.
     """
-    if not _have_turrets(player.brain):
+    if not siege.enemy_core_tiles(player.brain):
         return
-    if ct.get_global_ammo() >= 40:
+    if store.siege_sentinels(ct) <= 0 and not _have_turrets(player.brain):
         return
-    want = min(20, max(0, ct.get_global_resources() - ECON_RESERVE))
+    want = siege.ammo_wanted(ct.get_global_ammo(),
+                             ct.get_global_resources(), ECON_RESERVE)
     if want >= 10 and ct.can_convert_ammo(want):
         _try(ct.convert_ammo, want)
+
+
+def _open_siege(player, ct) -> None:
+    """Declare the attack open once the economy can fund it.
+
+    Writing 1 here is what turns the last economic Builders into attackers;
+    they then count their own Sentinels up from it. The trigger is our
+    Harvester count rather than the round, because what an attack needs is
+    income to convert, not elapsed time.
+    """
+    if store.siege_sentinels(ct) > 0:
+        return
+    brain = player.brain
+    income = _income(player, ct)
+    if siege.ready(brain, ct.get_global_resources(), income):
+        debug.log(f"r{ct.get_current_round()} CORE SIEGE-OPEN "
+                  f"income={income:.1f} ti={ct.get_global_resources()} "
+                  f"enemy={brain.imap.enemy_core()}")
+        store.note_sentinel(ct, 1)
+
+
+def _income(player, ct) -> float:
+    """Titanium a round arriving, estimated from the team balance.
+
+    Only rises are counted: spending shows up as a fall, and what is wanted
+    here is what comes in. It is an estimate -- a build and a delivery in the
+    same round net out -- and it is the honest one available, because the
+    alternative is counting Harvesters the Core cannot see.
+    """
+    balance = ct.get_global_resources()
+    gain = balance - player.prev_balance
+    player.prev_balance = balance
+    if gain > 0:
+        player.income_gains.append(gain)
+    else:
+        player.income_gains.append(0)
+    if len(player.income_gains) > INCOME_WINDOW:
+        del player.income_gains[0]
+    if len(player.income_gains) < INCOME_WINDOW:
+        return 0.0
+    return sum(player.income_gains) / len(player.income_gains)
 
 
 def _spawn(player, ct) -> None:
@@ -149,7 +204,20 @@ def _spawn(player, ct) -> None:
 def _needs_menders(player, ct, cost) -> bool:
     """True when the siege wants another pair of hands and we can pay for it."""
     wanted = store.alarm_level(ct)
-    if not wanted or player.spawned >= SIEGE_BUILDER_CAP:
+    # Living units, not lifetime spawns. Counting spawns meant a Builder that
+    # died to harassment was never replaced: traced on midgard, the Core sat
+    # on 1038 titanium losing 1 HP a round because it had reached its lifetime
+    # cap and could not buy the two menders that would have turned the siege.
+    if not wanted or ct.get_unit_count() >= SIEGE_UNIT_CAP:
+        return False
+    # Replace menders that die, but not forever. Against a long siege the
+    # replacements hold the Core up -- capping on lifetime spawns instead left
+    # 1038 titanium unspent on midgard while it bled a HP a round. Against a
+    # Sentinel rush the same replacements walk into the ring and die, and
+    # feeding it measured 25/30 where stopping measured 27/30. Losses are the
+    # signal that separates the two, and the Core can count them: everything
+    # it spawned that is no longer alive.
+    if player.spawned + 1 - ct.get_unit_count() > MAX_MENDER_LOSSES:
         return False
     if ct.get_global_resources() < cost + MEND_RESERVE:
         return False

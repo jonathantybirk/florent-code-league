@@ -21,6 +21,7 @@ import debug
 import defence
 import lanes
 import roster
+import siege
 import store
 from brain import CARDINALS, DELTA
 
@@ -56,6 +57,8 @@ def run(player, ct) -> None:
 
     if _mend(player, ct):
         return
+    if _besiege(player, ct):
+        return
     _mine(player, ct)
 
 
@@ -68,6 +71,7 @@ def _gossip(brain, ct) -> None:
     so. Sharing deposits is the cheapest thing the store can carry and it is
     what the opening was missing.
     """
+    brain.sync_symmetry(ct, store)
     board = store.ore_board(ct)
     brain.learn_ore(board)
     spare = brain.unreported_ore(board)
@@ -115,6 +119,60 @@ def _mend(player, ct) -> bool:
             if step is not None:
                 break
     debug.log(f"r{brain.round} b{ct.get_id()} WALKHOME at{me} home={home} step={step}")
+    if step is not None:
+        _try(ct.move, step)
+    return True
+
+
+# ----------------------------------------------------------------------
+# offence
+# ----------------------------------------------------------------------
+def _besiege(player, ct) -> bool:
+    """Plant the Sentinel line at the enemy Core. True if this turn was spent.
+
+    The Sentinel goes on a tile sharing a row or column with a Core tile, as
+    far back as its range allows, so it is shooting from outside the ring of
+    Builders and turrets that defends the base. Build reaches orthogonally,
+    so the Builder stops one tile short of the spot rather than standing on
+    it and having to step off again.
+    """
+    brain = player.brain
+    if brain.index is None:
+        return False
+    target = roster.econ_target(brain.width, brain.height)
+    if not roster.is_attacker(brain.index, target, store.siege_sentinels(ct) > 0):
+        return False
+
+    spots = siege.firing_spots(brain)
+    if brain.round % 40 == 0:
+        debug.log(f"r{brain.round} b{ct.get_id()} ATTACKER i={brain.index} "
+                  f"at{brain.me} spots={len(spots)} enemy={brain.imap.enemy_core()}")
+    if not spots:
+        return False
+    # Attackers take different spots by index so two do not walk to one tile.
+    rank = max(0, target - 1 - brain.index) % len(spots)
+    spot, facing = spots[rank]
+    me = brain.me
+
+    if me == spot:
+        # Standing on the tile we mean to build on. Build reaches orthogonally
+        # and never onto our own tile, so step off first -- towards the Core we
+        # are shooting at, which keeps the next spot in reach.
+        for direction in CARDINALS:
+            step_to = (me[0] + DELTA[direction][0], me[1] + DELTA[direction][1])
+            if step_to not in brain.terrain.blocked and ct.can_move(direction):
+                _try(ct.move, direction)
+                return True
+        return True
+    if _orthogonal(me, spot):
+        position = Position(*spot)
+        if ct.can_build_sentinel(position, facing):
+            if _try(ct.build_sentinel, position, facing):
+                store.note_sentinel(ct, store.siege_sentinels(ct) + 1)
+                debug.log(f"r{brain.round} b{ct.get_id()} SENTINEL at{spot} "
+                          f"facing {facing}")
+        return True
+    step = _step_toward(brain, me, spot, exact=True)
     if step is not None:
         _try(ct.move, step)
     return True
