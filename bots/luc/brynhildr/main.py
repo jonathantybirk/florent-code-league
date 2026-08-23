@@ -90,6 +90,10 @@ REPAIR_BELTS = True        # relay a conveyor shot out of our own line (3 Ti res
 REPAIR_ATTEMPT_LIMIT = 3   # give a tile up after this many failed relays: a turret owns it
 RING_LOST_ROUNDS = 12      # no Sentinel heartbeat for this long: the ring is gone, start over
 REBUILD_RING = True        # the attacker re-plants Sentinels it sees destroyed
+QUICK_LOSS_ROUNDS = 15     # a Sentinel dead this soon after placement poisons its spot
+RING_PAUSE_LOSSES = 3      # quick losses before the attacker stops feeding the grinder...
+RING_PAUSE_ROUNDS = 80     # ...for this long (Torsko dug 22 rebuilt Sentinels out of the same two spots)
+SLOT_BUILT_PAUSED = 256    # bit in SLOT_BUILT: the attacker is holding; the Core frees the ring reserve
 AVOID_COVERED_SPOTS = True # never plant a Sentinel on a tile a known enemy turret covers, if there is a choice
 LANE_BARRIERS = True       # a 3 Ti barrier in a live enemy Gunner lane onto our Core
 COUNTER_TURRETS = True     # a home turret seated on a ray to a turret that is shooting our Core
@@ -136,6 +140,7 @@ ORD_GUNNER = 8             # an anti-Builder Gunner may be bought
 ORD_QUIET = 16             # nothing has hit us for a while (miners may roam)
 ORD_MINERS_SHIFT = 5       # bits 5-6: home Builders (by slot) that may mine, 0-3
 ORD_HARVEST_SHIFT = 7      # bits 7-9: Harvesters standing, 0-7, as tallied by the miners
+ORD_SAVE = 1 << 10         # a counter-turret is wanted and not yet affordable: no 1 Ti heals while the Core can take it
 
 
 def _pack(pos, extra=0):
@@ -345,6 +350,10 @@ class Player:
         self.last_place = -10
         self.last_eta = 99
         self.ring_done_once = False # this attacker has completed the ring at least once
+        self.placed_round = {}      # ring tile -> round planted
+        self.poisoned = set()       # spots where a Sentinel died within QUICK_LOSS_ROUNDS
+        self.quick_losses = 0
+        self.pause_until = -1
         self.enemy_ids = set()      # distinct enemy Builders seen
         self.econ_seen = False      # a Harvester or belt of theirs
         self.rush_seen = False      # a Builder of theirs on our side of the map
@@ -369,6 +378,7 @@ class Player:
         self.mining_now = False
         self.team_harvesters = 0
         self.belts = {}             # conveyor tile -> facing, every belt of ours we have seen
+        self.belt_seen = {}         # conveyor tile -> round last in sight
         self.my_barriers = set()    # lane barriers this Builder laid
         self.deny_target = None
         self.denied = set()
@@ -425,7 +435,9 @@ class Player:
                                                 | (HOLD_REBUILD if self.hold_rebuild else 0)
                                                 | (RING_HOLD if self.ring_hold else 0)))
 
-        built = self._read(ct, SLOT_BUILT)
+        built_word = self._read(ct, SLOT_BUILT)
+        built = built_word & 0xFF
+        ring_paused = bool(built_word & SLOT_BUILT_PAUSED)
         if built > self.prev_built:
             self.place_rounds.append(self.round)
         self.prev_built = built
@@ -498,7 +510,7 @@ class Player:
             self.scout_rush = True
         remaining = max(0, SENTINEL_TARGET - built)
         ring_reserve = self._ring_reserve(ct, remaining)
-        if self.ring_hold:
+        if self.ring_hold or ring_paused:
             ring_reserve = 0
 
         # ---- the race, called once (hildr)
@@ -654,8 +666,9 @@ class Player:
             need_menders = 0
 
         # ---- the stall (hildr): the rush is banked behind their menders -- an income race
-        stuck = (built >= SENTINEL_TARGET and self.hold_total > STALL_ROUNDS
-                 and self.round - self.last_hit > 12)
+        stuck = ((built >= SENTINEL_TARGET and self.hold_total > STALL_ROUNDS
+                  and self.round - self.last_hit > 12)
+                 or (ring_paused and self.round - self.last_hit > 12))
         if (stuck and self.ring_extra < RING_EXTRA_MAX
                 and (bank > kill_ammo + self._sentinel_cost(ct) + 120
                      or (net_us <= 12 and bank > 250 + self._sentinel_cost(ct)))):
@@ -698,9 +711,12 @@ class Player:
             want_miners = 1
         if ECON_AFTER_RING and (ring_up or self.round >= ECON_ROUND):
             want_miners = 1
-            if stuck or self.round >= LONG_GAME_ROUND:
+            # The second miner follows the first Harvester, the third the third: on paths the
+            # second Builder was bought at round 92 with the first miner still saving for its
+            # Harvester, and the game ended with two Builders and no Harvester at all.
+            if harvesters >= 1 and (stuck or self.round >= LONG_GAME_ROUND):
                 want_miners = 2
-            if stuck and harvesters >= 2:
+            if stuck and harvesters >= 3:
                 want_miners = MINERS_MAX
         elif not ECON_AFTER_RING and stuck:
             want_miners = MINERS_MAX
@@ -788,6 +804,8 @@ class Player:
             flags |= ORD_GUNNER
         if quiet:
             flags |= ORD_QUIET
+        if turret_wanted and not turret_ok and hp >= 250 and self.sentinels_on_us > 0:
+            flags |= ORD_SAVE                      # Big O's one Sentinel cost 500 rounds of heals
         flags |= min(3, self.miners_hwm if econ_ok else 0) << ORD_MINERS_SHIFT
         flags |= min(7, harvesters) << ORD_HARVEST_SHIFT
         self._write(ct, SLOT_ORDERS, (self.round + 1) + 65536 * flags)
@@ -1121,7 +1139,7 @@ class Player:
         if self.home is None:
             self._orient(ct, here)
         if self.role is None:
-            ring_done = self._read(ct, SLOT_BUILT) >= SENTINEL_TARGET + (_extra(self._read(ct, SLOT_ENEMY)) & 3)
+            ring_done = (self._read(ct, SLOT_BUILT) & 0xFF) >= SENTINEL_TARGET + (_extra(self._read(ct, SLOT_ENEMY)) & 3)
             attacker_alive = _fresh(_beat(self._read(ct, SLOT_BUILDER)), self.round, 2)
             self.role = 'home' if (ring_done or attacker_alive) else 'attack'
 
@@ -1141,7 +1159,7 @@ class Player:
         # The Core restarts the ring when every heartbeat is gone; the attacker notices any
         # single Sentinel it can see destroyed.  Either way the count drops and the walk resumes.
         if REBUILD_RING:
-            if (self._read(ct, SLOT_BUILT) == 0 and self.built > 0
+            if ((self._read(ct, SLOT_BUILT) & 0xFF) == 0 and self.built > 0
                     and self.round > self.last_place + 1):
                 self.built = 0
                 self.placed = []
@@ -1152,7 +1170,10 @@ class Player:
 
         if self.built >= self.ring_target:
             self.ring_done_once = True
-        if self.built < self.ring_target and not (hold_rebuild and self.ring_done_once) and not ring_hold:
+        paused = self.round < self.pause_until and self.ring_done_once
+        if paused and self.round % 10 == 0:
+            self._write(ct, SLOT_BUILT, self.built | SLOT_BUILT_PAUSED)
+        if self.built < self.ring_target and not (hold_rebuild and self.ring_done_once) and not ring_hold and not paused:
             self.goal = self._next_stand(here)
             walk = self._dist.get(self.goal, 99) if self.goal is not None else 99
             if self._anchor_value((here.x, here.y)):
@@ -1284,8 +1305,16 @@ class Player:
             self.placed.remove(key)
             self.blocked.discard(key)
             self.occupied.discard(key)
+            if self.round - self.placed_round.get(key, -1000) <= QUICK_LOSS_ROUNDS:
+                self.poisoned.add(key)
+                self.quick_losses += 1
+        if self.quick_losses >= RING_PAUSE_LOSSES:
+            # Torsko's guard dug 22 rebuilt Sentinels out of the same two spots: 880 Ti,
+            # every point of income for 300 rounds.  Hold, and let the Core spend instead.
+            self.pause_until = self.round + RING_PAUSE_ROUNDS
+            self.quick_losses = 0
         self.built = max(0, self.built - len(gone))
-        self._write(ct, SLOT_BUILT, self.built)
+        self._write(ct, SLOT_BUILT, self.built | (SLOT_BUILT_PAUSED if self.round < self.pause_until else 0))
         self.goal = None
         self.path = []
 
@@ -1384,7 +1413,7 @@ class Player:
         # 0a. ...and if a lane barrier is wanted but not yet affordable, save for it instead of
         #     healing: four Gunners at 28 HP a round ate the whole income in 1 Ti heals on
         #     longhouse and the 8 Ti barrier that ends a lane for good was never bought.
-        saving = False
+        saving = bool(flags & ORD_SAVE) and self._core_hp(ct) >= 250
         if threatened and LANE_BARRIERS and self._core_hp(ct) > 120:
             spot = self._lane_barrier(ct, here, max_walk=3, dry=True)
             if spot is not None:
@@ -1420,10 +1449,10 @@ class Player:
                     core_hp = ct.get_hp(bid)
                     break
             dig = self._adjacent_enemy_turret(ct, here)
-            if dig is not None and (core_hp is None or core_hp >= 150) and ct.can_fire(dig):
+            if dig is not None and (core_hp is None or core_hp >= 100) and ct.can_fire(dig):
                 ct.fire(dig)
                 return
-            if dig is None and threatened and (core_hp is None or core_hp >= 250) and self._dig_near_core(ct, here):
+            if dig is None and threatened and (core_hp is None or core_hp >= 150) and self._dig_near_core(ct, here):
                 return
             for _d, dx, dy in CARDINALS:
                 key = (here.x + dx, here.y + dy)
@@ -1452,6 +1481,9 @@ class Player:
                 self.mining_now = True
                 return
             if self._mine(ct, here):
+                self.mining_now = True
+                return
+            if REPAIR_BELTS and self._patrol_belt(ct, here):
                 self.mining_now = True
                 return
         # 4. mend anything of ours beside us
@@ -1483,11 +1515,16 @@ class Player:
             target = None
             tbest = None
             for uid in ct.get_nearby_units():
-                if ct.get_team(uid) == mine or ct.get_entity_type(uid) != EntityType.GUNNER:
-                    continue                       # a Sentinel is 20 hits; a mender that digs one stops mending
+                if ct.get_team(uid) == mine or ct.get_entity_type(uid) not in (EntityType.GUNNER, EntityType.SENTINEL):
+                    continue
                 p = ct.get_position(uid)
                 gap = min(_cheb((p.x, p.y), t) for t in self.mine_tiles)
-                if gap > 3:
+                if ct.get_entity_type(uid) == EntityType.SENTINEL:
+                    # 20 hits, 40 Ti, off a ray it cannot turn: cheaper than the 2.25 Ti a
+                    # round its 9 HP cost in heals for 500 rounds on stavkirke
+                    if gap > 5 or self._core_hp(ct) < 150 or self._tended(ct, p, mine):
+                        continue
+                elif gap > 3:
                     continue                       # Gunner reach is r^2 13: 3.6 tiles
                 for _d, dx, dy in CARDINALS:
                     step = (p.x + dx, p.y + dy)
@@ -1519,7 +1556,9 @@ class Player:
                 if bid is None or ct.get_team(bid) == mine:
                     continue
                 kind = ct.get_entity_type(bid)
-                if kind != EntityType.GUNNER:
+                if kind not in (EntityType.GUNNER, EntityType.SENTINEL):
+                    continue
+                if kind == EntityType.SENTINEL and self._tended(ct, spot, mine):
                     continue
                 hp = ct.get_hp(bid)
                 if best_hp is None or hp < best_hp:
@@ -1802,6 +1841,8 @@ class Player:
                 spot = Position(key[0], key[1])
                 if not ct.can_fire(spot):
                     continue
+                if self._tended(ct, spot, ct.get_team()):
+                    continue                       # they heal it for 1 Ti what we dig for 2
                 score = 0 if key in ring else 1
                 if best is None or score < best:
                     best, chosen = score, spot
@@ -1885,6 +1926,29 @@ class Player:
         except Exception:
             return False
 
+    def _patrol_belt(self, ct, here):
+        """Walk to the belt tile longest out of sight.  A hole is only ever repaired when seen,
+        and on helheim the miner extended a trunk whose two tiles nearest the Core had been
+        shot out sixty rounds earlier -- income frozen at 110 for the rest of the game."""
+        if not self.belts:
+            return False
+        stale = None
+        sbest = None
+        for key in self.belts:
+            age = self.round - self.belt_seen.get(key, -1000)
+            if age < 40:
+                continue
+            cost = min((self._dist.get((key[0] + dx, key[1] + dy), 99) for _d, dx, dy in CARDINALS), default=99)
+            if cost > 14:
+                continue
+            rank = (-age, cost)
+            if sbest is None or rank < sbest:
+                sbest, stale = rank, key
+        if stale is None:
+            return False
+        self._walk_beside(ct, here, stale)
+        return True
+
     def _mine(self, ct, here):
         """One Harvester and a belt home -- to the Core, or into a belt of ours that already
         reaches it.  Returns True while there is a job in hand."""
@@ -1943,7 +2007,7 @@ class Player:
         ore = self.chain[0]
         if ore not in self.occupied:
             try:
-                if ti < ct.get_harvester_cost() + ECON_MARGIN:
+                if ti < ct.get_harvester_cost() + (5 if self.team_harvesters == 0 else ECON_MARGIN):
                     return True
             except Exception:
                 pass
@@ -2175,6 +2239,8 @@ class Player:
                 self.blocked.discard(key)
                 self.occupied.discard(key)
                 self.enemy_barriers.discard(key)
+                if key in self.belts:
+                    self.belt_seen[key] = self.round   # seen, and seen gone: a repair job
             else:
                 self.occupied.add(key)
                 blocks = True
@@ -2187,6 +2253,7 @@ class Player:
                         self.enemy_barriers.discard(key)
                     if kind == EntityType.CONVEYOR and mine is not None and ct.get_team(bid) == mine:
                         self.belts[key] = ct.get_direction(bid)
+                        self.belt_seen[key] = self.round
                     if (kind in (EntityType.HARVESTER, EntityType.CONVEYOR, EntityType.SPLITTER)
                             and mine is not None and ct.get_team(bid) != mine):
                         self.econ_seen = True
@@ -2205,7 +2272,7 @@ class Player:
 
     def _free_spot(self, key, strict=False):
         if not (key in self.spots and key not in self.walls
-                and key not in self.occupied
+                and key not in self.occupied and key not in self.poisoned
                 and 0 <= key[0] < self.width and 0 <= key[1] < self.height):
             return False
         if strict and AVOID_COVERED_SPOTS and key in self.lanes:
@@ -2242,6 +2309,7 @@ class Player:
                 continue
             self.built += 1
             self.placed.append(key)
+            self.placed_round[key] = self.round
             self.last_place = self.round
             self.stand_rounds = 0
             self.blocked.add(key)

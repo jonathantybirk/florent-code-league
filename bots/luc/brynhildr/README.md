@@ -23,6 +23,29 @@ Off the pool (sweden, bridge, quarry, duel, showdown, vault) it runs without the
 terrain and without crashing; 7/12 against steward and brokkr. Worst unit-turn on a 30x30
 map: 2.7 ms against the 10 ms limit (about 4.3 ms at the ladder's 1.6x).
 
+## On the ladder
+
+`231e69a` (v99), 34 unrated series at an average opponent of 1754: 15-19, 80-90 games,
+estimate 1686 +-105 -- level with hildr@7a6d86c's 1707, below v78's 1856. It converted the
+timeouts (TRRR 4-1 where hildr was 8-22 in games, I Stone 2-3 where hildr was 1-9) and swept
+Banminary, Ouroboros, Coreflood and jmc, but lost 80 of 90 games to a Core kill in rounds
+100-500 -- the mid-game siege this bot's local panel never plays:
+
+* DinooniD: five Harvesters laid, income frozen at 110 from round 60 -- the belt's two tiles
+  nearest the Core were shot out beyond the miner's sight and never repaired. Miners now
+  patrol any belt tile unseen for forty rounds.
+* farming_200s: seventy-six quiet rounds, two Builders bought, no Harvester -- the second
+  miner took the first one's Harvester money. The second miner follows the first Harvester.
+  Its second Builder dug a barrier their Builder mended, 2 Ti a hit against their 1. Nothing
+  tended is dug.
+* Torsko: 22 Sentinels rebuilt into the same two spots its guard covered, 880 Ti, while the
+  ring reserve kept the miner unaffordable. A Sentinel dead within fifteen rounds poisons its
+  spot; three such losses pause rebuilding for eighty rounds and free the reserve.
+* Big O, team lazy, Lorem Ipsum: one enemy Sentinel parked beside the Core, every point of
+  income spent on 1 Ti heals for as long as 500 rounds. A parked Sentinel within five tiles,
+  untended, is dug out (20 hits, 40 Ti, off a ray it cannot turn); otherwise the squad saves
+  for the counter-turret instead of healing while the Core can take it.
+
 ## What the replays of hildr@7a6d86c showed
 
 Every loss to TRRR, I Stone and farming_200s on the ladder was a round-1000 timeout on
