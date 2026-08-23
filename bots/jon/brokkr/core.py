@@ -148,15 +148,20 @@ def _needs_menders(player, ct, cost) -> bool:
 
 
 def _menders_home(brain) -> int:
-    core = brain.core_tiles()
-    if not core:
+    """Builders standing where they can actually heal.
+
+    Counting everything near the Core counts the diagonal tiles too, and a
+    Builder on one of those heals nothing -- so the count read as "enough
+    menders" and suppressed the spawn that would have saved the Core.
+    """
+    spots = defence.heal_spots(brain)
+    if not spots:
         return 0
     count = 0
     for key, tile in brain.imap.tiles.items():
-        name = _STATES[tile.state]
-        if not name.startswith(("OUR_BUILDER_BOT", "OUR_BOT_ON_CONVEYOR")):
+        if key not in spots:
             continue
-        if min(abs(key[0] - c[0]) + abs(key[1] - c[1]) for c in core) <= NEAR_CORE:
+        if _STATES[tile.state].startswith(("OUR_BUILDER_BOT", "OUR_BOT_ON_CONVEYOR")):
             count += 1
     return count
 
