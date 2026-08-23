@@ -52,6 +52,7 @@ def run(player, ct) -> None:
 
     _alarm(player, ct)
     _publish(player, ct)
+    _gossip(player, ct)
     _ammo(player, ct)
     _spawn(player, ct)
 
@@ -93,6 +94,19 @@ def _alarm(player, ct) -> None:
         store.raise_alarm(ct, max(1, store.alarm_level(ct)))
     elif store.alarm(ct):
         store.clear_alarm(ct)
+
+
+def _gossip(player, ct) -> None:
+    """The Core is the first and best scout: it sees radius 6 from round 0
+    while a newborn Builder sees 4, so it owns the first entries on the ore
+    bulletin. It uses the last slot, which no Builder index reaches until the
+    roster passes seven."""
+    brain = player.brain
+    board = store.ore_board(ct)
+    brain.learn_ore(board)
+    spare = brain.unreported_ore(board)
+    if spare is not None:
+        store.publish_ore(ct, store.ORE_SLOTS - 1, spare)
 
 
 def _publish(player, ct) -> None:

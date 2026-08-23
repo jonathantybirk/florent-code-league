@@ -22,7 +22,9 @@ SLOT_SPAWN_COUNT = 0
 SLOT_SYMMETRY = 1
 SLOT_ALARM = 2
 CLAIM_BASE = 3
-CLAIM_SLOTS = 13          # slots 3..15
+CLAIM_SLOTS = 6           # slots 3..8
+ORE_BASE = 9
+ORE_SLOTS = 7             # slots 9..15
 
 
 def claim_index(ct) -> int:
@@ -80,6 +82,31 @@ def claimed(ct, index) -> set:
         if tile is not None:
             out.add(tile)
     return out
+
+
+# ----------------------------------------------------------------------
+# the ore bulletin
+# ----------------------------------------------------------------------
+def ore_board(ct) -> list:
+    """Deposits any unit has reported, as tiles."""
+    out = []
+    for slot in range(ORE_BASE, ORE_BASE + ORE_SLOTS):
+        tile = _unpack(_read(ct, slot))
+        if tile is not None:
+            out.append(tile)
+    return out
+
+
+def publish_ore(ct, index, tile) -> None:
+    """Put one deposit on the bulletin.
+
+    Each unit owns a slot by index so two reporters do not silently overwrite
+    one another every round. A collision between units sharing a slot costs
+    one report, which the next round re-sends.
+    """
+    if index is None:
+        return
+    _write(ct, ORE_BASE + index % ORE_SLOTS, _pack(tile))
 
 
 def _pack(tile) -> int:
