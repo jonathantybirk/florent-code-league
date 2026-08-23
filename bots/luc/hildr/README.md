@@ -37,6 +37,20 @@ Four Sentinels now land 1-2 rounds apart on every pool map from both seats (v72 
 no turret is built on a tile the route to the anchor runs through, and none that leaves the Builder
 with no exit while builds remain (three turrets and a wall made a cell on midgard).
 
+## The stall (added 2026-08-23)
+
+A rush that parks their Core at ~110 HP behind menders used to bank passive income toward a
+~500 Ti burst it would reach fifty rounds after round 1000.  The stall is now treated as what it
+is -- an income race: once HOLD has accumulated 15 rounds and home is quiet, two home Builders
+mine (three Harvesters, belts at the Core), titanium stays titanium as the burst bank, the
+ammunition float stays one volley deep, and the ring grows past four from surplus.  Volleys
+(20 ammo) hit Harvesters first, then menders on the ring, then any Builder on a ray; a stale
+150+ bank is spent into the Core rather than hoarded.  brokkr (Jon's economy bot): 4/30 -> 24/30.
+
+Discipline, from steward_hardened: replacements are damped after eight Builders, and two mender
+deaths under a standing threat stop mender purchases outright -- a Builder bought into the fire
+that killed the last one is a donation.
+
 ## Local results, 15 pool maps x both seats
 
 | opponent | hildr | v70 for comparison |
