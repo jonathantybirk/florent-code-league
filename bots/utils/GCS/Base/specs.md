@@ -189,9 +189,9 @@ class Player:
             kind = ct.get_entity_type().value     # "core" / "builder_bot" / "gunner" / ...
             self.gcs = GCS(kind, InternalMap(ct.get_map_width(), ct.get_map_height()))
         result = self.gcs.absorb(ct)              # facts + control events + deaths + core_hp
-        self.gcs.map.observe(ct)                  # own eyesight into the map
         # ... Core on spawn: self.gcs.core_announce_assign(self.gcs.registry.pick_builder_slot())
         # ... act / move ...
+        self.gcs.map.observe(ct)                  # own eyesight, from where we ended the round
         self.gcs.publish(ct)                      # call LAST, after moving
 ```
 `bots/gcsprobe/main.py` is a complete working example.
