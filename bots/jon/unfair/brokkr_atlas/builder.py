@@ -209,10 +209,14 @@ def _harass_action(player, ct, enemy_core) -> bool:
 
     spot = brain.harass_target
     if spot is None:
-        # Nothing of theirs known yet. Walk at their Core; the belt is on the
-        # way in, and vision is what we lack rather than reach.
-        approach = min(enemy_core, key=lambda t: _manhattan(t, brain.me))
-        debug.intent(brain, ct, "harass", f"SCOUT->{approach}", "no target known")
+        # Nothing of theirs in sight. Their belt is probably the mirror of
+        # ours -- same map, same problem -- so walk at that rather than at
+        # their Core and hope.
+        guesses = harass.mirrored_guess(brain)
+        approach = (guesses[0] if guesses
+                    else min(enemy_core, key=lambda t: _manhattan(t, brain.me)))
+        debug.intent(brain, ct, "harass", f"SCOUT->{approach}",
+                     "mirrored guess" if guesses else "no target known")
         _walk(brain, ct, approach, exact=False)
         return True
 

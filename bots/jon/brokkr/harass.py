@@ -91,6 +91,49 @@ def targets(brain, enemy_core):
 MIN_INCOME = 3.2
 
 
+def mirrored_guess(brain):
+    """Where their belt probably is, from where ours is.
+
+    Maps are symmetric and both sides solve the same problem, so the tiles our
+    own lanes occupy are a strong prior for theirs. A harasser with nothing in
+    sight otherwise walks at their Core and hopes -- 2405 unit-turns of
+    "no target known" over the pool -- when it could walk at the mirror of our
+    own outermost belt and arrive somewhere their lane actually runs.
+
+    Guesses are ordered innermost-first, for the same reason targets() ranks
+    by distance to their Core: belt converges as it approaches a Core, so the
+    tile just outside ours mirrors to the tile carrying their whole lane.
+    Guessing the far end instead measured 57/90 -> 54/90.
+    """
+    imap = brain.imap
+    kind = imap.symmetry()
+    if kind is None:
+        return []
+    core = brain.core_tiles()
+    if not core:
+        return []
+    ours = sorted(
+        brain.our_conveyors(),
+        key=lambda t: min(abs(t[0] - c[0]) + abs(t[1] - c[1]) for c in core))
+    out = []
+    for tile in ours[:6]:
+        twin = _mirror(tile, kind, imap.w, imap.h)
+        if twin is not None:
+            out.append(twin)
+    return out
+
+
+def _mirror(tile, kind, width, height):
+    x, y = tile
+    if kind == 0:                       # MIRROR_X
+        return (width - 1 - x, y)
+    if kind == 1:                       # MIRROR_Y
+        return (x, height - 1 - y)
+    if kind == 2:                       # ROT_180
+        return (width - 1 - x, height - 1 - y)
+    return None
+
+
 def ready(round_number: int, titanium: int, income: float) -> bool:
     return (round_number >= START_ROUND and titanium >= MIN_TITANIUM
             and income >= MIN_INCOME)
