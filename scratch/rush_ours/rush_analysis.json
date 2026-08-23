@@ -1,0 +1,6966 @@
+{
+  "team_id": "7fd91e77-812c-44da-bce7-457be94d2548",
+  "team_name": "Powered by SmartFridge",
+  "match_types": [
+    "ladder"
+  ],
+  "matches": 8,
+  "games": [
+    {
+      "file": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_1.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          14,
+          2
+        ],
+        "1": [
+          14,
+          26
+        ]
+      },
+      "core_separation": 24.0,
+      "turns": 37,
+      "replay_winner": 1,
+      "replay_win_condition": "titanium_stored",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 18
+          },
+          "first_damage_turret": 18,
+          "first_forward_turret": 18,
+          "first_turret_near_enemy_core": 22,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 12,
+          "first_kill": 36,
+          "turret_builds": [
+            [
+              18,
+              "sentinel",
+              0.792,
+              5.1
+            ],
+            [
+              22,
+              "sentinel",
+              0.833,
+              4.1
+            ],
+            [
+              24,
+              "sentinel",
+              0.875,
+              4.2
+            ],
+            [
+              25,
+              "sentinel",
+              0.875,
+              3.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 390,
+            "frac": 0.792,
+            "enemy_core_dist": 5.1
+          },
+          "titanium_end": 0,
+          "peak_bots": 1,
+          "core_lost_round": 36,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 20
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": 20,
+          "first_turret_near_enemy_core": 22,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 13,
+          "first_kill": 36,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.75,
+              6.1
+            ],
+            [
+              22,
+              "sentinel",
+              0.833,
+              4.0
+            ],
+            [
+              23,
+              "sentinel",
+              0.75,
+              6.0
+            ],
+            [
+              24,
+              "sentinel",
+              0.792,
+              5.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.75,
+            "enemy_core_dist": 6.1
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": 36,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+      "game_number": 1,
+      "map_name": "glacierkeep",
+      "team_a": "Landers",
+      "team_b": "Powered by SmartFridge",
+      "subject_side": 1,
+      "opponent": "Landers",
+      "winner_side": "b",
+      "win_condition": "titanium_stored"
+    },
+    {
+      "file": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_2.replay26",
+      "width": 20,
+      "height": 20,
+      "area": 400,
+      "cores": {
+        "0": [
+          1,
+          16
+        ],
+        "1": [
+          17,
+          2
+        ]
+      },
+      "core_separation": 21.26,
+      "turns": 39,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 25
+          },
+          "first_damage_turret": 25,
+          "first_forward_turret": 25,
+          "first_turret_near_enemy_core": 27,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 15,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              25,
+              "sentinel",
+              0.792,
+              5.1
+            ],
+            [
+              27,
+              "sentinel",
+              0.823,
+              5.0
+            ],
+            [
+              31,
+              "sentinel",
+              0.858,
+              4.0
+            ],
+            [
+              33,
+              "sentinel",
+              0.956,
+              3.6
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 410,
+            "frac": 0.792,
+            "enemy_core_dist": 5.1
+          },
+          "titanium_end": 100,
+          "peak_bots": 1,
+          "core_lost_round": 38,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 22
+          },
+          "first_damage_turret": 22,
+          "first_forward_turret": 22,
+          "first_turret_near_enemy_core": 22,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 12,
+          "first_kill": 38,
+          "turret_builds": [
+            [
+              22,
+              "sentinel",
+              0.765,
+              5.0
+            ],
+            [
+              24,
+              "sentinel",
+              0.801,
+              4.2
+            ],
+            [
+              25,
+              "sentinel",
+              0.863,
+              3.2
+            ],
+            [
+              26,
+              "sentinel",
+              0.796,
+              4.5
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.765,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+      "game_number": 2,
+      "map_name": "icefloe",
+      "team_a": "Landers",
+      "team_b": "Powered by SmartFridge",
+      "subject_side": 1,
+      "opponent": "Landers",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_3.replay26",
+      "width": 26,
+      "height": 12,
+      "area": 312,
+      "cores": {
+        "0": [
+          2,
+          5
+        ],
+        "1": [
+          22,
+          5
+        ]
+      },
+      "core_separation": 20.0,
+      "turns": 42,
+      "replay_winner": 1,
+      "replay_win_condition": "titanium_stored",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 22
+          },
+          "first_damage_turret": 22,
+          "first_forward_turret": 22,
+          "first_turret_near_enemy_core": 26,
+          "first_bot_leaves_home": 10,
+          "first_bot_enemy_half": 16,
+          "first_kill": 41,
+          "turret_builds": [
+            [
+              22,
+              "sentinel",
+              0.8,
+              5.7
+            ],
+            [
+              26,
+              "sentinel",
+              0.85,
+              5.0
+            ],
+            [
+              29,
+              "sentinel",
+              1.0,
+              5.0
+            ],
+            [
+              31,
+              "sentinel",
+              1.0,
+              4.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 400,
+            "frac": 0.8,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 0,
+          "peak_bots": 1,
+          "core_lost_round": 41,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 22
+          },
+          "first_damage_turret": 22,
+          "first_forward_turret": 22,
+          "first_turret_near_enemy_core": 30,
+          "first_bot_leaves_home": 11,
+          "first_bot_enemy_half": 17,
+          "first_kill": 41,
+          "turret_builds": [
+            [
+              22,
+              "sentinel",
+              0.75,
+              6.4
+            ],
+            [
+              26,
+              "sentinel",
+              0.8,
+              5.7
+            ],
+            [
+              30,
+              "sentinel",
+              0.95,
+              4.1
+            ],
+            [
+              31,
+              "sentinel",
+              1.0,
+              5.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.75,
+            "enemy_core_dist": 6.4
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": 41,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+      "game_number": 3,
+      "map_name": "bifrost",
+      "team_a": "Landers",
+      "team_b": "Powered by SmartFridge",
+      "subject_side": 1,
+      "opponent": "Landers",
+      "winner_side": "b",
+      "win_condition": "titanium_stored"
+    },
+    {
+      "file": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_4.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          3,
+          3
+        ],
+        "1": [
+          25,
+          25
+        ]
+      },
+      "core_separation": 31.11,
+      "turns": 52,
+      "replay_winner": 0,
+      "replay_win_condition": "titanium_stored",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 33
+          },
+          "first_damage_turret": 33,
+          "first_forward_turret": 33,
+          "first_turret_near_enemy_core": 33,
+          "first_bot_leaves_home": 8,
+          "first_bot_enemy_half": 19,
+          "first_kill": 51,
+          "turret_builds": [
+            [
+              33,
+              "sentinel",
+              0.841,
+              5.0
+            ],
+            [
+              36,
+              "sentinel",
+              0.886,
+              3.6
+            ],
+            [
+              38,
+              "sentinel",
+              0.909,
+              4.0
+            ],
+            [
+              40,
+              "sentinel",
+              0.932,
+              3.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 430,
+            "frac": 0.841,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 30,
+          "peak_bots": 1,
+          "core_lost_round": 51,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 35
+          },
+          "first_damage_turret": 35,
+          "first_forward_turret": 35,
+          "first_turret_near_enemy_core": 35,
+          "first_bot_leaves_home": 10,
+          "first_bot_enemy_half": 21,
+          "first_kill": 51,
+          "turret_builds": [
+            [
+              35,
+              "sentinel",
+              0.841,
+              5.0
+            ],
+            [
+              36,
+              "sentinel",
+              0.795,
+              6.4
+            ],
+            [
+              38,
+              "sentinel",
+              0.864,
+              4.2
+            ],
+            [
+              39,
+              "sentinel",
+              0.818,
+              5.7
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 530,
+            "frac": 0.841,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 15,
+          "peak_bots": 1,
+          "core_lost_round": 51,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+      "game_number": 4,
+      "map_name": "yggdrasil",
+      "team_a": "Landers",
+      "team_b": "Powered by SmartFridge",
+      "subject_side": 1,
+      "opponent": "Landers",
+      "winner_side": "a",
+      "win_condition": "titanium_stored"
+    },
+    {
+      "file": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_5.replay26",
+      "width": 12,
+      "height": 12,
+      "area": 144,
+      "cores": {
+        "0": [
+          1,
+          1
+        ],
+        "1": [
+          9,
+          9
+        ]
+      },
+      "core_separation": 11.31,
+      "turns": 253,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 4
+          },
+          "first_damage_turret": 4,
+          "first_forward_turret": 6,
+          "first_turret_near_enemy_core": 6,
+          "first_bot_leaves_home": 1,
+          "first_bot_enemy_half": 7,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              4,
+              "sentinel",
+              0.5,
+              5.7
+            ],
+            [
+              6,
+              "sentinel",
+              0.562,
+              5.0
+            ],
+            [
+              9,
+              "sentinel",
+              0.688,
+              5.0
+            ],
+            [
+              13,
+              "sentinel",
+              0.75,
+              5.1
+            ],
+            [
+              18,
+              "sentinel",
+              0.75,
+              4.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 360,
+            "frac": 0.5,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 0,
+          "peak_bots": 1,
+          "core_lost_round": 252,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 4
+          },
+          "first_damage_turret": 4,
+          "first_forward_turret": 10,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 3,
+          "first_bot_enemy_half": 9,
+          "first_kill": 9,
+          "turret_builds": [
+            [
+              4,
+              "sentinel",
+              0.375,
+              7.1
+            ],
+            [
+              6,
+              "sentinel",
+              0.438,
+              6.4
+            ],
+            [
+              10,
+              "sentinel",
+              0.625,
+              6.0
+            ],
+            [
+              11,
+              "sentinel",
+              0.625,
+              5.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 460,
+            "frac": 0.375,
+            "enemy_core_dist": 7.1
+          },
+          "titanium_end": 3,
+          "peak_bots": 4,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 4,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+      "game_number": 5,
+      "map_name": "holmgang",
+      "team_a": "Landers",
+      "team_b": "Powered by SmartFridge",
+      "subject_side": 1,
+      "opponent": "Landers",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_1.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          2,
+          14
+        ],
+        "1": [
+          26,
+          14
+        ]
+      },
+      "core_separation": 24.0,
+      "turns": 307,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 24
+          },
+          "first_damage_turret": 24,
+          "first_forward_turret": 24,
+          "first_turret_near_enemy_core": 37,
+          "first_bot_leaves_home": 11,
+          "first_bot_enemy_half": 17,
+          "first_kill": 188,
+          "turret_builds": [
+            [
+              24,
+              "sentinel",
+              0.833,
+              5.7
+            ],
+            [
+              37,
+              "sentinel",
+              0.792,
+              5.0
+            ],
+            [
+              39,
+              "sentinel",
+              0.833,
+              4.0
+            ],
+            [
+              41,
+              "sentinel",
+              0.875,
+              3.6
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 246,
+            "frac": 0.833,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 0,
+          "peak_bots": 1,
+          "core_lost_round": 306,
+          "final": {
+            "bot": 1
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 3,
+            "launcher": 7,
+            "harvester": 8,
+            "barrier": 21,
+            "gunner": 152
+          },
+          "first_damage_turret": 152,
+          "first_forward_turret": 305,
+          "first_turret_near_enemy_core": 305,
+          "first_bot_leaves_home": 8,
+          "first_bot_enemy_half": 10,
+          "first_kill": 82,
+          "turret_builds": [
+            [
+              7,
+              "launcher",
+              0.25,
+              18.0
+            ],
+            [
+              152,
+              "gunner",
+              0.083,
+              22.2
+            ],
+            [
+              305,
+              "gunner",
+              1.042,
+              2.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 6,
+              "conveyor": 16,
+              "launcher": 1,
+              "harvester": 2,
+              "barrier": 1,
+              "gunner": 1
+            },
+            "titanium": 84,
+            "frac": 0.083,
+            "enemy_core_dist": 22.2
+          },
+          "titanium_end": 195,
+          "peak_bots": 7,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 7,
+            "conveyor": 31,
+            "launcher": 1,
+            "harvester": 4,
+            "barrier": 1,
+            "gunner": 1
+          }
+        }
+      ],
+      "match_id": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+      "game_number": 1,
+      "map_name": "valkyrie",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Troupe",
+      "subject_side": 0,
+      "opponent": "Troupe",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_2.replay26",
+      "width": 24,
+      "height": 24,
+      "area": 576,
+      "cores": {
+        "0": [
+          1,
+          11
+        ],
+        "1": [
+          21,
+          11
+        ]
+      },
+      "core_separation": 20.0,
+      "turns": 221,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 19
+          },
+          "first_damage_turret": 19,
+          "first_forward_turret": 19,
+          "first_turret_near_enemy_core": 19,
+          "first_bot_leaves_home": 8,
+          "first_bot_enemy_half": 14,
+          "first_kill": 133,
+          "turret_builds": [
+            [
+              19,
+              "sentinel",
+              0.8,
+              5.0
+            ],
+            [
+              22,
+              "sentinel",
+              0.85,
+              3.6
+            ],
+            [
+              93,
+              "sentinel",
+              1.0,
+              5.0
+            ],
+            [
+              95,
+              "sentinel",
+              1.05,
+              5.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 226,
+            "frac": 0.8,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 0,
+          "peak_bots": 1,
+          "core_lost_round": 220,
+          "final": {}
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 3,
+            "harvester": 6,
+            "launcher": 7,
+            "gunner": 69
+          },
+          "first_damage_turret": 69,
+          "first_forward_turret": 69,
+          "first_turret_near_enemy_core": 69,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 8,
+          "first_kill": 46,
+          "turret_builds": [
+            [
+              7,
+              "launcher",
+              0.3,
+              14.0
+            ],
+            [
+              69,
+              "gunner",
+              0.9,
+              2.8
+            ],
+            [
+              100,
+              "gunner",
+              0.25,
+              15.1
+            ],
+            [
+              145,
+              "gunner",
+              0.05,
+              19.4
+            ],
+            [
+              165,
+              "gunner",
+              0.0,
+              20.4
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 6,
+              "conveyor": 11,
+              "harvester": 3,
+              "launcher": 1,
+              "gunner": 1
+            },
+            "titanium": 91,
+            "frac": 0.9,
+            "enemy_core_dist": 2.8
+          },
+          "titanium_end": 45,
+          "peak_bots": 9,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 9,
+            "conveyor": 21,
+            "harvester": 5,
+            "launcher": 1,
+            "gunner": 1
+          }
+        }
+      ],
+      "match_id": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+      "game_number": 2,
+      "map_name": "paths",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Troupe",
+      "subject_side": 0,
+      "opponent": "Troupe",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_3.replay26",
+      "width": 16,
+      "height": 16,
+      "area": 256,
+      "cores": {
+        "0": [
+          7,
+          1
+        ],
+        "1": [
+          7,
+          13
+        ]
+      },
+      "core_separation": 12.0,
+      "turns": 205,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 9
+          },
+          "first_damage_turret": 9,
+          "first_forward_turret": 9,
+          "first_turret_near_enemy_core": 9,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 8,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              9,
+              "sentinel",
+              0.583,
+              5.0
+            ],
+            [
+              11,
+              "sentinel",
+              0.667,
+              4.0
+            ],
+            [
+              13,
+              "sentinel",
+              0.833,
+              2.2
+            ],
+            [
+              14,
+              "sentinel",
+              0.75,
+              3.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 216,
+            "frac": 0.583,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 0,
+          "peak_bots": 1,
+          "core_lost_round": 204,
+          "final": {
+            "bot": 1
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 3,
+            "harvester": 5,
+            "launcher": 7,
+            "barrier": 167,
+            "gunner": 194
+          },
+          "first_damage_turret": 194,
+          "first_forward_turret": 194,
+          "first_turret_near_enemy_core": 194,
+          "first_bot_leaves_home": 3,
+          "first_bot_enemy_half": 6,
+          "first_kill": 68,
+          "turret_builds": [
+            [
+              7,
+              "launcher",
+              0.667,
+              4.5
+            ],
+            [
+              170,
+              "launcher",
+              0.25,
+              9.2
+            ],
+            [
+              194,
+              "gunner",
+              1.083,
+              1.4
+            ],
+            [
+              202,
+              "gunner",
+              0.833,
+              2.8
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 6,
+              "conveyor": 23,
+              "harvester": 6,
+              "launcher": 2,
+              "barrier": 1,
+              "gunner": 1
+            },
+            "titanium": 101,
+            "frac": 1.083,
+            "enemy_core_dist": 1.4
+          },
+          "titanium_end": 77,
+          "peak_bots": 6,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 6,
+            "conveyor": 23,
+            "harvester": 6,
+            "launcher": 2,
+            "barrier": 1,
+            "gunner": 2
+          }
+        }
+      ],
+      "match_id": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+      "game_number": 3,
+      "map_name": "skald",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Troupe",
+      "subject_side": 0,
+      "opponent": "Troupe",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_4.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          3,
+          3
+        ],
+        "1": [
+          25,
+          25
+        ]
+      },
+      "core_separation": 31.11,
+      "turns": 78,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 48
+          },
+          "first_damage_turret": 48,
+          "first_forward_turret": 48,
+          "first_turret_near_enemy_core": 48,
+          "first_bot_leaves_home": 14,
+          "first_bot_enemy_half": 25,
+          "first_kill": 77,
+          "turret_builds": [
+            [
+              48,
+              "sentinel",
+              0.932,
+              3.0
+            ],
+            [
+              53,
+              "sentinel",
+              0.841,
+              5.0
+            ],
+            [
+              56,
+              "sentinel",
+              0.886,
+              3.6
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 266,
+            "frac": 0.932,
+            "enemy_core_dist": 3.0
+          },
+          "titanium_end": 108,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 3,
+            "launcher": 7,
+            "harvester": 8,
+            "gunner": 34
+          },
+          "first_damage_turret": 34,
+          "first_forward_turret": 34,
+          "first_turret_near_enemy_core": 34,
+          "first_bot_leaves_home": 8,
+          "first_bot_enemy_half": 15,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              7,
+              "launcher",
+              0.205,
+              25.0
+            ],
+            [
+              34,
+              "gunner",
+              0.909,
+              2.8
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 6,
+              "conveyor": 13,
+              "launcher": 1,
+              "harvester": 2,
+              "gunner": 1
+            },
+            "titanium": 116,
+            "frac": 0.909,
+            "enemy_core_dist": 2.8
+          },
+          "titanium_end": 11,
+          "peak_bots": 6,
+          "core_lost_round": 77,
+          "final": {
+            "bot": 6,
+            "conveyor": 20,
+            "launcher": 1,
+            "harvester": 3,
+            "gunner": 1
+          }
+        }
+      ],
+      "match_id": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+      "game_number": 4,
+      "map_name": "yggdrasil",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Troupe",
+      "subject_side": 0,
+      "opponent": "Troupe",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_5.replay26",
+      "width": 20,
+      "height": 20,
+      "area": 400,
+      "cores": {
+        "0": [
+          9,
+          1
+        ],
+        "1": [
+          9,
+          17
+        ]
+      },
+      "core_separation": 16.0,
+      "turns": 268,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 18
+          },
+          "first_damage_turret": 18,
+          "first_forward_turret": 18,
+          "first_turret_near_enemy_core": 35,
+          "first_bot_leaves_home": 7,
+          "first_bot_enemy_half": 13,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              18,
+              "sentinel",
+              0.75,
+              5.7
+            ],
+            [
+              33,
+              "sentinel",
+              0.688,
+              5.1
+            ],
+            [
+              35,
+              "sentinel",
+              0.75,
+              4.1
+            ],
+            [
+              37,
+              "sentinel",
+              0.812,
+              3.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 226,
+            "frac": 0.75,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 20,
+          "peak_bots": 1,
+          "core_lost_round": 267,
+          "final": {
+            "bot": 1
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 3,
+            "launcher": 7,
+            "harvester": 11,
+            "gunner": 259
+          },
+          "first_damage_turret": 259,
+          "first_forward_turret": 259,
+          "first_turret_near_enemy_core": 259,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 8,
+          "first_kill": 40,
+          "turret_builds": [
+            [
+              7,
+              "launcher",
+              0.25,
+              12.2
+            ],
+            [
+              213,
+              "launcher",
+              0.188,
+              13.0
+            ],
+            [
+              237,
+              "launcher",
+              0.5,
+              8.1
+            ],
+            [
+              259,
+              "gunner",
+              0.875,
+              2.8
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 8,
+              "conveyor": 34,
+              "launcher": 3,
+              "harvester": 4,
+              "gunner": 1
+            },
+            "titanium": 125,
+            "frac": 0.875,
+            "enemy_core_dist": 2.8
+          },
+          "titanium_end": 135,
+          "peak_bots": 8,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 8,
+            "conveyor": 34,
+            "launcher": 3,
+            "harvester": 4,
+            "gunner": 1
+          }
+        }
+      ],
+      "match_id": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+      "game_number": 5,
+      "map_name": "auroraveil",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Troupe",
+      "subject_side": 0,
+      "opponent": "Troupe",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_1.replay26",
+      "width": 16,
+      "height": 16,
+      "area": 256,
+      "cores": {
+        "0": [
+          7,
+          1
+        ],
+        "1": [
+          7,
+          13
+        ]
+      },
+      "core_separation": 12.0,
+      "turns": 35,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 6
+          },
+          "first_damage_turret": 6,
+          "first_forward_turret": 6,
+          "first_turret_near_enemy_core": 6,
+          "first_bot_leaves_home": 2,
+          "first_bot_enemy_half": 5,
+          "first_kill": 34,
+          "turret_builds": [
+            [
+              6,
+              "sentinel",
+              0.667,
+              4.0
+            ],
+            [
+              8,
+              "sentinel",
+              0.667,
+              4.1
+            ],
+            [
+              9,
+              "sentinel",
+              0.583,
+              5.0
+            ],
+            [
+              11,
+              "sentinel",
+              0.583,
+              5.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 460,
+            "frac": 0.667,
+            "enemy_core_dist": 4.0
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 1
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "harvester": 2,
+            "conveyor": 5,
+            "gunner": 10
+          },
+          "first_damage_turret": 10,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 11,
+          "first_bot_enemy_half": 23,
+          "first_kill": 16,
+          "turret_builds": [
+            [
+              10,
+              "gunner",
+              0.333,
+              8.1
+            ],
+            [
+              19,
+              "gunner",
+              0.417,
+              7.3
+            ],
+            [
+              22,
+              "gunner",
+              0.333,
+              8.1
+            ],
+            [
+              30,
+              "gunner",
+              0.417,
+              7.3
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "harvester": 4,
+              "conveyor": 6,
+              "gunner": 1
+            },
+            "titanium": 84,
+            "frac": 0.333,
+            "enemy_core_dist": 8.1
+          },
+          "titanium_end": 55,
+          "peak_bots": 4,
+          "core_lost_round": 34,
+          "final": {
+            "bot": 4,
+            "harvester": 6,
+            "conveyor": 19,
+            "gunner": 2
+          }
+        }
+      ],
+      "match_id": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+      "game_number": 1,
+      "map_name": "skald",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Torsko",
+      "subject_side": 0,
+      "opponent": "Torsko",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_2.replay26",
+      "width": 20,
+      "height": 20,
+      "area": 400,
+      "cores": {
+        "0": [
+          2,
+          1
+        ],
+        "1": [
+          16,
+          17
+        ]
+      },
+      "core_separation": 21.26,
+      "turns": 129,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 23
+          },
+          "first_damage_turret": 23,
+          "first_forward_turret": 23,
+          "first_turret_near_enemy_core": 23,
+          "first_bot_leaves_home": 4,
+          "first_bot_enemy_half": 11,
+          "first_kill": 34,
+          "turret_builds": [
+            [
+              23,
+              "sentinel",
+              0.77,
+              5.0
+            ],
+            [
+              25,
+              "sentinel",
+              0.801,
+              4.2
+            ],
+            [
+              37,
+              "sentinel",
+              0.823,
+              5.0
+            ],
+            [
+              43,
+              "sentinel",
+              0.801,
+              4.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.77,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 8,
+          "peak_bots": 3,
+          "core_lost_round": 128,
+          "final": {
+            "bot": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "harvester": 2,
+            "conveyor": 7,
+            "gunner": 31,
+            "sentinel": 46
+          },
+          "first_damage_turret": 31,
+          "first_forward_turret": 95,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 13,
+          "first_bot_enemy_half": 79,
+          "first_kill": 36,
+          "turret_builds": [
+            [
+              31,
+              "gunner",
+              0.164,
+              17.8
+            ],
+            [
+              35,
+              "gunner",
+              0.164,
+              17.8
+            ],
+            [
+              46,
+              "sentinel",
+              0.066,
+              19.8
+            ],
+            [
+              56,
+              "sentinel",
+              0.066,
+              19.8
+            ],
+            [
+              65,
+              "sentinel",
+              0.19,
+              18.8
+            ],
+            [
+              73,
+              "gunner",
+              0.097,
+              19.2
+            ],
+            [
+              78,
+              "sentinel",
+              0.097,
+              19.2
+            ],
+            [
+              95,
+              "sentinel",
+              0.704,
+              6.4
+            ],
+            [
+              96,
+              "sentinel",
+              0.668,
+              7.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "harvester": 4,
+              "conveyor": 23,
+              "gunner": 1
+            },
+            "titanium": 104,
+            "frac": 0.164,
+            "enemy_core_dist": 17.8
+          },
+          "titanium_end": 154,
+          "peak_bots": 4,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 4,
+            "harvester": 5,
+            "conveyor": 30,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+      "game_number": 2,
+      "map_name": "fimbulwinter",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Torsko",
+      "subject_side": 0,
+      "opponent": "Torsko",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_3.replay26",
+      "width": 20,
+      "height": 20,
+      "area": 400,
+      "cores": {
+        "0": [
+          1,
+          16
+        ],
+        "1": [
+          17,
+          2
+        ]
+      },
+      "core_separation": 21.26,
+      "turns": 232,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 23
+          },
+          "first_damage_turret": 23,
+          "first_forward_turret": 23,
+          "first_turret_near_enemy_core": 23,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 12,
+          "first_kill": 29,
+          "turret_builds": [
+            [
+              23,
+              "sentinel",
+              0.876,
+              4.0
+            ],
+            [
+              24,
+              "sentinel",
+              0.814,
+              6.0
+            ],
+            [
+              26,
+              "sentinel",
+              0.912,
+              4.1
+            ],
+            [
+              27,
+              "sentinel",
+              0.85,
+              6.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.876,
+            "enemy_core_dist": 4.0
+          },
+          "titanium_end": 405,
+          "peak_bots": 1,
+          "core_lost_round": 231,
+          "final": {
+            "bot": 1
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "harvester": 4,
+            "conveyor": 7,
+            "gunner": 28,
+            "sentinel": 70
+          },
+          "first_damage_turret": 28,
+          "first_forward_turret": 202,
+          "first_turret_near_enemy_core": 202,
+          "first_bot_leaves_home": 7,
+          "first_bot_enemy_half": 54,
+          "first_kill": 42,
+          "turret_builds": [
+            [
+              28,
+              "gunner",
+              0.093,
+              19.4
+            ],
+            [
+              36,
+              "gunner",
+              0.093,
+              19.4
+            ],
+            [
+              47,
+              "gunner",
+              0.027,
+              20.8
+            ],
+            [
+              70,
+              "sentinel",
+              0.093,
+              19.4
+            ],
+            [
+              202,
+              "sentinel",
+              0.823,
+              5.0
+            ],
+            [
+              205,
+              "sentinel",
+              0.801,
+              4.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 5,
+              "harvester": 3,
+              "conveyor": 17,
+              "gunner": 1
+            },
+            "titanium": 97,
+            "frac": 0.093,
+            "enemy_core_dist": 19.4
+          },
+          "titanium_end": 299,
+          "peak_bots": 7,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 7,
+            "harvester": 13,
+            "conveyor": 103,
+            "gunner": 1,
+            "sentinel": 3
+          }
+        }
+      ],
+      "match_id": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+      "game_number": 3,
+      "map_name": "icefloe",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Torsko",
+      "subject_side": 0,
+      "opponent": "Torsko",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_4.replay26",
+      "width": 26,
+      "height": 12,
+      "area": 312,
+      "cores": {
+        "0": [
+          2,
+          5
+        ],
+        "1": [
+          22,
+          5
+        ]
+      },
+      "core_separation": 20.0,
+      "turns": 56,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 20
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": 20,
+          "first_turret_near_enemy_core": 24,
+          "first_bot_leaves_home": 10,
+          "first_bot_enemy_half": 15,
+          "first_kill": 55,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.8,
+              5.7
+            ],
+            [
+              24,
+              "sentinel",
+              0.75,
+              5.0
+            ],
+            [
+              28,
+              "sentinel",
+              0.75,
+              5.1
+            ],
+            [
+              34,
+              "sentinel",
+              0.8,
+              6.4
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.8,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 15,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "harvester": 3,
+            "conveyor": 5,
+            "sentinel": 20
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 26,
+          "first_bot_enemy_half": null,
+          "first_kill": 23,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.0,
+              20.4
+            ],
+            [
+              20,
+              "sentinel",
+              0.1,
+              18.4
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "harvester": 2,
+              "conveyor": 12,
+              "sentinel": 1
+            },
+            "titanium": 205,
+            "frac": 0.0,
+            "enemy_core_dist": 20.4
+          },
+          "titanium_end": 126,
+          "peak_bots": 4,
+          "core_lost_round": 55,
+          "final": {
+            "bot": 4,
+            "harvester": 3,
+            "conveyor": 25,
+            "sentinel": 2
+          }
+        }
+      ],
+      "match_id": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+      "game_number": 4,
+      "map_name": "bifrost",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Torsko",
+      "subject_side": 0,
+      "opponent": "Torsko",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_5.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          2,
+          14
+        ],
+        "1": [
+          26,
+          14
+        ]
+      },
+      "core_separation": 24.0,
+      "turns": 40,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 20
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": 20,
+          "first_turret_near_enemy_core": 22,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 12,
+          "first_kill": 39,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.792,
+              5.1
+            ],
+            [
+              22,
+              "sentinel",
+              0.833,
+              4.1
+            ],
+            [
+              23,
+              "sentinel",
+              0.792,
+              5.0
+            ],
+            [
+              25,
+              "sentinel",
+              0.833,
+              4.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.792,
+            "enemy_core_dist": 5.1
+          },
+          "titanium_end": 22,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "harvester": 5,
+            "conveyor": 7,
+            "sentinel": 30
+          },
+          "first_damage_turret": 30,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": null,
+          "first_bot_enemy_half": null,
+          "first_kill": 37,
+          "turret_builds": [
+            [
+              30,
+              "sentinel",
+              0.167,
+              20.6
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 5,
+              "harvester": 2,
+              "conveyor": 13,
+              "sentinel": 1
+            },
+            "titanium": 114,
+            "frac": 0.167,
+            "enemy_core_dist": 20.6
+          },
+          "titanium_end": 108,
+          "peak_bots": 5,
+          "core_lost_round": 39,
+          "final": {
+            "bot": 5,
+            "harvester": 2,
+            "conveyor": 13,
+            "sentinel": 1
+          }
+        }
+      ],
+      "match_id": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+      "game_number": 5,
+      "map_name": "valkyrie",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Torsko",
+      "subject_side": 0,
+      "opponent": "Torsko",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "8f74098f-aec8-4861-983d-fe45117e8160_game_1.replay26",
+      "width": 24,
+      "height": 24,
+      "area": 576,
+      "cores": {
+        "0": [
+          4,
+          4
+        ],
+        "1": [
+          18,
+          18
+        ]
+      },
+      "core_separation": 19.8,
+      "turns": 40,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 21
+          },
+          "first_damage_turret": 21,
+          "first_forward_turret": 21,
+          "first_turret_near_enemy_core": 21,
+          "first_bot_leaves_home": 4,
+          "first_bot_enemy_half": 11,
+          "first_kill": 39,
+          "turret_builds": [
+            [
+              21,
+              "sentinel",
+              0.821,
+              3.6
+            ],
+            [
+              22,
+              "sentinel",
+              0.893,
+              2.2
+            ],
+            [
+              23,
+              "sentinel",
+              0.893,
+              2.2
+            ],
+            [
+              24,
+              "sentinel",
+              0.821,
+              3.6
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.821,
+            "enemy_core_dist": 3.6
+          },
+          "titanium_end": 11,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 1,
+            "harvester": 18,
+            "sentinel": 22
+          },
+          "first_damage_turret": 22,
+          "first_forward_turret": 22,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 9,
+          "first_bot_enemy_half": 16,
+          "first_kill": 30,
+          "turret_builds": [
+            [
+              22,
+              "sentinel",
+              0.75,
+              6.1
+            ],
+            [
+              25,
+              "sentinel",
+              0.25,
+              15.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "conveyor": 18,
+              "harvester": 2,
+              "sentinel": 1
+            },
+            "titanium": 226,
+            "frac": 0.75,
+            "enemy_core_dist": 6.1
+          },
+          "titanium_end": 10,
+          "peak_bots": 4,
+          "core_lost_round": 39,
+          "final": {
+            "bot": 4,
+            "conveyor": 18,
+            "harvester": 3,
+            "sentinel": 2
+          }
+        }
+      ],
+      "match_id": "8f74098f-aec8-4861-983d-fe45117e8160",
+      "game_number": 1,
+      "map_name": "jotunheim",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "diverge",
+      "subject_side": 0,
+      "opponent": "diverge",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "8f74098f-aec8-4861-983d-fe45117e8160_game_2.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          3,
+          3
+        ],
+        "1": [
+          25,
+          25
+        ]
+      },
+      "core_separation": 31.11,
+      "turns": 55,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 35
+          },
+          "first_damage_turret": 35,
+          "first_forward_turret": 35,
+          "first_turret_near_enemy_core": 35,
+          "first_bot_leaves_home": 8,
+          "first_bot_enemy_half": 19,
+          "first_kill": 54,
+          "turret_builds": [
+            [
+              35,
+              "sentinel",
+              0.841,
+              5.0
+            ],
+            [
+              36,
+              "sentinel",
+              0.886,
+              3.6
+            ],
+            [
+              38,
+              "sentinel",
+              0.909,
+              2.8
+            ],
+            [
+              39,
+              "sentinel",
+              0.864,
+              4.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 530,
+            "frac": 0.841,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 14,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 4,
+            "harvester": 14,
+            "sentinel": 36,
+            "launcher": 52
+          },
+          "first_damage_turret": 36,
+          "first_forward_turret": 36,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 12,
+          "first_bot_enemy_half": 23,
+          "first_kill": 44,
+          "turret_builds": [
+            [
+              36,
+              "sentinel",
+              0.818,
+              5.7
+            ],
+            [
+              39,
+              "sentinel",
+              0.159,
+              26.4
+            ],
+            [
+              52,
+              "launcher",
+              0.159,
+              26.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "conveyor": 21,
+              "harvester": 2,
+              "sentinel": 1
+            },
+            "titanium": 294,
+            "frac": 0.818,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 1,
+          "peak_bots": 4,
+          "core_lost_round": 54,
+          "final": {
+            "bot": 4,
+            "conveyor": 21,
+            "harvester": 3,
+            "sentinel": 2,
+            "launcher": 1
+          }
+        }
+      ],
+      "match_id": "8f74098f-aec8-4861-983d-fe45117e8160",
+      "game_number": 2,
+      "map_name": "yggdrasil",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "diverge",
+      "subject_side": 0,
+      "opponent": "diverge",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "8f74098f-aec8-4861-983d-fe45117e8160_game_3.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          2,
+          14
+        ],
+        "1": [
+          26,
+          14
+        ]
+      },
+      "core_separation": 24.0,
+      "turns": 44,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 20
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": 20,
+          "first_turret_near_enemy_core": 22,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 12,
+          "first_kill": 43,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.792,
+              5.1
+            ],
+            [
+              22,
+              "sentinel",
+              0.833,
+              4.1
+            ],
+            [
+              23,
+              "sentinel",
+              0.792,
+              5.0
+            ],
+            [
+              25,
+              "sentinel",
+              0.833,
+              4.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.792,
+            "enemy_core_dist": 5.1
+          },
+          "titanium_end": 15,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 1
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 4,
+            "harvester": 16,
+            "sentinel": 27
+          },
+          "first_damage_turret": 27,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 9,
+          "first_bot_enemy_half": 17,
+          "first_kill": 35,
+          "turret_builds": [
+            [
+              27,
+              "sentinel",
+              0.042,
+              23.2
+            ],
+            [
+              33,
+              "sentinel",
+              0.208,
+              19.4
+            ],
+            [
+              39,
+              "sentinel",
+              0.208,
+              19.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "conveyor": 6,
+              "harvester": 1,
+              "sentinel": 1
+            },
+            "titanium": 340,
+            "frac": 0.042,
+            "enemy_core_dist": 23.2
+          },
+          "titanium_end": 60,
+          "peak_bots": 4,
+          "core_lost_round": 43,
+          "final": {
+            "bot": 4,
+            "conveyor": 6,
+            "harvester": 1,
+            "sentinel": 3
+          }
+        }
+      ],
+      "match_id": "8f74098f-aec8-4861-983d-fe45117e8160",
+      "game_number": 3,
+      "map_name": "valkyrie",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "diverge",
+      "subject_side": 0,
+      "opponent": "diverge",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "8f74098f-aec8-4861-983d-fe45117e8160_game_4.replay26",
+      "width": 26,
+      "height": 12,
+      "area": 312,
+      "cores": {
+        "0": [
+          2,
+          5
+        ],
+        "1": [
+          22,
+          5
+        ]
+      },
+      "core_separation": 20.0,
+      "turns": 121,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 20
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": 20,
+          "first_turret_near_enemy_core": 24,
+          "first_bot_leaves_home": 10,
+          "first_bot_enemy_half": 15,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.8,
+              5.7
+            ],
+            [
+              24,
+              "sentinel",
+              0.85,
+              5.0
+            ],
+            [
+              28,
+              "sentinel",
+              1.0,
+              4.0
+            ],
+            [
+              29,
+              "sentinel",
+              1.05,
+              5.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.8,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 185,
+          "peak_bots": 1,
+          "core_lost_round": 120,
+          "final": {}
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 7,
+            "harvester": 15,
+            "sentinel": 28
+          },
+          "first_damage_turret": 28,
+          "first_forward_turret": 60,
+          "first_turret_near_enemy_core": 60,
+          "first_bot_leaves_home": 14,
+          "first_bot_enemy_half": 19,
+          "first_kill": 34,
+          "turret_builds": [
+            [
+              28,
+              "sentinel",
+              0.0,
+              20.0
+            ],
+            [
+              32,
+              "sentinel",
+              -0.15,
+              23.2
+            ],
+            [
+              38,
+              "sentinel",
+              0.0,
+              20.4
+            ],
+            [
+              60,
+              "sentinel",
+              0.9,
+              2.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "conveyor": 15,
+              "harvester": 2,
+              "sentinel": 1
+            },
+            "titanium": 304,
+            "frac": 0.0,
+            "enemy_core_dist": 20.0
+          },
+          "titanium_end": 40,
+          "peak_bots": 4,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 4,
+            "conveyor": 18,
+            "harvester": 3,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "8f74098f-aec8-4861-983d-fe45117e8160",
+      "game_number": 4,
+      "map_name": "bifrost",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "diverge",
+      "subject_side": 0,
+      "opponent": "diverge",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "8f74098f-aec8-4861-983d-fe45117e8160_game_5.replay26",
+      "width": 22,
+      "height": 22,
+      "area": 484,
+      "cores": {
+        "0": [
+          9,
+          2
+        ],
+        "1": [
+          9,
+          18
+        ]
+      },
+      "core_separation": 16.0,
+      "turns": 1000,
+      "replay_winner": 1,
+      "replay_win_condition": "titanium_collected",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 15,
+            "conveyor": 52
+          },
+          "first_damage_turret": 15,
+          "first_forward_turret": 15,
+          "first_turret_near_enemy_core": 15,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 12,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              15,
+              "sentinel",
+              0.688,
+              5.0
+            ],
+            [
+              17,
+              "sentinel",
+              0.688,
+              5.1
+            ],
+            [
+              43,
+              "sentinel",
+              0.812,
+              5.8
+            ],
+            [
+              116,
+              "sentinel",
+              0.75,
+              5.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 480,
+            "frac": 0.688,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 10,
+          "peak_bots": 4,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 4,
+            "sentinel": 4,
+            "conveyor": 5
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 2,
+            "harvester": 12,
+            "sentinel": 16
+          },
+          "first_damage_turret": 16,
+          "first_forward_turret": 16,
+          "first_turret_near_enemy_core": 16,
+          "first_bot_leaves_home": 9,
+          "first_bot_enemy_half": 13,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              16,
+              "sentinel",
+              0.75,
+              5.0
+            ],
+            [
+              17,
+              "sentinel",
+              0.688,
+              6.4
+            ],
+            [
+              22,
+              "sentinel",
+              0.188,
+              13.3
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "conveyor": 16,
+              "harvester": 1,
+              "sentinel": 1
+            },
+            "titanium": 272,
+            "frac": 0.75,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 10,
+          "peak_bots": 4,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 4,
+            "conveyor": 17,
+            "harvester": 1,
+            "sentinel": 3
+          }
+        }
+      ],
+      "match_id": "8f74098f-aec8-4861-983d-fe45117e8160",
+      "game_number": 5,
+      "map_name": "stavkirke",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "diverge",
+      "subject_side": 0,
+      "opponent": "diverge",
+      "winner_side": "b",
+      "win_condition": "titanium_collected"
+    },
+    {
+      "file": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_1.replay26",
+      "width": 24,
+      "height": 24,
+      "area": 576,
+      "cores": {
+        "0": [
+          1,
+          11
+        ],
+        "1": [
+          21,
+          11
+        ]
+      },
+      "core_separation": 20.0,
+      "turns": 41,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 17
+          },
+          "first_damage_turret": 17,
+          "first_forward_turret": 17,
+          "first_turret_near_enemy_core": 17,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 12,
+          "first_kill": 40,
+          "turret_builds": [
+            [
+              17,
+              "sentinel",
+              0.8,
+              5.0
+            ],
+            [
+              21,
+              "sentinel",
+              0.85,
+              4.2
+            ],
+            [
+              23,
+              "sentinel",
+              0.9,
+              2.2
+            ],
+            [
+              24,
+              "sentinel",
+              0.95,
+              2.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 490,
+            "frac": 0.8,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 1,
+            "harvester": 7,
+            "barrier": 26,
+            "sentinel": 30
+          },
+          "first_damage_turret": 30,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 10,
+          "first_bot_enemy_half": 17,
+          "first_kill": 35,
+          "turret_builds": [
+            [
+              30,
+              "sentinel",
+              0.0,
+              20.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 6,
+              "conveyor": 19,
+              "harvester": 3,
+              "barrier": 3,
+              "sentinel": 1
+            },
+            "titanium": 122,
+            "frac": 0.0,
+            "enemy_core_dist": 20.2
+          },
+          "titanium_end": 28,
+          "peak_bots": 6,
+          "core_lost_round": 40,
+          "final": {
+            "bot": 6,
+            "conveyor": 20,
+            "harvester": 3,
+            "barrier": 8,
+            "sentinel": 1
+          }
+        }
+      ],
+      "match_id": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+      "game_number": 1,
+      "map_name": "paths",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "DinooniD",
+      "subject_side": 0,
+      "opponent": "DinooniD",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_2.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          2,
+          14
+        ],
+        "1": [
+          26,
+          14
+        ]
+      },
+      "core_separation": 24.0,
+      "turns": 881,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 20
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": 20,
+          "first_turret_near_enemy_core": 21,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 12,
+          "first_kill": 187,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.792,
+              5.1
+            ],
+            [
+              21,
+              "sentinel",
+              0.833,
+              4.0
+            ],
+            [
+              23,
+              "sentinel",
+              0.792,
+              5.0
+            ],
+            [
+              28,
+              "sentinel",
+              0.833,
+              4.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.792,
+            "enemy_core_dist": 5.1
+          },
+          "titanium_end": 85,
+          "peak_bots": 3,
+          "core_lost_round": 880,
+          "final": {
+            "bot": 3,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 7,
+            "harvester": 19,
+            "barrier": 33,
+            "sentinel": 65
+          },
+          "first_damage_turret": 65,
+          "first_forward_turret": 65,
+          "first_turret_near_enemy_core": 65,
+          "first_bot_leaves_home": 14,
+          "first_bot_enemy_half": 20,
+          "first_kill": 880,
+          "turret_builds": [
+            [
+              65,
+              "sentinel",
+              0.792,
+              5.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 7,
+              "conveyor": 11,
+              "harvester": 1,
+              "barrier": 8,
+              "sentinel": 1
+            },
+            "titanium": 88,
+            "frac": 0.792,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 0,
+          "peak_bots": 7,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 7,
+            "conveyor": 30,
+            "harvester": 1,
+            "barrier": 8,
+            "sentinel": 1
+          }
+        }
+      ],
+      "match_id": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+      "game_number": 2,
+      "map_name": "valkyrie",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "DinooniD",
+      "subject_side": 0,
+      "opponent": "DinooniD",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_3.replay26",
+      "width": 26,
+      "height": 12,
+      "area": 312,
+      "cores": {
+        "0": [
+          2,
+          5
+        ],
+        "1": [
+          22,
+          5
+        ]
+      },
+      "core_separation": 20.0,
+      "turns": 54,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 20
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": 20,
+          "first_turret_near_enemy_core": 24,
+          "first_bot_leaves_home": 10,
+          "first_bot_enemy_half": 15,
+          "first_kill": 25,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.8,
+              5.7
+            ],
+            [
+              24,
+              "sentinel",
+              0.75,
+              5.0
+            ],
+            [
+              28,
+              "sentinel",
+              0.75,
+              5.1
+            ],
+            [
+              34,
+              "sentinel",
+              0.8,
+              6.4
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.8,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 1,
+            "harvester": 9,
+            "sentinel": 20,
+            "barrier": 31
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 13,
+          "first_bot_enemy_half": 20,
+          "first_kill": 25,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.05,
+              19.0
+            ],
+            [
+              24,
+              "sentinel",
+              -0.05,
+              21.4
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 5,
+              "conveyor": 15,
+              "harvester": 2,
+              "sentinel": 1
+            },
+            "titanium": 199,
+            "frac": 0.05,
+            "enemy_core_dist": 19.0
+          },
+          "titanium_end": 114,
+          "peak_bots": 5,
+          "core_lost_round": 53,
+          "final": {
+            "bot": 5,
+            "conveyor": 22,
+            "harvester": 2,
+            "sentinel": 1,
+            "barrier": 9
+          }
+        }
+      ],
+      "match_id": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+      "game_number": 3,
+      "map_name": "bifrost",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "DinooniD",
+      "subject_side": 0,
+      "opponent": "DinooniD",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_4.replay26",
+      "width": 22,
+      "height": 22,
+      "area": 484,
+      "cores": {
+        "0": [
+          9,
+          2
+        ],
+        "1": [
+          9,
+          18
+        ]
+      },
+      "core_separation": 16.0,
+      "turns": 207,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 15
+          },
+          "first_damage_turret": 15,
+          "first_forward_turret": 15,
+          "first_turret_near_enemy_core": 15,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 10,
+          "first_kill": 38,
+          "turret_builds": [
+            [
+              15,
+              "sentinel",
+              0.688,
+              5.0
+            ],
+            [
+              17,
+              "sentinel",
+              0.688,
+              5.1
+            ],
+            [
+              29,
+              "sentinel",
+              0.812,
+              5.0
+            ],
+            [
+              30,
+              "sentinel",
+              0.75,
+              5.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 480,
+            "frac": 0.688,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 27,
+          "peak_bots": 3,
+          "core_lost_round": 206,
+          "final": {
+            "bot": 3,
+            "sentinel": 2
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 1,
+            "harvester": 11,
+            "sentinel": 18,
+            "barrier": 21
+          },
+          "first_damage_turret": 18,
+          "first_forward_turret": 54,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 10,
+          "first_bot_enemy_half": 14,
+          "first_kill": 23,
+          "turret_builds": [
+            [
+              18,
+              "sentinel",
+              0.188,
+              13.0
+            ],
+            [
+              34,
+              "sentinel",
+              0.188,
+              13.0
+            ],
+            [
+              54,
+              "sentinel",
+              0.75,
+              5.7
+            ],
+            [
+              168,
+              "sentinel",
+              0.125,
+              14.0
+            ],
+            [
+              180,
+              "sentinel",
+              0.625,
+              6.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 5,
+              "conveyor": 18,
+              "harvester": 2,
+              "sentinel": 1
+            },
+            "titanium": 189,
+            "frac": 0.188,
+            "enemy_core_dist": 13.0
+          },
+          "titanium_end": 40,
+          "peak_bots": 5,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 5,
+            "conveyor": 37,
+            "harvester": 4,
+            "sentinel": 4,
+            "barrier": 6
+          }
+        }
+      ],
+      "match_id": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+      "game_number": 4,
+      "map_name": "stavkirke",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "DinooniD",
+      "subject_side": 0,
+      "opponent": "DinooniD",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_5.replay26",
+      "width": 18,
+      "height": 18,
+      "area": 324,
+      "cores": {
+        "0": [
+          2,
+          8
+        ],
+        "1": [
+          14,
+          8
+        ]
+      },
+      "core_separation": 12.0,
+      "turns": 196,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 9
+          },
+          "first_damage_turret": 9,
+          "first_forward_turret": 9,
+          "first_turret_near_enemy_core": 9,
+          "first_bot_leaves_home": 2,
+          "first_bot_enemy_half": 7,
+          "first_kill": 14,
+          "turret_builds": [
+            [
+              9,
+              "sentinel",
+              0.667,
+              5.0
+            ],
+            [
+              11,
+              "sentinel",
+              0.75,
+              3.6
+            ],
+            [
+              15,
+              "sentinel",
+              0.667,
+              5.7
+            ],
+            [
+              17,
+              "sentinel",
+              0.667,
+              5.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 470,
+            "frac": 0.667,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 16,
+          "peak_bots": 4,
+          "core_lost_round": 195,
+          "final": {
+            "bot": 4,
+            "sentinel": 1
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "conveyor": 2,
+            "harvester": 6,
+            "gunner": 10,
+            "sentinel": 12,
+            "barrier": 22
+          },
+          "first_damage_turret": 10,
+          "first_forward_turret": 57,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 15,
+          "first_bot_enemy_half": 18,
+          "first_kill": 14,
+          "turret_builds": [
+            [
+              10,
+              "gunner",
+              0.083,
+              11.4
+            ],
+            [
+              12,
+              "sentinel",
+              0.167,
+              10.0
+            ],
+            [
+              16,
+              "gunner",
+              0.25,
+              9.1
+            ],
+            [
+              18,
+              "sentinel",
+              0.25,
+              9.2
+            ],
+            [
+              57,
+              "sentinel",
+              0.583,
+              6.4
+            ],
+            [
+              155,
+              "sentinel",
+              0.583,
+              5.8
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "conveyor": 9,
+              "harvester": 2,
+              "gunner": 1
+            },
+            "titanium": 245,
+            "frac": 0.083,
+            "enemy_core_dist": 11.4
+          },
+          "titanium_end": 71,
+          "peak_bots": 4,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 4,
+            "conveyor": 22,
+            "harvester": 4,
+            "gunner": 2,
+            "sentinel": 2,
+            "barrier": 4
+          }
+        }
+      ],
+      "match_id": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+      "game_number": 5,
+      "map_name": "helheim",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "DinooniD",
+      "subject_side": 0,
+      "opponent": "DinooniD",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_1.replay26",
+      "width": 28,
+      "height": 18,
+      "area": 504,
+      "cores": {
+        "0": [
+          2,
+          8
+        ],
+        "1": [
+          24,
+          8
+        ]
+      },
+      "core_separation": 22.0,
+      "turns": 53,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 36
+          },
+          "first_damage_turret": 36,
+          "first_forward_turret": 36,
+          "first_turret_near_enemy_core": 36,
+          "first_bot_leaves_home": 15,
+          "first_bot_enemy_half": 21,
+          "first_kill": 52,
+          "turret_builds": [
+            [
+              36,
+              "sentinel",
+              1.0,
+              5.0
+            ],
+            [
+              38,
+              "sentinel",
+              1.045,
+              5.1
+            ],
+            [
+              39,
+              "sentinel",
+              1.045,
+              3.2
+            ],
+            [
+              40,
+              "sentinel",
+              1.0,
+              4.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 540,
+            "frac": 1.0,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 46
+          },
+          "first_damage_turret": 46,
+          "first_forward_turret": 46,
+          "first_turret_near_enemy_core": 46,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 33,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              46,
+              "sentinel",
+              1.0,
+              5.0
+            ],
+            [
+              50,
+              "sentinel",
+              1.0,
+              4.0
+            ],
+            [
+              52,
+              "sentinel",
+              1.091,
+              3.6
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 460,
+            "frac": 1.0,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 314,
+          "peak_bots": 1,
+          "core_lost_round": 52,
+          "final": {
+            "bot": 1,
+            "sentinel": 3
+          }
+        }
+      ],
+      "match_id": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+      "game_number": 1,
+      "map_name": "longhouse",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Landers",
+      "subject_side": 0,
+      "opponent": "Landers",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_2.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          2,
+          14
+        ],
+        "1": [
+          26,
+          14
+        ]
+      },
+      "core_separation": 24.0,
+      "turns": 37,
+      "replay_winner": 0,
+      "replay_win_condition": "titanium_stored",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 20
+          },
+          "first_damage_turret": 20,
+          "first_forward_turret": 20,
+          "first_turret_near_enemy_core": 22,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 13,
+          "first_kill": 36,
+          "turret_builds": [
+            [
+              20,
+              "sentinel",
+              0.792,
+              5.1
+            ],
+            [
+              22,
+              "sentinel",
+              0.833,
+              4.1
+            ],
+            [
+              23,
+              "sentinel",
+              0.792,
+              5.0
+            ],
+            [
+              25,
+              "sentinel",
+              0.833,
+              4.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.792,
+            "enemy_core_dist": 5.1
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": 36,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 19
+          },
+          "first_damage_turret": 19,
+          "first_forward_turret": 19,
+          "first_turret_near_enemy_core": 21,
+          "first_bot_leaves_home": 7,
+          "first_bot_enemy_half": 13,
+          "first_kill": 36,
+          "turret_builds": [
+            [
+              19,
+              "sentinel",
+              0.75,
+              6.0
+            ],
+            [
+              21,
+              "sentinel",
+              0.792,
+              5.0
+            ],
+            [
+              23,
+              "sentinel",
+              0.833,
+              4.5
+            ],
+            [
+              24,
+              "sentinel",
+              0.875,
+              3.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 390,
+            "frac": 0.75,
+            "enemy_core_dist": 6.0
+          },
+          "titanium_end": 0,
+          "peak_bots": 1,
+          "core_lost_round": 36,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+      "game_number": 2,
+      "map_name": "valkyrie",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Landers",
+      "subject_side": 0,
+      "opponent": "Landers",
+      "winner_side": "a",
+      "win_condition": "titanium_stored"
+    },
+    {
+      "file": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_3.replay26",
+      "width": 24,
+      "height": 24,
+      "area": 576,
+      "cores": {
+        "0": [
+          4,
+          4
+        ],
+        "1": [
+          18,
+          18
+        ]
+      },
+      "core_separation": 19.8,
+      "turns": 37,
+      "replay_winner": 1,
+      "replay_win_condition": "titanium_stored",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 21
+          },
+          "first_damage_turret": 21,
+          "first_forward_turret": 21,
+          "first_turret_near_enemy_core": 21,
+          "first_bot_leaves_home": 4,
+          "first_bot_enemy_half": 11,
+          "first_kill": 36,
+          "turret_builds": [
+            [
+              21,
+              "sentinel",
+              0.821,
+              3.6
+            ],
+            [
+              22,
+              "sentinel",
+              0.893,
+              2.2
+            ],
+            [
+              23,
+              "sentinel",
+              0.893,
+              2.2
+            ],
+            [
+              24,
+              "sentinel",
+              0.821,
+              3.6
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.821,
+            "enemy_core_dist": 3.6
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": 36,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 19
+          },
+          "first_damage_turret": 19,
+          "first_forward_turret": 19,
+          "first_turret_near_enemy_core": 25,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 13,
+          "first_kill": 36,
+          "turret_builds": [
+            [
+              19,
+              "sentinel",
+              0.75,
+              6.1
+            ],
+            [
+              21,
+              "sentinel",
+              0.786,
+              6.0
+            ],
+            [
+              25,
+              "sentinel",
+              0.821,
+              5.0
+            ],
+            [
+              27,
+              "sentinel",
+              0.929,
+              4.5
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 390,
+            "frac": 0.75,
+            "enemy_core_dist": 6.1
+          },
+          "titanium_end": 20,
+          "peak_bots": 1,
+          "core_lost_round": 36,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+      "game_number": 3,
+      "map_name": "jotunheim",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Landers",
+      "subject_side": 0,
+      "opponent": "Landers",
+      "winner_side": "b",
+      "win_condition": "titanium_stored"
+    },
+    {
+      "file": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_4.replay26",
+      "width": 20,
+      "height": 20,
+      "area": 400,
+      "cores": {
+        "0": [
+          1,
+          16
+        ],
+        "1": [
+          17,
+          2
+        ]
+      },
+      "core_separation": 21.26,
+      "turns": 39,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 22
+          },
+          "first_damage_turret": 22,
+          "first_forward_turret": 22,
+          "first_turret_near_enemy_core": 22,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 12,
+          "first_kill": 38,
+          "turret_builds": [
+            [
+              22,
+              "sentinel",
+              0.77,
+              5.0
+            ],
+            [
+              24,
+              "sentinel",
+              0.867,
+              2.8
+            ],
+            [
+              25,
+              "sentinel",
+              0.805,
+              4.5
+            ],
+            [
+              26,
+              "sentinel",
+              0.872,
+              3.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.77,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 22
+          },
+          "first_damage_turret": 22,
+          "first_forward_turret": 22,
+          "first_turret_near_enemy_core": 22,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 12,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              22,
+              "sentinel",
+              0.845,
+              5.0
+            ],
+            [
+              24,
+              "sentinel",
+              0.81,
+              5.1
+            ],
+            [
+              28,
+              "sentinel",
+              0.841,
+              4.1
+            ],
+            [
+              30,
+              "sentinel",
+              0.801,
+              4.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 400,
+            "frac": 0.845,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 20,
+          "peak_bots": 1,
+          "core_lost_round": 38,
+          "final": {
+            "bot": 1,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+      "game_number": 4,
+      "map_name": "icefloe",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Landers",
+      "subject_side": 0,
+      "opponent": "Landers",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_5.replay26",
+      "width": 22,
+      "height": 22,
+      "area": 484,
+      "cores": {
+        "0": [
+          9,
+          2
+        ],
+        "1": [
+          9,
+          18
+        ]
+      },
+      "core_separation": 16.0,
+      "turns": 37,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 15
+          },
+          "first_damage_turret": 15,
+          "first_forward_turret": 15,
+          "first_turret_near_enemy_core": 15,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 12,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              15,
+              "sentinel",
+              0.688,
+              5.0
+            ],
+            [
+              17,
+              "sentinel",
+              0.688,
+              5.1
+            ],
+            [
+              26,
+              "sentinel",
+              0.812,
+              4.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 480,
+            "frac": 0.688,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 30,
+          "peak_bots": 5,
+          "core_lost_round": 36,
+          "final": {
+            "bot": 5,
+            "sentinel": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 13
+          },
+          "first_damage_turret": 13,
+          "first_forward_turret": 13,
+          "first_turret_near_enemy_core": 22,
+          "first_bot_leaves_home": 7,
+          "first_bot_enemy_half": 11,
+          "first_kill": 36,
+          "turret_builds": [
+            [
+              13,
+              "sentinel",
+              0.688,
+              5.8
+            ],
+            [
+              15,
+              "sentinel",
+              0.688,
+              6.4
+            ],
+            [
+              21,
+              "sentinel",
+              0.75,
+              5.7
+            ],
+            [
+              22,
+              "sentinel",
+              0.75,
+              4.5
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 380,
+            "frac": 0.688,
+            "enemy_core_dist": 5.8
+          },
+          "titanium_end": 0,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+      "game_number": 5,
+      "map_name": "stavkirke",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Landers",
+      "subject_side": 0,
+      "opponent": "Landers",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_1.replay26",
+      "width": 20,
+      "height": 20,
+      "area": 400,
+      "cores": {
+        "0": [
+          2,
+          1
+        ],
+        "1": [
+          16,
+          17
+        ]
+      },
+      "core_separation": 21.26,
+      "turns": 41,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 19
+          },
+          "first_damage_turret": 19,
+          "first_forward_turret": 19,
+          "first_turret_near_enemy_core": 19,
+          "first_bot_leaves_home": 4,
+          "first_bot_enemy_half": 11,
+          "first_kill": 40,
+          "turret_builds": [
+            [
+              19,
+              "sentinel",
+              0.77,
+              5.0
+            ],
+            [
+              21,
+              "sentinel",
+              0.735,
+              5.7
+            ],
+            [
+              23,
+              "sentinel",
+              0.765,
+              5.0
+            ],
+            [
+              24,
+              "sentinel",
+              0.836,
+              3.6
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 490,
+            "frac": 0.77,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 25
+          },
+          "first_damage_turret": 25,
+          "first_forward_turret": 25,
+          "first_turret_near_enemy_core": 25,
+          "first_bot_leaves_home": 7,
+          "first_bot_enemy_half": 15,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              25,
+              "sentinel",
+              0.858,
+              4.0
+            ],
+            [
+              26,
+              "sentinel",
+              0.788,
+              6.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 450,
+            "frac": 0.858,
+            "enemy_core_dist": 4.0
+          },
+          "titanium_end": 138,
+          "peak_bots": 5,
+          "core_lost_round": 40,
+          "final": {
+            "bot": 5,
+            "sentinel": 2
+          }
+        }
+      ],
+      "match_id": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+      "game_number": 1,
+      "map_name": "fimbulwinter",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Viktor5776",
+      "subject_side": 0,
+      "opponent": "Viktor5776",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_2.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          14,
+          2
+        ],
+        "1": [
+          14,
+          26
+        ]
+      },
+      "core_separation": 24.0,
+      "turns": 350,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 22
+          },
+          "first_damage_turret": 22,
+          "first_forward_turret": 22,
+          "first_turret_near_enemy_core": 24,
+          "first_bot_leaves_home": 5,
+          "first_bot_enemy_half": 13,
+          "first_kill": 349,
+          "turret_builds": [
+            [
+              22,
+              "sentinel",
+              0.792,
+              5.1
+            ],
+            [
+              24,
+              "sentinel",
+              0.792,
+              5.0
+            ],
+            [
+              25,
+              "sentinel",
+              0.875,
+              3.0
+            ],
+            [
+              26,
+              "sentinel",
+              0.833,
+              4.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.792,
+            "enemy_core_dist": 5.1
+          },
+          "titanium_end": 5,
+          "peak_bots": 5,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 5,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 24
+          },
+          "first_damage_turret": 24,
+          "first_forward_turret": 24,
+          "first_turret_near_enemy_core": 24,
+          "first_bot_leaves_home": 7,
+          "first_bot_enemy_half": 13,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              24,
+              "sentinel",
+              0.958,
+              1.4
+            ],
+            [
+              207,
+              "sentinel",
+              1.0,
+              1.0
+            ],
+            [
+              208,
+              "sentinel",
+              1.0,
+              3.0
+            ],
+            [
+              210,
+              "sentinel",
+              1.042,
+              1.4
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 450,
+            "frac": 0.958,
+            "enemy_core_dist": 1.4
+          },
+          "titanium_end": 488,
+          "peak_bots": 6,
+          "core_lost_round": 349,
+          "final": {
+            "bot": 6,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+      "game_number": 2,
+      "map_name": "glacierkeep",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Viktor5776",
+      "subject_side": 0,
+      "opponent": "Viktor5776",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_3.replay26",
+      "width": 20,
+      "height": 20,
+      "area": 400,
+      "cores": {
+        "0": [
+          9,
+          1
+        ],
+        "1": [
+          9,
+          17
+        ]
+      },
+      "core_separation": 16.0,
+      "turns": 813,
+      "replay_winner": 0,
+      "replay_win_condition": "titanium_collected",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 16,
+            "conveyor": 392,
+            "harvester": 553
+          },
+          "first_damage_turret": 16,
+          "first_forward_turret": 16,
+          "first_turret_near_enemy_core": 18,
+          "first_bot_leaves_home": 3,
+          "first_bot_enemy_half": 12,
+          "first_kill": 812,
+          "turret_builds": [
+            [
+              16,
+              "sentinel",
+              0.75,
+              5.7
+            ],
+            [
+              18,
+              "sentinel",
+              0.75,
+              5.0
+            ],
+            [
+              22,
+              "sentinel",
+              0.75,
+              4.0
+            ],
+            [
+              23,
+              "sentinel",
+              0.688,
+              5.1
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 490,
+            "frac": 0.75,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 5,
+          "peak_bots": 10,
+          "core_lost_round": 812,
+          "final": {
+            "bot": 10,
+            "sentinel": 4,
+            "conveyor": 24,
+            "harvester": 2
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 255
+          },
+          "first_damage_turret": 255,
+          "first_forward_turret": 255,
+          "first_turret_near_enemy_core": 255,
+          "first_bot_leaves_home": 7,
+          "first_bot_enemy_half": 12,
+          "first_kill": 812,
+          "turret_builds": [
+            [
+              255,
+              "sentinel",
+              0.938,
+              1.4
+            ],
+            [
+              259,
+              "sentinel",
+              1.0,
+              1.0
+            ],
+            [
+              260,
+              "sentinel",
+              1.0,
+              3.0
+            ],
+            [
+              262,
+              "sentinel",
+              1.062,
+              1.4
+            ],
+            [
+              800,
+              "sentinel",
+              1.0,
+              2.0
+            ],
+            [
+              803,
+              "sentinel",
+              1.0,
+              4.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 6,
+              "sentinel": 1
+            },
+            "titanium": 505,
+            "frac": 0.938,
+            "enemy_core_dist": 1.4
+          },
+          "titanium_end": 10,
+          "peak_bots": 6,
+          "core_lost_round": 812,
+          "final": {
+            "bot": 6,
+            "sentinel": 6
+          }
+        }
+      ],
+      "match_id": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+      "game_number": 3,
+      "map_name": "auroraveil",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Viktor5776",
+      "subject_side": 0,
+      "opponent": "Viktor5776",
+      "winner_side": "a",
+      "win_condition": "titanium_collected"
+    },
+    {
+      "file": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_4.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          3,
+          3
+        ],
+        "1": [
+          25,
+          25
+        ]
+      },
+      "core_separation": 31.11,
+      "turns": 57,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 35
+          },
+          "first_damage_turret": 35,
+          "first_forward_turret": 35,
+          "first_turret_near_enemy_core": 35,
+          "first_bot_leaves_home": 8,
+          "first_bot_enemy_half": 19,
+          "first_kill": 56,
+          "turret_builds": [
+            [
+              35,
+              "sentinel",
+              0.841,
+              5.0
+            ],
+            [
+              36,
+              "sentinel",
+              0.886,
+              3.6
+            ],
+            [
+              38,
+              "sentinel",
+              0.909,
+              2.8
+            ],
+            [
+              39,
+              "sentinel",
+              0.864,
+              4.2
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 530,
+            "frac": 0.841,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0
+          },
+          "first_damage_turret": null,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 11,
+          "first_bot_enemy_half": 22,
+          "first_kill": null,
+          "turret_builds": [],
+          "state_at_rush": null,
+          "titanium_end": 304,
+          "peak_bots": 5,
+          "core_lost_round": 56,
+          "final": {
+            "bot": 5
+          }
+        }
+      ],
+      "match_id": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+      "game_number": 4,
+      "map_name": "yggdrasil",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Viktor5776",
+      "subject_side": 0,
+      "opponent": "Viktor5776",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_5.replay26",
+      "width": 24,
+      "height": 24,
+      "area": 576,
+      "cores": {
+        "0": [
+          4,
+          4
+        ],
+        "1": [
+          18,
+          18
+        ]
+      },
+      "core_separation": 19.8,
+      "turns": 801,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 21,
+            "conveyor": 284,
+            "harvester": 680
+          },
+          "first_damage_turret": 21,
+          "first_forward_turret": 21,
+          "first_turret_near_enemy_core": 21,
+          "first_bot_leaves_home": 4,
+          "first_bot_enemy_half": 11,
+          "first_kill": 800,
+          "turret_builds": [
+            [
+              21,
+              "sentinel",
+              0.821,
+              3.6
+            ],
+            [
+              22,
+              "sentinel",
+              0.893,
+              2.2
+            ],
+            [
+              23,
+              "sentinel",
+              0.893,
+              2.2
+            ],
+            [
+              24,
+              "sentinel",
+              0.821,
+              3.6
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.821,
+            "enemy_core_dist": 3.6
+          },
+          "titanium_end": 15,
+          "peak_bots": 11,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 11,
+            "sentinel": 4,
+            "conveyor": 35,
+            "harvester": 3
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 215
+          },
+          "first_damage_turret": 215,
+          "first_forward_turret": 215,
+          "first_turret_near_enemy_core": 215,
+          "first_bot_leaves_home": 7,
+          "first_bot_enemy_half": 14,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              215,
+              "sentinel",
+              1.0,
+              4.2
+            ],
+            [
+              218,
+              "sentinel",
+              1.0,
+              2.8
+            ],
+            [
+              221,
+              "sentinel",
+              1.0,
+              5.7
+            ],
+            [
+              226,
+              "sentinel",
+              1.0,
+              1.4
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 6,
+              "sentinel": 1
+            },
+            "titanium": 509,
+            "frac": 1.0,
+            "enemy_core_dist": 4.2
+          },
+          "titanium_end": 1190,
+          "peak_bots": 6,
+          "core_lost_round": 800,
+          "final": {
+            "bot": 6,
+            "sentinel": 4
+          }
+        }
+      ],
+      "match_id": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+      "game_number": 5,
+      "map_name": "jotunheim",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Viktor5776",
+      "subject_side": 0,
+      "opponent": "Viktor5776",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_1.replay26",
+      "width": 20,
+      "height": 20,
+      "area": 400,
+      "cores": {
+        "0": [
+          9,
+          1
+        ],
+        "1": [
+          9,
+          17
+        ]
+      },
+      "core_separation": 16.0,
+      "turns": 482,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 13
+          },
+          "first_damage_turret": 13,
+          "first_forward_turret": 13,
+          "first_turret_near_enemy_core": 13,
+          "first_bot_leaves_home": 3,
+          "first_bot_enemy_half": 9,
+          "first_kill": 22,
+          "turret_builds": [
+            [
+              13,
+              "sentinel",
+              0.75,
+              5.0
+            ],
+            [
+              15,
+              "sentinel",
+              0.75,
+              5.7
+            ],
+            [
+              19,
+              "sentinel",
+              0.688,
+              5.0
+            ],
+            [
+              24,
+              "sentinel",
+              0.75,
+              5.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 480,
+            "frac": 0.75,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 378,
+          "peak_bots": 6,
+          "core_lost_round": 481,
+          "final": {
+            "bot": 6
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "gunner": 9,
+            "harvester": 13,
+            "sentinel": 17,
+            "conveyor": 50,
+            "barrier": 269,
+            "launcher": 395
+          },
+          "first_damage_turret": 9,
+          "first_forward_turret": 267,
+          "first_turret_near_enemy_core": 267,
+          "first_bot_leaves_home": 8,
+          "first_bot_enemy_half": 15,
+          "first_kill": 22,
+          "turret_builds": [
+            [
+              9,
+              "gunner",
+              0.188,
+              13.0
+            ],
+            [
+              17,
+              "sentinel",
+              0.25,
+              12.0
+            ],
+            [
+              19,
+              "sentinel",
+              0.25,
+              12.0
+            ],
+            [
+              267,
+              "sentinel",
+              0.875,
+              2.8
+            ],
+            [
+              316,
+              "sentinel",
+              0.812,
+              3.2
+            ],
+            [
+              365,
+              "sentinel",
+              0.812,
+              3.2
+            ],
+            [
+              395,
+              "launcher",
+              0.562,
+              7.6
+            ],
+            [
+              396,
+              "sentinel",
+              0.75,
+              4.1
+            ],
+            [
+              422,
+              "launcher",
+              0.625,
+              10.0
+            ],
+            [
+              426,
+              "launcher",
+              1.0,
+              6.0
+            ],
+            [
+              430,
+              "sentinel",
+              1.0,
+              2.0
+            ],
+            [
+              457,
+              "sentinel",
+              0.938,
+              3.2
+            ],
+            [
+              467,
+              "sentinel",
+              1.0,
+              2.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "gunner": 1
+            },
+            "titanium": 324,
+            "frac": 0.188,
+            "enemy_core_dist": 13.0
+          },
+          "titanium_end": 267,
+          "peak_bots": 12,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 12,
+            "harvester": 14,
+            "sentinel": 4,
+            "conveyor": 129,
+            "barrier": 1,
+            "launcher": 3
+          }
+        }
+      ],
+      "match_id": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+      "game_number": 1,
+      "map_name": "auroraveil",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Coreflood",
+      "subject_side": 0,
+      "opponent": "Coreflood",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_2.replay26",
+      "width": 22,
+      "height": 22,
+      "area": 484,
+      "cores": {
+        "0": [
+          9,
+          2
+        ],
+        "1": [
+          9,
+          18
+        ]
+      },
+      "core_separation": 16.0,
+      "turns": 46,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 17
+          },
+          "first_damage_turret": 17,
+          "first_forward_turret": 17,
+          "first_turret_near_enemy_core": 17,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 10,
+          "first_kill": 45,
+          "turret_builds": [
+            [
+              17,
+              "sentinel",
+              0.812,
+              5.0
+            ],
+            [
+              19,
+              "sentinel",
+              0.812,
+              4.2
+            ],
+            [
+              20,
+              "sentinel",
+              0.75,
+              5.7
+            ],
+            [
+              22,
+              "sentinel",
+              0.75,
+              5.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 490,
+            "frac": 0.812,
+            "enemy_core_dist": 5.0
+          },
+          "titanium_end": 9,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 2
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "harvester": 10,
+            "gunner": 11,
+            "conveyor": 12,
+            "sentinel": 20
+          },
+          "first_damage_turret": 11,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 12,
+          "first_bot_enemy_half": 16,
+          "first_kill": 24,
+          "turret_builds": [
+            [
+              11,
+              "gunner",
+              0.188,
+              13.0
+            ],
+            [
+              17,
+              "gunner",
+              0.188,
+              13.0
+            ],
+            [
+              20,
+              "sentinel",
+              0.5,
+              8.9
+            ],
+            [
+              23,
+              "sentinel",
+              0.438,
+              9.5
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 5,
+              "harvester": 1,
+              "gunner": 1
+            },
+            "titanium": 254,
+            "frac": 0.188,
+            "enemy_core_dist": 13.0
+          },
+          "titanium_end": 48,
+          "peak_bots": 5,
+          "core_lost_round": 45,
+          "final": {
+            "bot": 5,
+            "harvester": 1,
+            "gunner": 1,
+            "conveyor": 4,
+            "sentinel": 2
+          }
+        }
+      ],
+      "match_id": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+      "game_number": 2,
+      "map_name": "stavkirke",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Coreflood",
+      "subject_side": 0,
+      "opponent": "Coreflood",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_3.replay26",
+      "width": 18,
+      "height": 18,
+      "area": 324,
+      "cores": {
+        "0": [
+          2,
+          8
+        ],
+        "1": [
+          14,
+          8
+        ]
+      },
+      "core_separation": 12.0,
+      "turns": 345,
+      "replay_winner": 1,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 10,
+            "conveyor": 134,
+            "harvester": 174
+          },
+          "first_damage_turret": 10,
+          "first_forward_turret": 10,
+          "first_turret_near_enemy_core": 12,
+          "first_bot_leaves_home": 2,
+          "first_bot_enemy_half": 9,
+          "first_kill": 15,
+          "turret_builds": [
+            [
+              10,
+              "sentinel",
+              0.667,
+              5.7
+            ],
+            [
+              12,
+              "sentinel",
+              0.667,
+              5.0
+            ],
+            [
+              16,
+              "sentinel",
+              0.75,
+              4.2
+            ],
+            [
+              17,
+              "sentinel",
+              0.833,
+              2.8
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 470,
+            "frac": 0.667,
+            "enemy_core_dist": 5.7
+          },
+          "titanium_end": 246,
+          "peak_bots": 3,
+          "core_lost_round": 344,
+          "final": {
+            "bot": 3,
+            "conveyor": 2
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "harvester": 4,
+            "gunner": 5,
+            "conveyor": 6,
+            "sentinel": 10,
+            "barrier": 123
+          },
+          "first_damage_turret": 5,
+          "first_forward_turret": 221,
+          "first_turret_near_enemy_core": 221,
+          "first_bot_leaves_home": 4,
+          "first_bot_enemy_half": 9,
+          "first_kill": 21,
+          "turret_builds": [
+            [
+              5,
+              "gunner",
+              0.083,
+              11.4
+            ],
+            [
+              10,
+              "sentinel",
+              0.083,
+              11.0
+            ],
+            [
+              12,
+              "sentinel",
+              0.167,
+              10.4
+            ],
+            [
+              18,
+              "sentinel",
+              0.083,
+              11.0
+            ],
+            [
+              36,
+              "sentinel",
+              0.083,
+              11.0
+            ],
+            [
+              52,
+              "sentinel",
+              0.083,
+              11.0
+            ],
+            [
+              124,
+              "gunner",
+              0.25,
+              9.0
+            ],
+            [
+              221,
+              "sentinel",
+              0.75,
+              3.2
+            ],
+            [
+              232,
+              "sentinel",
+              0.75,
+              4.2
+            ],
+            [
+              265,
+              "sentinel",
+              0.75,
+              3.0
+            ],
+            [
+              281,
+              "sentinel",
+              0.75,
+              3.0
+            ],
+            [
+              306,
+              "sentinel",
+              0.75,
+              3.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 4,
+              "harvester": 1,
+              "gunner": 1
+            },
+            "titanium": 278,
+            "frac": 0.083,
+            "enemy_core_dist": 11.4
+          },
+          "titanium_end": 156,
+          "peak_bots": 12,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 12,
+            "harvester": 13,
+            "gunner": 2,
+            "conveyor": 73,
+            "barrier": 9,
+            "sentinel": 1
+          }
+        }
+      ],
+      "match_id": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+      "game_number": 3,
+      "map_name": "helheim",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Coreflood",
+      "subject_side": 0,
+      "opponent": "Coreflood",
+      "winner_side": "b",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_4.replay26",
+      "width": 30,
+      "height": 30,
+      "area": 900,
+      "cores": {
+        "0": [
+          2,
+          14
+        ],
+        "1": [
+          26,
+          14
+        ]
+      },
+      "core_separation": 24.0,
+      "turns": 42,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 22
+          },
+          "first_damage_turret": 22,
+          "first_forward_turret": 22,
+          "first_turret_near_enemy_core": 24,
+          "first_bot_leaves_home": 6,
+          "first_bot_enemy_half": 12,
+          "first_kill": 41,
+          "turret_builds": [
+            [
+              22,
+              "sentinel",
+              0.792,
+              5.1
+            ],
+            [
+              24,
+              "sentinel",
+              0.833,
+              4.1
+            ],
+            [
+              25,
+              "sentinel",
+              0.792,
+              5.0
+            ],
+            [
+              27,
+              "sentinel",
+              0.833,
+              4.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 500,
+            "frac": 0.792,
+            "enemy_core_dist": 5.1
+          },
+          "titanium_end": 5,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "harvester": 8,
+            "conveyor": 10
+          },
+          "first_damage_turret": null,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 15,
+          "first_bot_enemy_half": 21,
+          "first_kill": null,
+          "turret_builds": [],
+          "state_at_rush": null,
+          "titanium_end": 203,
+          "peak_bots": 5,
+          "core_lost_round": 41,
+          "final": {
+            "bot": 5,
+            "harvester": 2,
+            "conveyor": 12
+          }
+        }
+      ],
+      "match_id": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+      "game_number": 4,
+      "map_name": "valkyrie",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Coreflood",
+      "subject_side": 0,
+      "opponent": "Coreflood",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    },
+    {
+      "file": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_5.replay26",
+      "width": 28,
+      "height": 18,
+      "area": 504,
+      "cores": {
+        "0": [
+          2,
+          8
+        ],
+        "1": [
+          24,
+          8
+        ]
+      },
+      "core_separation": 22.0,
+      "turns": 59,
+      "replay_winner": 0,
+      "replay_win_condition": "core_destroyed",
+      "teams": [
+        {
+          "first_build": {
+            "bot": 0,
+            "sentinel": 39
+          },
+          "first_damage_turret": 39,
+          "first_forward_turret": 39,
+          "first_turret_near_enemy_core": 39,
+          "first_bot_leaves_home": 15,
+          "first_bot_enemy_half": 21,
+          "first_kill": 42,
+          "turret_builds": [
+            [
+              39,
+              "sentinel",
+              1.045,
+              4.1
+            ],
+            [
+              41,
+              "sentinel",
+              1.136,
+              4.2
+            ],
+            [
+              42,
+              "sentinel",
+              1.045,
+              3.2
+            ],
+            [
+              43,
+              "sentinel",
+              1.091,
+              2.8
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 1,
+              "sentinel": 1
+            },
+            "titanium": 540,
+            "frac": 1.045,
+            "enemy_core_dist": 4.1
+          },
+          "titanium_end": 11,
+          "peak_bots": 1,
+          "core_lost_round": null,
+          "final": {
+            "core": 1,
+            "bot": 1,
+            "sentinel": 4
+          }
+        },
+        {
+          "first_build": {
+            "bot": 0,
+            "harvester": 8,
+            "conveyor": 10,
+            "gunner": 37,
+            "sentinel": 39
+          },
+          "first_damage_turret": 37,
+          "first_forward_turret": null,
+          "first_turret_near_enemy_core": null,
+          "first_bot_leaves_home": 28,
+          "first_bot_enemy_half": 49,
+          "first_kill": null,
+          "turret_builds": [
+            [
+              37,
+              "gunner",
+              -0.136,
+              25.0
+            ],
+            [
+              39,
+              "sentinel",
+              -0.045,
+              23.0
+            ],
+            [
+              41,
+              "sentinel",
+              -0.136,
+              25.1
+            ],
+            [
+              43,
+              "gunner",
+              -0.136,
+              25.0
+            ],
+            [
+              44,
+              "sentinel",
+              -0.091,
+              24.0
+            ],
+            [
+              52,
+              "sentinel",
+              0.045,
+              21.0
+            ]
+          ],
+          "state_at_rush": {
+            "counts": {
+              "core": 1,
+              "bot": 5,
+              "harvester": 4,
+              "conveyor": 18,
+              "gunner": 1
+            },
+            "titanium": 261,
+            "frac": -0.136,
+            "enemy_core_dist": 25.0
+          },
+          "titanium_end": 54,
+          "peak_bots": 5,
+          "core_lost_round": 58,
+          "final": {
+            "bot": 5,
+            "harvester": 4,
+            "conveyor": 18,
+            "gunner": 1,
+            "sentinel": 3
+          }
+        }
+      ],
+      "match_id": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+      "game_number": 5,
+      "map_name": "longhouse",
+      "team_a": "Powered by SmartFridge",
+      "team_b": "Coreflood",
+      "subject_side": 0,
+      "opponent": "Coreflood",
+      "winner_side": "a",
+      "win_condition": "core_destroyed"
+    }
+  ],
+  "match_meta": [
+    {
+      "match": {
+        "id": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+        "status": "complete",
+        "stage": null,
+        "errorMessage": null,
+        "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "scoreA": 1,
+        "scoreB": 4,
+        "rated": true,
+        "triggeredBy": "ladder",
+        "eloDeltaA": -10.25919461784211,
+        "eloDeltaB": 10.25919461784211,
+        "startedAt": "2026-08-22T21:42:54.622Z",
+        "completedAt": "2026-08-22T21:43:06.062Z",
+        "createdAt": "2026-08-22T21:41:10.344Z",
+        "teamAId": "b538e523-2250-4c1d-b718-e73b77ebad55",
+        "teamAName": "Landers",
+        "teamAVersion": 333,
+        "teamBId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "teamBName": "Powered by SmartFridge",
+        "teamBVersion": 78,
+        "testBotAName": null,
+        "testBotBName": null,
+        "testBotAS3Key": null,
+        "testBotBS3Key": null,
+        "submissionAS3Key": null,
+        "submissionBS3Key": null,
+        "sourceMatchAId": null,
+        "sourceMatchBId": null,
+        "teamARating": 1647.6049888677705,
+        "teamAMatchesPlayed": 2320,
+        "teamBRating": 1653.8010415440144,
+        "teamBMatchesPlayed": 2285,
+        "ratingABefore": 1657.8641834856126,
+        "ratingBBefore": 1643.5418469261724,
+        "mapConfig": [
+          {
+            "s3Key": "maps/9f5f39ac9601f7f95c2a2a52945be1b7d2896147d2dcaf6e58a093e16ad90706.map26",
+            "mapName": "glacierkeep",
+            "mapSeed": 1905180045
+          },
+          {
+            "s3Key": "maps/2f72050ebf89bed6922d38a24365584d63a410fcc7e55d1dbc3a6a74a94427d5.map26",
+            "mapName": "icefloe",
+            "mapSeed": 665883836
+          },
+          {
+            "s3Key": "maps/0282536c81f04b849c05c5e6bf1c6d698d258e1df5f7940779a90a96c2c29952.map26",
+            "mapName": "bifrost",
+            "mapSeed": 2118583631
+          },
+          {
+            "s3Key": "maps/98ddc33a15317170643d6ea75cb4930b224c6c5fc0f7f015d4f56cdd8cfcfad1.map26",
+            "mapName": "yggdrasil",
+            "mapSeed": 933359324
+          },
+          {
+            "s3Key": "maps/88f004dc7869ab92e3a9d35151d54ff2d7e8fcde063e7982e1990660339e4a0a.map26",
+            "mapName": "holmgang",
+            "mapSeed": 389053117
+          }
+        ],
+        "teamANameStyle": null,
+        "teamBNameStyle": null
+      },
+      "games": [
+        {
+          "id": "868f25e3-62df-41f0-aad5-6b9234b37de5",
+          "matchId": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+          "gameNumber": 1,
+          "mapName": "glacierkeep",
+          "mapSeed": 1905180045,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "b",
+          "winCondition": "titanium_stored",
+          "resignMessage": null,
+          "turnsPlayed": 37,
+          "replayS3Key": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_1.replay26",
+          "createdAt": "2026-08-22T21:42:57.197Z"
+        },
+        {
+          "id": "0d2a95e8-09aa-4d0e-b5ed-1e35e8ff4c12",
+          "matchId": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+          "gameNumber": 2,
+          "mapName": "icefloe",
+          "mapSeed": 665883836,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 39,
+          "replayS3Key": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_2.replay26",
+          "createdAt": "2026-08-22T21:42:59.080Z"
+        },
+        {
+          "id": "7ea6e8ad-0322-4b88-be7e-47da34f1adc3",
+          "matchId": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+          "gameNumber": 3,
+          "mapName": "bifrost",
+          "mapSeed": 2118583631,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "b",
+          "winCondition": "titanium_stored",
+          "resignMessage": null,
+          "turnsPlayed": 42,
+          "replayS3Key": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_3.replay26",
+          "createdAt": "2026-08-22T21:43:00.985Z"
+        },
+        {
+          "id": "1d02a9ff-08b1-4268-a257-c380d55c9440",
+          "matchId": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+          "gameNumber": 4,
+          "mapName": "yggdrasil",
+          "mapSeed": 933359324,
+          "winnerId": "b538e523-2250-4c1d-b718-e73b77ebad55",
+          "winnerSide": "a",
+          "winCondition": "titanium_stored",
+          "resignMessage": null,
+          "turnsPlayed": 52,
+          "replayS3Key": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_4.replay26",
+          "createdAt": "2026-08-22T21:43:03.079Z"
+        },
+        {
+          "id": "de7e2369-5db6-4d20-adab-b04e64c7ed37",
+          "matchId": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72",
+          "gameNumber": 5,
+          "mapName": "holmgang",
+          "mapSeed": 389053117,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 253,
+          "replayS3Key": "03efe0d6-7a50-4a66-8b81-0c20a8b57e72_game_5.replay26",
+          "createdAt": "2026-08-22T21:43:06.047Z"
+        }
+      ]
+    },
+    {
+      "match": {
+        "id": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+        "status": "complete",
+        "stage": null,
+        "errorMessage": null,
+        "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "scoreA": 5,
+        "scoreB": 0,
+        "rated": true,
+        "triggeredBy": "ladder",
+        "eloDeltaA": 13.694822371589687,
+        "eloDeltaB": -13.694822371589687,
+        "startedAt": "2026-08-22T21:32:29.017Z",
+        "completedAt": "2026-08-22T21:33:00.497Z",
+        "createdAt": "2026-08-22T21:31:10.287Z",
+        "teamAId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "teamAName": "Powered by SmartFridge",
+        "teamAVersion": 78,
+        "teamBId": "c0722596-b36d-4aab-a4ed-16e9119a336b",
+        "teamBName": "Viktor5776",
+        "teamBVersion": 54,
+        "testBotAName": null,
+        "testBotBName": null,
+        "testBotAS3Key": null,
+        "testBotBS3Key": null,
+        "submissionAS3Key": null,
+        "submissionBS3Key": null,
+        "sourceMatchAId": null,
+        "sourceMatchBId": null,
+        "teamARating": 1653.8010415440144,
+        "teamAMatchesPlayed": 2285,
+        "teamBRating": 1575.042260978946,
+        "teamBMatchesPlayed": 1416,
+        "ratingABefore": 1629.8470245545827,
+        "ratingBBefore": 1579.440006997257,
+        "mapConfig": [
+          {
+            "s3Key": "maps/8cd1b8abfd1062e0deb363961220ffa0e0fafa9932b1b925ecb689fbcc01cf46.map26",
+            "mapName": "fimbulwinter",
+            "mapSeed": 1077844345
+          },
+          {
+            "s3Key": "maps/9f5f39ac9601f7f95c2a2a52945be1b7d2896147d2dcaf6e58a093e16ad90706.map26",
+            "mapName": "glacierkeep",
+            "mapSeed": 505481052
+          },
+          {
+            "s3Key": "maps/0c53f6ede39e7db8cfa339ea16515e7fa3eafd44e605ea607f78842564fcc401.map26",
+            "mapName": "auroraveil",
+            "mapSeed": 1522388488
+          },
+          {
+            "s3Key": "maps/98ddc33a15317170643d6ea75cb4930b224c6c5fc0f7f015d4f56cdd8cfcfad1.map26",
+            "mapName": "yggdrasil",
+            "mapSeed": 1314067989
+          },
+          {
+            "s3Key": "maps/0053d1fdd516d71465c3d92d469fbb6e523d8f79bc13810ba75854856451a59a.map26",
+            "mapName": "jotunheim",
+            "mapSeed": 1392798863
+          }
+        ],
+        "teamANameStyle": null,
+        "teamBNameStyle": null
+      },
+      "games": [
+        {
+          "id": "e138f358-9782-4e01-bae1-4644d8760859",
+          "matchId": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+          "gameNumber": 1,
+          "mapName": "fimbulwinter",
+          "mapSeed": 1077844345,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 41,
+          "replayS3Key": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_1.replay26",
+          "createdAt": "2026-08-22T21:32:31.696Z"
+        },
+        {
+          "id": "77d19569-2453-419e-9d42-764cedc6ad21",
+          "matchId": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+          "gameNumber": 2,
+          "mapName": "glacierkeep",
+          "mapSeed": 505481052,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 350,
+          "replayS3Key": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_2.replay26",
+          "createdAt": "2026-08-22T21:32:37.488Z"
+        },
+        {
+          "id": "9d97892c-03c8-43b7-b90c-be18c2f74f29",
+          "matchId": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+          "gameNumber": 3,
+          "mapName": "auroraveil",
+          "mapSeed": 1522388488,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "titanium_collected",
+          "resignMessage": null,
+          "turnsPlayed": 813,
+          "replayS3Key": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_3.replay26",
+          "createdAt": "2026-08-22T21:32:46.536Z"
+        },
+        {
+          "id": "63279f0f-88cc-49f4-ab91-f7c85f81e2fc",
+          "matchId": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+          "gameNumber": 4,
+          "mapName": "yggdrasil",
+          "mapSeed": 1314067989,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 57,
+          "replayS3Key": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_4.replay26",
+          "createdAt": "2026-08-22T21:32:48.606Z"
+        },
+        {
+          "id": "8682516e-ab0f-47d4-8b35-3d343c103481",
+          "matchId": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a",
+          "gameNumber": 5,
+          "mapName": "jotunheim",
+          "mapSeed": 1392798863,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 801,
+          "replayS3Key": "cbe58b4a-0970-4a1d-ba91-98692ab4b52a_game_5.replay26",
+          "createdAt": "2026-08-22T21:33:00.484Z"
+        }
+      ]
+    },
+    {
+      "match": {
+        "id": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+        "status": "complete",
+        "stage": null,
+        "errorMessage": null,
+        "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "scoreA": 3,
+        "scoreB": 2,
+        "rated": true,
+        "triggeredBy": "ladder",
+        "eloDeltaA": 1.565740414411092,
+        "eloDeltaB": -1.565740414411092,
+        "startedAt": "2026-08-22T21:23:44.200Z",
+        "completedAt": "2026-08-22T21:23:58.618Z",
+        "createdAt": "2026-08-22T21:21:10.389Z",
+        "teamAId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "teamAName": "Powered by SmartFridge",
+        "teamAVersion": 78,
+        "teamBId": "bd5df261-fb0e-476e-920a-96ef88f7d441",
+        "teamBName": "Torsko",
+        "teamBVersion": 111,
+        "testBotAName": null,
+        "testBotBName": null,
+        "testBotAS3Key": null,
+        "testBotBS3Key": null,
+        "submissionAS3Key": null,
+        "submissionBS3Key": null,
+        "sourceMatchAId": null,
+        "sourceMatchBId": null,
+        "teamARating": 1653.8010415440144,
+        "teamAMatchesPlayed": 2285,
+        "teamBRating": 1614.1182932657355,
+        "teamBMatchesPlayed": 1367,
+        "ratingABefore": 1628.2812841401717,
+        "ratingBBefore": 1592.6695981485932,
+        "mapConfig": [
+          {
+            "s3Key": "maps/d3bb3ad3eb90183cf76db419affe4d06797dc1eed310caf92d4e182691f657b3.map26",
+            "mapName": "skald",
+            "mapSeed": 796728409
+          },
+          {
+            "s3Key": "maps/8cd1b8abfd1062e0deb363961220ffa0e0fafa9932b1b925ecb689fbcc01cf46.map26",
+            "mapName": "fimbulwinter",
+            "mapSeed": 1298706926
+          },
+          {
+            "s3Key": "maps/2f72050ebf89bed6922d38a24365584d63a410fcc7e55d1dbc3a6a74a94427d5.map26",
+            "mapName": "icefloe",
+            "mapSeed": 1000034738
+          },
+          {
+            "s3Key": "maps/0282536c81f04b849c05c5e6bf1c6d698d258e1df5f7940779a90a96c2c29952.map26",
+            "mapName": "bifrost",
+            "mapSeed": 1537021786
+          },
+          {
+            "s3Key": "maps/6fed93aefa0830d47962a714973086b85b48b6f1095c93fb3daa5610424ddacd.map26",
+            "mapName": "valkyrie",
+            "mapSeed": 1589291644
+          }
+        ],
+        "teamANameStyle": null,
+        "teamBNameStyle": null
+      },
+      "games": [
+        {
+          "id": "a737f38f-5648-4ae9-a4cf-c9381a2119e2",
+          "matchId": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+          "gameNumber": 1,
+          "mapName": "skald",
+          "mapSeed": 796728409,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 35,
+          "replayS3Key": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_1.replay26",
+          "createdAt": "2026-08-22T21:23:46.883Z"
+        },
+        {
+          "id": "62a07f6b-12d1-42e4-bdc1-9b298b80e02e",
+          "matchId": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+          "gameNumber": 2,
+          "mapName": "fimbulwinter",
+          "mapSeed": 1298706926,
+          "winnerId": "bd5df261-fb0e-476e-920a-96ef88f7d441",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 129,
+          "replayS3Key": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_2.replay26",
+          "createdAt": "2026-08-22T21:23:50.381Z"
+        },
+        {
+          "id": "892f62a3-2178-4cb6-8096-8fe0687eb2d7",
+          "matchId": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+          "gameNumber": 3,
+          "mapName": "icefloe",
+          "mapSeed": 1000034738,
+          "winnerId": "bd5df261-fb0e-476e-920a-96ef88f7d441",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 232,
+          "replayS3Key": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_3.replay26",
+          "createdAt": "2026-08-22T21:23:54.339Z"
+        },
+        {
+          "id": "7396bf80-1292-42d8-ac2a-1a2ba2103946",
+          "matchId": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+          "gameNumber": 4,
+          "mapName": "bifrost",
+          "mapSeed": 1537021786,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 56,
+          "replayS3Key": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_4.replay26",
+          "createdAt": "2026-08-22T21:23:56.453Z"
+        },
+        {
+          "id": "7815d891-5619-445e-998a-39a5d28ed48d",
+          "matchId": "544d1ffd-1b29-4905-8b96-9dba40d8059c",
+          "gameNumber": 5,
+          "mapName": "valkyrie",
+          "mapSeed": 1589291644,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 40,
+          "replayS3Key": "544d1ffd-1b29-4905-8b96-9dba40d8059c_game_5.replay26",
+          "createdAt": "2026-08-22T21:23:58.606Z"
+        }
+      ]
+    },
+    {
+      "match": {
+        "id": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+        "status": "complete",
+        "stage": null,
+        "errorMessage": null,
+        "winnerId": "4691bd56-45c2-460c-a5a5-eb7563c594cb",
+        "scoreA": 2,
+        "scoreB": 3,
+        "rated": true,
+        "triggeredBy": "ladder",
+        "eloDeltaA": -0.44930256525717915,
+        "eloDeltaB": 0.44930256525717915,
+        "startedAt": "2026-08-22T21:13:24.322Z",
+        "completedAt": "2026-08-22T21:13:46.243Z",
+        "createdAt": "2026-08-22T21:11:10.268Z",
+        "teamAId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "teamAName": "Powered by SmartFridge",
+        "teamAVersion": 78,
+        "teamBId": "4691bd56-45c2-460c-a5a5-eb7563c594cb",
+        "teamBName": "DinooniD",
+        "teamBVersion": 81,
+        "testBotAName": null,
+        "testBotBName": null,
+        "testBotAS3Key": null,
+        "testBotBS3Key": null,
+        "submissionAS3Key": null,
+        "submissionBS3Key": null,
+        "sourceMatchAId": null,
+        "sourceMatchBId": null,
+        "teamARating": 1653.8010415440144,
+        "teamAMatchesPlayed": 2285,
+        "teamBRating": 1699.4078432610663,
+        "teamBMatchesPlayed": 781,
+        "ratingABefore": 1628.7305867054288,
+        "ratingBBefore": 1689.0603499508209,
+        "mapConfig": [
+          {
+            "s3Key": "maps/a8709570f6e518bd90d2d51fb4b26a11b5d443373c1c9b7df343034afb38eb49.map26",
+            "mapName": "paths",
+            "mapSeed": 741683338
+          },
+          {
+            "s3Key": "maps/6fed93aefa0830d47962a714973086b85b48b6f1095c93fb3daa5610424ddacd.map26",
+            "mapName": "valkyrie",
+            "mapSeed": 314439980
+          },
+          {
+            "s3Key": "maps/0282536c81f04b849c05c5e6bf1c6d698d258e1df5f7940779a90a96c2c29952.map26",
+            "mapName": "bifrost",
+            "mapSeed": 1413224148
+          },
+          {
+            "s3Key": "maps/a58f71d7cf61feca62438a50e286e6315578be95ec3eb975534f9a735cdb6da7.map26",
+            "mapName": "stavkirke",
+            "mapSeed": 1710414662
+          },
+          {
+            "s3Key": "maps/847b2628ae698c61e55a83a9e1b83d76571532cd72676907f9aa5984f52286b9.map26",
+            "mapName": "helheim",
+            "mapSeed": 1815044794
+          }
+        ],
+        "teamANameStyle": null,
+        "teamBNameStyle": null
+      },
+      "games": [
+        {
+          "id": "c9618956-54f2-4c04-b5b4-cb284e8e1be6",
+          "matchId": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+          "gameNumber": 1,
+          "mapName": "paths",
+          "mapSeed": 741683338,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 41,
+          "replayS3Key": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_1.replay26",
+          "createdAt": "2026-08-22T21:13:27.389Z"
+        },
+        {
+          "id": "a593983a-ccc9-4574-ab8e-16918c27ee38",
+          "matchId": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+          "gameNumber": 2,
+          "mapName": "valkyrie",
+          "mapSeed": 314439980,
+          "winnerId": "4691bd56-45c2-460c-a5a5-eb7563c594cb",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 881,
+          "replayS3Key": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_2.replay26",
+          "createdAt": "2026-08-22T21:13:37.155Z"
+        },
+        {
+          "id": "de0ccc28-9ad1-4a7d-8857-7fc64f2bebf4",
+          "matchId": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+          "gameNumber": 3,
+          "mapName": "bifrost",
+          "mapSeed": 1413224148,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 54,
+          "replayS3Key": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_3.replay26",
+          "createdAt": "2026-08-22T21:13:39.331Z"
+        },
+        {
+          "id": "532efe33-a0a2-4c4f-b739-4c0825b06de1",
+          "matchId": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+          "gameNumber": 4,
+          "mapName": "stavkirke",
+          "mapSeed": 1710414662,
+          "winnerId": "4691bd56-45c2-460c-a5a5-eb7563c594cb",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 207,
+          "replayS3Key": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_4.replay26",
+          "createdAt": "2026-08-22T21:13:42.914Z"
+        },
+        {
+          "id": "b99344eb-efc6-4dd5-8144-12aec4012eed",
+          "matchId": "a8ed66d1-6027-4d6d-ad35-956e49eebc05",
+          "gameNumber": 5,
+          "mapName": "helheim",
+          "mapSeed": 1815044794,
+          "winnerId": "4691bd56-45c2-460c-a5a5-eb7563c594cb",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 196,
+          "replayS3Key": "a8ed66d1-6027-4d6d-ad35-956e49eebc05_game_5.replay26",
+          "createdAt": "2026-08-22T21:13:46.230Z"
+        }
+      ]
+    },
+    {
+      "match": {
+        "id": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+        "status": "complete",
+        "stage": null,
+        "errorMessage": null,
+        "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "scoreA": 3,
+        "scoreB": 2,
+        "rated": true,
+        "triggeredBy": "ladder",
+        "eloDeltaA": 1.7010497735037333,
+        "eloDeltaB": -1.7010497735037333,
+        "startedAt": "2026-08-22T21:02:51.207Z",
+        "completedAt": "2026-08-22T21:03:21.666Z",
+        "createdAt": "2026-08-22T21:01:10.218Z",
+        "teamAId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "teamAName": "Powered by SmartFridge",
+        "teamAVersion": 78,
+        "teamBId": "ea0d33c8-ca2b-497a-9be0-1837379eab1e",
+        "teamBName": "Coreflood",
+        "teamBVersion": 94,
+        "testBotAName": null,
+        "testBotBName": null,
+        "testBotAS3Key": null,
+        "testBotBS3Key": null,
+        "submissionAS3Key": null,
+        "submissionBS3Key": null,
+        "sourceMatchAId": null,
+        "sourceMatchBId": null,
+        "teamARating": 1653.8010415440144,
+        "teamAMatchesPlayed": 2285,
+        "teamBRating": 1595.4001553215119,
+        "teamBMatchesPlayed": 2295,
+        "ratingABefore": 1627.0295369319251,
+        "ratingBBefore": 1594.384515878673,
+        "mapConfig": [
+          {
+            "s3Key": "maps/0c53f6ede39e7db8cfa339ea16515e7fa3eafd44e605ea607f78842564fcc401.map26",
+            "mapName": "auroraveil",
+            "mapSeed": 983175105
+          },
+          {
+            "s3Key": "maps/a58f71d7cf61feca62438a50e286e6315578be95ec3eb975534f9a735cdb6da7.map26",
+            "mapName": "stavkirke",
+            "mapSeed": 1384877063
+          },
+          {
+            "s3Key": "maps/847b2628ae698c61e55a83a9e1b83d76571532cd72676907f9aa5984f52286b9.map26",
+            "mapName": "helheim",
+            "mapSeed": 995165606
+          },
+          {
+            "s3Key": "maps/6fed93aefa0830d47962a714973086b85b48b6f1095c93fb3daa5610424ddacd.map26",
+            "mapName": "valkyrie",
+            "mapSeed": 2013205307
+          },
+          {
+            "s3Key": "maps/10c739a5587121c27bf61ded6f448dcb34eedb8f4a779b30435ac4ab2cec1913.map26",
+            "mapName": "longhouse",
+            "mapSeed": 331913918
+          }
+        ],
+        "teamANameStyle": null,
+        "teamBNameStyle": null
+      },
+      "games": [
+        {
+          "id": "0cf565ce-6596-4c92-b644-6e09c8c697d3",
+          "matchId": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+          "gameNumber": 1,
+          "mapName": "auroraveil",
+          "mapSeed": 983175105,
+          "winnerId": "ea0d33c8-ca2b-497a-9be0-1837379eab1e",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 482,
+          "replayS3Key": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_1.replay26",
+          "createdAt": "2026-08-22T21:03:05.575Z"
+        },
+        {
+          "id": "99353696-94e0-4f84-870d-d1dbd6d769f4",
+          "matchId": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+          "gameNumber": 2,
+          "mapName": "stavkirke",
+          "mapSeed": 1384877063,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 46,
+          "replayS3Key": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_2.replay26",
+          "createdAt": "2026-08-22T21:03:08.101Z"
+        },
+        {
+          "id": "0f81d0dc-7260-4d08-8acd-c7d5c8e16b67",
+          "matchId": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+          "gameNumber": 3,
+          "mapName": "helheim",
+          "mapSeed": 995165606,
+          "winnerId": "ea0d33c8-ca2b-497a-9be0-1837379eab1e",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 345,
+          "replayS3Key": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_3.replay26",
+          "createdAt": "2026-08-22T21:03:16.238Z"
+        },
+        {
+          "id": "099d7034-7c53-4c33-b4b6-b77149d8be86",
+          "matchId": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+          "gameNumber": 4,
+          "mapName": "valkyrie",
+          "mapSeed": 2013205307,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 42,
+          "replayS3Key": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_4.replay26",
+          "createdAt": "2026-08-22T21:03:18.552Z"
+        },
+        {
+          "id": "08f4d0a0-fadf-48d4-b343-7e2919732157",
+          "matchId": "f023e115-f35f-4848-b9d4-711d4b8efcb0",
+          "gameNumber": 5,
+          "mapName": "longhouse",
+          "mapSeed": 331913918,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 59,
+          "replayS3Key": "f023e115-f35f-4848-b9d4-711d4b8efcb0_game_5.replay26",
+          "createdAt": "2026-08-22T21:03:21.655Z"
+        }
+      ]
+    },
+    {
+      "match": {
+        "id": "8f74098f-aec8-4861-983d-fe45117e8160",
+        "status": "complete",
+        "stage": null,
+        "errorMessage": null,
+        "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "scoreA": 3,
+        "scoreB": 2,
+        "rated": true,
+        "triggeredBy": "ladder",
+        "eloDeltaA": 0.5870471568952134,
+        "eloDeltaB": -0.5870471568952134,
+        "startedAt": "2026-08-22T20:52:05.523Z",
+        "completedAt": "2026-08-22T20:52:24.303Z",
+        "createdAt": "2026-08-22T20:51:10.319Z",
+        "teamAId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "teamAName": "Powered by SmartFridge",
+        "teamAVersion": 76,
+        "teamBId": "5d46712b-cefb-42dc-923e-1717ee5d2281",
+        "teamBName": "diverge",
+        "teamBVersion": 29,
+        "testBotAName": null,
+        "testBotBName": null,
+        "testBotAS3Key": null,
+        "testBotBS3Key": null,
+        "submissionAS3Key": null,
+        "submissionBS3Key": null,
+        "sourceMatchAId": null,
+        "sourceMatchBId": null,
+        "teamARating": 1653.8010415440144,
+        "teamAMatchesPlayed": 2285,
+        "teamBRating": 1580.9825588825759,
+        "teamBMatchesPlayed": 1238,
+        "ratingABefore": 1626.4424897750298,
+        "ratingBBefore": 1569.1902962498853,
+        "mapConfig": [
+          {
+            "s3Key": "maps/0053d1fdd516d71465c3d92d469fbb6e523d8f79bc13810ba75854856451a59a.map26",
+            "mapName": "jotunheim",
+            "mapSeed": 1613485985
+          },
+          {
+            "s3Key": "maps/98ddc33a15317170643d6ea75cb4930b224c6c5fc0f7f015d4f56cdd8cfcfad1.map26",
+            "mapName": "yggdrasil",
+            "mapSeed": 551120845
+          },
+          {
+            "s3Key": "maps/6fed93aefa0830d47962a714973086b85b48b6f1095c93fb3daa5610424ddacd.map26",
+            "mapName": "valkyrie",
+            "mapSeed": 1211266320
+          },
+          {
+            "s3Key": "maps/0282536c81f04b849c05c5e6bf1c6d698d258e1df5f7940779a90a96c2c29952.map26",
+            "mapName": "bifrost",
+            "mapSeed": 825334451
+          },
+          {
+            "s3Key": "maps/a58f71d7cf61feca62438a50e286e6315578be95ec3eb975534f9a735cdb6da7.map26",
+            "mapName": "stavkirke",
+            "mapSeed": 876515994
+          }
+        ],
+        "teamANameStyle": null,
+        "teamBNameStyle": null
+      },
+      "games": [
+        {
+          "id": "ba31c226-feb0-4fbf-a9c9-5557bb0287eb",
+          "matchId": "8f74098f-aec8-4861-983d-fe45117e8160",
+          "gameNumber": 1,
+          "mapName": "jotunheim",
+          "mapSeed": 1613485985,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 40,
+          "replayS3Key": "8f74098f-aec8-4861-983d-fe45117e8160_game_1.replay26",
+          "createdAt": "2026-08-22T20:52:08.315Z"
+        },
+        {
+          "id": "bfc5d826-45a2-42c8-90c4-5a1156608985",
+          "matchId": "8f74098f-aec8-4861-983d-fe45117e8160",
+          "gameNumber": 2,
+          "mapName": "yggdrasil",
+          "mapSeed": 551120845,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 55,
+          "replayS3Key": "8f74098f-aec8-4861-983d-fe45117e8160_game_2.replay26",
+          "createdAt": "2026-08-22T20:52:10.740Z"
+        },
+        {
+          "id": "5d777637-a42b-4579-9ea9-1d54529200ee",
+          "matchId": "8f74098f-aec8-4861-983d-fe45117e8160",
+          "gameNumber": 3,
+          "mapName": "valkyrie",
+          "mapSeed": 1211266320,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 44,
+          "replayS3Key": "8f74098f-aec8-4861-983d-fe45117e8160_game_3.replay26",
+          "createdAt": "2026-08-22T20:52:13.116Z"
+        },
+        {
+          "id": "4323498e-23c1-4a89-80b3-37a3d68757a0",
+          "matchId": "8f74098f-aec8-4861-983d-fe45117e8160",
+          "gameNumber": 4,
+          "mapName": "bifrost",
+          "mapSeed": 825334451,
+          "winnerId": "5d46712b-cefb-42dc-923e-1717ee5d2281",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 121,
+          "replayS3Key": "8f74098f-aec8-4861-983d-fe45117e8160_game_4.replay26",
+          "createdAt": "2026-08-22T20:52:15.653Z"
+        },
+        {
+          "id": "80e1b8da-667d-46f4-9105-a7e88c3c9d61",
+          "matchId": "8f74098f-aec8-4861-983d-fe45117e8160",
+          "gameNumber": 5,
+          "mapName": "stavkirke",
+          "mapSeed": 876515994,
+          "winnerId": "5d46712b-cefb-42dc-923e-1717ee5d2281",
+          "winnerSide": "b",
+          "winCondition": "titanium_collected",
+          "resignMessage": null,
+          "turnsPlayed": 1000,
+          "replayS3Key": "8f74098f-aec8-4861-983d-fe45117e8160_game_5.replay26",
+          "createdAt": "2026-08-22T20:52:24.291Z"
+        }
+      ]
+    },
+    {
+      "match": {
+        "id": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+        "status": "complete",
+        "stage": null,
+        "errorMessage": null,
+        "winnerId": "43a1e488-543d-4d51-a066-4f9bf039d1fb",
+        "scoreA": 1,
+        "scoreB": 4,
+        "rated": true,
+        "triggeredBy": "ladder",
+        "eloDeltaA": -10.887541908576315,
+        "eloDeltaB": 10.887541908576315,
+        "startedAt": "2026-08-22T20:43:37.674Z",
+        "completedAt": "2026-08-22T20:43:57.202Z",
+        "createdAt": "2026-08-22T20:41:10.199Z",
+        "teamAId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "teamAName": "Powered by SmartFridge",
+        "teamAVersion": 70,
+        "teamBId": "43a1e488-543d-4d51-a066-4f9bf039d1fb",
+        "teamBName": "Troupe",
+        "teamBVersion": 45,
+        "testBotAName": null,
+        "testBotBName": null,
+        "testBotAS3Key": null,
+        "testBotBS3Key": null,
+        "submissionAS3Key": null,
+        "submissionBS3Key": null,
+        "sourceMatchAId": null,
+        "sourceMatchBId": null,
+        "teamARating": 1653.8010415440144,
+        "teamAMatchesPlayed": 2285,
+        "teamBRating": 1644.9043743574819,
+        "teamBMatchesPlayed": 1980,
+        "ratingABefore": 1637.3300316836062,
+        "ratingBBefore": 1609.3108288128199,
+        "mapConfig": [
+          {
+            "s3Key": "maps/6fed93aefa0830d47962a714973086b85b48b6f1095c93fb3daa5610424ddacd.map26",
+            "mapName": "valkyrie",
+            "mapSeed": 667413794
+          },
+          {
+            "s3Key": "maps/a8709570f6e518bd90d2d51fb4b26a11b5d443373c1c9b7df343034afb38eb49.map26",
+            "mapName": "paths",
+            "mapSeed": 1065773636
+          },
+          {
+            "s3Key": "maps/d3bb3ad3eb90183cf76db419affe4d06797dc1eed310caf92d4e182691f657b3.map26",
+            "mapName": "skald",
+            "mapSeed": 1322562988
+          },
+          {
+            "s3Key": "maps/98ddc33a15317170643d6ea75cb4930b224c6c5fc0f7f015d4f56cdd8cfcfad1.map26",
+            "mapName": "yggdrasil",
+            "mapSeed": 1642685984
+          },
+          {
+            "s3Key": "maps/0c53f6ede39e7db8cfa339ea16515e7fa3eafd44e605ea607f78842564fcc401.map26",
+            "mapName": "auroraveil",
+            "mapSeed": 1530394087
+          }
+        ],
+        "teamANameStyle": null,
+        "teamBNameStyle": null
+      },
+      "games": [
+        {
+          "id": "ff259477-64a4-4d38-a5f1-4a15a1fe1fff",
+          "matchId": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+          "gameNumber": 1,
+          "mapName": "valkyrie",
+          "mapSeed": 667413794,
+          "winnerId": "43a1e488-543d-4d51-a066-4f9bf039d1fb",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 307,
+          "replayS3Key": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_1.replay26",
+          "createdAt": "2026-08-22T20:43:43.342Z"
+        },
+        {
+          "id": "c08f701f-fca9-482b-ab3e-6d2a76105e3b",
+          "matchId": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+          "gameNumber": 2,
+          "mapName": "paths",
+          "mapSeed": 1065773636,
+          "winnerId": "43a1e488-543d-4d51-a066-4f9bf039d1fb",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 221,
+          "replayS3Key": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_2.replay26",
+          "createdAt": "2026-08-22T20:43:47.415Z"
+        },
+        {
+          "id": "ecbcaabe-ca73-470e-aa9b-561763199857",
+          "matchId": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+          "gameNumber": 3,
+          "mapName": "skald",
+          "mapSeed": 1322562988,
+          "winnerId": "43a1e488-543d-4d51-a066-4f9bf039d1fb",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 205,
+          "replayS3Key": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_3.replay26",
+          "createdAt": "2026-08-22T20:43:50.373Z"
+        },
+        {
+          "id": "45e658a9-9582-48fe-8d5c-d213d07d0bbc",
+          "matchId": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+          "gameNumber": 4,
+          "mapName": "yggdrasil",
+          "mapSeed": 1642685984,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 78,
+          "replayS3Key": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_4.replay26",
+          "createdAt": "2026-08-22T20:43:52.794Z"
+        },
+        {
+          "id": "8535f02f-02f5-43c1-b814-dbdf4fdf916d",
+          "matchId": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2",
+          "gameNumber": 5,
+          "mapName": "auroraveil",
+          "mapSeed": 1530394087,
+          "winnerId": "43a1e488-543d-4d51-a066-4f9bf039d1fb",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 268,
+          "replayS3Key": "1f2ed193-ca8c-40d3-97df-b35d8de9a9b2_game_5.replay26",
+          "createdAt": "2026-08-22T20:43:57.193Z"
+        }
+      ]
+    },
+    {
+      "match": {
+        "id": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+        "status": "complete",
+        "stage": null,
+        "errorMessage": null,
+        "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "scoreA": 3,
+        "scoreB": 2,
+        "rated": true,
+        "triggeredBy": "ladder",
+        "eloDeltaA": 5.650813453518218,
+        "eloDeltaB": -5.650813453518218,
+        "startedAt": "2026-08-22T20:33:21.739Z",
+        "completedAt": "2026-08-22T20:33:32.554Z",
+        "createdAt": "2026-08-22T20:31:10.321Z",
+        "teamAId": "7fd91e77-812c-44da-bce7-457be94d2548",
+        "teamAName": "Powered by SmartFridge",
+        "teamAVersion": 76,
+        "teamBId": "b538e523-2250-4c1d-b718-e73b77ebad55",
+        "teamBName": "Landers",
+        "teamBVersion": 333,
+        "testBotAName": null,
+        "testBotBName": null,
+        "testBotAS3Key": null,
+        "testBotBS3Key": null,
+        "submissionAS3Key": null,
+        "submissionBS3Key": null,
+        "sourceMatchAId": null,
+        "sourceMatchBId": null,
+        "teamARating": 1653.8010415440144,
+        "teamAMatchesPlayed": 2285,
+        "teamBRating": 1647.6049888677705,
+        "teamBMatchesPlayed": 2320,
+        "ratingABefore": 1631.679218230088,
+        "ratingBBefore": 1685.3201365218056,
+        "mapConfig": [
+          {
+            "s3Key": "maps/10c739a5587121c27bf61ded6f448dcb34eedb8f4a779b30435ac4ab2cec1913.map26",
+            "mapName": "longhouse",
+            "mapSeed": 744001129
+          },
+          {
+            "s3Key": "maps/6fed93aefa0830d47962a714973086b85b48b6f1095c93fb3daa5610424ddacd.map26",
+            "mapName": "valkyrie",
+            "mapSeed": 268219733
+          },
+          {
+            "s3Key": "maps/0053d1fdd516d71465c3d92d469fbb6e523d8f79bc13810ba75854856451a59a.map26",
+            "mapName": "jotunheim",
+            "mapSeed": 338776431
+          },
+          {
+            "s3Key": "maps/2f72050ebf89bed6922d38a24365584d63a410fcc7e55d1dbc3a6a74a94427d5.map26",
+            "mapName": "icefloe",
+            "mapSeed": 1199962552
+          },
+          {
+            "s3Key": "maps/a58f71d7cf61feca62438a50e286e6315578be95ec3eb975534f9a735cdb6da7.map26",
+            "mapName": "stavkirke",
+            "mapSeed": 885764814
+          }
+        ],
+        "teamANameStyle": null,
+        "teamBNameStyle": null
+      },
+      "games": [
+        {
+          "id": "672fda2e-6297-4538-83a5-3a2e62fd0f28",
+          "matchId": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+          "gameNumber": 1,
+          "mapName": "longhouse",
+          "mapSeed": 744001129,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 53,
+          "replayS3Key": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_1.replay26",
+          "createdAt": "2026-08-22T20:33:24.206Z"
+        },
+        {
+          "id": "15e92f8f-ccbc-4a2c-8ed9-34c10f8ba1b9",
+          "matchId": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+          "gameNumber": 2,
+          "mapName": "valkyrie",
+          "mapSeed": 268219733,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "titanium_stored",
+          "resignMessage": null,
+          "turnsPlayed": 37,
+          "replayS3Key": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_2.replay26",
+          "createdAt": "2026-08-22T20:33:26.236Z"
+        },
+        {
+          "id": "da57640b-3212-46bc-ba64-f07086449a62",
+          "matchId": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+          "gameNumber": 3,
+          "mapName": "jotunheim",
+          "mapSeed": 338776431,
+          "winnerId": "b538e523-2250-4c1d-b718-e73b77ebad55",
+          "winnerSide": "b",
+          "winCondition": "titanium_stored",
+          "resignMessage": null,
+          "turnsPlayed": 37,
+          "replayS3Key": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_3.replay26",
+          "createdAt": "2026-08-22T20:33:28.236Z"
+        },
+        {
+          "id": "246f702f-08c2-4d93-b8ba-7866916f6782",
+          "matchId": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+          "gameNumber": 4,
+          "mapName": "icefloe",
+          "mapSeed": 1199962552,
+          "winnerId": "7fd91e77-812c-44da-bce7-457be94d2548",
+          "winnerSide": "a",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 39,
+          "replayS3Key": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_4.replay26",
+          "createdAt": "2026-08-22T20:33:30.218Z"
+        },
+        {
+          "id": "e4e9ec3e-508c-4141-b7ea-c30b6cd78692",
+          "matchId": "b5c522dc-5df9-443d-b40d-092270f38ee1",
+          "gameNumber": 5,
+          "mapName": "stavkirke",
+          "mapSeed": 885764814,
+          "winnerId": "b538e523-2250-4c1d-b718-e73b77ebad55",
+          "winnerSide": "b",
+          "winCondition": "core_destroyed",
+          "resignMessage": null,
+          "turnsPlayed": 37,
+          "replayS3Key": "b5c522dc-5df9-443d-b40d-092270f38ee1_game_5.replay26",
+          "createdAt": "2026-08-22T20:33:32.541Z"
+        }
+      ]
+    }
+  ]
+}

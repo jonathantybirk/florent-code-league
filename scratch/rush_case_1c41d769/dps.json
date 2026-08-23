@@ -1,0 +1,2928 @@
+[
+  {
+    "file": "1c41d769-8feb-41f4-9cff-a6e189c15d5d_game_1.replay26",
+    "turns": 249,
+    "teams": [
+      {
+        "first_harvester": 6,
+        "first_core_damage": 220,
+        "last_core_damage": 248,
+        "attack_span": 29,
+        "gross_core_damage": 504,
+        "gross_dps_active_span": 17.379310344827587,
+        "peak_round_damage": 90,
+        "hits_by_damage_amount": {
+          "18": 28
+        },
+        "damaging_rounds": 14,
+        "core_heals_received": 0,
+        "hits": [
+          {
+            "turn": 220,
+            "damage": 18
+          },
+          {
+            "turn": 222,
+            "damage": 18
+          },
+          {
+            "turn": 222,
+            "damage": 18
+          },
+          {
+            "turn": 224,
+            "damage": 18
+          },
+          {
+            "turn": 224,
+            "damage": 18
+          },
+          {
+            "turn": 224,
+            "damage": 18
+          },
+          {
+            "turn": 224,
+            "damage": 18
+          },
+          {
+            "turn": 226,
+            "damage": 18
+          },
+          {
+            "turn": 226,
+            "damage": 18
+          },
+          {
+            "turn": 226,
+            "damage": 18
+          },
+          {
+            "turn": 226,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 229,
+            "damage": 18
+          },
+          {
+            "turn": 230,
+            "damage": 18
+          },
+          {
+            "turn": 240,
+            "damage": 18
+          },
+          {
+            "turn": 241,
+            "damage": 18
+          },
+          {
+            "turn": 241,
+            "damage": 18
+          },
+          {
+            "turn": 243,
+            "damage": 18
+          },
+          {
+            "turn": 243,
+            "damage": 18
+          },
+          {
+            "turn": 244,
+            "damage": 18
+          },
+          {
+            "turn": 244,
+            "damage": 18
+          },
+          {
+            "turn": 245,
+            "damage": 18
+          },
+          {
+            "turn": 247,
+            "damage": 18
+          },
+          {
+            "turn": 248,
+            "damage": 18
+          }
+        ]
+      },
+      {
+        "first_harvester": null,
+        "first_core_damage": 52,
+        "last_core_damage": 248,
+        "attack_span": 197,
+        "gross_core_damage": 1638,
+        "gross_dps_active_span": 8.314720812182742,
+        "peak_round_damage": 36,
+        "hits_by_damage_amount": {
+          "18": 91
+        },
+        "damaging_rounds": 69,
+        "core_heals_received": 423,
+        "hits": [
+          {
+            "turn": 52,
+            "damage": 18
+          },
+          {
+            "turn": 53,
+            "damage": 18
+          },
+          {
+            "turn": 54,
+            "damage": 18
+          },
+          {
+            "turn": 55,
+            "damage": 18
+          },
+          {
+            "turn": 55,
+            "damage": 18
+          },
+          {
+            "turn": 56,
+            "damage": 18
+          },
+          {
+            "turn": 56,
+            "damage": 18
+          },
+          {
+            "turn": 57,
+            "damage": 18
+          },
+          {
+            "turn": 57,
+            "damage": 18
+          },
+          {
+            "turn": 58,
+            "damage": 18
+          },
+          {
+            "turn": 58,
+            "damage": 18
+          },
+          {
+            "turn": 59,
+            "damage": 18
+          },
+          {
+            "turn": 59,
+            "damage": 18
+          },
+          {
+            "turn": 60,
+            "damage": 18
+          },
+          {
+            "turn": 60,
+            "damage": 18
+          },
+          {
+            "turn": 61,
+            "damage": 18
+          },
+          {
+            "turn": 61,
+            "damage": 18
+          },
+          {
+            "turn": 62,
+            "damage": 18
+          },
+          {
+            "turn": 62,
+            "damage": 18
+          },
+          {
+            "turn": 63,
+            "damage": 18
+          },
+          {
+            "turn": 63,
+            "damage": 18
+          },
+          {
+            "turn": 64,
+            "damage": 18
+          },
+          {
+            "turn": 64,
+            "damage": 18
+          },
+          {
+            "turn": 65,
+            "damage": 18
+          },
+          {
+            "turn": 65,
+            "damage": 18
+          },
+          {
+            "turn": 66,
+            "damage": 18
+          },
+          {
+            "turn": 66,
+            "damage": 18
+          },
+          {
+            "turn": 67,
+            "damage": 18
+          },
+          {
+            "turn": 67,
+            "damage": 18
+          },
+          {
+            "turn": 68,
+            "damage": 18
+          },
+          {
+            "turn": 68,
+            "damage": 18
+          },
+          {
+            "turn": 69,
+            "damage": 18
+          },
+          {
+            "turn": 69,
+            "damage": 18
+          },
+          {
+            "turn": 70,
+            "damage": 18
+          },
+          {
+            "turn": 70,
+            "damage": 18
+          },
+          {
+            "turn": 71,
+            "damage": 18
+          },
+          {
+            "turn": 71,
+            "damage": 18
+          },
+          {
+            "turn": 72,
+            "damage": 18
+          },
+          {
+            "turn": 72,
+            "damage": 18
+          },
+          {
+            "turn": 73,
+            "damage": 18
+          },
+          {
+            "turn": 73,
+            "damage": 18
+          },
+          {
+            "turn": 74,
+            "damage": 18
+          },
+          {
+            "turn": 74,
+            "damage": 18
+          },
+          {
+            "turn": 75,
+            "damage": 18
+          },
+          {
+            "turn": 75,
+            "damage": 18
+          },
+          {
+            "turn": 76,
+            "damage": 18
+          },
+          {
+            "turn": 76,
+            "damage": 18
+          },
+          {
+            "turn": 77,
+            "damage": 18
+          },
+          {
+            "turn": 80,
+            "damage": 18
+          },
+          {
+            "turn": 84,
+            "damage": 18
+          },
+          {
+            "turn": 88,
+            "damage": 18
+          },
+          {
+            "turn": 92,
+            "damage": 18
+          },
+          {
+            "turn": 96,
+            "damage": 18
+          },
+          {
+            "turn": 100,
+            "damage": 18
+          },
+          {
+            "turn": 104,
+            "damage": 18
+          },
+          {
+            "turn": 108,
+            "damage": 18
+          },
+          {
+            "turn": 112,
+            "damage": 18
+          },
+          {
+            "turn": 116,
+            "damage": 18
+          },
+          {
+            "turn": 120,
+            "damage": 18
+          },
+          {
+            "turn": 124,
+            "damage": 18
+          },
+          {
+            "turn": 128,
+            "damage": 18
+          },
+          {
+            "turn": 132,
+            "damage": 18
+          },
+          {
+            "turn": 136,
+            "damage": 18
+          },
+          {
+            "turn": 140,
+            "damage": 18
+          },
+          {
+            "turn": 144,
+            "damage": 18
+          },
+          {
+            "turn": 148,
+            "damage": 18
+          },
+          {
+            "turn": 152,
+            "damage": 18
+          },
+          {
+            "turn": 156,
+            "damage": 18
+          },
+          {
+            "turn": 160,
+            "damage": 18
+          },
+          {
+            "turn": 164,
+            "damage": 18
+          },
+          {
+            "turn": 168,
+            "damage": 18
+          },
+          {
+            "turn": 172,
+            "damage": 18
+          },
+          {
+            "turn": 176,
+            "damage": 18
+          },
+          {
+            "turn": 180,
+            "damage": 18
+          },
+          {
+            "turn": 184,
+            "damage": 18
+          },
+          {
+            "turn": 188,
+            "damage": 18
+          },
+          {
+            "turn": 192,
+            "damage": 18
+          },
+          {
+            "turn": 196,
+            "damage": 18
+          },
+          {
+            "turn": 200,
+            "damage": 18
+          },
+          {
+            "turn": 204,
+            "damage": 18
+          },
+          {
+            "turn": 208,
+            "damage": 18
+          },
+          {
+            "turn": 212,
+            "damage": 18
+          },
+          {
+            "turn": 216,
+            "damage": 18
+          },
+          {
+            "turn": 220,
+            "damage": 18
+          },
+          {
+            "turn": 224,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 232,
+            "damage": 18
+          },
+          {
+            "turn": 236,
+            "damage": 18
+          },
+          {
+            "turn": 240,
+            "damage": 18
+          },
+          {
+            "turn": 244,
+            "damage": 18
+          },
+          {
+            "turn": 248,
+            "damage": 18
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "1c41d769-8feb-41f4-9cff-a6e189c15d5d_game_2.replay26",
+    "turns": 347,
+    "teams": [
+      {
+        "first_harvester": 6,
+        "first_core_damage": 333,
+        "last_core_damage": 346,
+        "attack_span": 14,
+        "gross_core_damage": 504,
+        "gross_dps_active_span": 36.0,
+        "peak_round_damage": 72,
+        "hits_by_damage_amount": {
+          "18": 28
+        },
+        "damaging_rounds": 14,
+        "core_heals_received": 0,
+        "hits": [
+          {
+            "turn": 333,
+            "damage": 18
+          },
+          {
+            "turn": 334,
+            "damage": 18
+          },
+          {
+            "turn": 335,
+            "damage": 18
+          },
+          {
+            "turn": 336,
+            "damage": 18
+          },
+          {
+            "turn": 336,
+            "damage": 18
+          },
+          {
+            "turn": 337,
+            "damage": 18
+          },
+          {
+            "turn": 338,
+            "damage": 18
+          },
+          {
+            "turn": 338,
+            "damage": 18
+          },
+          {
+            "turn": 339,
+            "damage": 18
+          },
+          {
+            "turn": 339,
+            "damage": 18
+          },
+          {
+            "turn": 340,
+            "damage": 18
+          },
+          {
+            "turn": 340,
+            "damage": 18
+          },
+          {
+            "turn": 341,
+            "damage": 18
+          },
+          {
+            "turn": 341,
+            "damage": 18
+          },
+          {
+            "turn": 342,
+            "damage": 18
+          },
+          {
+            "turn": 342,
+            "damage": 18
+          },
+          {
+            "turn": 342,
+            "damage": 18
+          },
+          {
+            "turn": 343,
+            "damage": 18
+          },
+          {
+            "turn": 343,
+            "damage": 18
+          },
+          {
+            "turn": 344,
+            "damage": 18
+          },
+          {
+            "turn": 344,
+            "damage": 18
+          },
+          {
+            "turn": 344,
+            "damage": 18
+          },
+          {
+            "turn": 344,
+            "damage": 18
+          },
+          {
+            "turn": 345,
+            "damage": 18
+          },
+          {
+            "turn": 345,
+            "damage": 18
+          },
+          {
+            "turn": 346,
+            "damage": 18
+          },
+          {
+            "turn": 346,
+            "damage": 18
+          },
+          {
+            "turn": 346,
+            "damage": 18
+          }
+        ]
+      },
+      {
+        "first_harvester": null,
+        "first_core_damage": 60,
+        "last_core_damage": 344,
+        "attack_span": 285,
+        "gross_core_damage": 2070,
+        "gross_dps_active_span": 7.2631578947368425,
+        "peak_round_damage": 54,
+        "hits_by_damage_amount": {
+          "18": 115
+        },
+        "damaging_rounds": 90,
+        "core_heals_received": 547,
+        "hits": [
+          {
+            "turn": 60,
+            "damage": 18
+          },
+          {
+            "turn": 62,
+            "damage": 18
+          },
+          {
+            "turn": 62,
+            "damage": 18
+          },
+          {
+            "turn": 64,
+            "damage": 18
+          },
+          {
+            "turn": 64,
+            "damage": 18
+          },
+          {
+            "turn": 64,
+            "damage": 18
+          },
+          {
+            "turn": 65,
+            "damage": 18
+          },
+          {
+            "turn": 66,
+            "damage": 18
+          },
+          {
+            "turn": 66,
+            "damage": 18
+          },
+          {
+            "turn": 66,
+            "damage": 18
+          },
+          {
+            "turn": 67,
+            "damage": 18
+          },
+          {
+            "turn": 68,
+            "damage": 18
+          },
+          {
+            "turn": 68,
+            "damage": 18
+          },
+          {
+            "turn": 68,
+            "damage": 18
+          },
+          {
+            "turn": 69,
+            "damage": 18
+          },
+          {
+            "turn": 70,
+            "damage": 18
+          },
+          {
+            "turn": 70,
+            "damage": 18
+          },
+          {
+            "turn": 70,
+            "damage": 18
+          },
+          {
+            "turn": 71,
+            "damage": 18
+          },
+          {
+            "turn": 72,
+            "damage": 18
+          },
+          {
+            "turn": 72,
+            "damage": 18
+          },
+          {
+            "turn": 72,
+            "damage": 18
+          },
+          {
+            "turn": 73,
+            "damage": 18
+          },
+          {
+            "turn": 74,
+            "damage": 18
+          },
+          {
+            "turn": 74,
+            "damage": 18
+          },
+          {
+            "turn": 74,
+            "damage": 18
+          },
+          {
+            "turn": 75,
+            "damage": 18
+          },
+          {
+            "turn": 76,
+            "damage": 18
+          },
+          {
+            "turn": 76,
+            "damage": 18
+          },
+          {
+            "turn": 76,
+            "damage": 18
+          },
+          {
+            "turn": 77,
+            "damage": 18
+          },
+          {
+            "turn": 78,
+            "damage": 18
+          },
+          {
+            "turn": 78,
+            "damage": 18
+          },
+          {
+            "turn": 78,
+            "damage": 18
+          },
+          {
+            "turn": 79,
+            "damage": 18
+          },
+          {
+            "turn": 80,
+            "damage": 18
+          },
+          {
+            "turn": 80,
+            "damage": 18
+          },
+          {
+            "turn": 80,
+            "damage": 18
+          },
+          {
+            "turn": 81,
+            "damage": 18
+          },
+          {
+            "turn": 82,
+            "damage": 18
+          },
+          {
+            "turn": 82,
+            "damage": 18
+          },
+          {
+            "turn": 82,
+            "damage": 18
+          },
+          {
+            "turn": 83,
+            "damage": 18
+          },
+          {
+            "turn": 84,
+            "damage": 18
+          },
+          {
+            "turn": 84,
+            "damage": 18
+          },
+          {
+            "turn": 84,
+            "damage": 18
+          },
+          {
+            "turn": 85,
+            "damage": 18
+          },
+          {
+            "turn": 86,
+            "damage": 18
+          },
+          {
+            "turn": 86,
+            "damage": 18
+          },
+          {
+            "turn": 86,
+            "damage": 18
+          },
+          {
+            "turn": 88,
+            "damage": 18
+          },
+          {
+            "turn": 92,
+            "damage": 18
+          },
+          {
+            "turn": 96,
+            "damage": 18
+          },
+          {
+            "turn": 100,
+            "damage": 18
+          },
+          {
+            "turn": 104,
+            "damage": 18
+          },
+          {
+            "turn": 108,
+            "damage": 18
+          },
+          {
+            "turn": 112,
+            "damage": 18
+          },
+          {
+            "turn": 116,
+            "damage": 18
+          },
+          {
+            "turn": 120,
+            "damage": 18
+          },
+          {
+            "turn": 124,
+            "damage": 18
+          },
+          {
+            "turn": 128,
+            "damage": 18
+          },
+          {
+            "turn": 132,
+            "damage": 18
+          },
+          {
+            "turn": 136,
+            "damage": 18
+          },
+          {
+            "turn": 140,
+            "damage": 18
+          },
+          {
+            "turn": 144,
+            "damage": 18
+          },
+          {
+            "turn": 148,
+            "damage": 18
+          },
+          {
+            "turn": 152,
+            "damage": 18
+          },
+          {
+            "turn": 156,
+            "damage": 18
+          },
+          {
+            "turn": 160,
+            "damage": 18
+          },
+          {
+            "turn": 164,
+            "damage": 18
+          },
+          {
+            "turn": 168,
+            "damage": 18
+          },
+          {
+            "turn": 172,
+            "damage": 18
+          },
+          {
+            "turn": 176,
+            "damage": 18
+          },
+          {
+            "turn": 180,
+            "damage": 18
+          },
+          {
+            "turn": 184,
+            "damage": 18
+          },
+          {
+            "turn": 188,
+            "damage": 18
+          },
+          {
+            "turn": 192,
+            "damage": 18
+          },
+          {
+            "turn": 196,
+            "damage": 18
+          },
+          {
+            "turn": 200,
+            "damage": 18
+          },
+          {
+            "turn": 204,
+            "damage": 18
+          },
+          {
+            "turn": 208,
+            "damage": 18
+          },
+          {
+            "turn": 212,
+            "damage": 18
+          },
+          {
+            "turn": 216,
+            "damage": 18
+          },
+          {
+            "turn": 220,
+            "damage": 18
+          },
+          {
+            "turn": 224,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 232,
+            "damage": 18
+          },
+          {
+            "turn": 236,
+            "damage": 18
+          },
+          {
+            "turn": 240,
+            "damage": 18
+          },
+          {
+            "turn": 244,
+            "damage": 18
+          },
+          {
+            "turn": 248,
+            "damage": 18
+          },
+          {
+            "turn": 252,
+            "damage": 18
+          },
+          {
+            "turn": 256,
+            "damage": 18
+          },
+          {
+            "turn": 260,
+            "damage": 18
+          },
+          {
+            "turn": 264,
+            "damage": 18
+          },
+          {
+            "turn": 268,
+            "damage": 18
+          },
+          {
+            "turn": 272,
+            "damage": 18
+          },
+          {
+            "turn": 276,
+            "damage": 18
+          },
+          {
+            "turn": 280,
+            "damage": 18
+          },
+          {
+            "turn": 284,
+            "damage": 18
+          },
+          {
+            "turn": 288,
+            "damage": 18
+          },
+          {
+            "turn": 292,
+            "damage": 18
+          },
+          {
+            "turn": 296,
+            "damage": 18
+          },
+          {
+            "turn": 300,
+            "damage": 18
+          },
+          {
+            "turn": 304,
+            "damage": 18
+          },
+          {
+            "turn": 308,
+            "damage": 18
+          },
+          {
+            "turn": 312,
+            "damage": 18
+          },
+          {
+            "turn": 316,
+            "damage": 18
+          },
+          {
+            "turn": 320,
+            "damage": 18
+          },
+          {
+            "turn": 324,
+            "damage": 18
+          },
+          {
+            "turn": 328,
+            "damage": 18
+          },
+          {
+            "turn": 332,
+            "damage": 18
+          },
+          {
+            "turn": 336,
+            "damage": 18
+          },
+          {
+            "turn": 340,
+            "damage": 18
+          },
+          {
+            "turn": 344,
+            "damage": 18
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "1c41d769-8feb-41f4-9cff-a6e189c15d5d_game_3.replay26",
+    "turns": 369,
+    "teams": [
+      {
+        "first_harvester": 6,
+        "first_core_damage": 346,
+        "last_core_damage": 368,
+        "attack_span": 23,
+        "gross_core_damage": 504,
+        "gross_dps_active_span": 21.91304347826087,
+        "peak_round_damage": 90,
+        "hits_by_damage_amount": {
+          "18": 28
+        },
+        "damaging_rounds": 12,
+        "core_heals_received": 0,
+        "hits": [
+          {
+            "turn": 346,
+            "damage": 18
+          },
+          {
+            "turn": 348,
+            "damage": 18
+          },
+          {
+            "turn": 350,
+            "damage": 18
+          },
+          {
+            "turn": 352,
+            "damage": 18
+          },
+          {
+            "turn": 352,
+            "damage": 18
+          },
+          {
+            "turn": 354,
+            "damage": 18
+          },
+          {
+            "turn": 354,
+            "damage": 18
+          },
+          {
+            "turn": 356,
+            "damage": 18
+          },
+          {
+            "turn": 356,
+            "damage": 18
+          },
+          {
+            "turn": 358,
+            "damage": 18
+          },
+          {
+            "turn": 358,
+            "damage": 18
+          },
+          {
+            "turn": 360,
+            "damage": 18
+          },
+          {
+            "turn": 360,
+            "damage": 18
+          },
+          {
+            "turn": 360,
+            "damage": 18
+          },
+          {
+            "turn": 362,
+            "damage": 18
+          },
+          {
+            "turn": 362,
+            "damage": 18
+          },
+          {
+            "turn": 362,
+            "damage": 18
+          },
+          {
+            "turn": 364,
+            "damage": 18
+          },
+          {
+            "turn": 364,
+            "damage": 18
+          },
+          {
+            "turn": 364,
+            "damage": 18
+          },
+          {
+            "turn": 364,
+            "damage": 18
+          },
+          {
+            "turn": 366,
+            "damage": 18
+          },
+          {
+            "turn": 366,
+            "damage": 18
+          },
+          {
+            "turn": 366,
+            "damage": 18
+          },
+          {
+            "turn": 366,
+            "damage": 18
+          },
+          {
+            "turn": 366,
+            "damage": 18
+          },
+          {
+            "turn": 368,
+            "damage": 18
+          },
+          {
+            "turn": 368,
+            "damage": 18
+          }
+        ]
+      },
+      {
+        "first_harvester": null,
+        "first_core_damage": 31,
+        "last_core_damage": 368,
+        "attack_span": 338,
+        "gross_core_damage": 2178,
+        "gross_dps_active_span": 6.443786982248521,
+        "peak_round_damage": 54,
+        "hits_by_damage_amount": {
+          "18": 121
+        },
+        "damaging_rounds": 101,
+        "core_heals_received": 577,
+        "hits": [
+          {
+            "turn": 31,
+            "damage": 18
+          },
+          {
+            "turn": 33,
+            "damage": 18
+          },
+          {
+            "turn": 33,
+            "damage": 18
+          },
+          {
+            "turn": 34,
+            "damage": 18
+          },
+          {
+            "turn": 35,
+            "damage": 18
+          },
+          {
+            "turn": 35,
+            "damage": 18
+          },
+          {
+            "turn": 35,
+            "damage": 18
+          },
+          {
+            "turn": 36,
+            "damage": 18
+          },
+          {
+            "turn": 37,
+            "damage": 18
+          },
+          {
+            "turn": 37,
+            "damage": 18
+          },
+          {
+            "turn": 37,
+            "damage": 18
+          },
+          {
+            "turn": 38,
+            "damage": 18
+          },
+          {
+            "turn": 39,
+            "damage": 18
+          },
+          {
+            "turn": 39,
+            "damage": 18
+          },
+          {
+            "turn": 39,
+            "damage": 18
+          },
+          {
+            "turn": 40,
+            "damage": 18
+          },
+          {
+            "turn": 41,
+            "damage": 18
+          },
+          {
+            "turn": 41,
+            "damage": 18
+          },
+          {
+            "turn": 41,
+            "damage": 18
+          },
+          {
+            "turn": 42,
+            "damage": 18
+          },
+          {
+            "turn": 43,
+            "damage": 18
+          },
+          {
+            "turn": 43,
+            "damage": 18
+          },
+          {
+            "turn": 43,
+            "damage": 18
+          },
+          {
+            "turn": 44,
+            "damage": 18
+          },
+          {
+            "turn": 45,
+            "damage": 18
+          },
+          {
+            "turn": 45,
+            "damage": 18
+          },
+          {
+            "turn": 45,
+            "damage": 18
+          },
+          {
+            "turn": 46,
+            "damage": 18
+          },
+          {
+            "turn": 47,
+            "damage": 18
+          },
+          {
+            "turn": 47,
+            "damage": 18
+          },
+          {
+            "turn": 47,
+            "damage": 18
+          },
+          {
+            "turn": 48,
+            "damage": 18
+          },
+          {
+            "turn": 49,
+            "damage": 18
+          },
+          {
+            "turn": 49,
+            "damage": 18
+          },
+          {
+            "turn": 49,
+            "damage": 18
+          },
+          {
+            "turn": 50,
+            "damage": 18
+          },
+          {
+            "turn": 51,
+            "damage": 18
+          },
+          {
+            "turn": 51,
+            "damage": 18
+          },
+          {
+            "turn": 51,
+            "damage": 18
+          },
+          {
+            "turn": 52,
+            "damage": 18
+          },
+          {
+            "turn": 53,
+            "damage": 18
+          },
+          {
+            "turn": 53,
+            "damage": 18
+          },
+          {
+            "turn": 56,
+            "damage": 18
+          },
+          {
+            "turn": 60,
+            "damage": 18
+          },
+          {
+            "turn": 64,
+            "damage": 18
+          },
+          {
+            "turn": 68,
+            "damage": 18
+          },
+          {
+            "turn": 72,
+            "damage": 18
+          },
+          {
+            "turn": 76,
+            "damage": 18
+          },
+          {
+            "turn": 80,
+            "damage": 18
+          },
+          {
+            "turn": 84,
+            "damage": 18
+          },
+          {
+            "turn": 88,
+            "damage": 18
+          },
+          {
+            "turn": 92,
+            "damage": 18
+          },
+          {
+            "turn": 96,
+            "damage": 18
+          },
+          {
+            "turn": 100,
+            "damage": 18
+          },
+          {
+            "turn": 104,
+            "damage": 18
+          },
+          {
+            "turn": 108,
+            "damage": 18
+          },
+          {
+            "turn": 112,
+            "damage": 18
+          },
+          {
+            "turn": 116,
+            "damage": 18
+          },
+          {
+            "turn": 120,
+            "damage": 18
+          },
+          {
+            "turn": 124,
+            "damage": 18
+          },
+          {
+            "turn": 128,
+            "damage": 18
+          },
+          {
+            "turn": 132,
+            "damage": 18
+          },
+          {
+            "turn": 136,
+            "damage": 18
+          },
+          {
+            "turn": 140,
+            "damage": 18
+          },
+          {
+            "turn": 144,
+            "damage": 18
+          },
+          {
+            "turn": 148,
+            "damage": 18
+          },
+          {
+            "turn": 152,
+            "damage": 18
+          },
+          {
+            "turn": 156,
+            "damage": 18
+          },
+          {
+            "turn": 160,
+            "damage": 18
+          },
+          {
+            "turn": 164,
+            "damage": 18
+          },
+          {
+            "turn": 168,
+            "damage": 18
+          },
+          {
+            "turn": 172,
+            "damage": 18
+          },
+          {
+            "turn": 176,
+            "damage": 18
+          },
+          {
+            "turn": 180,
+            "damage": 18
+          },
+          {
+            "turn": 184,
+            "damage": 18
+          },
+          {
+            "turn": 188,
+            "damage": 18
+          },
+          {
+            "turn": 192,
+            "damage": 18
+          },
+          {
+            "turn": 196,
+            "damage": 18
+          },
+          {
+            "turn": 200,
+            "damage": 18
+          },
+          {
+            "turn": 204,
+            "damage": 18
+          },
+          {
+            "turn": 208,
+            "damage": 18
+          },
+          {
+            "turn": 212,
+            "damage": 18
+          },
+          {
+            "turn": 216,
+            "damage": 18
+          },
+          {
+            "turn": 220,
+            "damage": 18
+          },
+          {
+            "turn": 224,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 232,
+            "damage": 18
+          },
+          {
+            "turn": 236,
+            "damage": 18
+          },
+          {
+            "turn": 240,
+            "damage": 18
+          },
+          {
+            "turn": 244,
+            "damage": 18
+          },
+          {
+            "turn": 248,
+            "damage": 18
+          },
+          {
+            "turn": 252,
+            "damage": 18
+          },
+          {
+            "turn": 256,
+            "damage": 18
+          },
+          {
+            "turn": 260,
+            "damage": 18
+          },
+          {
+            "turn": 264,
+            "damage": 18
+          },
+          {
+            "turn": 268,
+            "damage": 18
+          },
+          {
+            "turn": 272,
+            "damage": 18
+          },
+          {
+            "turn": 276,
+            "damage": 18
+          },
+          {
+            "turn": 280,
+            "damage": 18
+          },
+          {
+            "turn": 284,
+            "damage": 18
+          },
+          {
+            "turn": 288,
+            "damage": 18
+          },
+          {
+            "turn": 292,
+            "damage": 18
+          },
+          {
+            "turn": 296,
+            "damage": 18
+          },
+          {
+            "turn": 300,
+            "damage": 18
+          },
+          {
+            "turn": 304,
+            "damage": 18
+          },
+          {
+            "turn": 308,
+            "damage": 18
+          },
+          {
+            "turn": 312,
+            "damage": 18
+          },
+          {
+            "turn": 316,
+            "damage": 18
+          },
+          {
+            "turn": 320,
+            "damage": 18
+          },
+          {
+            "turn": 324,
+            "damage": 18
+          },
+          {
+            "turn": 328,
+            "damage": 18
+          },
+          {
+            "turn": 332,
+            "damage": 18
+          },
+          {
+            "turn": 336,
+            "damage": 18
+          },
+          {
+            "turn": 340,
+            "damage": 18
+          },
+          {
+            "turn": 344,
+            "damage": 18
+          },
+          {
+            "turn": 348,
+            "damage": 18
+          },
+          {
+            "turn": 352,
+            "damage": 18
+          },
+          {
+            "turn": 356,
+            "damage": 18
+          },
+          {
+            "turn": 360,
+            "damage": 18
+          },
+          {
+            "turn": 364,
+            "damage": 18
+          },
+          {
+            "turn": 368,
+            "damage": 18
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "1c41d769-8feb-41f4-9cff-a6e189c15d5d_game_4.replay26",
+    "turns": 375,
+    "teams": [
+      {
+        "first_harvester": 6,
+        "first_core_damage": 356,
+        "last_core_damage": 374,
+        "attack_span": 19,
+        "gross_core_damage": 504,
+        "gross_dps_active_span": 26.526315789473685,
+        "peak_round_damage": 72,
+        "hits_by_damage_amount": {
+          "18": 28
+        },
+        "damaging_rounds": 10,
+        "core_heals_received": 0,
+        "hits": [
+          {
+            "turn": 356,
+            "damage": 18
+          },
+          {
+            "turn": 358,
+            "damage": 18
+          },
+          {
+            "turn": 360,
+            "damage": 18
+          },
+          {
+            "turn": 360,
+            "damage": 18
+          },
+          {
+            "turn": 362,
+            "damage": 18
+          },
+          {
+            "turn": 362,
+            "damage": 18
+          },
+          {
+            "turn": 362,
+            "damage": 18
+          },
+          {
+            "turn": 364,
+            "damage": 18
+          },
+          {
+            "turn": 364,
+            "damage": 18
+          },
+          {
+            "turn": 364,
+            "damage": 18
+          },
+          {
+            "turn": 366,
+            "damage": 18
+          },
+          {
+            "turn": 366,
+            "damage": 18
+          },
+          {
+            "turn": 366,
+            "damage": 18
+          },
+          {
+            "turn": 368,
+            "damage": 18
+          },
+          {
+            "turn": 368,
+            "damage": 18
+          },
+          {
+            "turn": 368,
+            "damage": 18
+          },
+          {
+            "turn": 368,
+            "damage": 18
+          },
+          {
+            "turn": 370,
+            "damage": 18
+          },
+          {
+            "turn": 370,
+            "damage": 18
+          },
+          {
+            "turn": 370,
+            "damage": 18
+          },
+          {
+            "turn": 370,
+            "damage": 18
+          },
+          {
+            "turn": 372,
+            "damage": 18
+          },
+          {
+            "turn": 372,
+            "damage": 18
+          },
+          {
+            "turn": 372,
+            "damage": 18
+          },
+          {
+            "turn": 372,
+            "damage": 18
+          },
+          {
+            "turn": 374,
+            "damage": 18
+          },
+          {
+            "turn": 374,
+            "damage": 18
+          },
+          {
+            "turn": 374,
+            "damage": 18
+          }
+        ]
+      },
+      {
+        "first_harvester": null,
+        "first_core_damage": 102,
+        "last_core_damage": 372,
+        "attack_span": 271,
+        "gross_core_damage": 2196,
+        "gross_dps_active_span": 8.103321033210332,
+        "peak_round_damage": 36,
+        "hits_by_damage_amount": {
+          "18": 122
+        },
+        "damaging_rounds": 93,
+        "core_heals_received": 577,
+        "hits": [
+          {
+            "turn": 102,
+            "damage": 18
+          },
+          {
+            "turn": 103,
+            "damage": 18
+          },
+          {
+            "turn": 104,
+            "damage": 18
+          },
+          {
+            "turn": 105,
+            "damage": 18
+          },
+          {
+            "turn": 105,
+            "damage": 18
+          },
+          {
+            "turn": 106,
+            "damage": 18
+          },
+          {
+            "turn": 106,
+            "damage": 18
+          },
+          {
+            "turn": 107,
+            "damage": 18
+          },
+          {
+            "turn": 107,
+            "damage": 18
+          },
+          {
+            "turn": 108,
+            "damage": 18
+          },
+          {
+            "turn": 108,
+            "damage": 18
+          },
+          {
+            "turn": 109,
+            "damage": 18
+          },
+          {
+            "turn": 109,
+            "damage": 18
+          },
+          {
+            "turn": 110,
+            "damage": 18
+          },
+          {
+            "turn": 110,
+            "damage": 18
+          },
+          {
+            "turn": 111,
+            "damage": 18
+          },
+          {
+            "turn": 111,
+            "damage": 18
+          },
+          {
+            "turn": 112,
+            "damage": 18
+          },
+          {
+            "turn": 112,
+            "damage": 18
+          },
+          {
+            "turn": 113,
+            "damage": 18
+          },
+          {
+            "turn": 113,
+            "damage": 18
+          },
+          {
+            "turn": 114,
+            "damage": 18
+          },
+          {
+            "turn": 114,
+            "damage": 18
+          },
+          {
+            "turn": 115,
+            "damage": 18
+          },
+          {
+            "turn": 115,
+            "damage": 18
+          },
+          {
+            "turn": 116,
+            "damage": 18
+          },
+          {
+            "turn": 116,
+            "damage": 18
+          },
+          {
+            "turn": 117,
+            "damage": 18
+          },
+          {
+            "turn": 117,
+            "damage": 18
+          },
+          {
+            "turn": 118,
+            "damage": 18
+          },
+          {
+            "turn": 118,
+            "damage": 18
+          },
+          {
+            "turn": 119,
+            "damage": 18
+          },
+          {
+            "turn": 119,
+            "damage": 18
+          },
+          {
+            "turn": 120,
+            "damage": 18
+          },
+          {
+            "turn": 120,
+            "damage": 18
+          },
+          {
+            "turn": 121,
+            "damage": 18
+          },
+          {
+            "turn": 121,
+            "damage": 18
+          },
+          {
+            "turn": 122,
+            "damage": 18
+          },
+          {
+            "turn": 122,
+            "damage": 18
+          },
+          {
+            "turn": 123,
+            "damage": 18
+          },
+          {
+            "turn": 123,
+            "damage": 18
+          },
+          {
+            "turn": 124,
+            "damage": 18
+          },
+          {
+            "turn": 124,
+            "damage": 18
+          },
+          {
+            "turn": 125,
+            "damage": 18
+          },
+          {
+            "turn": 125,
+            "damage": 18
+          },
+          {
+            "turn": 126,
+            "damage": 18
+          },
+          {
+            "turn": 126,
+            "damage": 18
+          },
+          {
+            "turn": 127,
+            "damage": 18
+          },
+          {
+            "turn": 127,
+            "damage": 18
+          },
+          {
+            "turn": 128,
+            "damage": 18
+          },
+          {
+            "turn": 128,
+            "damage": 18
+          },
+          {
+            "turn": 129,
+            "damage": 18
+          },
+          {
+            "turn": 129,
+            "damage": 18
+          },
+          {
+            "turn": 130,
+            "damage": 18
+          },
+          {
+            "turn": 130,
+            "damage": 18
+          },
+          {
+            "turn": 131,
+            "damage": 18
+          },
+          {
+            "turn": 131,
+            "damage": 18
+          },
+          {
+            "turn": 132,
+            "damage": 18
+          },
+          {
+            "turn": 132,
+            "damage": 18
+          },
+          {
+            "turn": 133,
+            "damage": 18
+          },
+          {
+            "turn": 133,
+            "damage": 18
+          },
+          {
+            "turn": 134,
+            "damage": 18
+          },
+          {
+            "turn": 136,
+            "damage": 18
+          },
+          {
+            "turn": 140,
+            "damage": 18
+          },
+          {
+            "turn": 144,
+            "damage": 18
+          },
+          {
+            "turn": 148,
+            "damage": 18
+          },
+          {
+            "turn": 152,
+            "damage": 18
+          },
+          {
+            "turn": 156,
+            "damage": 18
+          },
+          {
+            "turn": 160,
+            "damage": 18
+          },
+          {
+            "turn": 164,
+            "damage": 18
+          },
+          {
+            "turn": 168,
+            "damage": 18
+          },
+          {
+            "turn": 172,
+            "damage": 18
+          },
+          {
+            "turn": 176,
+            "damage": 18
+          },
+          {
+            "turn": 180,
+            "damage": 18
+          },
+          {
+            "turn": 184,
+            "damage": 18
+          },
+          {
+            "turn": 188,
+            "damage": 18
+          },
+          {
+            "turn": 192,
+            "damage": 18
+          },
+          {
+            "turn": 196,
+            "damage": 18
+          },
+          {
+            "turn": 200,
+            "damage": 18
+          },
+          {
+            "turn": 204,
+            "damage": 18
+          },
+          {
+            "turn": 208,
+            "damage": 18
+          },
+          {
+            "turn": 212,
+            "damage": 18
+          },
+          {
+            "turn": 216,
+            "damage": 18
+          },
+          {
+            "turn": 220,
+            "damage": 18
+          },
+          {
+            "turn": 224,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 232,
+            "damage": 18
+          },
+          {
+            "turn": 236,
+            "damage": 18
+          },
+          {
+            "turn": 240,
+            "damage": 18
+          },
+          {
+            "turn": 244,
+            "damage": 18
+          },
+          {
+            "turn": 248,
+            "damage": 18
+          },
+          {
+            "turn": 252,
+            "damage": 18
+          },
+          {
+            "turn": 256,
+            "damage": 18
+          },
+          {
+            "turn": 260,
+            "damage": 18
+          },
+          {
+            "turn": 264,
+            "damage": 18
+          },
+          {
+            "turn": 268,
+            "damage": 18
+          },
+          {
+            "turn": 272,
+            "damage": 18
+          },
+          {
+            "turn": 276,
+            "damage": 18
+          },
+          {
+            "turn": 280,
+            "damage": 18
+          },
+          {
+            "turn": 284,
+            "damage": 18
+          },
+          {
+            "turn": 288,
+            "damage": 18
+          },
+          {
+            "turn": 292,
+            "damage": 18
+          },
+          {
+            "turn": 296,
+            "damage": 18
+          },
+          {
+            "turn": 300,
+            "damage": 18
+          },
+          {
+            "turn": 304,
+            "damage": 18
+          },
+          {
+            "turn": 308,
+            "damage": 18
+          },
+          {
+            "turn": 312,
+            "damage": 18
+          },
+          {
+            "turn": 316,
+            "damage": 18
+          },
+          {
+            "turn": 320,
+            "damage": 18
+          },
+          {
+            "turn": 324,
+            "damage": 18
+          },
+          {
+            "turn": 328,
+            "damage": 18
+          },
+          {
+            "turn": 332,
+            "damage": 18
+          },
+          {
+            "turn": 336,
+            "damage": 18
+          },
+          {
+            "turn": 340,
+            "damage": 18
+          },
+          {
+            "turn": 344,
+            "damage": 18
+          },
+          {
+            "turn": 348,
+            "damage": 18
+          },
+          {
+            "turn": 352,
+            "damage": 18
+          },
+          {
+            "turn": 356,
+            "damage": 18
+          },
+          {
+            "turn": 360,
+            "damage": 18
+          },
+          {
+            "turn": 364,
+            "damage": 18
+          },
+          {
+            "turn": 368,
+            "damage": 18
+          },
+          {
+            "turn": 372,
+            "damage": 18
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "file": "1c41d769-8feb-41f4-9cff-a6e189c15d5d_game_5.replay26",
+    "turns": 266,
+    "teams": [
+      {
+        "first_harvester": 5,
+        "first_core_damage": 249,
+        "last_core_damage": 265,
+        "attack_span": 17,
+        "gross_core_damage": 504,
+        "gross_dps_active_span": 29.647058823529413,
+        "peak_round_damage": 72,
+        "hits_by_damage_amount": {
+          "18": 28
+        },
+        "damaging_rounds": 13,
+        "core_heals_received": 0,
+        "hits": [
+          {
+            "turn": 249,
+            "damage": 18
+          },
+          {
+            "turn": 251,
+            "damage": 18
+          },
+          {
+            "turn": 251,
+            "damage": 18
+          },
+          {
+            "turn": 252,
+            "damage": 18
+          },
+          {
+            "turn": 252,
+            "damage": 18
+          },
+          {
+            "turn": 253,
+            "damage": 18
+          },
+          {
+            "turn": 253,
+            "damage": 18
+          },
+          {
+            "turn": 254,
+            "damage": 18
+          },
+          {
+            "turn": 254,
+            "damage": 18
+          },
+          {
+            "turn": 255,
+            "damage": 18
+          },
+          {
+            "turn": 255,
+            "damage": 18
+          },
+          {
+            "turn": 255,
+            "damage": 18
+          },
+          {
+            "turn": 257,
+            "damage": 18
+          },
+          {
+            "turn": 257,
+            "damage": 18
+          },
+          {
+            "turn": 258,
+            "damage": 18
+          },
+          {
+            "turn": 260,
+            "damage": 18
+          },
+          {
+            "turn": 260,
+            "damage": 18
+          },
+          {
+            "turn": 261,
+            "damage": 18
+          },
+          {
+            "turn": 261,
+            "damage": 18
+          },
+          {
+            "turn": 262,
+            "damage": 18
+          },
+          {
+            "turn": 262,
+            "damage": 18
+          },
+          {
+            "turn": 262,
+            "damage": 18
+          },
+          {
+            "turn": 264,
+            "damage": 18
+          },
+          {
+            "turn": 264,
+            "damage": 18
+          },
+          {
+            "turn": 264,
+            "damage": 18
+          },
+          {
+            "turn": 264,
+            "damage": 18
+          },
+          {
+            "turn": 265,
+            "damage": 18
+          },
+          {
+            "turn": 265,
+            "damage": 18
+          }
+        ]
+      },
+      {
+        "first_harvester": null,
+        "first_core_damage": 31,
+        "last_core_damage": 264,
+        "attack_span": 234,
+        "gross_core_damage": 1710,
+        "gross_dps_active_span": 7.3076923076923075,
+        "peak_round_damage": 36,
+        "hits_by_damage_amount": {
+          "18": 95
+        },
+        "damaging_rounds": 75,
+        "core_heals_received": 437,
+        "hits": [
+          {
+            "turn": 31,
+            "damage": 18
+          },
+          {
+            "turn": 33,
+            "damage": 18
+          },
+          {
+            "turn": 33,
+            "damage": 18
+          },
+          {
+            "turn": 34,
+            "damage": 18
+          },
+          {
+            "turn": 35,
+            "damage": 18
+          },
+          {
+            "turn": 35,
+            "damage": 18
+          },
+          {
+            "turn": 36,
+            "damage": 18
+          },
+          {
+            "turn": 36,
+            "damage": 18
+          },
+          {
+            "turn": 37,
+            "damage": 18
+          },
+          {
+            "turn": 37,
+            "damage": 18
+          },
+          {
+            "turn": 38,
+            "damage": 18
+          },
+          {
+            "turn": 38,
+            "damage": 18
+          },
+          {
+            "turn": 39,
+            "damage": 18
+          },
+          {
+            "turn": 39,
+            "damage": 18
+          },
+          {
+            "turn": 40,
+            "damage": 18
+          },
+          {
+            "turn": 40,
+            "damage": 18
+          },
+          {
+            "turn": 41,
+            "damage": 18
+          },
+          {
+            "turn": 41,
+            "damage": 18
+          },
+          {
+            "turn": 42,
+            "damage": 18
+          },
+          {
+            "turn": 42,
+            "damage": 18
+          },
+          {
+            "turn": 43,
+            "damage": 18
+          },
+          {
+            "turn": 43,
+            "damage": 18
+          },
+          {
+            "turn": 44,
+            "damage": 18
+          },
+          {
+            "turn": 44,
+            "damage": 18
+          },
+          {
+            "turn": 45,
+            "damage": 18
+          },
+          {
+            "turn": 45,
+            "damage": 18
+          },
+          {
+            "turn": 46,
+            "damage": 18
+          },
+          {
+            "turn": 46,
+            "damage": 18
+          },
+          {
+            "turn": 47,
+            "damage": 18
+          },
+          {
+            "turn": 47,
+            "damage": 18
+          },
+          {
+            "turn": 48,
+            "damage": 18
+          },
+          {
+            "turn": 48,
+            "damage": 18
+          },
+          {
+            "turn": 49,
+            "damage": 18
+          },
+          {
+            "turn": 49,
+            "damage": 18
+          },
+          {
+            "turn": 50,
+            "damage": 18
+          },
+          {
+            "turn": 50,
+            "damage": 18
+          },
+          {
+            "turn": 51,
+            "damage": 18
+          },
+          {
+            "turn": 51,
+            "damage": 18
+          },
+          {
+            "turn": 52,
+            "damage": 18
+          },
+          {
+            "turn": 52,
+            "damage": 18
+          },
+          {
+            "turn": 53,
+            "damage": 18
+          },
+          {
+            "turn": 53,
+            "damage": 18
+          },
+          {
+            "turn": 56,
+            "damage": 18
+          },
+          {
+            "turn": 60,
+            "damage": 18
+          },
+          {
+            "turn": 64,
+            "damage": 18
+          },
+          {
+            "turn": 68,
+            "damage": 18
+          },
+          {
+            "turn": 72,
+            "damage": 18
+          },
+          {
+            "turn": 76,
+            "damage": 18
+          },
+          {
+            "turn": 80,
+            "damage": 18
+          },
+          {
+            "turn": 84,
+            "damage": 18
+          },
+          {
+            "turn": 88,
+            "damage": 18
+          },
+          {
+            "turn": 92,
+            "damage": 18
+          },
+          {
+            "turn": 96,
+            "damage": 18
+          },
+          {
+            "turn": 100,
+            "damage": 18
+          },
+          {
+            "turn": 104,
+            "damage": 18
+          },
+          {
+            "turn": 108,
+            "damage": 18
+          },
+          {
+            "turn": 112,
+            "damage": 18
+          },
+          {
+            "turn": 116,
+            "damage": 18
+          },
+          {
+            "turn": 120,
+            "damage": 18
+          },
+          {
+            "turn": 124,
+            "damage": 18
+          },
+          {
+            "turn": 128,
+            "damage": 18
+          },
+          {
+            "turn": 132,
+            "damage": 18
+          },
+          {
+            "turn": 136,
+            "damage": 18
+          },
+          {
+            "turn": 140,
+            "damage": 18
+          },
+          {
+            "turn": 144,
+            "damage": 18
+          },
+          {
+            "turn": 148,
+            "damage": 18
+          },
+          {
+            "turn": 152,
+            "damage": 18
+          },
+          {
+            "turn": 156,
+            "damage": 18
+          },
+          {
+            "turn": 160,
+            "damage": 18
+          },
+          {
+            "turn": 164,
+            "damage": 18
+          },
+          {
+            "turn": 168,
+            "damage": 18
+          },
+          {
+            "turn": 172,
+            "damage": 18
+          },
+          {
+            "turn": 176,
+            "damage": 18
+          },
+          {
+            "turn": 180,
+            "damage": 18
+          },
+          {
+            "turn": 184,
+            "damage": 18
+          },
+          {
+            "turn": 188,
+            "damage": 18
+          },
+          {
+            "turn": 192,
+            "damage": 18
+          },
+          {
+            "turn": 196,
+            "damage": 18
+          },
+          {
+            "turn": 200,
+            "damage": 18
+          },
+          {
+            "turn": 204,
+            "damage": 18
+          },
+          {
+            "turn": 208,
+            "damage": 18
+          },
+          {
+            "turn": 212,
+            "damage": 18
+          },
+          {
+            "turn": 216,
+            "damage": 18
+          },
+          {
+            "turn": 220,
+            "damage": 18
+          },
+          {
+            "turn": 224,
+            "damage": 18
+          },
+          {
+            "turn": 228,
+            "damage": 18
+          },
+          {
+            "turn": 232,
+            "damage": 18
+          },
+          {
+            "turn": 236,
+            "damage": 18
+          },
+          {
+            "turn": 240,
+            "damage": 18
+          },
+          {
+            "turn": 244,
+            "damage": 18
+          },
+          {
+            "turn": 248,
+            "damage": 18
+          },
+          {
+            "turn": 252,
+            "damage": 18
+          },
+          {
+            "turn": 256,
+            "damage": 18
+          },
+          {
+            "turn": 260,
+            "damage": 18
+          },
+          {
+            "turn": 264,
+            "damage": 18
+          }
+        ]
+      }
+    ]
+  }
+]

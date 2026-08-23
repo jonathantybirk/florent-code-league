@@ -19,6 +19,7 @@ from fcode import Direction, EntityType, GameError, Position
 
 import debug
 import defence
+import harass
 import lanes
 import roster
 import siege
@@ -73,6 +74,8 @@ def run(player, ct) -> None:
     # repair. The Builders that mend are chosen by roster.is_mender, which
     # never picks an attacker, so this is an ordering rule and not a contest.
     if _besiege(player, ct):
+        return
+    if _harass(player, ct):
         return
     if _mend(player, ct):
         return
@@ -139,6 +142,71 @@ def _mend(player, ct) -> bool:
                  "no route home" if step is None else "coming home")
     if step is not None:
         _try(ct.move, step)
+    return True
+
+
+# ----------------------------------------------------------------------
+# harassment
+# ----------------------------------------------------------------------
+def _harass(player, ct) -> bool:
+    """Cut one enemy belt tile and leave a barrier on it. True if we acted.
+
+    The sequence is approach, hit until it is gone, then occupy. Occupying is
+    not optional: a cut without a barrier is repaired by a 3 Ti conveyor and
+    the ten rounds of hitting bought nothing.
+    """
+    brain = player.brain
+    if brain.index is None:
+        return False
+    target_count = roster.econ_target(brain.width, brain.height)
+    allowed = harass.ready(brain.round, ct.get_global_resources())
+    if not roster.is_harasser(brain.index, target_count, allowed):
+        return False
+
+    enemy_core = siege.enemy_core_tiles(brain)
+    if not enemy_core:
+        return False
+
+    spot = brain.harass_target
+    if spot is not None and not harass.still_there(brain, spot):
+        # It is gone. Put the barrier on it before anything else -- this is
+        # the half that makes the cut permanent.
+        if _orthogonal(brain.me, spot):
+            position = Position(*spot)
+            if ct.can_build_barrier(position):
+                if _try(ct.build_barrier, position):
+                    debug.intent(brain, ct, "harass", f"BARRIER {spot}",
+                                 "sealing the cut")
+                    brain.harass_target = None
+                    return True
+            brain.harass_target = None      # cannot seal it; move on
+        else:
+            brain.harass_target = None
+
+    if brain.harass_target is None:
+        options = harass.targets(brain, enemy_core)
+        brain.harass_target = options[0][0] if options else None
+
+    spot = brain.harass_target
+    if spot is None:
+        # Nothing of theirs known yet. Walk at their Core; the belt is on the
+        # way in, and vision is what we lack rather than reach.
+        approach = min(enemy_core, key=lambda t: _manhattan(t, brain.me))
+        debug.intent(brain, ct, "harass", f"SCOUT->{approach}", "no target known")
+        _walk(brain, ct, approach, exact=False)
+        return True
+
+    if _orthogonal(brain.me, spot):
+        position = Position(*spot)
+        if ct.can_fire(position):
+            _try(ct.fire, position)
+            debug.intent(brain, ct, "harass", f"CUT {spot}", "hitting the belt")
+            return True
+        debug.intent(brain, ct, "harass", "WAIT", "cannot afford to fire")
+        return True
+    debug.intent(brain, ct, "harass", f"WALK->{spot}", "closing on the belt")
+    if not _walk(brain, ct, spot, exact=False):
+        brain.harass_target = None
     return True
 
 

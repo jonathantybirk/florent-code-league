@@ -1,0 +1,280 @@
+{
+  "ph": {
+    "match": {
+      "id": "1664b31c-111d-429e-b230-dd70f1771e58",
+      "status": "complete",
+      "stage": null,
+      "errorMessage": null,
+      "winnerId": "5283c84d-69b0-437b-8dc0-dcb8437a5e48",
+      "scoreA": 0,
+      "scoreB": 5,
+      "rated": false,
+      "triggeredBy": "unrated",
+      "eloDeltaA": null,
+      "eloDeltaB": null,
+      "startedAt": "2026-08-23T02:27:20.958Z",
+      "completedAt": "2026-08-23T02:28:06.035Z",
+      "createdAt": "2026-08-23T02:27:05.578Z",
+      "teamAId": "7fd91e77-812c-44da-bce7-457be94d2548",
+      "teamAName": "Powered by SmartFridge",
+      "teamAVersion": 85,
+      "teamBId": "5283c84d-69b0-437b-8dc0-dcb8437a5e48",
+      "teamBName": "ph",
+      "teamBVersion": null,
+      "testBotAName": null,
+      "testBotBName": null,
+      "testBotAS3Key": null,
+      "testBotBS3Key": null,
+      "submissionAS3Key": null,
+      "submissionBS3Key": null,
+      "sourceMatchAId": null,
+      "sourceMatchBId": null,
+      "teamARating": 1762.1905035458585,
+      "teamAMatchesPlayed": 2313,
+      "teamBRating": 2125.5362209976356,
+      "teamBMatchesPlayed": 1169,
+      "ratingABefore": 1762.1905035458585,
+      "ratingBBefore": 2125.5362209976356,
+      "mapConfig": [
+        {
+          "s3Key": "maps/d7be95c06ce141a87e694344d2c80a7fd72ae65517e6cbda2ba8508e894f7d9f.map26",
+          "mapName": "midgard",
+          "mapSeed": 1528749542
+        },
+        {
+          "s3Key": "maps/98ddc33a15317170643d6ea75cb4930b224c6c5fc0f7f015d4f56cdd8cfcfad1.map26",
+          "mapName": "yggdrasil",
+          "mapSeed": 869622308
+        },
+        {
+          "s3Key": "maps/a8709570f6e518bd90d2d51fb4b26a11b5d443373c1c9b7df343034afb38eb49.map26",
+          "mapName": "paths",
+          "mapSeed": 1594206830
+        },
+        {
+          "s3Key": "maps/8cd1b8abfd1062e0deb363961220ffa0e0fafa9932b1b925ecb689fbcc01cf46.map26",
+          "mapName": "fimbulwinter",
+          "mapSeed": 1102862682
+        },
+        {
+          "s3Key": "maps/2f72050ebf89bed6922d38a24365584d63a410fcc7e55d1dbc3a6a74a94427d5.map26",
+          "mapName": "icefloe",
+          "mapSeed": 1490603916
+        }
+      ],
+      "teamANameStyle": null,
+      "teamBNameStyle": null
+    },
+    "games": [
+      {
+        "id": "485a52a2-8ea1-4a89-873c-4d031550a101",
+        "matchId": "1664b31c-111d-429e-b230-dd70f1771e58",
+        "gameNumber": 1,
+        "mapName": "midgard",
+        "mapSeed": 1528749542,
+        "winnerId": "5283c84d-69b0-437b-8dc0-dcb8437a5e48",
+        "winnerSide": "b",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 261,
+        "replayS3Key": "1664b31c-111d-429e-b230-dd70f1771e58_game_1.replay26",
+        "createdAt": "2026-08-23T02:27:32.659Z"
+      },
+      {
+        "id": "5016630f-fc69-45e2-ae50-aac598f762d0",
+        "matchId": "1664b31c-111d-429e-b230-dd70f1771e58",
+        "gameNumber": 2,
+        "mapName": "yggdrasil",
+        "mapSeed": 869622308,
+        "winnerId": "5283c84d-69b0-437b-8dc0-dcb8437a5e48",
+        "winnerSide": "b",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 251,
+        "replayS3Key": "1664b31c-111d-429e-b230-dd70f1771e58_game_2.replay26",
+        "createdAt": "2026-08-23T02:27:42.502Z"
+      },
+      {
+        "id": "48d04bf1-7986-4b5a-a37f-ab81c88d8e0a",
+        "matchId": "1664b31c-111d-429e-b230-dd70f1771e58",
+        "gameNumber": 3,
+        "mapName": "paths",
+        "mapSeed": 1594206830,
+        "winnerId": "5283c84d-69b0-437b-8dc0-dcb8437a5e48",
+        "winnerSide": "b",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 272,
+        "replayS3Key": "1664b31c-111d-429e-b230-dd70f1771e58_game_3.replay26",
+        "createdAt": "2026-08-23T02:27:51.755Z"
+      },
+      {
+        "id": "b3ed5770-6cea-4977-9673-d240b772b8a6",
+        "matchId": "1664b31c-111d-429e-b230-dd70f1771e58",
+        "gameNumber": 4,
+        "mapName": "fimbulwinter",
+        "mapSeed": 1102862682,
+        "winnerId": "5283c84d-69b0-437b-8dc0-dcb8437a5e48",
+        "winnerSide": "b",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 263,
+        "replayS3Key": "1664b31c-111d-429e-b230-dd70f1771e58_game_4.replay26",
+        "createdAt": "2026-08-23T02:27:59.726Z"
+      },
+      {
+        "id": "afad9b19-23bd-4096-842e-ff6d5ff1afa6",
+        "matchId": "1664b31c-111d-429e-b230-dd70f1771e58",
+        "gameNumber": 5,
+        "mapName": "icefloe",
+        "mapSeed": 1490603916,
+        "winnerId": "5283c84d-69b0-437b-8dc0-dcb8437a5e48",
+        "winnerSide": "b",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 206,
+        "replayS3Key": "1664b31c-111d-429e-b230-dd70f1771e58_game_5.replay26",
+        "createdAt": "2026-08-23T02:28:06.025Z"
+      }
+    ]
+  },
+  "Leviathan": {
+    "match": {
+      "id": "492422f7-1dd9-4519-9ccb-180dbf599781",
+      "status": "complete",
+      "stage": null,
+      "errorMessage": null,
+      "winnerId": "26286680-d861-4f9e-9073-a6201bd48d3b",
+      "scoreA": 5,
+      "scoreB": 0,
+      "rated": false,
+      "triggeredBy": "unrated",
+      "eloDeltaA": null,
+      "eloDeltaB": null,
+      "startedAt": "2026-08-23T02:27:15.709Z",
+      "completedAt": "2026-08-23T02:27:56.362Z",
+      "createdAt": "2026-08-23T02:27:05.022Z",
+      "teamAId": "26286680-d861-4f9e-9073-a6201bd48d3b",
+      "teamAName": "Leviathan",
+      "teamAVersion": null,
+      "teamBId": "7fd91e77-812c-44da-bce7-457be94d2548",
+      "teamBName": "Powered by SmartFridge",
+      "teamBVersion": 85,
+      "testBotAName": null,
+      "testBotBName": null,
+      "testBotAS3Key": null,
+      "testBotBS3Key": null,
+      "submissionAS3Key": null,
+      "submissionBS3Key": null,
+      "sourceMatchAId": null,
+      "sourceMatchBId": null,
+      "teamARating": 2140.3381569101666,
+      "teamAMatchesPlayed": 1878,
+      "teamBRating": 1762.1905035458585,
+      "teamBMatchesPlayed": 2313,
+      "ratingABefore": 2140.3381569101666,
+      "ratingBBefore": 1762.1905035458585,
+      "mapConfig": [
+        {
+          "s3Key": "maps/0282536c81f04b849c05c5e6bf1c6d698d258e1df5f7940779a90a96c2c29952.map26",
+          "mapName": "bifrost",
+          "mapSeed": 1192566291
+        },
+        {
+          "s3Key": "maps/0053d1fdd516d71465c3d92d469fbb6e523d8f79bc13810ba75854856451a59a.map26",
+          "mapName": "jotunheim",
+          "mapSeed": 1876136506
+        },
+        {
+          "s3Key": "maps/98ddc33a15317170643d6ea75cb4930b224c6c5fc0f7f015d4f56cdd8cfcfad1.map26",
+          "mapName": "yggdrasil",
+          "mapSeed": 2018384544
+        },
+        {
+          "s3Key": "maps/a8709570f6e518bd90d2d51fb4b26a11b5d443373c1c9b7df343034afb38eb49.map26",
+          "mapName": "paths",
+          "mapSeed": 2128595665
+        },
+        {
+          "s3Key": "maps/10c739a5587121c27bf61ded6f448dcb34eedb8f4a779b30435ac4ab2cec1913.map26",
+          "mapName": "longhouse",
+          "mapSeed": 401434658
+        }
+      ],
+      "teamANameStyle": null,
+      "teamBNameStyle": null
+    },
+    "games": [
+      {
+        "id": "0b4e6c71-dab0-4b4e-b05b-83096337f924",
+        "matchId": "492422f7-1dd9-4519-9ccb-180dbf599781",
+        "gameNumber": 1,
+        "mapName": "bifrost",
+        "mapSeed": 1192566291,
+        "winnerId": "26286680-d861-4f9e-9073-a6201bd48d3b",
+        "winnerSide": "a",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 213,
+        "replayS3Key": "492422f7-1dd9-4519-9ccb-180dbf599781_game_1.replay26",
+        "createdAt": "2026-08-23T02:27:24.584Z"
+      },
+      {
+        "id": "b9431a3c-6c17-4ab0-86f8-a160470ade65",
+        "matchId": "492422f7-1dd9-4519-9ccb-180dbf599781",
+        "gameNumber": 2,
+        "mapName": "jotunheim",
+        "mapSeed": 1876136506,
+        "winnerId": "26286680-d861-4f9e-9073-a6201bd48d3b",
+        "winnerSide": "a",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 247,
+        "replayS3Key": "492422f7-1dd9-4519-9ccb-180dbf599781_game_2.replay26",
+        "createdAt": "2026-08-23T02:27:32.170Z"
+      },
+      {
+        "id": "c0d2c0f4-38f3-41f1-9e4c-9036dfbada9c",
+        "matchId": "492422f7-1dd9-4519-9ccb-180dbf599781",
+        "gameNumber": 3,
+        "mapName": "yggdrasil",
+        "mapSeed": 2018384544,
+        "winnerId": "26286680-d861-4f9e-9073-a6201bd48d3b",
+        "winnerSide": "a",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 274,
+        "replayS3Key": "492422f7-1dd9-4519-9ccb-180dbf599781_game_3.replay26",
+        "createdAt": "2026-08-23T02:27:41.426Z"
+      },
+      {
+        "id": "dcc595a5-3bc8-4429-8da5-d637f22ac6bb",
+        "matchId": "492422f7-1dd9-4519-9ccb-180dbf599781",
+        "gameNumber": 4,
+        "mapName": "paths",
+        "mapSeed": 2128595665,
+        "winnerId": "26286680-d861-4f9e-9073-a6201bd48d3b",
+        "winnerSide": "a",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 260,
+        "replayS3Key": "492422f7-1dd9-4519-9ccb-180dbf599781_game_4.replay26",
+        "createdAt": "2026-08-23T02:27:50.241Z"
+      },
+      {
+        "id": "581c8d52-b766-46a1-9a8f-85956335f6ac",
+        "matchId": "492422f7-1dd9-4519-9ccb-180dbf599781",
+        "gameNumber": 5,
+        "mapName": "longhouse",
+        "mapSeed": 401434658,
+        "winnerId": "26286680-d861-4f9e-9073-a6201bd48d3b",
+        "winnerSide": "a",
+        "winCondition": "core_destroyed",
+        "resignMessage": null,
+        "turnsPlayed": 206,
+        "replayS3Key": "492422f7-1dd9-4519-9ccb-180dbf599781_game_5.replay26",
+        "createdAt": "2026-08-23T02:27:56.351Z"
+      }
+    ]
+  }
+}
