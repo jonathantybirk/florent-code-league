@@ -54,8 +54,14 @@ SENTINEL_AMMO = 10
 # against shooting's 1.8 -- which is the exchange brokkr already wins against
 # every rusher it meets.
 MIN_INCOME = 2.6            # anything above passive income alone
-MIN_TITANIUM = 70
 MIN_ROUND = 35
+
+# Open only when the first Sentinel is affordable *now*, with margin. Opening
+# on a fixed number instead sent an attacker across the map to stand beside
+# its firing spot for 180 rounds -- traced on yggdrasil, rounds 120 to 300 --
+# because harassment was spending every titanium as it arrived at 2 Ti a hit.
+# An attacker in position with no turret is worth less than a Builder at home.
+SENTINEL_MARGIN = 1.6
 
 # Ammunition to bank once a siege is open, and the volley rules that spend it.
 #
@@ -95,13 +101,14 @@ def enemy_core_tiles(brain):
     return {(x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1)}
 
 
-def ready(brain, titanium: int, income: float, round_number: int) -> bool:
+def ready(brain, titanium: int, income: float, round_number: int,
+          sentinel_cost: int) -> bool:
     """Whether the economy can fund an attack, and there is somewhere to send it."""
     if not enemy_core_tiles(brain):
         return False
     if round_number < MIN_ROUND:
         return False
-    return income >= MIN_INCOME and titanium >= MIN_TITANIUM
+    return income >= MIN_INCOME and titanium >= sentinel_cost * SENTINEL_MARGIN
 
 
 def firing_spots(brain):
