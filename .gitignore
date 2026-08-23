@@ -7,3 +7,8 @@ __pycache__/
 bots/bench/
 
 maps/gen/
+
+# Analysis datasets: replay dumps and their derived JSON. The tools that
+# produce them are tracked; their multi-hundred-megabyte output is not.
+scratch/**
+!scratch/*.py
