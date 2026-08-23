@@ -39,11 +39,11 @@ def job(a):
         r = run_game(str(ROOT / x / "main.py"), str(ROOT / y / "main.py"), engine,
                      str(ROOT / "maps" / (m + ".map26")), os.devnull, 1, 0)
     except Exception as exc:
-        return (opp, m, seat, False, "error:" + str(exc)[:40], 0, 0)
+        return (opp, m, seat, False, "error:" + str(exc)[:40], 0, 0, 0)
     won = (r["winner"] == "A") == (seat == 0)
     ours = r["a_titanium"] if seat == 0 else r["b_titanium"]
     coll = r["a_titanium_collected"] if seat == 0 else r["b_titanium_collected"]
-    return (opp, m, seat, won, r.get("win_condition") or "-", ours, coll)
+    return (opp, m, seat, won, r.get("win_condition") or "-", ours, coll, r["turns"])
 
 
 def main():
@@ -66,7 +66,7 @@ def main():
     tot_ti = collections.Counter()
     tot_coll = collections.Counter()
     how = collections.Counter()
-    for opp, m, seat, won, cond, ti, coll in rows:
+    for opp, m, seat, won, cond, ti, coll, _t in rows:
         per[opp] += 1 if won else 0
         tot_ti[opp] += ti
         tot_coll[opp] += coll
@@ -80,6 +80,12 @@ def main():
     print("  decided by:")
     for (c, w), k in sorted(how.items(), key=lambda kv: -kv[1]):
         print("    %-20s %-5s %3d" % (c, "win" if w else "loss", k))
+    print()
+    print("  LOSSES (the only rows worth reading twice):")
+    for opp, m, seat, won, cond, ti, coll, turns in sorted(rows, key=lambda r: (r[4], r[7])):
+        if not won:
+            print("    %-22s %-13s seat %s  %-16s died r%-5d stored %5d"
+                  % (opp, m, "AB"[seat], cond, turns, ti))
 
 
 if __name__ == "__main__":
