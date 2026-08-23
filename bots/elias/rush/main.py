@@ -203,6 +203,7 @@ class Player:
         self.seen = set()           # every tile ever in vision -- routing prefers these
         self.walls = set()          # confirmed WALL
         self.ore = set()            # ORE_TITANIUM tiles, for the economy phase
+        self.pickup = set()         # every tile a known enemy Launcher can lift us from
         self.blocked = set()        # cannot WALK here: barriers, harvesters, turrets, cores
         self.occupied = set()       # cannot BUILD here: the above plus conveyors and splitters
         self.built = 0
@@ -951,15 +952,32 @@ class Player:
         # because the cheapest cluster genuinely moves as the opponent builds.
         want = SENTINEL_TARGET - self.built
         steps = self._steps_from(here)
-        best = None
+        # THE ANCHOR MUST BE OUT OF EVERY LAUNCHER'S REACH. `_flood` already prices a threatened
+        # tile at +THREAT_COST for ROUTING, but the destination was picked by `_steps_from`, which
+        # is deliberately unweighted -- so the Builder routed carefully around the pickup rings and
+        # then walked into one on purpose, because that is where the densest firing cluster sits.
+        # Twelve of our fifteen Core-kill losses are against bots that ring their own Core with four
+        # Launchers by round 8, and those rings cover exactly the Chebyshev-2 band. A Sentinel
+        # reaches r^2 <= 32, four to five tiles, so the whole ring can be built from OUTSIDE the
+        # band: a building cannot be thrown, so the SENTINEL may stand inside it -- only the
+        # Builder may not.
+        #
+        # Two passes, not a filter. Refusing to move is how this rush deadlocks, so a second pass
+        # drops the constraint entirely rather than leaving the Builder with nowhere to go.
         chosen = None
-        for key, cost in steps.items():
-            usable = self._anchor_value(key)
-            if not usable:
-                continue
-            score = cost - ANCHOR_BONUS * min(usable, want)
-            if best is None or score < best:
-                best, chosen = score, key
+        for avoid in (True, False):
+            best = None
+            for key, cost in steps.items():
+                if avoid and key in self.pickup:
+                    continue
+                usable = self._anchor_value(key)
+                if not usable:
+                    continue
+                score = cost - ANCHOR_BONUS * min(usable, want)
+                if best is None or score < best:
+                    best, chosen = score, key
+            if chosen is not None:
+                break
         # NOTE: capping the trek for the last turret was tried and MEASURED WORSE -- ring assembly
         # improved from 8.8 rounds to 7.8, and the panel fell from 152/180 to 149. Three turrets and
         # a mender loses more damage than four turrets and a hike costs tempo. Faster assembly is
@@ -1040,6 +1058,14 @@ class Player:
             soft |= known[2]
         for uid in stale:
             del self.turrets[uid]
+        # A Launcher is the only threat that does no damage, so it is the only one the ANCHOR has
+        # to know about separately from routing. A tile we merely cross costs one throw; a tile we
+        # STAND ON for four consecutive build rounds costs us the ring. Launchers are the entries
+        # with no facing.
+        self.pickup = set()
+        for known in self.turrets.values():
+            if known[1] is None:
+                self.pickup |= known[2]
         return soft
 
     def _flood(self, here, soft):
