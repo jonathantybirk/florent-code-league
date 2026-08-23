@@ -75,15 +75,25 @@ the comms store, because it is the only unit that always knows where our own Cor
 
 ## Bugs worth remembering
 
-1. **Sixteen searches a round.** Scoring each candidate approach with its own flood cost 13.7 ms on
+1. **The whole economy delivered nothing.** `_plan_chain` returns `[ore, ..., tile-beside-our-Core]`,
+   so titanium flows with *ascending* index -- but the layer faced each conveyor at `chain[idx - 1]`,
+   the tile toward the ore. Every belt in the pool ran backwards and dead-ended at the seam. Audited
+   statically against `terrain.py` before touching the engine: **15 of 15 maps**. Nothing looked
+   wrong; we mined, we laid 24-35 conveyors, the build log was full. But a dead-ended chain scores
+   exactly **0** on `titanium_collected`, the FIRST key of the round-1000 tiebreak, and most of our
+   losses were never fights -- 15 of 18 ran the full 1000 rounds. Worth +12 games on the panel and
+   the single largest change in this bot's history. Read `win_condition` from `run_game`; do not
+   assume how a game was decided.
+
+2. **Sixteen searches a round.** Scoring each candidate approach with its own flood cost 13.7 ms on
    ladder hardware against a 10 ms limit, and an over-budget turn is interrupted outright. One
    sweep now answers everything by lookup: 2.2 ms worst case, measured.
-2. **Replanning every round livelocks.** Unseen tiles are assumed open, so an unexplored detour
+3. **Replanning every round livelocks.** Unseen tiles are assumed open, so an unexplored detour
    always prices cheaper than the proven route. On longhouse the goal never changed and the Builder
    moved every single round, yet took 74 rounds to place a turret 38 steps away, touring the whole
    map. Fixed by holding the route until genuinely obstructed, charging `UNKNOWN_COST` for tiles
    never seen, and mirroring observed terrain across the map's symmetry.
-3. **The turrets aimed at empty ground.** A Sentinel derived the enemy Core from *its own* position
+4. **The turrets aimed at empty ground.** A Sentinel derived the enemy Core from *its own* position
    when our Core was out of vision -- which it always is, since the turret stands next to the
    *enemy* Core. It aimed at a mirror of itself, `can_fire` failed every round, and the ring quietly
    ground down whatever else was in range. Against `idle` this still won, because the Core was the
@@ -110,18 +120,42 @@ the comms store, because it is the only unit that always knows where our own Cor
 
 ## Results
 
-Both seats, all 15 pool maps, 30 games a cell.
+240-game panel: 8 opponents x 15 pool maps x both seats. The engine is deterministic and we pass
+`turn_timeout_ms=0`, so this is a census -- a difference between two runs is always a nameable set
+of flipped maps, and anything under about 4 games is cascade shuffle. Run `python tools/panel.py <bot>`.
 
-| opponent | wins | kill round (min / median / max) |
+| opponent | wins | note |
 |---|---|---|
-| `idle` | **30/30** | 23 / 40 / 62 |
-| `turtle` (walls its Core in) | **30/30** | 23 / 40 / 62 |
-| `luc1` | **30/30** | 23 / 40 / 62 |
-| `starter_fixed` | **26/30** | 31 / 45 / 981 |
-| 10 retired maps, **not** in `terrain.py` | 18/20 | -- |
+| `zoo/idle` | **30/30** | |
+| `zoo/turtle` (walls its Core in) | **30/30** | Sentinels ignore line of sight |
+| `zoo/starter_fixed` | **29/30** | |
+| `zoo/miner` (economy, models TRRR) | **28/30** | was 18/30 before the conveyor fix |
+| `rivals/vigil` | **28/30** | |
+| `zoo/adgato` (mirror rusher) | **27/30** | |
+| `nash/flagship` | **25/30** | |
+| `rivals/vanguard` | **25/30** | |
+| **TOTAL** | **222/240** | 210/240 before the conveyor fix |
 
-`starter_fixed` went 13 -> 23 -> 26 across the lane removal, the threat-cost change and the
-conveyor fix.
+Fifteen of the eighteen losses are the opponent destroying our Core between round 26 and 226.
+Twelve of those share one signature: four enemy **Launchers** up by round 8, ferrying their Builder
+forward and throwing ours backwards, so our ring lands on round 35-45 instead of 16.
+
+### What was measured and kept OUT
+
+`tools/death.py` and the commit log carry the detail. Two rules came out of it, and they are in
+tension, which is why this is a hard optimum:
+
+* **Any extra Builder before the ring is complete loses the race.** Menders raised on damage scored
+  200/240; one miner bought at round 1 scored 204/240. Every Builder is +20pp of cost scale, which
+  prices up our own Sentinels.
+* **Any titanium withheld from ammunition after the ring is up loses the kill.** Holding one
+  Builder's fare back from the converter scored 172/240. A reserve that is never released is a rush
+  that never finishes.
+
+The sharpest diagnostic behind both: on `skald` the ring stood at round 12 and drove their Core from
+500 to **12 HP** by round 30 -- twelve short -- then ran dry. For the next 84 rounds we fired once
+every four rounds, exactly passive income at 10 ammo a shot, while their Builders mended 8 HP/round.
+Their Core climbed back to 468 and ours bled out.
 
 ## `terrain.py` -- read before submitting
 
