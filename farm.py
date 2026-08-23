@@ -704,7 +704,9 @@ def run_round(dry_run: bool = False) -> None:
             state.setdefault("test_next_done", []).append(bot)
             log.info("queued %s from config.json", bot)
 
-    for spec in (config.get("queue_front") or []) if not dry_run else []:
+    # reversed: each entry is moved to the very front, so processing the list back-to-front
+    # leaves the FIRST listed entry first in the queue (processing it forward left it last).
+    for spec in reversed(config.get("queue_front") or []) if not dry_run else []:
         # "name@commit[:rounds]" -- same as test_next, but jumps the queue
         bot, _, rounds = str(spec).partition(":")
         queue = state.setdefault("queue", [])
