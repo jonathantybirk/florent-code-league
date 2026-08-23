@@ -148,6 +148,28 @@ class Brain:
         anchor = self.imap.our_core if self.imap else None
         return _block(anchor)
 
+    def sync_symmetry(self, ct, store) -> None:
+        """Trade the map's symmetry with the rest of the team.
+
+        Whoever works it out first tells everyone. That is almost never the
+        Core: symmetry is inferred from tiles whose mirror image has also been
+        observed, and a Core sits still in its own corner looking at ground
+        whose mirror is on the far side of the map, so it can hold vision for
+        a thousand rounds and never see a single supporting pair. It is the
+        Builders who walk far enough to close one.
+
+        The Core is the unit that needs the answer most, because knowing the
+        symmetry is what gives it the enemy Core's position -- mirrored from
+        our own -- and therefore whether there is anything to attack at all.
+        Without this exchange the siege never opened on any map.
+        """
+        mine = self.imap.symmetry()
+        shared = store.symmetry(ct)
+        if mine is None and shared is not None:
+            self.imap.set_symmetry(shared)
+        elif mine is not None and shared != mine:
+            store.publish_symmetry(ct, mine)
+
     def learn_ore(self, tiles) -> None:
         """Record deposits a teammate reported.
 

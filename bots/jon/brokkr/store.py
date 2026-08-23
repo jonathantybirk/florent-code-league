@@ -24,7 +24,8 @@ SLOT_ALARM = 2
 CLAIM_BASE = 3
 CLAIM_SLOTS = 6           # slots 3..8
 ORE_BASE = 9
-ORE_SLOTS = 7             # slots 9..15
+ORE_SLOTS = 6             # slots 9..14
+SLOT_SIEGE = 15
 
 
 def claim_index(ct) -> int:
@@ -82,6 +83,20 @@ def claimed(ct, index) -> set:
         if tile is not None:
             out.add(tile)
     return out
+
+
+def siege_sentinels(ct) -> int:
+    """Sentinels our attackers have planted at the enemy Core.
+
+    The Core cannot see them -- they are five tiles from the *enemy* base,
+    far outside its vision -- so it cannot decide whether to convert
+    ammunition without being told. This is that channel.
+    """
+    return _read(ct, SLOT_SIEGE)
+
+
+def note_sentinel(ct, built: int) -> None:
+    _write(ct, SLOT_SIEGE, built)
 
 
 # ----------------------------------------------------------------------
