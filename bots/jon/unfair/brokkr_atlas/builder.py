@@ -166,7 +166,18 @@ def _harass(player, ct) -> bool:
     enemy_core = siege.enemy_core_tiles(brain)
     if not enemy_core:
         return False
+    return _harass_action(player, ct, enemy_core)
 
+
+def _harass_action(player, ct, enemy_core) -> bool:
+    """The cut-and-seal behaviour itself, without the role check.
+
+    Attackers borrow this. An attacker that has walked to its firing spot and
+    cannot yet afford a Sentinel is standing in the enemy half with nothing to
+    do -- traced on yggdrasil, one waited 180 rounds that way, from round 120
+    to round 300, while belt it could have been cutting ran past it.
+    """
+    brain = player.brain
     spot = brain.harass_target
     if spot is not None and not harass.still_there(brain, spot):
         # It is gone. Put the barrier on it before anything else -- this is
@@ -229,10 +240,8 @@ def _besiege(player, ct) -> bool:
     if not roster.is_attacker(brain.index, target, store.siege_sentinels(ct) > 0):
         return False
 
+    core = siege.enemy_core_tiles(brain)
     spots = siege.firing_spots(brain)
-    if brain.round % 40 == 0:
-        debug.log(f"r{brain.round} b{ct.get_id()} ATTACKER i={brain.index} "
-                  f"at{brain.me} spots={len(spots)} enemy={brain.imap.enemy_core()}")
     if not spots:
         return False
     # Attackers take different spots by index so two do not walk to one tile.
@@ -255,12 +264,33 @@ def _besiege(player, ct) -> bool:
         if ct.can_build_sentinel(position, facing):
             if _try(ct.build_sentinel, position, facing):
                 store.note_sentinel(ct, store.siege_sentinels(ct) + 1)
-                debug.log(f"r{brain.round} b{ct.get_id()} SENTINEL at{spot} "
-                          f"facing {facing}")
+                debug.intent(brain, ct, "attack", f"SENTINEL {spot}",
+                             f"facing {facing}")
+                return True
+        # In position but cannot pay for the turret yet. Cut belt while we
+        # wait instead of standing in their half doing nothing -- traced on
+        # yggdrasil, an attacker waited from round 120 to round 300 that way
+        # while the belt it could have been cutting ran past it.
+        # Cut whatever is already beside us, but do not walk off to find
+        # something: an attacker that leaves its firing spot to chase belt
+        # never comes back to build, which measured 54/90 -> 50/90.
+        for neighbour in lanes.orthogonal(me):
+            if not harass.still_there(brain, neighbour):
+                continue
+            if brain.imap.state_at(*neighbour) is None:
+                continue
+            position = Position(*neighbour)
+            if ct.can_fire(position):
+                _try(ct.fire, position)
+                debug.intent(brain, ct, "attack", f"CUT {neighbour}",
+                             "waiting on Sentinel titanium")
+                return True
+        debug.intent(brain, ct, "attack", "WAIT",
+                     f"Sentinel costs {ct.get_sentinel_cost()}, "
+                     f"have {ct.get_global_resources()}")
         return True
-    step = _step_toward(brain, me, spot, exact=True)
-    if step is not None:
-        _try(ct.move, step)
+    debug.intent(brain, ct, "attack", f"WALK->{spot}", "closing on a firing spot")
+    _walk(brain, ct, spot, exact=True)
     return True
 
 

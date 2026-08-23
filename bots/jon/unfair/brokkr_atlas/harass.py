@@ -37,7 +37,7 @@ TARGET_HITS = {"ENEMY_CONVEYOR": 10, "ENEMY_SPLITTER": 10, "ENEMY_HARVESTER": 15
 # Do not start before the economy can spare the Builder. A harasser is one
 # fewer Builder laying lane, and 20 titanium of attacks it cannot afford is a
 # Builder standing next to an enemy conveyor achieving nothing.
-START_ROUND = 30
+START_ROUND = 20
 MIN_TITANIUM = 40
 
 # How far into their half a target may be before the walk costs more than the
