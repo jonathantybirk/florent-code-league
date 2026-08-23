@@ -1236,6 +1236,13 @@ class Player:
                     soft.add((spot.x, spot.y))
                     for _d, dx, dy in CARDINALS:
                         soft.add((spot.x + dx, spot.y + dy))
+                elif kind == EntityType.LAUNCHER:
+                    # A Launcher deals no damage, so it was invisible here -- and it grabs any
+                    # Builder that walks adjacent and flings it across the map.  The walk restarts,
+                    # the ring never lands.  Its whole adjacent ring is a place we do not stand.
+                    for dx in (-1, 0, 1):
+                        for dy in (-1, 0, 1):
+                            soft.add((spot.x + dx, spot.y + dy))
                 elif kind in (EntityType.GUNNER, EntityType.SENTINEL):
                     facing = ct.get_direction(uid)
                     known = self.turrets.get(uid)
