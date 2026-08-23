@@ -108,6 +108,13 @@ ROTATE_RESERVE = 40        # a Gunner turns only while the bank holds this much 
 DENY_ORE = True            # the idle attacker barriers enemy-half ore tiles (a Harvester denied for the match)
 SHIELD_RING = True         # a barrier in every Gunner lane onto a ring Sentinel (steward's wrap, only where needed)
 DENY_REACH = 6             # walking steps the attacker will go to deny an ore
+FORAGE = True              # the verdict: when the sums say the kill cannot land, cut their belts and out-mine them
+FORAGE_MIN_ROUND = 80      # never before the opening rush has actually been tried
+FORAGE_WINDOW = 60         # held rounds that close none of the funding gap before the verdict is called
+FORAGE_PROGRESS = 25       # titanium of gap that must close across the window to count as progress
+CUT_FLOOR = 30             # titanium the harasser leaves in the bank while chewing (2 Ti a bite)
+PEEK_EVERY = 12            # rounds between the harasser's looks at their Core ring
+BARE_LOOKS = 3             # fresh looks showing an unattended Core before the strike is called
 BREAK_OUT = True           # a walled-in home Builder shoots the enemy barrier in its way
 REPLACEMENT_DAMP_AFTER = 8 # hildr/steward: past this many spawns, each further Builder needs 150 Ti behind it
 
@@ -142,6 +149,7 @@ ORD_MINERS_SHIFT = 5       # bits 5-6: home Builders (by slot) that may mine, 0-
 ORD_HARVEST_SHIFT = 7      # bits 7-9: Harvesters standing, 0-7, as tallied by the miners
 ORD_SAVE = 1 << 10         # a counter-turret is wanted and not yet affordable: no 1 Ti heals while the Core can take it
 ORD_RACE = 1 << 11         # the ring is shooting and the kill is funded: menders mend, nothing else
+ORD_FORAGE = 1 << 12       # the income war: the attacker cuts their belts, the home half out-mines them
 
 
 def _pack(pos, extra=0):
@@ -328,6 +336,12 @@ class Player:
         self.sentinels_on_us = 0
         self.turret_ids = set()     # every home turret of ours the Core has ever seen
         self.turret_lost = -1000    # round a home turret was last seen gone
+        self.forage = False         # the verdict said the rush cannot land: an income war is on
+        self.gaps = []              # per-round shortfall against the burst, for the no-progress verdict
+        self.ehps = []              # enemy Core HP alongside, the other face of progress
+        self.forage_ehp = 500       # the enemy Core as last priced when the verdict was called
+        self.forage_eheal = 0
+        self.bare_looks = 0         # fresh looks in a row showing no Builder on their Core ring
         # builder
         self.home = None
         self.enemy = None
@@ -383,6 +397,16 @@ class Player:
         self.my_barriers = set()    # lane barriers this Builder laid
         self.deny_target = None
         self.denied = set()
+        self.enemy_belts = set()    # their conveyors and splitters, as seen
+        self.enemy_harv = set()     # their Harvesters, as seen
+        self.stumps = set()         # belt tiles chewed through, awaiting a barrier
+        self.cut_target = None      # the tile the harasser is chewing
+        self.last_look = -99        # round the whole enemy Core ring was last in this Builder's vision
+        self.cut_path = []          # the committed walk to its stand: the danger field breathes
+                                    # with vision, and replanning every round shuffled in place
+        self.cut_best = 99          # closest we have come to the target, for the give-up rule
+        self.cut_stuck = 0
+        self.no_cut = {}            # target -> round it may be tried again
         # sentinel
         self.slot = None
         self.guard = None           # True for a home-guard Sentinel (cannot reach the enemy Core)
@@ -485,7 +509,10 @@ class Player:
 
         # ---- the books
         ehp = self._read(ct, SLOT_EHP) or 500
-        menders_seen = self._read(ct, SLOT_EHEAL)
+        look = self._read(ct, SLOT_EHEAL)
+        menders_seen = min(8, _flags(look))    # only the 8 orthogonal ring tiles can mend
+        if self.forage and _fresh(_beat(look), self.round, 2):
+            self.bare_looks = self.bare_looks + 1 if _flags(look) == 0 else 0
         spent = max(0, self.prev_ammo + self.converted - ammo) if self.prev_ammo is not None else 0
         if self.prev_ehp is not None:
             self.heals.append(max(0.0, (ehp - self.prev_ehp) + 1.8 * spent))
@@ -511,7 +538,7 @@ class Player:
             self.scout_rush = True
         remaining = max(0, SENTINEL_TARGET - built)
         ring_reserve = self._ring_reserve(ct, remaining)
-        if self.ring_hold or ring_paused:
+        if self.ring_hold or ring_paused or self.forage:
             ring_reserve = 0
 
         # ---- the race, called once (hildr)
@@ -685,14 +712,69 @@ class Player:
         stuck = ((built >= SENTINEL_TARGET and self.hold_total > STALL_ROUNDS
                   and self.round - self.last_hit > 12)
                  or (ring_paused and self.round - self.last_hit > 12))
-        if (stuck and self.ring_extra < RING_EXTRA_MAX
+        if (stuck and not self.forage and self.ring_extra < RING_EXTRA_MAX
                 and (bank > kill_ammo + self._sentinel_cost(ct) + 120
                      or (net_us <= 12 and bank > 250 + self._sentinel_cost(ct)))):
             self.ring_extra += 1
 
+        # ---- the verdict (new): will this rush ever land?
+        # Our store against their heal ring prices the kill exactly (kill_ammo); a window of
+        # held rounds that closes none of the gap -- snipes not thinning the menders, income
+        # never reaching the burst, the ring dead in a rebuild grinder -- means the price is
+        # not going to be met.  The game is declared an income war: the attacker cuts the
+        # conveyors feeding their base and barriers the stumps, the home half mines every
+        # belt the cap allows, and the bank grows until the same sum says a re-armed ring is
+        # paid for, rebuild included.  ehp and the mender count freeze at the last look.
+        if FORAGE:
+            gap = 1e9 if (alive and net_us <= 0) else max(0.0, BURST_SLACK * kill_ammo - bank)
+            if self.go == 1 or finishing or can_finish or near_kill:
+                gap = 0.0
+            self.gaps.append(gap)
+            self.ehps.append(ehp)
+            del self.gaps[:-(FORAGE_WINDOW + 1)]
+            del self.ehps[:-(FORAGE_WINDOW + 1)]
+            # On paths the bank sat 27 Ti short of the burst for seven hundred rounds -- the
+            # snipe volleys spent income exactly as fast as it arrived.  ANY gap that a whole
+            # window neither closes nor converts into enemy Core damage is a stall.
+            stagnant = (len(self.gaps) > FORAGE_WINDOW and self.gaps[0] > 0
+                        and min(self.gaps[-8:]) >= self.gaps[0] - FORAGE_PROGRESS
+                        and ehp >= self.ehps[0] - 10)
+            if not self.forage:
+                dead_ring = ring_paused and alive == 0 and gap > 50
+                if self.round >= FORAGE_MIN_ROUND and gap > 0 and (stagnant or dead_ring):
+                    self.forage = True
+                    self.forage_ehp = ehp
+                    self.forage_eheal = eheal
+                    self.bare_looks = 0
+            else:
+                if menders_seen:
+                    self.forage_eheal = 4 * menders_seen
+                self.forage_ehp = ehp
+                full_ring = 9.0 * SENTINEL_TARGET
+                eh = min(self.forage_eheal, 32.0, full_ring - 8)
+                kill_frozen = (10.0 * self.forage_ehp / 18.0) * (full_ring / (full_ring - eh))
+                rearm = self._sentinel_cost(ct) * max(0, SENTINEL_TARGET - alive)
+                # The strike is called two ways: the bank covers the kill priced against the
+                # heal ring we froze (never worse than 8 healers -- only 8 tiles mend
+                # orthogonally), or the harasser's looks say nobody is minding their Core at
+                # all -- then the price is the bare one and the window is now.
+                bare_kill = BURST_SLACK * (10.0 * self.forage_ehp / 18.0) + rearm + 30
+                bare_strike = self.bare_looks >= BARE_LOOKS and bank >= bare_kill
+                if (finishing or (ehp <= GO_LOW_HP and alive > 0 and net_us > 0)
+                        or bank >= BURST_SLACK * kill_frozen + rearm + 30
+                        or bare_strike):
+                    self.forage = False
+                    self.hold_total = 0
+                    self.gaps = []
+                    self.bare_looks = 0
+
         # ---- GO / HOLD for the ring (hildr)
         go = 1
-        if alive and eheal > 0:
+        if self.forage:
+            go = 2 if (alive and ammo >= SNIPE_BANK) else 0
+            self.hold_total += 1
+            self.go_held = False
+        elif alive and eheal > 0:
             if net_us <= 0:
                 go = 0
             else:
@@ -736,6 +818,10 @@ class Player:
                 want_miners = MINERS_MAX
         elif not ECON_AFTER_RING and stuck:
             want_miners = MINERS_MAX
+        if self.forage:
+            # The income war: every miner the cap allows, now -- the verdict already said the
+            # held titanium buys no kill.
+            want_miners = MINERS_MAX if harvesters >= 1 else 2
         if harvesters >= HARVESTERS_MAX:
             want_miners = min(want_miners, 1)   # one body keeps the belts mended
         # A miner is a HOLD purchase.  While the ring is shooting (GO) every point of titanium
@@ -827,6 +913,8 @@ class Player:
             flags |= ORD_SAVE                      # Big O's one Sentinel cost 500 rounds of heals
         if racing:
             flags |= ORD_RACE
+        if self.forage:
+            flags |= ORD_FORAGE
         flags |= min(3, self.miners_hwm if econ_ok else 0) << ORD_MINERS_SHIFT
         flags |= min(7, harvesters) << ORD_HARVEST_SHIFT
         self._write(ct, SLOT_ORDERS, (self.round + 1) + 65536 * flags)
@@ -1106,13 +1194,15 @@ class Player:
         miner -- is paid for before the float is refilled: the float re-fired every round on
         paths and the miner was never affordable."""
         try:
+            if self.forage and not finishing and not threatened:
+                return                             # the income war banks titanium, not volleys
             ammo = ct.get_global_ammo()
             ti = ct.get_global_resources()
             reserve = ring_reserve + mend_reserve
             if need_home and not finishing:
                 reserve += self._builder_cost(ct)
             if alive == 0:
-                want = 20 if ammo < 20 else 0
+                want = 0 if self.forage else (20 if ammo < 20 else 0)
             elif finishing:
                 # Only what the finish needs, plus two spare shots: everything else stays
                 # titanium, because both Cores dying in one round is settled on titanium
@@ -1192,6 +1282,27 @@ class Player:
                 self.path = []
             else:
                 self._recount_ring(ct)
+
+        if _flags(self._read(ct, SLOT_ORDERS)) & ORD_FORAGE:
+            # The income war: the sums said the rush cannot land.  Cut the conveyors feeding
+            # their base from tiles no turret covers, barrier the stumps, keep any ring
+            # remnant tended, and let the bank grow until the Core calls the race back on.
+            self.last_eta = 1
+            self._write(ct, SLOT_BUILDER, (self.round + 1) + 65536 * (1 | self._scout_word()))
+            self._report_enemy(ct)
+            if self.round - self.last_look >= PEEK_EVERY and self._peek(ct, here):
+                return
+            if self._harass(ct, here):
+                return
+            if self._tend(ct, here):
+                return
+            if DENY_ORE and self._deny_ore(ct, here, 14):
+                return
+            if self.built > 0:
+                self._return_to_ring(ct, here)
+            else:
+                self._lurk(ct, here)
+            return
 
         if self.built >= self.ring_target:
             self.ring_done_once = True
@@ -1404,8 +1515,11 @@ class Player:
                 p = ct.get_position(uid)
                 if (p.x, p.y) in ring:
                     n += 1
-            if n > 0 or all(ct.is_in_vision(Position(k[0], k[1])) for k in ring):
-                self._write(ct, SLOT_EHEAL, n)
+            if all(ct.is_in_vision(Position(k[0], k[1])) for k in ring):
+                self._write(ct, SLOT_EHEAL, (self.round + 1) + 65536 * n)
+                self.last_look = self.round
+            elif n > 0:
+                self._write(ct, SLOT_EHEAL, (self.round + 1) + 65536 * n)
             bid = ct.get_tile_building_id(Position(self.enemy.x, self.enemy.y))
             if bid is not None:
                 self._write(ct, SLOT_EHP, ct.get_hp(bid))
@@ -2269,6 +2383,12 @@ class Player:
                 self.enemy_barriers.discard(key)
                 if key in self.belts:
                     self.belt_seen[key] = self.round   # seen, and seen gone: a repair job
+                if key in self.enemy_belts or key in self.enemy_harv:
+                    self.enemy_belts.discard(key)
+                    self.enemy_harv.discard(key)
+                    if key == self.cut_target:
+                        self.stumps.add(key)           # chewed through: a 3 Ti barrier keeps it cut
+                        self.cut_target = None
             else:
                 self.occupied.add(key)
                 blocks = True
@@ -2285,6 +2405,11 @@ class Player:
                     if (kind in (EntityType.HARVESTER, EntityType.CONVEYOR, EntityType.SPLITTER)
                             and mine is not None and ct.get_team(bid) != mine):
                         self.econ_seen = True
+                        if kind == EntityType.HARVESTER:
+                            self.enemy_harv.add(key)
+                        else:
+                            self.enemy_belts.add(key)
+                        self.stumps.discard(key)
                 except Exception:
                     blocks = True
                 if blocks:
@@ -2644,7 +2769,158 @@ class Player:
             return False
         return False
 
-    def _deny_ore(self, ct, here):
+    def _peek(self, ct, here):
+        """A look at their Core ring: from a mid-edge stand two tiles out, every ring tile is
+        within Builder vision (r2 <= 20), so the report can say 'nobody home' with authority."""
+        try:
+            xs = [t[0] for t in self.enemy_tiles]
+            ys = [t[1] for t in self.enemy_tiles]
+            x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+            stands = ([(x0 - 2, y) for y in range(y0, y1 + 1)]
+                      + [(x1 + 2, y) for y in range(y0, y1 + 1)]
+                      + [(x, y0 - 2) for x in range(x0, x1 + 1)]
+                      + [(x, y1 + 2) for x in range(x0, x1 + 1)])
+            best = None
+            goal = None
+            for key in stands:
+                if key in self.covered:
+                    continue
+                cost = self._dist.get(key)
+                if cost is not None and (best is None or cost < best):
+                    best, goal = cost, key
+            if goal is None or best > 25:
+                return False
+            if (here.x, here.y) == goal:
+                return False                       # standing there: the report already spoke
+            path = self._trace(self._came, here, goal)
+            if path:
+                self._step_to(ct, here, path[0])
+                return True
+            return False
+        except Exception:
+            return False
+
+    def _lurk(self, ct, here):
+        """Between chews, wait out of their Core's sight (vision r2 36 reaches 6 tiles): a
+        harasser they cannot see is one they spawn no guards for."""
+        try:
+            near = min(_cheb((here.x, here.y), t) for t in self.enemy_tiles)
+            if near >= 7 and (here.x, here.y) not in self.covered:
+                return True
+            best = None
+            goal = None
+            for key, cost in self._dist.items():
+                if key in self.covered or not self._passable(key):
+                    continue
+                d = min(_cheb(key, t) for t in self.enemy_tiles)
+                if 7 <= d <= 10 and (best is None or cost < best):
+                    best, goal = cost, key
+            if goal is None:
+                return self._step_any(ct, here)
+            path = self._trace(self._came, here, goal)
+            if path:
+                self._step_to(ct, here, path[0])
+            return True
+        except Exception:
+            return False
+
+    def _harass(self, ct, here):
+        """The income war: chew through the conveyors feeding their base -- 2 Ti a bite, ten
+        bites a belt tile -- from a tile no turret covers, and barrier the stump so the line
+        stays cut.  Belts first (one cut severs everything upstream of it), then Harvesters."""
+        try:
+            # a stump beside us gets its barrier before anything else
+            for key in list(self.stumps):
+                if key in self.occupied:
+                    self.stumps.discard(key)
+                    continue
+                if abs(key[0] - here.x) + abs(key[1] - here.y) == 1:
+                    spot = Position(key[0], key[1])
+                    if ct.can_build_barrier(spot):
+                        ct.build_barrier(spot)
+                        self.occupied.add(key)
+                        self.blocked.add(key)
+                        self.denied.add(key)
+                        self.stumps.discard(key)
+                        return True
+            if self.cut_target is not None and (self.cut_target not in self.enemy_belts
+                                                and self.cut_target not in self.enemy_harv):
+                self.cut_target = None
+                self.cut_path = []
+            if self.cut_target is None:
+                best = None
+                for pool, tax in ((self.enemy_belts, 0), (self.enemy_harv, 8)):
+                    for key in pool:
+                        if self.round < self.no_cut.get(key, -1):
+                            continue
+                        near = None
+                        for _d, dx, dy in CARDINALS:
+                            step = (key[0] + dx, key[1] + dy)
+                            cost = self._dist.get(step)
+                            if cost is not None and step not in self.covered and (near is None or cost < near):
+                                near = cost
+                        if near is None:
+                            continue
+                        if best is None or near + tax < best[0]:
+                            best = (near + tax, key)
+                if best is None:
+                    for key in list(self.stumps):      # a stump further off still wants its barrier
+                        self._walk_beside(ct, here, key)
+                        return True
+                    return False
+                self.cut_target = best[1]
+                self.cut_path = []
+                self.cut_best = 99
+                self.cut_stuck = 0
+            key = self.cut_target
+            if abs(key[0] - here.x) + abs(key[1] - here.y) == 1 and (here.x, here.y) not in self.covered:
+                spot = Position(key[0], key[1])
+                if ct.get_global_resources() >= CUT_FLOOR and ct.can_fire(spot):
+                    ct.fire(spot)
+                return True                            # chewing, or holding the stand for it
+            if (here.x, here.y) == key:
+                return self._step_any(ct, here)
+            # The walk is planned once and followed: the danger field breathes with vision
+            # (a Launcher seen from one tile, unseen from the next), and replanning every
+            # round walked two tiles forever.  A fling or a blocked step replans; a target
+            # that never gets nearer is barred and the next belt tile tried.
+            gone = _cheb((here.x, here.y), key)
+            if gone < self.cut_best:
+                self.cut_best = gone
+                self.cut_stuck = 0
+            else:
+                self.cut_stuck += 1
+                if self.cut_stuck > 25:
+                    self.no_cut[key] = self.round + 120
+                    self.cut_target = None
+                    self.cut_path = []
+                    return False
+            if self.cut_path and abs(self.cut_path[0][0] - here.x) + abs(self.cut_path[0][1] - here.y) != 1:
+                self.cut_path = []                     # flung, or drifted off the plan
+            if not self.cut_path:
+                near = None
+                stand = None
+                for _d, dx, dy in CARDINALS:
+                    step = (key[0] + dx, key[1] + dy)
+                    cost = self._dist.get(step)
+                    if cost is not None and step not in self.covered and (near is None or cost < near):
+                        near, stand = cost, step
+                if stand is None:
+                    self.no_cut[key] = self.round + 120
+                    self.cut_target = None
+                    return False
+                self.cut_path = self._trace(self._came, here, stand)
+            if self.cut_path:
+                if self._step_to(ct, here, self.cut_path[0]):
+                    self.cut_path.pop(0)
+                else:
+                    self.cut_path = []                 # blocked: replan next round
+                return True
+            return False
+        except Exception:
+            return False
+
+    def _deny_ore(self, ct, here, reach=DENY_REACH):
         """steward's ore denial: a 3 Ti barrier on an enemy-half ore tile keeps a Harvester off
         it for the match.  The attacker does it between tending jobs, within a short leash of
         the ring, and never from a covered tile."""
@@ -2667,7 +2943,7 @@ class Player:
                         cost = self._dist.get(step)
                         if cost is not None and step not in self.covered and (near is None or cost < near):
                             near = cost
-                    if near is None or near > DENY_REACH:
+                    if near is None or near > reach:
                         continue
                     if best is None or near < best[0]:
                         best = (near, key)
