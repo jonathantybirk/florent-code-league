@@ -1,0 +1,107 @@
+"""The 16-slot shared store, used as a plain blackboard.
+
+This is deliberately not the full GCS wire protocol in `utils/GCS`. That
+protocol streams map facts and is worth its complexity once units are far
+enough apart to have genuinely different maps; what the economy needs first is
+three scalars and a claim board, and mixing the two would make an untested
+encoder a dependency of the opening. The GCS goes in behind this interface
+once it has games behind it.
+
+Writes are buffered: a value written in round N is readable in round N+1. Two
+places depend on that one-round lag and would be wrong without it:
+
+  * `claim_index` -- the Core writes the running spawn count *after* each
+    spawn, so a newborn Builder reading the slot on its first round sees the
+    count from before it existed. That is its index, with no handshake.
+  * `claimed` -- every Builder sees the same claim board for the whole round
+    regardless of who acts first, so two Builders cannot both believe a
+    deposit is free because of turn order.
+"""
+
+SLOT_SPAWN_COUNT = 0
+SLOT_SYMMETRY = 1
+SLOT_ALARM = 2
+CLAIM_BASE = 3
+CLAIM_SLOTS = 13          # slots 3..15
+
+
+def claim_index(ct) -> int:
+    """This Builder's spawn order, read on its first round."""
+    return _read(ct, SLOT_SPAWN_COUNT)
+
+
+def note_spawn(ct, count: int) -> None:
+    _write(ct, SLOT_SPAWN_COUNT, count)
+
+
+def alarm(ct) -> bool:
+    return _read(ct, SLOT_ALARM) != 0
+
+
+def alarm_level(ct) -> int:
+    """How many Builders the Core wants at home; 0 when calm."""
+    return _read(ct, SLOT_ALARM)
+
+
+def raise_alarm(ct, menders: int) -> None:
+    _write(ct, SLOT_ALARM, max(1, menders))
+
+
+def clear_alarm(ct) -> None:
+    _write(ct, SLOT_ALARM, 0)
+
+
+def publish_symmetry(ct, kind: int) -> None:
+    _write(ct, SLOT_SYMMETRY, kind + 1)
+
+
+def symmetry(ct):
+    value = _read(ct, SLOT_SYMMETRY)
+    return value - 1 if value else None
+
+
+# ----------------------------------------------------------------------
+# deposit claims
+# ----------------------------------------------------------------------
+def claim(ct, index, deposit) -> None:
+    if index is None:
+        return
+    _write(ct, CLAIM_BASE + index % CLAIM_SLOTS, _pack(deposit))
+
+
+def claimed(ct, index) -> set:
+    """Deposits other Builders have claimed."""
+    mine = None if index is None else CLAIM_BASE + index % CLAIM_SLOTS
+    out = set()
+    for slot in range(CLAIM_BASE, CLAIM_BASE + CLAIM_SLOTS):
+        if slot == mine:
+            continue
+        tile = _unpack(_read(ct, slot))
+        if tile is not None:
+            out.add(tile)
+    return out
+
+
+def _pack(tile) -> int:
+    return tile[0] * 32 + tile[1] + 1
+
+
+def _unpack(value):
+    if not value:
+        return None
+    value -= 1
+    return (value // 32, value % 32)
+
+
+def _read(ct, slot: int) -> int:
+    try:
+        return ct.read_store(slot)
+    except Exception:
+        return 0
+
+
+def _write(ct, slot: int, value: int) -> None:
+    try:
+        ct.write_store(slot, value)
+    except Exception:
+        pass
