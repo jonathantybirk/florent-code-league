@@ -199,5 +199,13 @@
     "hildr@846139b:3",
     "brokkr@ecc064a:2"
   ],
-  "_queue_front": "Like test_next, but the entry is moved to the front of the queue so it plays on the next round. Each entry is honoured once."
+  "_queue_front": "Like test_next, but the entry is moved to the front of the queue so it plays on the next round. Each entry is honoured once.",
+  "retired": [
+    "hildr@0918358",
+    "hildr@9cb37e0",
+    "hildr@168b1a4",
+    "hildr@d87329b",
+    "hildr@3de227d"
+  ],
+  "_retired": "Bot ids the flagship decision skips. These hildr builds predate the ammo-conversion deadlock fix (d7d0f31) or the stall economics; their high estimates come from an easier opponent era and rated play with them bleeds rating."
 }

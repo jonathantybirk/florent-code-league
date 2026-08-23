@@ -578,9 +578,12 @@ def best_challenger(state: dict, stats: dict[str, arms.ArmStats], team_rating: f
     incumbent = delta(incumbent_id) if incumbent_id else None
     incumbent_delta = incumbent[0] if incumbent else 0.0
 
+    retired = set(load_config().get("retired") or [])
     best_id, best_delta, best_se = None, -1e9, None
     for bot_id in registry:
         if bot_id == incumbent_id:
+            continue
+        if bot_id in retired:
             continue
         rated = build_elo(state, live, bot_id, registry)
         if rated is None:
