@@ -29,7 +29,7 @@ ECON_RESERVE = 45
 # those hands then spend; spawning down to nothing buys menders who cannot
 # afford to heal.
 MEND_RESERVE = 70
-SIEGE_BUILDER_CAP = 12
+SIEGE_BUILDER_CAP = 14
 NEAR_CORE = 3
 
 # Once the alarm is up it stays up for this many rounds past the last damage.
@@ -48,6 +48,7 @@ def run(player, ct) -> None:
         player.last_hp = ct.get_max_hp()
         player.last_damage = None
         player.last_threat = None
+        player.prev_hp = ct.get_max_hp()
 
     _alarm(player, ct)
     _publish(player, ct)
@@ -71,7 +72,10 @@ def _alarm(player, ct) -> None:
 
     round_number = ct.get_current_round()
     dps, builders, _turrets = defence.survey(player.brain)
-    wanted = defence.menders_wanted(dps, len(builders))
+    floor = defence.menders_wanted(dps, len(builders))
+    delta = hp - player.prev_hp
+    player.prev_hp = hp
+    wanted = defence.adjust(store.alarm_level(ct), floor, delta) if (floor or delta < 0) else 0
     if wanted:
         player.last_threat = round_number
 
@@ -81,7 +85,7 @@ def _alarm(player, ct) -> None:
               and round_number - player.last_threat <= ALARM_HOLD)
     hurt = (player.last_damage is not None
             and round_number - player.last_damage <= ALARM_HOLD)
-    debug.log(f"r{round_number} CORE hp={hp} dps={dps} want={wanted} "
+    debug.log(f"r{round_number} CORE hp={hp} d={delta} dps={dps} want={wanted} "
               f"eb={len(builders)} turrets={len(_turrets)} ti={ct.get_global_resources()}")
     if wanted:
         store.raise_alarm(ct, wanted)

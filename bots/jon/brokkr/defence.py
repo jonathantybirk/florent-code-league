@@ -39,10 +39,16 @@ THREAT_RADIUS = 8
 TURRET_DPS = {"ENEMY_SENTINEL": 9.0, "ENEMY_GUNNER": 7.0}
 BUILDER_THREAT = 4.0
 
-# One mender per this much incoming damage, plus one. Four menders heal 16 HP
-# a round, which is what a four-Sentinel ring's 36 needs alongside digging.
+# One mender per this much incoming damage, plus one, as the opening guess
+# before any damage has actually landed.
 DPS_PER_MENDER = 9.0
-MAX_MENDERS = 5
+SIGHTING_MENDERS = 5
+
+# A siege can ask for more than the economy would ever buy. Each Builder heals
+# 4 HP a round, so holding a four-Sentinel ring at 36 needs nine of them --
+# and every one costs 20% on every later build, which is why the number is
+# reached by feedback rather than by prediction (see `adjust`).
+SIEGE_MENDERS = 10
 
 
 def survey(brain):
@@ -111,7 +117,28 @@ def menders_wanted(dps: float, enemy_builders: int) -> int:
     if dps <= 0 and enemy_builders == 0:
         return 0
     effective = dps + BUILDER_THREAT * min(enemy_builders, 2)
-    return max(1, min(MAX_MENDERS, int(effective / DPS_PER_MENDER) + 1))
+    return max(1, min(SIGHTING_MENDERS, int(effective / DPS_PER_MENDER) + 1))
+
+
+def adjust(wanted: int, floor: int, hp_delta: int) -> int:
+    """Track the Core's net HP instead of predicting the damage.
+
+    `hp_delta` is the Core's HP change since last round, already net of our
+    own healing, which makes it the only honest measure of whether the mend
+    squad is big enough. Sizing the squad from observed turret DPS alone
+    cannot serve both a lone scout and a four-Sentinel ring: a count tuned for
+    the ring wrecks the economy every time somebody walks past, and a count
+    tuned for the scout loses the ring. Measured on the pool, the fixed guess
+    gave 24/30 against hildr and 6/30 against steward.
+
+    Rising by one a round is fast enough because the Core spawns menders on
+    its own ring, where they heal the round they appear.
+    """
+    if hp_delta < 0:
+        return min(SIEGE_MENDERS, max(wanted, floor) + 1)
+    if hp_delta > 0 and wanted > floor:
+        return wanted - 1           # winning the exchange: give one back
+    return max(wanted, floor)
 
 
 def _near(tile, core) -> int:
