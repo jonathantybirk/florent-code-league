@@ -122,40 +122,50 @@ the comms store, because it is the only unit that always knows where our own Cor
 
 240-game panel: 8 opponents x 15 pool maps x both seats. The engine is deterministic and we pass
 `turn_timeout_ms=0`, so this is a census -- a difference between two runs is always a nameable set
-of flipped maps, and anything under about 4 games is cascade shuffle. Run `python tools/panel.py <bot>`.
+of flipped maps, and anything under about 4 games is cascade shuffle. `python tools/panel.py <bot>`;
+`--maps maps/retired` runs the 33 retired maps, which `terrain.py` does NOT bundle and which
+therefore exercise the discovered-terrain path a ladder rotation would force.
 
 | opponent | wins | note |
 |---|---|---|
-| `zoo/idle` | **30/30** | |
+| `zoo/miner` (economy, models TRRR) | **30/30** | was 18/30 before the conveyor fix |
+| `zoo/starter_fixed` | **30/30** | |
 | `zoo/turtle` (walls its Core in) | **30/30** | Sentinels ignore line of sight |
-| `zoo/starter_fixed` | **29/30** | |
-| `zoo/miner` (economy, models TRRR) | **28/30** | was 18/30 before the conveyor fix |
+| `zoo/idle` | **30/30** | |
+| `nash/flagship` | **28/30** | was 25/30 before the anchor fix |
 | `rivals/vigil` | **28/30** | |
 | `zoo/adgato` (mirror rusher) | **27/30** | |
-| `nash/flagship` | **25/30** | |
-| `rivals/vanguard` | **25/30** | |
-| **TOTAL** | **222/240** | 210/240 before the conveyor fix |
+| `rivals/vanguard` | **26/30** | was 25/30 before the anchor fix |
+| **TOTAL** | **229/240** | 210/240 at the start of 2026-08-23 |
 
-Fifteen of the eighteen losses are the opponent destroying our Core between round 26 and 226.
-Twelve of those share one signature: four enemy **Launchers** up by round 8, ferrying their Builder
-forward and throwing ours backwards, so our ring lands on round 35-45 instead of 16.
+Every one of the 240 games now ends in a Core kill; there are no round-1000 tiebreaks left.
+Cross-checks on the two other populations: 33 retired maps **146/198**, 8 archive opponents
+(`rivals/`, `nash/`) **224/240** -- and our bot beats every bot in this repo.
 
-### What was measured and kept OUT
+### The three changes that did it
 
-`tools/death.py` and the commit log carry the detail. Two rules came out of it, and they are in
-tension, which is why this is a hard optimum:
+1. **Conveyors faced the ore, not the Core** (+12). Flow runs with ascending index in `_plan_chain`;
+   the layer used `chain[idx - 1]`. Every belt in the pool ran backwards and dead-ended, so
+   `titanium_collected` -- the FIRST tiebreak key -- was 0 on all 15 maps.
+2. **Bank the ammunition instead of chipping** (+3). Below ~4.4 Ti/round of income our fire rate is
+   under their mend rate and every shot is negative. Hold until the bank can finish in one volley.
+   This withholds the TRIGGER, not the titanium.
+3. **The anchor was Launcher-blind** (+4). `_flood` priced pickup rings for ROUTING, but
+   `_next_stand` used unweighted BFS -- so we routed around them and then stood in one for four
+   build rounds. The gain lands only on the two opponents that field Launchers.
 
-* **Any extra Builder before the ring is complete loses the race.** Menders raised on damage scored
-  200/240; one miner bought at round 1 scored 204/240. Every Builder is +20pp of cost scale, which
-  prices up our own Sentinels.
-* **Any titanium withheld from ammunition after the ring is up loses the kill.** Holding one
-  Builder's fare back from the converter scored 172/240. A reserve that is never released is a rush
-  that never finishes.
+### Rules that came out of the failures
 
-The sharpest diagnostic behind both: on `skald` the ring stood at round 12 and drove their Core from
-500 to **12 HP** by round 30 -- twelve short -- then ran dry. For the next 84 rounds we fired once
-every four rounds, exactly passive income at 10 ammo a shot, while their Builders mended 8 HP/round.
-Their Core climbed back to 468 and ours bled out.
+* **Any extra Builder before the ring is complete loses the race.** +20pp of cost scale prices up
+  every Sentinel still to buy. Menders on damage 200/240; one miner at round 1 204/240.
+* **Any titanium withheld from ammunition after the ring is up loses the kill.** 172/240. A reserve
+  that is never released is a rush that never finishes.
+* **Never walk to a denial.** Biasing turret placement onto the enemy mend ring is 200/240, and
+  measured independently at 195/240. Barriers there are free only when already adjacent -- and then
+  the branch never fires, because the anchor correctly keeps the Builder four tiles out.
+* **Four turrets.** 3 = 212/240, 5 = 193/240 (measured twice, independently, same number).
+
+The full list of measured dead ends is in the commit log; `tools/death.py` reproduces the diagnosis.
 
 ## `terrain.py` -- read before submitting
 
