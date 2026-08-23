@@ -995,9 +995,17 @@ def run_decision(dry_run: bool = False) -> None:
 
     ladder_rows = fc.ladder(100)
     team_rating = next((r["rating"] for r in ladder_rows if r["teamId"] == fc.TEAM_ID), 1800.0)
-    maybe_promote(state, read_arm_stats(), team_rating,
-                  closest=closest_opponents(ladder_rows), dry_run=dry_run,
-                  ladder_rows=ladder_rows)
+    pin = load_config().get("flagship_pin")
+    if pin:
+        # A pinned flagship is held by hand: no promotion, and the pinned version
+        # is what gets restored after every test round.
+        if state.get("flagship_version") != pin:
+            log.warning("flagship pinned to v%s by config (was v%s)", pin, state.get("flagship_version"))
+            state["flagship_version"] = pin
+    else:
+        maybe_promote(state, read_arm_stats(), team_rating,
+                      closest=closest_opponents(ladder_rows), dry_run=dry_run,
+                      ladder_rows=ladder_rows)
 
     # A hand-run test or another agent may have left something else active.
     if fc.active_version() != state["flagship_version"] and not dry_run:
