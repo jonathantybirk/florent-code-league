@@ -179,6 +179,28 @@ number computed from a guessed k-factor silently models a ladder we are not on.
 - **Discrimination.** Builds separate (1757–1909 on the fixture snapshot) and the
   interval tightens with opponent coverage.
 
+## One definition, two consumers
+
+Delta elo is computed in exactly one place, `arms.simulated_rating`, and read by two
+things: the farm, which promotes on it, and the live feed, which publishes it to the
+site. The feed imports the function rather than vendoring it.
+
+That is a deliberate correction. The first version reimplemented a one-round delta
+inside `live_feed.py` on that module's own kernel and its `MATCHUP_PRIOR_GAMES`
+smoothing, and the two drifted far enough apart to disagree on sign: the site showed
+`v70` at -0.5 while the farm promoted it at +1.66. A column that contradicts the
+promotion it exists to explain is worse than no column.
+
+For the same reason `simulated_rating` seeds its default RNG from the build key
+(`zlib.crc32`) rather than the clock. Two separate processes compute this number and
+they must agree to the digit. `hash()` is unusable here: Python randomises string
+hashing per process.
+
+The feed's loader checks each candidate ladderfarm checkout for the symbols it needs
+instead of trusting path order, because a machine can carry both a working copy and the
+deploy target `sync.sh` writes, and the older one silently lacks them. A missing or
+stale sibling costs the column, never the feed.
+
 ## Limitations
 
 1. **The field is frozen.** Every opponent's rating is held at its current value
