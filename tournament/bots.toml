@@ -565,3 +565,15 @@ name   = "vigil_reinforcements"
 commit = "60d5afa"
 path   = "bots/luc/vigil_reinforcements"
 tags   = ["luc", "unfair"]
+
+[[bot]]
+name   = "e_rush"
+commit = "0aecc15"
+path   = "bots/elias/rush"
+tags   = ["elias", "unfair"]
+
+[[bot]]
+name   = "e_rush_fair"
+commit = "0aecc15"
+path   = "bots/elias/rush_fair"
+tags   = ["elias", "fair"]
