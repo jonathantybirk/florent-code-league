@@ -781,11 +781,8 @@ def run_round(dry_run: bool = False) -> None:
     # over thousands of games, so the live budget is spent narrowing what we do NOT
     # know -- how each build performs against the real ladder -- rather than
     # re-deciding which is best.
-    # Newest-first ordering for the untested tier: submission version rises monotonically,
-    # so it is the recency signal, and builds with no submission sort last rather than first.
-    recency = {b: info.get("version", -1) for b, info in registry.items()}
-    bot_id, why = arms.tiered_select(stats, list(by_id), team_rating,
-                                     epoch=mechanics_epoch(feed), recency=recency)
+    bot_id, why = arms.uncertainty_select(stats, list(by_id), team_rating,
+                                          epoch=mechanics_epoch(feed))
 
     queued = take_queued(state) if not dry_run else (state.get("queue") or [{}])[0].get("bot_id")
     if queued:
