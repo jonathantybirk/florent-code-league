@@ -98,3 +98,28 @@ A working version needs the route itself shared, not re-derived. The 16-slot
 store cannot carry a route cheaply, which is what the GCS module in
 `bots/utils/GCS` exists for. That is the prerequisite, and it should be built
 before this is attempted a fourth time.
+
+## "Idle" Builders beside the Core are not idle (2026-08-23)
+
+`tools/idle_audit.py` reported that **34.5% of every unit-turn** brokkr spent
+over the pool was a mender logging "cannot afford to heal" -- 23037 turns of
+apparently doing nothing, plus 13520 more of "no route home". Acting on it
+made things worse, twice:
+
+| | vs hildr | vs steward |
+|---|---|---|
+| baseline | 87/90 | **21/90** |
+| release a mender with no titanium | 87/90 | 15/90 |
+| release only menders with no route home | 87/90 | 18/90 |
+
+Standing beside the Core does two things that no log line records. The tile is
+occupied, so the enemy cannot build a turret on it -- and turrets beside our
+Core are how every one of the 25 games against the ladder's economies was
+lost. And passive income is 10 titanium every 4 rounds, so a Builder already
+in position heals on the tick; one that walked off to earn arrives after it.
+
+The lesson is about the measurement, not the bot: "did nothing this turn" and
+"was worth nothing this turn" are different, and an intent log only sees the
+first. The tool's classification was corrected rather than deleted, because
+the thing it *is* reliable at -- a unit stuck on one intent for a whole match
+-- found both of the largest bugs so far.
