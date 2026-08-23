@@ -224,8 +224,9 @@ POOL_DEPTH = 25  # everyone we are willing to sample
 # Qualification to be the live bot: enough of the opponents nearest us in rating.
 # The full ladder is not worth waiting for -- what decides our rated results is
 # the teams we actually get paired against, and those are the close ones.
-CLOSEST_K = 10
-QUALIFY_MIN = 7
+# Defined in arms so the live feed publishes the same verdict promotion acts on.
+CLOSEST_K = arms.CLOSEST_K
+QUALIFY_MIN = arms.QUALIFY_MIN
 
 
 
