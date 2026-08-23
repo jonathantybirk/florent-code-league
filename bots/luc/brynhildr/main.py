@@ -58,6 +58,10 @@ REPLACE_BUILDER = True     # re-spawn a dead attack Builder while the ring is un
 UNKNOWN_COST = 3           # what a tile we have never seen costs, against 1 for one we have
 THREAT_COST = 8            # detour a Builder will accept to stay out of a threatened tile
 ANCHOR_BONUS = 2           # steps of walking each extra buildable neighbour is worth
+CLUSTER_BONUS = 1          # ...and each free spot within two steps of the stand: the ring is
+                           # planned as a cluster before the first Sentinel goes down
+HEAL_ASSUMED = 12          # HP/round an undefended Core is assumed to raise once shot at:
+                           # the builders walk back, or new ones are spawned
 USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known pool
 CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
 
@@ -381,6 +385,9 @@ class Player:
         self.home_danger = set()    # lanes that shoot a Builder: Gunners, and Sentinels not aimed at our Core
         self.grabs = set()          # tiles beside an enemy Launcher: it picks a Builder up from there
         self.goal = None
+        self.first_stand = None     # the committed stand for the opening placement: the
+                                    # danger field breathes with vision, and a goal that
+                                    # re-derives every round dithers between two stands
         self.path = []
         self._dist = {}
         self._came = {}
@@ -597,7 +604,15 @@ class Player:
                 self.plan = 'race' if built < SENTINEL_TARGET else self.plan
                 self.plan_round = self.round
         full = 9 * max(SENTINEL_TARGET, alive)
-        kill_ammo = (10.0 * ehp / 18.0) * (full / max(1, full - eheal)) if net_us > 0 or alive == 0 else 0
+        # An undefended Core does not stay undefended: the builders walk back, or new ones
+        # are spawned, the round the ring opens up.  Until the burst is running the kill is
+        # priced against the heal ring they can raise, not the one that happens to be home --
+        # a burst that cannot outlast three arriving menders is banked, not fired.
+        priced = eheal
+        if (their_dps == 0 and self.sentinels_on_us == 0 and self.scout_econ
+                and not self.scout_rush and self.go != 1):
+            priced = max(eheal, HEAL_ASSUMED)
+        kill_ammo = (10.0 * ehp / 18.0) * (full / max(1, full - priced)) if net_us > 0 or alive == 0 else 0
         # Finish a Core this low -- when the finish can be paid for, or ours is not the one
         # in danger.  On holmgang the Core waited thirty rounds on an unfunded finish, mending
         # nothing, while three Gunners took it from 353 to 24.
@@ -885,7 +900,14 @@ class Player:
                 elif stuck:
                     spare = ti - SNIPE_BANK
                 else:
-                    spare = ti - ring_reserve - mend_reserve - max(0, kill_ammo - ammo)
+                    kill_hold = max(0, kill_ammo - ammo)
+                    if landing > 0 and self.hold_total > STALL_ROUNDS and not (can_finish or near_kill):
+                        # Big O parked one Sentinel and our Core died in 56 rounds with
+                        # 98 Ti banked for a 500-ammo burst that was never going to be
+                        # paid for.  While damage lands and the kill is not close, the
+                        # mender is the purchase.
+                        kill_hold = 0
+                    spare = ti - ring_reserve - mend_reserve - kill_hold
             else:
                 # The miner.  The ring and the mend float come first; the kill does not --
                 # a kill that is not affordable now is what the miner's income pays for.
@@ -1281,6 +1303,7 @@ class Player:
                 self.built = 0
                 self.placed = []
                 self.goal = None
+                self.first_stand = None
                 self.path = []
             else:
                 self._recount_ring(ct)
@@ -1314,13 +1337,39 @@ class Player:
         if paused and self.round % 10 == 0:
             self._write(ct, SLOT_BUILT, self.built | SLOT_BUILT_PAUSED)
         if self.built < self.ring_target and not (hold_rebuild and self.ring_done_once) and not ring_hold and not paused:
-            self.goal = self._next_stand(here)
+            # A planned ring, not a dropped pin: the first Sentinel goes down only at the
+            # chosen stand -- _next_stand already weighed a longer walk against a cluster
+            # the rest of the ring can be placed from.  A lone spot planted on arrival left
+            # the attacker marching between scattered spots while the menders walked back.
+            # The choice is COMMITTED: the danger field breathes with vision, and a stand
+            # re-derived every round dithered between two tiles while no ring went down.
+            if self.built == 0 and self.econ_seen and not self.rush_seen:
+                if (self.first_stand is not None
+                        and (not self._anchor_value(self.first_stand)
+                             or self._dist.get(self.first_stand) is None)):
+                    self.first_stand = None        # its spots died, or the way there did
+                if self.first_stand is None:
+                    self.first_stand = self._next_stand(here)
+                self.goal = self.first_stand
+            else:
+                self.first_stand = None
+                self.goal = self._next_stand(here)
             walk = self._dist.get(self.goal, 99) if self.goal is not None else 99
-            if self._anchor_value((here.x, here.y)):
-                walk = 0                           # a spot beside us: we build this round
+            here_key = (here.x, here.y)
+            usable_here = self._anchor_value(here_key)
+            want = self.ring_target - self.built
+            # Against a rusher any arrival builds on the spot, exactly hildr's tempo.
+            # Against a scouted economy only the genuinely bad drop waits -- a lone spot
+            # with nothing around it, the rest of the ring a march away.
+            build_now = (self.built > 0 or self.goal is None or self.goal == here_key
+                         or not (self.econ_seen and not self.rush_seen)
+                         or walk > 6
+                         or (usable_here and usable_here + self._cluster_value(here_key) >= min(want, 3)))
+            if usable_here and build_now:
+                walk = 0                           # the stand is here: we build this round
             self.last_eta = min(98, walk) + 1
             self._write(ct, SLOT_BUILDER, (self.round + 1) + 65536 * (self.last_eta | self._scout_word()))
-            if self._place(ct, here):
+            if build_now and self._place(ct, here):
                 return
             if self._advance(ct, here):
                 return
@@ -2496,6 +2545,10 @@ class Player:
 
     def _next_stand(self, here):
         want = self.ring_target - self.built
+        # Against a rusher the ring is nearest-first, exactly hildr's tempo: a dead-heat
+        # mirror is decided by two rounds.  Against a scouted economy there is no race to
+        # lose, and the ring is planned as a cluster instead of dropped spot-by-spot.
+        patient = CLUSTER_BONUS if (self.econ_seen and not self.rush_seen) else 0
         best = None
         chosen = None
         for key, cost in self._dist.items():
@@ -2505,6 +2558,8 @@ class Player:
             if not usable:
                 continue
             score = cost - ANCHOR_BONUS * min(usable, want)
+            if patient:
+                score -= patient * min(self._cluster_value(key), max(0, want - usable))
             if best is None or score < best:
                 best, chosen = score, key
         if chosen is None:
@@ -2516,6 +2571,8 @@ class Player:
                 if not usable:
                     continue
                 score = cost - ANCHOR_BONUS * min(usable, want)
+                if patient:
+                    score -= patient * min(self._cluster_value(key), max(0, want - usable))
                 if best is None or score < best:
                     best, chosen = score, key
         if chosen is not None:
@@ -2537,6 +2594,18 @@ class Player:
         if usable < want:
             usable = min(usable, exits - 1)
         return max(0, usable)
+
+    def _cluster_value(self, key):
+        """Free firing spots within two steps of the stand, beyond the adjacent ones: the
+        rest of the ring should be a one-tile walk, not a march around the map."""
+        near = 0
+        for dx in (-2, -1, 0, 1, 2):
+            for dy in (-2, -1, 0, 1, 2):
+                if (dx, dy) == (0, 0) or abs(dx) + abs(dy) == 1:
+                    continue
+                if self._free_spot((key[0] + dx, key[1] + dy)):
+                    near += 1
+        return near
 
     def _threats(self, ct):
         soft = set()
