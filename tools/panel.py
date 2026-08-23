@@ -30,14 +30,14 @@ POOL = ["auroraveil", "bifrost", "fimbulwinter", "glacierkeep", "helheim", "holm
 
 
 def job(a):
-    bot, opp, m, seat = a
+    bot, opp, m, seat, mapdir = a
     import fcode
     from fcode.fcode_engine import run_game
     engine = str(pathlib.Path(fcode.__file__).resolve().parent)
     x, y = (bot, opp) if seat == 0 else (opp, bot)
     try:
         r = run_game(str(ROOT / x / "main.py"), str(ROOT / y / "main.py"), engine,
-                     str(ROOT / "maps" / (m + ".map26")), os.devnull, 1, 0)
+                     str(ROOT / mapdir / (m + ".map26")), os.devnull, 1, 0)
     except Exception as exc:
         return (opp, m, seat, False, "error:" + str(exc)[:40], 0, 0, 0)
     won = (r["winner"] == "A") == (seat == 0)
@@ -54,7 +54,14 @@ def main():
     for pc in ROOT.rglob("__pycache__"):
         if ".venv" not in pc.parts:
             shutil.rmtree(pc, ignore_errors=True)
-    jobs = [(bot, o, m, s) for o in opps for m in POOL for s in (0, 1)]
+    mapdir = "maps"
+    pool = POOL
+    if "--maps" in sys.argv:
+        mapdir = sys.argv[sys.argv.index("--maps") + 1]
+        # Out-of-sample terrain: `terrain.py` bundles only the live pool, so a map from here
+        # exercises the discovered-terrain path the ladder would use after a rotation.
+        pool = sorted(q.stem for q in (ROOT / mapdir).glob("*.map26"))
+    jobs = [(bot, o, m, s, mapdir) for o in opps for m in pool for s in (0, 1)]
     with ProcessPoolExecutor(max_workers=10) as ex:
         rows = list(ex.map(job, jobs, chunksize=1))
     for pc in ROOT.rglob("__pycache__"):
@@ -71,7 +78,7 @@ def main():
         tot_ti[opp] += ti
         tot_coll[opp] += coll
         how[(cond, won)] += 1
-    n = len(POOL) * 2
+    n = len(pool) * 2
     for o in opps:
         print("  %-22s wins %2d/%d   mean stored %5d   mean delivered %5d"
               % (o, per[o], n, tot_ti[o] / n, tot_coll[o] / n))

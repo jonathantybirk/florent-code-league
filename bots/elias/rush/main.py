@@ -58,6 +58,8 @@ USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known poo
 ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their Core by here
 HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
 NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
+SENTINEL_DAMAGE = 18       # engine constant, restated so the volley maths is local
+RISEN_EVIDENCE = 20        # HP their Core must claw back before we believe the heal
 SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
 ECON_BUILDERS = 10         # Builders devoted to mining and mending once that happens.
                            # hildr -- the build currently carrying our ladder rank -- runs the
@@ -185,6 +187,7 @@ class Player:
         # core
         self.spawned = 0
         self.econ = 0
+        self.foe_best = None
         self.pivoted = False        # latched once the rush is judged dead
         self.foe_min = None         # lowest enemy Core HP any turret has reported
         self.converted = 0          # titanium turned into ammunition so far
@@ -1318,6 +1321,35 @@ class Player:
                         return
         except Exception:
             pass
+
+        # DO NOT CHIP INTO A REPAIR WE CANNOT OUTPACE. Once the opening is spent we fire at income
+        # rate: 2.5 Ti/round is one 10-ammo shot every four rounds, 4.5 HP/round, against two
+        # menders' 8. Every shot in that regime is 10 ammo spent to slow a heal that wins anyway.
+        # On skald that ran for 84 rounds and about 210 titanium while their Core went 12 -> 468.
+        #
+        # So hold, and let the ammunition bank until it can finish the job in one go. This withholds
+        # the TRIGGER, not the titanium -- conversion still runs every round on the same schedule.
+        # (Withholding titanium FROM conversion is a different and much worse idea: measured at
+        # 172/240, because a reserve that is never released is a rush that never finishes.)
+        #
+        # Only ever hold on EVIDENCE. Their Core has to have climbed back above the best we ever
+        # drove it to; a rush that has not yet damaged anything must always shoot.
+        try:
+            seen = ct.read_store(SLOT_FOE_HP)
+            hp = (seen - 1) if seen else None
+        except Exception:
+            hp = None
+        if hp is not None:
+            if self.foe_best is None or hp < self.foe_best:
+                self.foe_best = hp
+            recovered = hp - self.foe_best
+            need = 10 * ((hp + SENTINEL_DAMAGE - 1) // SENTINEL_DAMAGE)
+            try:
+                banked = ct.get_global_ammo()
+            except Exception:
+                banked = need
+            if recovered >= RISEN_EVIDENCE and banked < need:
+                return
 
         for key in self.enemy_tiles:
             spot = Position(key[0], key[1])
