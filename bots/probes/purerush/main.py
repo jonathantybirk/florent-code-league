@@ -1,0 +1,1325 @@
+"""Sentinel rush: one Builder walks to the enemy Core and stands up four Sentinels firing into it.
+
+THE MATH (all of it measured in-engine on fcode 2.3.9, not taken from the docs):
+
+    starting titanium                        500
+    spawn one Builder            30 Ti       scale 1.00 -> 1.20
+    Sentinel 1..4         36+42+47+53 Ti     scale 1.20 -> 2.00
+    ammunition                  280 Ti       28 shots x 10 ammo
+                                ---
+    total                       488 Ti       margin +12 before any income
+
+Passive income is 10 Ti / 4 rounds, and the walk is 9-44 rounds (median 23 over the pool), so the
+real margin on arrival is +62 to +137 Ti -- six to thirteen spare shots.
+
+WHY EXACTLY FOUR.  A Sentinel deals 18 damage every 2 rounds, so four of them is 36 HP/round.  The
+enemy Core's 2x2 footprint has eight orthogonal neighbours, and a Builder heals 4 HP for 1 Ti, so
+the most the opponent can possibly mend is 32 HP/round.  Three Sentinels (27/round) lose to a full
+heal ring.  Four is the smallest number that kills through one.
+
+Ammunition, not damage, is the binding cost: 280 Ti of it is needed no matter how many turrets fire,
+because it scales with the Core's 500 HP and not with our DPS.  More Sentinels buy speed, not reach.
+
+GEOMETRY.  A Sentinel hits a single-tile-wide ray along its fixed facing, out to r^2 <= 32, and the
+ray is never blocked -- measured: a barrier at range 3 behind the target took no damage, so a shot
+hits only the tile it names, but walls and units in between do not stop it.
+
+So the Builder precomputes EVERY tile that can shoot the Core, with the facing that does it, then
+walks to whichever of them has the most buildable neighbours and fills those neighbours in.  Four
+builds, ideally no steps between them.  Diagonal facings are legal for turrets, which is what makes
+dense clusters common right beside the Core.  Turrets are impassable, so each placement pushes the
+Builder onto a different neighbour by itself.
+
+There is deliberately NO fallback target: a shot spent on a conveyor is a shot the Core does not
+take, and ammunition is the binding constraint.
+
+The enemy Core is derived at round 0 from map symmetry, never scouted -- see `_enemy_core`.  The
+Core publishes it to the store, because it is the only unit that always knows where our own Core is.
+"""
+
+from fcode import Controller, Direction, Environment, EntityType, Position
+
+try:
+    from terrain import INDEX as _MAP_INDEX, WALLS as _MAP_WALLS
+except Exception:          # unknown deployment -- fall back to observation
+    _MAP_INDEX, _MAP_WALLS = {}, {}
+
+# ---------------------------------------------------------------------------- tuning
+SENTINEL_TARGET = 4        # see "WHY EXACTLY FOUR" above
+MAX_RANGE_SQ = 32          # Sentinel attack radius^2
+KILL_AMMO = 280            # 28 Sentinel shots: what a full-health 500 HP Core costs
+AMMO_CAP = 340             # leave a little titanium for mending the ring
+REPAIR_RESERVE = 40
+REPLACE_BUILDER = True     # re-spawn a dead Builder while the ring is unfinished
+UNKNOWN_COST = 3           # what a tile we have never seen costs, against 1 for one we have
+THREAT_COST = 8            # detour a Builder will accept to stay out of a threatened tile
+ANCHOR_BONUS = 2           # steps of walking each extra buildable neighbour is worth
+USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known pool
+ECON_BACKSTOP = 260        # pivot regardless if we have never even seen their Core by here
+HEAL_EVIDENCE = 60         # HP their Core may regain before we call the rush dead
+NEARLY_DEAD = 200          # never abandon a rush while their Core is under this
+SPEND_MULTIPLE = 1.6       # kill budgets we will spend before admitting it is not working
+ECON_BUILDERS = 0         # Builders devoted to mining and mending once that happens.
+                           # hildr -- the build currently carrying our ladder rank -- runs the
+                           # IDENTICAL 1-Builder 4-Sentinel rush we do (first turret r20-36) and
+                           # differs ONLY in what it does when that rush fails: 10-11 Builders,
+                           # 24-35 conveyors, 2-3 Harvesters, and it wins on titanium at round 813.
+                           # We had built the same shape at a third of the scale.
+ECON_RESERVE = 60          # working capital kept liquid for Builders, belts and mending.
+                           # At 140 the menders' own spending (752 heals in one game)
+                           # kept the balance under the reserve permanently, so no
+                           # titanium ever became ammunition and the ring sat silent
+                           # for 348 straight rounds.
+HARVESTER_TARGET = 1       # seams PER BUILDER -- with ECON_BUILDERS that is the fleet cap
+MAX_CHAIN = 12             # longest belt worth laying -- a conveyor is 3 Ti and 1% of scale.
+                           # Six was sized for a rush that had already lost; hildr lays 24-35 in a
+                           # long game. Unbounded, four Builders once laid 21 on paths, so it is
+                           # capped rather than free.
+CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
+
+SLOT_BUILT = 0             # Sentinels standing, written by the Builder
+SLOT_BUILDER = 1           # Builder heartbeat: round + 1
+SLOT_ENEMY = 2             # enemy Core, packed (x + 1) * 64 + y, published by our Core
+SLOT_FOE_HP = 3            # their Core's hit points + 1, published by whichever turret sees it
+SLOT_PIVOT = 4             # 1 once the rush is judged dead; never clears
+
+
+def _pack(pos):
+    return (pos.x + 1) * 64 + pos.y
+
+
+def _unpack(word):
+    return None if word <= 0 else (word // 64 - 1, word % 64)
+
+CARDINALS = (
+    (Direction.NORTH, 0, -1),
+    (Direction.SOUTH, 0, 1),
+    (Direction.EAST, 1, 0),
+    (Direction.WEST, -1, 0),
+)
+
+# A Sentinel's facing may be diagonal even though the Builder that places it may not move that way.
+RAYS = (
+    (Direction.NORTH, 0, -1), (Direction.SOUTH, 0, 1),
+    (Direction.EAST, 1, 0), (Direction.WEST, -1, 0),
+    (Direction.NORTHEAST, 1, -1), (Direction.NORTHWEST, -1, -1),
+    (Direction.SOUTHEAST, 1, 1), (Direction.SOUTHWEST, -1, 1),
+)
+
+# (width, height, own_core_x, own_core_y) -> 'R' rotational / 'H' horizontal / 'V' vertical.
+# The 15-map competition pool, both seats. Unknown maps fall through to _guess_symmetry.
+_SYM = {
+    (20, 20, 9, 1): 'V', (20, 20, 9, 17): 'V',
+    (26, 12, 2, 5): 'H', (26, 12, 22, 5): 'H',
+    (20, 20, 2, 1): 'R', (20, 20, 16, 17): 'R',
+    (30, 30, 14, 2): 'V', (30, 30, 14, 26): 'V',
+    (18, 18, 2, 8): 'H', (18, 18, 14, 8): 'H',
+    (12, 12, 1, 1): 'R', (12, 12, 9, 9): 'R',
+    (20, 20, 1, 16): 'R', (20, 20, 17, 2): 'R',
+    (24, 24, 4, 4): 'R', (24, 24, 18, 18): 'R',
+    (28, 18, 2, 8): 'H', (28, 18, 24, 8): 'H',
+    (30, 30, 2, 2): 'R', (30, 30, 26, 26): 'R',
+    (24, 24, 1, 11): 'H', (24, 24, 21, 11): 'H',
+    (16, 16, 7, 1): 'V', (16, 16, 7, 13): 'V',
+    (22, 22, 9, 2): 'V', (22, 22, 9, 18): 'V',
+    (30, 30, 2, 14): 'H', (30, 30, 26, 14): 'H',
+    (30, 30, 3, 3): 'R', (30, 30, 25, 25): 'R',
+}
+
+
+def _guess_symmetry(w, h, cx, cy):
+    """Fallback for a map not in the table.
+
+    A Core cannot be its own mirror image, so an axis we sit centred on is ruled out. Whatever
+    survives, prefer rotational: it is the most common kind in the pool and it is the reading that
+    puts the enemy furthest away, which is the safe way to be wrong.
+    """
+    horizontal_ok = (w - 2 - cx) != cx
+    vertical_ok = (h - 2 - cy) != cy
+    if horizontal_ok and vertical_ok:
+        return 'R'
+    if horizontal_ok:
+        return 'H'
+    return 'V'
+
+
+def _enemy_core(ct, own):
+    """The enemy Core's north-west corner, derived rather than scouted.
+
+    Terrain on every pool map is exactly symmetric under x -> W-1-x, but the Core is 2x2 and is
+    reported by its north-west corner, so the mirror of the block [x, x+1] is [W-2-x, W-1-x] and
+    the corner lands on W-2-x. Verified against all 15 live maps and all 42 entries of the retired
+    pool's table: 57 of 57.
+    """
+    w, h = ct.get_map_width(), ct.get_map_height()
+    kind = _SYM.get((w, h, own.x, own.y)) or _guess_symmetry(w, h, own.x, own.y)
+    if kind == 'H':
+        return kind, Position(w - 2 - own.x, own.y)
+    if kind == 'V':
+        return kind, Position(own.x, h - 2 - own.y)
+    return kind, Position(w - 2 - own.x, h - 2 - own.y)
+
+
+def _mirror(kind, w, h, key):
+    """The tile that terrain symmetry says is identical to `key`.
+
+    TERRAIN reflects about W-1, the Core pair about W-2 -- the two differ because the Core is 2x2
+    and is named by its north-west corner. Measured over the whole pool, terrain under W-1 has
+    exactly zero mismatched tiles, so this is an equality, not a heuristic.
+    """
+    if kind == 'H':
+        return (w - 1 - key[0], key[1])
+    if kind == 'V':
+        return (key[0], h - 1 - key[1])
+    return (w - 1 - key[0], h - 1 - key[1])
+
+
+def _footprint(nw):
+    return ((nw.x, nw.y), (nw.x + 1, nw.y), (nw.x, nw.y + 1), (nw.x + 1, nw.y + 1))
+
+
+class Player:
+    def __init__(self):
+        self.kind = None
+        self.round = 0
+        # core
+        self.spawned = 0
+        self.econ = 0
+        self.pivoted = False        # latched once the rush is judged dead
+        self.foe_min = None         # lowest enemy Core HP any turret has reported
+        self.converted = 0          # titanium turned into ammunition so far
+        # builder
+        self.home = None
+        self.enemy = None
+        self.enemy_tiles = ()
+        self.mine_tiles = ()
+        self.role = None
+        self.chain = None           # [ore, c1 .. ck] with ck beside our Core
+        self.mined = 0              # seams this Builder has taken
+        self.sym = 'R'
+        self.seen = set()           # every tile ever in vision -- routing prefers these
+        self.walls = set()          # confirmed WALL
+        self.ore = set()            # ORE_TITANIUM tiles, for the economy phase
+        self.blocked = set()        # cannot WALK here: barriers, harvesters, turrets, cores
+        self.occupied = set()       # cannot BUILD here: the above plus conveyors and splitters
+        self.built = 0
+        self.width = 0
+        self.height = 0
+        self.spots = {}             # tile -> facing that puts the Core on its ray
+        self.turrets = {}           # enemy turret id -> (pos, facing, covered tiles)
+        self.thrown_from = set()    # tiles an enemy Launcher has actually grabbed us from
+        self.last_pos = None
+        self.goal = None            # this round's destination tile
+        self.path = []              # cached route, held until genuinely obstructed
+        self._dist = {}             # this round's flood, shared by lane scoring and movement
+        self._came = {}
+
+    # ------------------------------------------------------------------ entry
+    def run(self, ct: Controller) -> None:
+        """An uncaught exception deletes the unit from the match for the rest of the game."""
+        try:
+            self._run(ct)
+        except Exception:
+            pass
+
+    def _run(self, ct):
+        if self.kind is None:
+            self.kind = ct.get_entity_type()
+        self.round = ct.get_current_round()
+        if self.kind == EntityType.CORE:
+            self._core(ct)
+        elif self.kind == EntityType.BUILDER_BOT:
+            self._builder(ct)
+        elif self.kind == EntityType.SENTINEL:
+            self._sentinel(ct)
+
+    # ------------------------------------------------------------------- core
+    def _core(self, ct):
+        # The Core is the only unit that always knows where our Core is, so it is the only unit
+        # that can derive the enemy Core without guessing. Everyone else reads it from here.
+        if self.enemy is None:
+            try:
+                self.sym, self.enemy = _enemy_core(ct, ct.get_position())
+            except Exception:
+                self.enemy = None
+        if self.enemy is not None:
+            try:
+                ct.write_store(SLOT_ENEMY, _pack(self.enemy))
+            except Exception:
+                pass
+        built = 0
+        try:
+            built = ct.read_store(SLOT_BUILT)
+        except Exception:
+            built = 0
+        self._keep_builder(ct, built)
+        self._keep_econ(ct)
+        self._feed_ammo(ct, built)
+
+    def _rush_is_dead(self, ct):
+        """Has the rush failed? Judged on evidence, never on the clock.
+
+        A round number is the wrong trigger and a dangerous one. Some of these games are still being
+        won at round 100, and on valkyrie we had their Core down to 46 HP -- six shots from the win --
+        which a round-70 switch would have walked away from to go mining.
+
+        The direct evidence is available: our Sentinels stand next to their Core, so they can read
+        its hit points and publish them. Then
+
+          * their Core RECOVERING is proof of failure. Healing returns 4 HP per Ti against our 1.8,
+            so once the line turns upward we are losing the exchange and no amount of patience fixes
+            it. Measured on the ladder, theirs went 174 -> 500 while ours went 284 -> 50.
+          * spending well past a full kill budget with their Core still healthy says the same thing
+            in titanium rather than in hit points.
+          * and a backstop, for the case where we never got close enough to see the Core at all.
+
+        Latched: a rush that has failed does not un-fail.
+        """
+        if self.pivoted:
+            return True
+        why = None
+        try:
+            seen = ct.read_store(SLOT_FOE_HP)
+        except Exception:
+            seen = 0
+        if seen:
+            now = seen - 1
+            if self.foe_min is None or now < self.foe_min:
+                self.foe_min = now
+            elif now > self.foe_min + HEAL_EVIDENCE and now > NEARLY_DEAD:
+                # Recovery alone is not enough to quit on. A Core we drove to 46 HP that mends back
+                # to 106 has "recovered 60" and is still six shots from dead -- walking away from
+                # that to go mining would throw a won game, which is the exact failure a round
+                # counter would have had. Only abandon a rush whose target is BOTH recovering and
+                # still healthy.
+                why = "healing"
+        if why is None and self.converted > KILL_AMMO * SPEND_MULTIPLE:
+            if self.foe_min is None or self.foe_min > 120:
+                why = "overspent"
+        if why is None and self.round >= ECON_BACKSTOP:
+            why = "backstop"
+        if why is None:
+            return False
+        self.pivoted = True
+        try:
+            ct.write_store(SLOT_PIVOT, 1)
+        except Exception:
+            pass
+        return True
+
+    def _keep_econ(self, ct):
+        """The rush had its chance. From here it is an attrition war, and attrition is won on
+        income -- which nobody on this ladder bothers to build."""
+        if self.econ >= ECON_BUILDERS or not self._rush_is_dead(ct):
+            return
+        try:
+            if ct.get_global_resources() < ct.get_builder_bot_cost() + 30:
+                return
+        except Exception:
+            return
+        if self._spawn_one(ct):
+            self.econ += 1
+
+    def _keep_builder(self, ct, built):
+        if self.spawned and not REPLACE_BUILDER:
+            return
+        if built >= SENTINEL_TARGET:
+            return
+        if self.spawned:
+            # Only replace one that has actually stopped reporting. The heartbeat is written on
+            # the round the Builder acts and a write lands even on the round its author dies, so
+            # a stamp two rounds stale means gone, not merely busy.
+            try:
+                beat = ct.read_store(SLOT_BUILDER)
+            except Exception:
+                return
+            if beat and self.round - (beat - 1) < 3:
+                return
+            if self.round < 4:
+                return
+        self._spawn_one(ct)
+
+    def _spawn_one(self, ct):
+        """Spawn on the legal tile NEAREST THE ENEMY, not the first one offered.
+
+        get_nearby_tiles returns tiles in position order, so taking the first legal one puts the
+        Builder on whichever side of the Core the coordinate system happens to reach first. For a
+        Core in the north-west that is the far side; for one in the south-east it is the near side.
+        The two seats therefore start with different-length walks on maps that are otherwise
+        exactly symmetric, and the rush is a race: measured against `idle`, seat B killed 3 to 5
+        rounds sooner than seat A on every single map in the pool, and in a mirror the earlier ring
+        wins outright.
+
+        Picking by distance to the enemy Core costs nothing and is the same choice from both seats.
+        """
+        try:
+            if ct.get_global_resources() < ct.get_builder_bot_cost():
+                return False
+            if self.enemy is None:
+                self.sym, self.enemy = _enemy_core(ct, ct.get_position())
+            best = None
+            chosen = None
+            for tile in ct.get_nearby_tiles(2):
+                if not ct.can_spawn(tile):
+                    continue
+                gap = abs(tile.x - self.enemy.x) + abs(tile.y - self.enemy.y)
+                if best is None or gap < best:
+                    best, chosen = gap, tile
+            if chosen is None:
+                return False
+            ct.spawn_builder(chosen)
+            self.spawned += 1
+            return True
+        except Exception:
+            return False
+
+    def _feed_ammo(self, ct, built):
+        """Convert titanium into ammunition, but never into the ring's own build cost.
+
+        Costs rise 20% of base per turret built, so the remaining Sentinels cost more than the one
+        priced right now; reserve for the whole rest of the ring before converting a single point.
+
+        The repair reserve is held back ONLY once enough ammunition to finish the Core is already
+        banked. Holding 40 Ti unconditionally cost the kill outright: 500 - 30 - 178 leaves 292,
+        and 292 - 40 = 252 ammo is 25 shots for 450 damage against 500 HP. On skald, the shortest
+        walk in the pool, there is no travel income to cover the gap -- the ring went up on round
+        20, ran dry on round 40, and then chipped at one shot per four rounds of passive income
+        for the rest of the match. Mending a turret is worth nothing if the Core survives.
+        """
+        try:
+            if self.pivoted:
+                # THE PIVOT. Past this point the rush has failed. Keep ECON_RESERVE liquid so the
+                # Builders can go on mining and mending -- mending returns 4 HP per Ti against a
+                # Sentinel's 1.8 -- and turn everything ABOVE that into ammunition so the ring
+                # keeps firing.
+                #
+                # ECON_RESERVE is a floor on working capital, NOT a ceiling on conversion. Treating
+                # it as a ceiling was the whole bug: against the top of the ladder we mined four
+                # seams, laid twenty-nine conveyors, and then sat on 104 titanium at round 200 with
+                # zero heals cast, because the ammo floor stopped conversion and nothing else ever
+                # claimed the money. We mined, hoarded, and died solvent.
+                # Hold back enough to actually RAISE the economy we just decided we need.
+                # Converting everything above ECON_RESERVE starved the econ phase of its own
+                # start-up cost: a Builder is ~60 Ti at scale 2.0 and `_keep_econ` wants
+                # builder_cost + 30, but the balance was pinned at the 60-point reserve every
+                # round, so the first econ Builder was never affordable and the whole phase never
+                # ran. Measured: 1 Builder and 4 Sentinels in a 1000-turn loss, zero heals, while
+                # 2,720 ammunition went out of the barrel.
+                reserve = ECON_RESERVE
+                if self.econ < ECON_BUILDERS:
+                    reserve += ct.get_builder_bot_cost() + 30
+                spare = ct.get_global_resources() - reserve
+                if spare < 10:
+                    return
+                if ct.can_convert_ammo(spare):
+                    ct.convert_ammo(spare)
+                    self.converted += spare
+                return
+            if ct.get_global_ammo() >= AMMO_CAP:
+                return
+            remaining = SENTINEL_TARGET - built
+            reserve = REPAIR_RESERVE if ct.get_global_ammo() >= KILL_AMMO else 0
+            if remaining > 0:
+                unit = ct.get_sentinel_cost()
+                reserve += remaining * unit + 3 * remaining * (remaining - 1)
+                if REPLACE_BUILDER:
+                    reserve += ct.get_builder_bot_cost()
+            spare = ct.get_global_resources() - reserve
+            if spare < 10:
+                return
+            amount = min(spare, AMMO_CAP - ct.get_global_ammo())
+            if amount >= 10 and ct.can_convert_ammo(amount):
+                ct.convert_ammo(amount)
+                self.converted += amount
+        except Exception:
+            return
+
+    # ---------------------------------------------------------------- builder
+    def _builder(self, ct):
+        here = ct.get_position()
+        if self.home is None:
+            self._orient(ct, here)
+        try:
+            ct.write_store(SLOT_BUILDER, self.round + 1)
+        except Exception:
+            pass
+
+        if self.role is None:
+            # Anything spawned after the pivot exists only because the rush was judged dead,
+            # so its job is the long game. The Core latches that judgement in the store, so
+            # this needs no negotiation and no clock.
+            try:
+                self.role = 'econ' if ct.read_store(SLOT_PIVOT) else 'attack'
+            except Exception:
+                self.role = 'attack'
+
+        # Learn where we got thrown. The static pickup ring only covers Launchers we have SEEN;
+        # a jump of more than one tile in a round proves one reached us from somewhere, whether we
+        # spotted it or not. Remembering the tile we were grabbed from is evidence no amount of
+        # modelling supplies, and the cached route is void anyway once we are somewhere else.
+        last = self.last_pos
+        if last is not None and abs(last[0] - here.x) + abs(last[1] - here.y) > 1:
+            self.thrown_from.add(last)
+            self.path = []
+        self.last_pos = (here.x, here.y)
+        self._observe(ct, here)
+        if self.role == 'econ':
+            self._dist, self._came = self._flood(here, None)
+            self._econ(ct, here)
+            return
+        self._dist, self._came = self._flood(here, self._threats(ct))
+
+        # A build and a move are mutually exclusive in one round, and the ring is worth more than
+        # a step, so try to build first.
+        if self.built < SENTINEL_TARGET:
+            # Place first. A build and a move are mutually exclusive in one round, and a turret
+            # shooting the Core is worth more than a step toward a tidier spot for one.
+            # Choose the anchor BEFORE building, and do not build on a worse tile than the one we
+            # are walking to. Placing first meant the Builder never arrived: it took whatever
+            # firing spot happened to be beside it en route, and on helheim that was (10,6), which
+            # supports two turrets, when (11,5) one tile further supports three. It then spent
+            # fifteen rounds walking around the Core for the rest of the ring. Ordering the two
+            # calls the other way round is the whole fix -- a turret placed a round earlier is
+            # worth 9 HP/round, and a cluster stranded is worth fifteen rounds.
+            # ALWAYS place the first turret if this tile can hold one. Holding out for a better
+            # anchor is right for turrets 2-4 and catastrophic for the first: the anchor-first rule
+            # above made the Builder refuse to build until it reached a higher-scoring tile, and
+            # when an enemy Builder parked on the route it simply never arrived. Measured: it sat
+            # idle from round 11 to 27 on helheim, and across the panel there were 15 games where
+            # the first Sentinel was never built at all -- of which we won zero.
+            #
+            # One turret firing now is 9 HP/round. A perfect cluster that never materialises is 0.
+            if self.built == 0 and self._anchor_value((here.x, here.y)):
+                if self._place(ct, here):
+                    return
+            self.goal = self._next_stand(here)
+            at_anchor = self.goal is None or (here.x, here.y) == self.goal
+            if at_anchor or self._anchor_value((here.x, here.y)) >= self._anchor_value(self.goal):
+                if self._place(ct, here):
+                    return
+            if self._advance(ct, here):
+                return
+            self._break_through(ct, here)
+            return
+        self._tend(ct, here)
+
+    def _orient(self, ct, here):
+        self.home = here
+        self.width, self.height = ct.get_map_width(), ct.get_map_height()
+        core = here
+        try:
+            for uid in ct.get_nearby_buildings():
+                if ct.get_entity_type(uid) == EntityType.CORE and ct.get_team(uid) == ct.get_team():
+                    core = ct.get_position(uid)
+                    break
+        except Exception:
+            core = here
+        self.mine_tiles = _footprint(core)
+        self.sym, self.enemy = _enemy_core(ct, core)
+        try:
+            told = _unpack(ct.read_store(SLOT_ENEMY))
+        except Exception:
+            told = None
+        if told is not None:
+            self.enemy = Position(told[0], told[1])
+        self.enemy_tiles = _footprint(self.enemy)
+        self._seed_terrain(core)
+        self.spots = self._firing_spots()
+        for tile in self.enemy_tiles:
+            self.blocked.add(tile)
+            self.occupied.add(tile)
+        for tile in _footprint(core):
+            self.blocked.add(tile)
+            self.occupied.add(tile)
+
+    def _firing_spots(self):
+        """Every tile from which a Sentinel could hit the Core, with the facing that does it.
+
+        Replaces the single committed "lane". A lane is four specific tiles, so one enemy building
+        dropped on the first of them stops the whole rush: on holmgang the Builder reached its
+        stand tile on round 16 and then sat there for the remaining 984 rounds, punching the
+        obstruction, its own action cooldown blocking the build it was waiting to make. There are
+        dozens of firing spots around a Core, so blocking one is not worth noticing.
+
+        Pure geometry, no API calls: a Sentinel at n facing D hits T when T = n + k*D within
+        r^2 <= 32 -- k <= 5 straight, k <= 4 diagonal. Walls in between do not matter, the shot
+        goes through them; a wall only rules out standing there.
+        """
+        spots = {}
+        for target in self.enemy_tiles:
+            for facing, dx, dy in RAYS:
+                span = 1 if (dx == 0 or dy == 0) else 2
+                k = 1
+                while k * k * span <= MAX_RANGE_SQ:
+                    key = (target[0] - dx * k, target[1] - dy * k)
+                    k += 1
+                    if not (0 <= key[0] < self.width and 0 <= key[1] < self.height):
+                        continue
+                    if key in self.walls or key in self.enemy_tiles:
+                        continue
+                    spots.setdefault(key, facing)
+        return spots
+
+    def _seed_terrain(self, core):
+        """Load the pool's wall layout, if this is a map we ship.
+
+        Walls never change, so knowing them up front costs the opponent nothing it could not also
+        look up -- the pool is a public download. What it buys is a true shortest path from round 0
+        instead of thirty rounds of the Builder discovering that both ways round a wall look
+        equally good while it is standing still in net terms.
+        """
+        if not USE_BUNDLED_TERRAIN:
+            return
+        found = _MAP_INDEX.get((self.width, self.height, core.x, core.y))
+        if found is None:
+            return
+        bits = _MAP_WALLS.get(found[1])
+        if bits is None or bits[0] != self.width or bits[1] != self.height:
+            return
+        grid = bits[2]
+        for y in range(self.height):
+            row = y * self.width
+            for x in range(self.width):
+                key = (x, y)
+                self.seen.add(key)
+                if grid[row + x] == '1':
+                    self.walls.add(key)
+                elif grid[row + x] == '2':
+                    self.ore.add(key)
+
+    # ------------------------------------------------------------------ economy
+    def _plan_chain(self, ct):
+        """Pick an ore tile and the belt that carries it home.
+
+        A Harvester only pays out to an ADJACENT BUILDING, and measured over the whole pool no ore
+        tile touches a Core on any map from either seat -- the nearest is 2 to 10 steps away. So
+        mining here always means a Harvester plus a conveyor run, never a Harvester on its own.
+
+        Returns [ore, c1, ..., ck] with ck beside our Core; resources flow along that list.
+        """
+        ring = []
+        for key in self.mine_tiles:
+            for _d, dx, dy in CARDINALS:
+                step = (key[0] + dx, key[1] + dy)
+                if step not in self.mine_tiles and self._passable(step):
+                    ring.append(step)
+        if not ring:
+            return None
+        dist = {}
+        came = {}
+        frontier = []
+        for key in ring:
+            dist[key] = 0
+            came[key] = None
+            frontier.append(key)
+        goal = None
+        while frontier and goal is None:
+            nxt = []
+            for key in frontier:
+                if key in self.ore and key not in self.occupied:
+                    goal = key
+                    break
+                for _d, dx, dy in CARDINALS:
+                    step = (key[0] + dx, key[1] + dy)
+                    if step in dist or step in self.walls or step in self.mine_tiles:
+                        continue
+                    if not (0 <= step[0] < self.width and 0 <= step[1] < self.height):
+                        continue
+                    dist[step] = dist[key] + 1
+                    came[step] = key
+                    nxt.append(step)
+            if goal is not None:
+                break
+            frontier = nxt
+        if goal is None:
+            return None
+        chain = []
+        walk = goal
+        while walk is not None:
+            chain.append(walk)
+            walk = came[walk]
+        return chain
+
+    def _econ(self, ct, here):
+        """Mine, then mend. The long game is decided by titanium, not by damage.
+
+        Measured against the top of the ladder: they spent 510 Ti of mending to erase 1090 Ti of
+        our shooting, because mending returns 4 HP per Ti against a Sentinel's 1.8. Nobody up there
+        builds a single Harvester, so both sides run on the same 2.5 Ti/round of passive income and
+        the more efficient spender simply wins. One Harvester doubles that income.
+        """
+        # Mending outranks mining whenever the Core is actually hurt. Four HP per titanium is the
+        # best rate on the board, and a Harvester that finishes after the Core dies is worth zero.
+        if self._core_hurt(ct) and self._mend(ct, here):
+            return
+
+        if self.mined >= HARVESTER_TARGET:
+            # Enough income. Anything further is belt that costs 3 Ti and 1% of cost scale apiece
+            # to defend; stand on the Core and keep it alive instead.
+            self._mend(ct, here)
+            return
+
+        if self.chain is None:
+            self.chain = self._plan_chain(ct) or []
+            if len(self.chain) > MAX_CHAIN:
+                self.chain = []
+
+        # Lay the belt from the Core end outward, so the final tile faces the Core itself.
+        for idx in range(len(self.chain) - 1, 0, -1):
+            key = self.chain[idx]
+            if key in self.occupied:
+                continue
+            onward = self.chain[idx - 1]
+            facing = None
+            for direction, dx, dy in CARDINALS:
+                if (key[0] + dx, key[1] + dy) == onward:
+                    facing = direction
+                    break
+            if facing is None:
+                continue
+            if abs(key[0] - here.x) + abs(key[1] - here.y) == 1:
+                try:
+                    if ct.can_build_conveyor(Position(key[0], key[1]), facing):
+                        ct.build_conveyor(Position(key[0], key[1]), facing)
+                        self.occupied.add(key)
+                        return
+                except Exception:
+                    pass
+            self._walk_beside(ct, here, key)
+            return
+
+        if self.chain:
+            ore = self.chain[0]
+            if ore not in self.occupied:
+                if abs(ore[0] - here.x) + abs(ore[1] - here.y) == 1:
+                    try:
+                        if ct.can_build_harvester(Position(ore[0], ore[1])):
+                            ct.build_harvester(Position(ore[0], ore[1]))
+                            self.occupied.add(ore)
+                            self.mined += 1
+                            self.chain = None
+                            return
+                    except Exception:
+                        pass
+                self._walk_beside(ct, here, ore)
+                return
+            self.chain = None
+            return
+        self.mined = HARVESTER_TARGET      # nothing minable in reach; switch to mending for good
+        self._mend(ct, here)
+
+    def _walk_beside(self, ct, here, key):
+        """One step toward standing NEXT TO a tile -- building never happens from on top of it."""
+        best = None
+        chosen = None
+        for _d, dx, dy in CARDINALS:
+            step = (key[0] + dx, key[1] + dy)
+            cost = self._dist.get(step)
+            if cost is not None and (best is None or cost < best):
+                best, chosen = cost, step
+        if chosen is None or chosen == (here.x, here.y):
+            return
+        path = self._trace(self._came, here, chosen)
+        if path:
+            self._step_to(ct, here, path[0])
+
+    def _core_hurt(self, ct):
+        """Is our Core damaged? Only answerable when we can see it, which is where menders live."""
+        try:
+            for uid in ct.get_nearby_buildings():
+                if ct.get_entity_type(uid) == EntityType.CORE and ct.get_team(uid) == ct.get_team():
+                    return ct.get_hp(uid) < ct.get_max_hp(uid)
+        except Exception:
+            return False
+        return False
+
+    def _mend(self, ct, here):
+        """Keep the Core alive. 4 HP per Ti is the best rate on the board. True if we acted."""
+        for _d, dx, dy in CARDINALS:
+            spot = Position(here.x + dx, here.y + dy)
+            try:
+                if (spot.x, spot.y) in self.mine_tiles and ct.can_heal(spot):
+                    ct.heal(spot)
+                    return True
+            except Exception:
+                continue
+        goal = None
+        best = None
+        for key in self.mine_tiles:
+            for _d, dx, dy in CARDINALS:
+                step = (key[0] + dx, key[1] + dy)
+                cost = self._dist.get(step)
+                if cost is not None and (best is None or cost < best):
+                    best, goal = cost, step
+        if goal is None or goal == (here.x, here.y):
+            return False
+        path = self._trace(self._came, here, goal)
+        if path:
+            return self._step_to(ct, here, path[0])
+        return False
+
+    def _observe(self, ct, here):
+        """Fold this round's vision into the map. Terrain never changes; buildings do, so a tile
+        that has lost its building must be released again or the router will avoid a hole forever.
+        """
+        try:
+            tiles = ct.get_nearby_tiles()
+        except Exception:
+            return
+        mine = ct.get_team()
+        for pos in tiles:
+            key = (pos.x, pos.y)
+            self.seen.add(key)
+            twin = _mirror(self.sym, self.width, self.height, key)
+            self.seen.add(twin)
+            try:
+                env = ct.get_tile_env(pos)
+                if env == Environment.WALL:
+                    self.walls.add(key)
+                    self.walls.add(twin)
+                    continue
+                if env == Environment.ORE_TITANIUM:
+                    self.ore.add(key)
+                    self.ore.add(twin)
+            except Exception:
+                continue
+            if key in self.enemy_tiles:
+                continue
+            try:
+                bid = ct.get_tile_building_id(pos)
+            except Exception:
+                continue
+            if bid is None:
+                self.blocked.discard(key)
+                self.occupied.discard(key)
+            else:
+                # Two different questions. A conveyor is WALKABLE, so it never belongs in
+                # `blocked` -- but it is still a building, so nothing can be built on top of it.
+                # Conflating the two stalled the rush outright: a conveyor tile looked like a free
+                # firing spot, can_build_sentinel refused it every round, and `_next_stand` kept
+                # answering "the tile you are already standing on". Against a bot that lays belts
+                # across the map that is most of the approach.
+                self.occupied.add(key)
+                blocks = True
+                try:
+                    kind = ct.get_entity_type(bid)
+                    blocks = kind not in (EntityType.CONVEYOR, EntityType.SPLITTER)
+                except Exception:
+                    blocks = True
+                if blocks:
+                    self.blocked.add(key)
+                else:
+                    self.blocked.discard(key)
+        # our own Core is permanently impassable, including to us
+        try:
+            for uid in ct.get_nearby_buildings():
+                if ct.get_entity_type(uid) == EntityType.CORE:
+                    for tile in _footprint(ct.get_position(uid)):
+                        self.blocked.add(tile)
+        except Exception:
+            pass
+        _ = mine
+
+    # -- lane choice ---------------------------------------------------------
+    def _passable(self, key):
+        if key in self.walls or key in self.blocked:
+            return False
+        return 0 <= key[0] < self.width and 0 <= key[1] < self.height
+
+    def _free_spot(self, key):
+        """Can a Sentinel of ours stand here and see the Core?"""
+        return (key in self.spots and key not in self.walls
+                and key not in self.occupied
+                and 0 <= key[0] < self.width and 0 <= key[1] < self.height)
+
+    def _place(self, ct, here):
+        """Build on any orthogonally adjacent tile that puts the Core on the new turret's ray.
+
+        No lane and no committed geometry -- just "is this neighbour a firing spot, and will the
+        engine let me build there". But the ORDER matters, because turrets are impassable and we
+        can wall ourselves out of our own cluster.
+
+        Measured on helheim: the Builder stands on (10,6), whose two firing-spot neighbours are
+        (10,5) and (11,6), and correctly builds both. (10,5) was also the only tile from which
+        (10,4) and (11,5) could be reached -- so placing a turret on it sealed off the other half
+        of the cluster, and the Builder then walked fifteen rounds around the Core to finish the
+        ring. The floor for that map is 13 rounds; we took 30.
+
+        So prefer the candidate whose loss costs us the fewest FUTURE spots. Degree is the wrong
+        proxy -- (10,5) has only two onward neighbours and is still the doorway -- what matters is
+        whether blocking the tile cuts us off, which is an articulation question. So for each
+        candidate we block it and count how many free spots we could still stand next to. Four
+        small sweeps on the rounds we are actually building; nothing during the walk.
+        """
+        options = []
+        for _d, dx, dy in CARDINALS:
+            key = (here.x + dx, here.y + dy)
+            if not self._free_spot(key):
+                continue
+            options.append((-self._reach_after(here, key), key))
+        options.sort()
+        for _reach, key in options:
+            if not self._free_spot(key):
+                continue
+            facing = self.spots[key]
+            spot = Position(key[0], key[1])
+            try:
+                if not ct.can_build_sentinel(spot, facing):
+                    continue
+                ct.build_sentinel(spot, facing)
+            except Exception:
+                continue
+            self.built += 1
+            self.blocked.add(key)
+            self.occupied.add(key)
+            self.path = []
+            try:
+                ct.write_store(SLOT_BUILT, self.built)
+            except Exception:
+                pass
+            return True
+        return False
+
+    def _reach_after(self, here, blocked_key):
+        """How many free firing spots would still be usable if we built on `blocked_key`.
+
+        Usable means: some tile we can still walk to is orthogonally adjacent to it. Placing a
+        turret on a doorway can strand half a cluster, and the Builder then walks the long way
+        round -- fifteen rounds of it on helheim.
+        """
+        start = (here.x, here.y)
+        seen = {start}
+        frontier = [start]
+        while frontier:
+            nxt = []
+            for key in frontier:
+                for _d, dx, dy in CARDINALS:
+                    step = (key[0] + dx, key[1] + dy)
+                    if step in seen or step == blocked_key:
+                        continue
+                    if not self._passable(step):
+                        continue
+                    seen.add(step)
+                    nxt.append(step)
+            frontier = nxt
+        usable = 0
+        for spot in self.spots:
+            if spot == blocked_key or not self._free_spot(spot):
+                continue
+            for _d, dx, dy in CARDINALS:
+                if (spot[0] + dx, spot[1] + dy) in seen:
+                    usable += 1
+                    break
+        return usable
+
+    def _next_stand(self, here):
+        """The anchor: a tile to stand on whose NEIGHBOURS are firing spots -- as many as possible.
+
+        A Builder can only build on the four tiles orthogonally beside it, so a tile with all four
+        neighbours firing spots lets the whole ring go up without moving once: four builds, four
+        rounds, no repositioning. Settling for the nearest tile with any single free neighbour
+        instead costs a step between most placements.
+
+        Diagonal facings are what make dense anchors common. Beside the Core almost every tile sits
+        on some ray to one of its four squares, so clusters of three and four are the normal case
+        rather than a lucky one.
+
+        Each extra neighbour is worth about the two rounds of shuffling it saves, so that is what a
+        step of walking is traded against.
+        """
+        # NOT committed. Sticking to an anchor until it has no buildable neighbour left was tried
+        # and measured worse: flagship 19/30 -> 15/30, vigil 27/30 -> 23/30. It also failed to fix
+        # the gap it was aimed at. Holding a mediocre anchor costs more than re-deciding does,
+        # because the cheapest cluster genuinely moves as the opponent builds.
+        want = SENTINEL_TARGET - self.built
+        steps = self._steps_from(here)
+        best = None
+        chosen = None
+        for key, cost in steps.items():
+            usable = self._anchor_value(key)
+            if not usable:
+                continue
+            score = cost - ANCHOR_BONUS * min(usable, want)
+            if best is None or score < best:
+                best, chosen = score, key
+        # NOTE: capping the trek for the last turret was tried and MEASURED WORSE -- ring assembly
+        # improved from 8.8 rounds to 7.8, and the panel fell from 152/180 to 149. Three turrets and
+        # a mender loses more damage than four turrets and a hike costs tempo. Faster assembly is
+        # not the same thing as more wins, which is why the ring-speed number is a diagnostic and
+        # not a target.
+        if chosen is not None:
+            return chosen
+        return self._closest_to_core()
+
+    def _anchor_value(self, key):
+        """How many Sentinels could still be planted from this tile."""
+        usable = 0
+        for _d, dx, dy in CARDINALS:
+            if self._free_spot((key[0] + dx, key[1] + dy)):
+                usable += 1
+        return usable
+
+    def _threats(self, ct):
+        """Tiles to keep out of: enemy Builders, and everything a known enemy turret covers.
+
+        Turrets are REMEMBERED, not merely seen. A Builder has 40 HP and a Gunner takes 7 a round,
+        a Sentinel 18 -- so walking back into a lane we already know about is how the whole rush
+        dies. Vision is radius 4.5 and turret reach is 3.6 to 5.7, so a turret that shot at us is
+        routinely out of sight by the time we choose the next step; recomputing the threat map from
+        the current frame alone forgets it immediately and walks straight back in.
+
+        Coverage is computed once when the turret is first identified and cached, because
+        get_attackable_tiles_from is not cheap and a turret's arc only changes if it rotates --
+        which only a Gunner can do, and which shows up as a fresh reading next time we see it.
+        A remembered turret is dropped when we can see its tile and it is empty.
+        """
+        soft = set()
+        try:
+            mine = ct.get_team()
+            for uid in ct.get_nearby_units():
+                if ct.get_team(uid) == mine:
+                    continue
+                kind = ct.get_entity_type(uid)
+                spot = ct.get_position(uid)
+                if kind == EntityType.BUILDER_BOT:
+                    soft.add((spot.x, spot.y))
+                    for _d, dx, dy in CARDINALS:
+                        soft.add((spot.x + dx, spot.y + dy))
+                elif kind == EntityType.LAUNCHER:
+                    # A Launcher does no damage and was therefore invisible to this threat map --
+                    # which is how it became the single largest source of wasted movement in the
+                    # bot. It picks up ANY adjacent Builder, diagonals included, and throws it up
+                    # to five tiles back; our Builder then walks the same ground and is thrown
+                    # again. Measured across 240 games: 1,238 rounds re-walked, 96.5% of all
+                    # revisited tiles, and 35 games livelocked outright.
+                    #
+                    # Its pickup ring is the danger, not its position: standing beside one is what
+                    # loses the game, so the eight tiles around it are what we route away from.
+                    ring = set()
+                    for ax in (-1, 0, 1):
+                        for ay in (-1, 0, 1):
+                            ring.add((spot.x + ax, spot.y + ay))
+                    self.turrets[uid] = ((spot.x, spot.y), None, frozenset(ring))
+                elif kind in (EntityType.GUNNER, EntityType.SENTINEL):
+                    facing = ct.get_direction(uid)
+                    known = self.turrets.get(uid)
+                    if known is None or known[0] != (spot.x, spot.y) or known[1] != facing:
+                        covered = ct.get_attackable_tiles_from(spot, facing, kind)
+                        self.turrets[uid] = ((spot.x, spot.y), facing,
+                                             frozenset((t.x, t.y) for t in covered))
+        except Exception:
+            pass
+
+        stale = []
+        for uid, known in self.turrets.items():
+            spot = Position(known[0][0], known[0][1])
+            try:
+                if ct.is_in_vision(spot) and ct.get_tile_building_id(spot) is None:
+                    stale.append(uid)
+                    continue
+            except Exception:
+                pass
+            soft |= known[2]
+        for uid in stale:
+            del self.turrets[uid]
+        return soft
+
+    def _flood(self, here, soft):
+        """One sweep outward from the Builder, reused by every lane this round.
+
+        Scoring sixteen candidate lanes with a search each was sixteen sweeps a round, which does
+        not fit in 10 ms on a 900-tile map -- and a Builder that overruns is interrupted and loses
+        the turn outright. One sweep answers every lane by lookup instead.
+
+        Threatened tiles cost THREAT_COST extra rather than being impassable. Blocking them
+        outright deadlocks the rush: an opponent whose Builders mill around its own base masks out
+        the entire approach, the stand tile becomes unreachable, and the Builder stops dead. Every
+        single loss against the starter bot was a 1000-round timeout with our Builder alive and the
+        ring never built. Avoid has to mean "prefer another way", never "refuse to move".
+
+        Tiles we have SEEN cost 1; tiles we have not cost UNKNOWN_COST. That asymmetry is what
+        stops the walk oscillating. Priced equally, an unexplored detour always ties or beats the
+        proven route, so every wall the Builder discovers sends it back across the map to try the
+        other side -- longhouse cost 74 rounds to place a turret 38 steps away, replanning 22 times,
+        each replan individually correct. Charging for ignorance makes a corridor the Builder has
+        already walked the cheap one, so the route converges instead of flip-flopping.
+
+        Dial's algorithm rather than a heap: weights are tiny integers and the engine's import
+        surface is not worth risking for heapq. Returns (cost, came_from).
+        """
+        start = (here.x, here.y)
+        dist = {start: 0}
+        came = {start: None}
+        nbuck = UNKNOWN_COST + THREAT_COST + 1
+        buckets = [[] for _ in range(nbuck)]
+        buckets[0].append(start)
+        pending = 1
+        cost = 0
+        limit = 8 * (self.width * self.height + 4)
+        while pending > 0 and cost < limit:
+            bucket = buckets[cost % nbuck]
+            while bucket:
+                key = bucket.pop()
+                pending -= 1
+                if dist.get(key, limit) < cost:
+                    continue                      # superseded by a cheaper route
+                for _d, dx, dy in CARDINALS:
+                    step = (key[0] + dx, key[1] + dy)
+                    if not self._passable(step):
+                        continue
+                    walk = cost + (1 if step in self.seen else UNKNOWN_COST)
+                    if soft and step in soft:
+                        walk += THREAT_COST
+                    if step in self.thrown_from:
+                        walk += THREAT_COST
+                    if walk < dist.get(step, limit):
+                        dist[step] = walk
+                        came[step] = key
+                        buckets[walk % nbuck].append(step)
+                        pending += 1
+            cost += 1
+        return dist, came
+
+    def _steps_from(self, here):
+        """Plain BFS step counts -- ROUNDS of walking, with no cost weighting.
+
+        `_flood` returns a weighted cost (3 per unseen tile, +8 per threatened one) which is right
+        for choosing a route but wrong for choosing a destination: ANCHOR_BONUS is denominated in
+        rounds, so scoring `cost - BONUS * neighbours` was subtracting rounds from a quantity that
+        was not rounds. On helheim that made a 1-neighbour anchor 2 steps away beat a 4-neighbour
+        anchor 7 steps away, and the Builder then spent fourteen consecutive rounds walking an arc
+        around the Core to place its fourth turret.
+        """
+        start = (here.x, here.y)
+        dist = {start: 0}
+        frontier = [start]
+        depth = 0
+        while frontier:
+            depth += 1
+            nxt = []
+            for key in frontier:
+                for _d, dx, dy in CARDINALS:
+                    step = (key[0] + dx, key[1] + dy)
+                    if step in dist or not self._passable(step):
+                        continue
+                    dist[step] = depth
+                    nxt.append(step)
+            frontier = nxt
+        return dist
+
+    def _trace(self, came, here, goal):
+        """Full tile-by-tile route out of a finished sweep, or [] if the goal was not reached."""
+        if goal not in came:
+            return []
+        start = (here.x, here.y)
+        path = []
+        walk = goal
+        while walk is not None and walk != start:
+            path.append(walk)
+            walk = came[walk]
+        path.reverse()
+        return path
+
+    def _path_usable(self, here, goal):
+        """A cached route survives while it still starts next to us, ends at the goal, and is
+        clear. Anything else forces a fresh sweep."""
+        if not self.path or self.path[-1] != goal:
+            return False
+        step = self.path[0]
+        if abs(step[0] - here.x) + abs(step[1] - here.y) != 1:
+            return False
+        for key in self.path[:-1]:
+            if key in self.walls or key in self.blocked:
+                return False
+        return True
+
+    def _closest_to_core(self):
+        """No lane is reachable -- every stand tile is walled or bricked up.
+
+        Fall back to the reachable tile nearest the Core and dig from there. Without this the
+        Builder has no goal at all when an opponent rings its base with barriers: it stops moving,
+        never gets adjacent to anything to punch, and the match runs to the round limit.
+        """
+        best = None
+        chosen = None
+        for key, cost in self._dist.items():
+            gap = max(abs(key[0] - self.enemy.x), abs(key[1] - self.enemy.y))
+            score = (gap, cost)
+            if best is None or score < best:
+                best, chosen = score, key
+        return chosen
+
+    def _advance(self, ct, here):
+        """Walk the cached route, and re-plan ONLY when it is actually obstructed.
+
+        Re-planning every round looks harmless and is not. Unseen tiles are assumed open, so an
+        unexplored detour always prices cheaper than the proven route -- the Builder commits to it,
+        walks until the wall appears, and the original route is now the cheap unexplored one again.
+        On longhouse that livelocked into a tour of the whole map: goal fixed at (22,8) the entire
+        time, zero lane changes, and the distance to it went 20 -> 30 -> 20 -> 10 -> 14 over sixty
+        rounds of moving every single turn. Holding the route until something genuinely blocks it
+        is what makes the walk monotone.
+        """
+        goal = self.goal
+        if goal is None or (here.x, here.y) == goal:
+            return False
+        if not self._path_usable(here, goal):
+            self.path = self._trace(self._came, here, goal)
+            if not self.path:
+                # Cornered by the threat mask -- re-sweep ignoring it and take the risky line.
+                _d, came = self._flood(here, None)
+                self.path = self._trace(came, here, goal)
+        if not self.path:
+            return False
+        if self._step_to(ct, here, self.path[0]):
+            self.path.pop(0)
+            return True
+        self.path = []          # something moved into the way; sweep again next round
+        return False
+
+    def _step_to(self, ct, here, step):
+        for direction, dx, dy in CARDINALS:
+            if (here.x + dx, here.y + dy) != step:
+                continue
+            try:
+                if ct.can_move(direction):
+                    ct.move(direction)
+                    return True
+            except Exception:
+                return False
+            return False
+        return False
+
+    def _break_through(self, ct, here):
+        """Walled in. Punch the thing in the way -- 2 Ti for 2 damage, 15 hits through a barrier.
+
+        Slow and expensive, but a rush that stops moving has already lost, and the alternative is
+        standing still until the match times out.
+
+        Never punch while a buildable firing spot is sitting right next to us. Firing takes the
+        round's action, and the action cooldown then blocks the build we were about to make, which
+        makes us punch again next round -- a stall that looks exactly like being walled in while
+        the spot we wanted stays free the whole time. If a spot is adjacent, the only thing in the
+        way is our own cooldown, and the right move is to wait a round.
+        """
+        for _d, dx, dy in CARDINALS:
+            if self._free_spot((here.x + dx, here.y + dy)):
+                return
+        goal = self.goal if self.goal is not None else (self.enemy.x, self.enemy.y)
+        toward = 0
+        best = None
+        for direction, dx, dy in CARDINALS:
+            key = (here.x + dx, here.y + dy)
+            if key in self.walls or key not in self.blocked:
+                continue
+            gap = abs(key[0] - goal[0]) + abs(key[1] - goal[1])
+            if best is None or gap < toward:
+                best, toward = Position(key[0], key[1]), gap
+        if best is None:
+            return
+        try:
+            if ct.can_fire(best):
+                ct.fire(best)
+        except Exception:
+            return
+
+    # -- construction --------------------------------------------------------
+    def _tend(self, ct, here):
+        """Ring is up. Mend it -- and when there is nothing beside us to mend, WALK HOME.
+
+        This used to end at the loop below: heal an adjacent damaged building, otherwise return.
+        With an undamaged ring that is "do nothing", forever, and the Builder that laid the ring
+        became a statue. tools/autopsy.py measured it standing idle for 954 rounds of a 1000-round
+        game -- 40 Ti and a permanent +20% on our cost scale, buying nothing.
+
+        Walking back to our own Core turns it into the best rate on the board: 4 HP per titanium,
+        against the 1.8 a Sentinel gets. A Builder with no ring left to repair is a mender that has
+        not been told where to stand.
+        """
+        try:
+            for _d, dx, dy in CARDINALS:
+                spot = Position(here.x + dx, here.y + dy)
+                bid = ct.get_tile_building_id(spot)
+                if bid is None:
+                    continue
+                if ct.get_team(bid) != ct.get_team():
+                    continue
+                if ct.get_hp(bid) >= ct.get_max_hp(bid):
+                    continue
+                if ct.can_heal(spot):
+                    ct.heal(spot)
+                    return
+        except Exception:
+            return
+        if self.mine_tiles:
+            self._mend(ct, here)
+
+    # --------------------------------------------------------------- sentinel
+    def _sentinel(self, ct):
+        """Fire into the Core every round the reload allows. Nothing else is worth a turn."""
+        if self.enemy is None:
+            # Read it, never re-derive it. A turret is built next to the ENEMY Core, so ours is
+            # usually out of vision -- and the old fallback silently mirrored the turret's OWN
+            # position instead, aiming at empty ground. can_fire then failed every round and the
+            # ring quietly ground down whatever else was in range while the Core sat untouched.
+            found = None
+            try:
+                found = _unpack(ct.read_store(SLOT_ENEMY))
+            except Exception:
+                found = None
+            if found is None:
+                return
+            self.enemy = Position(found[0], found[1])
+            self.enemy_tiles = _footprint(self.enemy)
+        # Publish their Core's health. This turret is the only unit close enough to read it, and
+        # it is the number the whole strategy turns on.
+        try:
+            for key in self.enemy_tiles:
+                bid = ct.get_tile_building_id(Position(key[0], key[1]))
+                if bid is not None:
+                    ct.write_store(SLOT_FOE_HP, ct.get_hp(bid) + 1)
+                    break
+        except Exception:
+            pass
+        # ONCE THEY ARE OUT-HEALING US, SHOOT THE HEALERS.
+        #
+        # Into a Core they mend, a shot buys 18 HP for 10 ammo and they undo it for 4.5 Ti: about
+        # 1.8 HP per ammo, and against enough menders the net is zero no matter how long we fire.
+        # A Builder is 40 HP -- three shots, 30 ammo -- and killing one removes 4 HP/round of
+        # mending for the REST OF THE MATCH. Over a hundred remaining rounds that is 400 HP denied
+        # for 30 ammo, about 13 HP per ammo, roughly seven times the rate of shooting the Core.
+        #
+        # Gated on the pivot, not applied always, because while the Core's health is still falling
+        # the direct shot is the fastest kill and menders are a distraction. The pivot latch is
+        # exactly the statement "their Core is recovering", which is exactly when this trade flips.
+        try:
+            if ct.read_store(SLOT_PIVOT):
+                for tile in ct.get_attackable_tiles():
+                    uid = ct.get_tile_builder_bot_id(tile)
+                    if uid is None or ct.get_team(uid) == ct.get_team():
+                        continue
+                    if ct.can_fire(tile):
+                        ct.fire(tile)
+                        return
+        except Exception:
+            pass
+
+        for key in self.enemy_tiles:
+            spot = Position(key[0], key[1])
+            try:
+                if ct.can_fire(spot):
+                    ct.fire(spot)
+                    return
+            except Exception:
+                continue
+        # Nothing else is worth a shot. Ammunition is the binding constraint of the whole plan --
+        # 280 Ti buys exactly 28 Core hits out of a 500 Ti opening, and passive income replaces a
+        # spent shot only once every four rounds. A Sentinel that sprays the enemy's conveyors and
+        # harvesters is not doing chip damage, it is spending the Core kill.
+        #
+        # This branch used to fire at any enemy building the line reached, and against a bot with a
+        # real economy that is most of the map: 13 wins in 30 against the STARTER bot, median kill
+        # round 76 and worst 337 -- the signature of a ring that ran dry and then waited on income
+        # at one shot per four rounds. Holding fire is strictly better than firing at the wrong
+        # thing, so the turret idles until the Core is legal again.
+        return
