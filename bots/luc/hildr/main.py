@@ -65,7 +65,7 @@ BURST_SLACK = 0.85         # GO when the bank covers this fraction of the finish
 ECON_ROUND = 40            # no Harvester before this unless the ring is already up
 ECON_MARGIN = 20           # titanium kept over the build cost before the miner starts a job
 ECON_RESERVE = 90          # titanium set aside for the Harvester and belt while the kill is far off
-SNIPE_BANK = 40            # ammunition banked before the ring snipes a mender, so it dies in a round
+SNIPE_BANK = 20            # ammunition banked before the ring snipes: two shots kill a Harvester
 GO_LOW_HP = 120            # always finish a Core this low if we out-damage the menders
 TIE_FLOOR = 5              # titanium never converted: the dead-heat tiebreak
 ATTACKER_DIG_REACH = 0     # steps the attack Builder walks to dig out a turret shooting the ring
@@ -624,7 +624,10 @@ class Player:
             # Both Cores dying in one round is settled on titanium stored, and an all-in rusher
             # stores nothing: a few points kept back win every dead heat.
             spare = ti - reserve - TIE_FLOOR
-            amount = min(want, spare)
+            # convert_ammo has a 10 minimum: a want of 8 must become 10, not nothing.  Wanting 8
+            # and converting none pinned the store at 32 ammo -- under the 40-ammo volley trigger
+            # -- for 800 rounds on midgard while four armed Sentinels stood silent.
+            amount = min(max(want, 10), spare)
             if amount >= 10 and ct.can_convert_ammo(amount):
                 ct.convert_ammo(amount)
                 self.converted = amount
@@ -1313,10 +1316,26 @@ class Player:
             return
 
     def _tend(self, ct, here):
-        """Ring is up. Mend it: 4 HP for 1 Ti is the cheapest HP on the board."""
+        """Ring is up. Mend it -- from a tile nothing is shooting at: the attacker on midgard
+        stood in a defence Sentinel's line for fifty rounds and died there."""
         try:
             if ct.get_cpu_time_elapsed() > CPU_BUDGET_US:
                 return
+            covered = self._threats(ct)
+            if (here.x, here.y) in covered:
+                best = None
+                chosen = None
+                for direction, dx, dy in CARDINALS:
+                    step = (here.x + dx, here.y + dy)
+                    if not self._passable(step) or step in covered:
+                        continue
+                    ring_adj = sum(1 for _d, ax, ay in CARDINALS
+                                   if (step[0] + ax, step[1] + ay) in self.occupied)
+                    if best is None or ring_adj > best:
+                        best, chosen = ring_adj, step
+                if chosen is not None:
+                    self._step_to(ct, here, chosen)
+                    return
             for _d, dx, dy in CARDINALS:
                 spot = Position(here.x + dx, here.y + dy)
                 bid = ct.get_tile_building_id(spot)
@@ -1424,8 +1443,16 @@ class Player:
                     if ct.get_team(uid) == mine or ct.get_entity_type(uid) != EntityType.BUILDER_BOT:
                         continue
                     p = ct.get_position(uid)
-                    if (p.x, p.y) in ring and ct.can_fire(p):
-                        best, best_rank = p, 1
+                    if ct.can_fire(p):
+                        rank = 1 if (p.x, p.y) in ring else 3
+                        if best_rank is None or rank < best_rank:
+                            best, best_rank = p, rank
+            if best is None and ct.get_global_ammo() >= 150:
+                # nothing on any ray and a stale bank: chip the Core rather than hold forever
+                for key in self.enemy_tiles:
+                    spot = Position(key[0], key[1])
+                    if ct.can_fire(spot):
+                        best = spot
                         break
             if best is not None:
                 ct.fire(best)
