@@ -73,11 +73,19 @@ def run(player, ct) -> None:
     # we lose anyway -- they can afford to spend more on damage than we can on
     # repair. The Builders that mend are chosen by roster.is_mender, which
     # never picks an attacker, so this is an ordering rule and not a contest.
+    # Anything that is not mining gives its deposit back first. See
+    # store.release_claim.
     if _besiege(player, ct):
+        store.release_claim(ct, brain.index)
+        brain.job = None
         return
     if _harass(player, ct):
+        store.release_claim(ct, brain.index)
+        brain.job = None
         return
     if _mend(player, ct):
+        store.release_claim(ct, brain.index)
+        brain.job = None
         return
     _mine(player, ct)
 
