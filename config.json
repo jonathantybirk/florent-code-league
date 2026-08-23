@@ -16,6 +16,18 @@
       "Lorem Ipsum",
       "Clankers",
       "not adgato"
+    ],
+    "brokkr@e6442d4": [
+      "Leviathan",
+      "ph",
+      "Bean counters",
+      "Pivot",
+      "HTTP 418",
+      "Clankers",
+      "O(1)",
+      "not adgato",
+      "kladde chatte tville (och oss)",
+      "sporks"
     ]
   },
   "_opponents_for": "bot_id -> ordered team names, five played per round, the rest carried in state.opponents_pending. Overrides the policy entirely. v70 has already faced all 20 of its nearest teams, so this is the nine unfaced teams rated above us (1810-2036) plus not adgato, the team it has seen least (one game).",
@@ -67,7 +79,8 @@
   ],
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally.",
   "queue_front": [
-    "hildr@d7d0f31:2"
+    "hildr@d7d0f31:2",
+    "brokkr@e6442d4:2"
   ],
   "_queue_front": "Like test_next, but the entry is moved to the front of the queue so it plays on the next round. Each entry is honoured once."
 }
