@@ -40,11 +40,11 @@ class Player:
             self.gcs = GCS(kind, InternalMap(ct.get_map_width(), ct.get_map_height()))
 
         result = self.gcs.absorb(ct)
-        self.gcs.map.observe(ct)
         if kind == "core":
             self._core(ct)
         elif kind == "builder_bot":
             self._builder(ct)
+        self.gcs.map.observe(ct)          # after moving: the map shows where we ended up
         written_before = self.gcs.last_written
         self.gcs.publish(ct)
         self.tracer.emit(ct, self.gcs, result, written_before)

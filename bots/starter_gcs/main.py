@@ -140,8 +140,9 @@ class Player:
     def run(self, ct: Controller) -> None:
         """Entry point called by the engine every round for each unit.
 
-        GCS first (absorb the store, look around), then the starter's own
-        logic, then publish — after moving, so dead reckoning stays exact.
+        Absorb the store first, then the starter's own logic, then look
+        around and publish — both after moving, so the map and the dead
+        reckoning describe where the unit ended the round.
         """
         try:
             self._run(ct)
@@ -155,12 +156,6 @@ class Player:
         if kind is not None and self.gcs is None:
             self.gcs = GCS(kind, InternalMap(ct.get_map_width(), ct.get_map_height()))
         result = self.gcs.absorb(ct) if self.gcs else None
-        if self.gcs:
-            try:
-                self.gcs.map.observe(ct)
-            except Exception:
-                import traceback
-                print("GCSERR observe " + traceback.format_exc().replace("\n", " | "))
         written_before = self.gcs.last_written if self.gcs else None
 
         if etype == EntityType.CORE:
@@ -171,6 +166,13 @@ class Player:
             self._run_gunner(ct)
 
         if self.gcs:
+            # look around AFTER acting: the map then reflects where we ended
+            # the round, and tiles revealed by the move go out this round
+            try:
+                self.gcs.map.observe(ct)
+            except Exception:
+                import traceback
+                print("GCSERR observe " + traceback.format_exc().replace("\n", " | "))
             self.gcs.publish(ct)
             self.tracer.emit(ct, self.gcs, result, written_before)
 
