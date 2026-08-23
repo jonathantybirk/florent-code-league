@@ -834,6 +834,8 @@ class Player:
             want_miners = 0
         self.miners_hwm = max(self.miners_hwm, want_miners)
         safe = (not threatened) or (hp >= 400 and menders >= 2)
+        if self.forage and hp >= 400 and menders >= 1:
+            safe = True                    # an income war with no income is a slower loss
         want_home = want_menders + (want_miners if safe else 0)
         need_home = max(0, want_home - home_builders)
         if self.home_deaths >= 2 and threatened:
