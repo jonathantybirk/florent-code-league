@@ -210,6 +210,9 @@ class Player:
         self.go_held = False
         self.hold_total = 0
         self.spawn_total = 0
+        self.prev_menders = 0
+        self.home_deaths = 0
+        self.quiet_since = 0
         self.ring_extra = 0
         self.plan_round = 0
         self.ring_seen = 0
@@ -393,6 +396,17 @@ class Player:
         mining = _fresh(self._read(ct, SLOT_MINER), self.round, 2)
         home_builders = menders + (1 if mining else 0)
         need_menders = max(0, want_menders - home_builders)
+
+        # Menders that die within rounds of being bought are donations to whatever killed them.
+        # steward_hardened gates replacements behind a bank; we gate them behind the body count.
+        if menders < self.prev_menders and threatened:
+            self.home_deaths += self.prev_menders - menders
+        self.prev_menders = menders
+        if not threatened:
+            if self.round - self.last_hit > 25:
+                self.home_deaths = 0
+        if self.home_deaths >= 2 and threatened:
+            need_menders = 0
 
         # ---- the stall: the rush is banked behind their menders, so the game is an income race.
         # The burst that ends these games costs ~500 Ti of ammunition; passive income reaches it
