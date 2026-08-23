@@ -33,7 +33,7 @@ from utils.GCS.Base.protocol import STATE_CODE
 _TERRAIN_CHAR = {
     STATE_CODE["EMPTY"]: "0",
     STATE_CODE["WALL"]: "1",
-    STATE_CODE["ORE_FREE"]: "2",
+    STATE_CODE["ORE"]: "2",
 }
 
 # Enough agreeing tiles that a coincidence between two same-sized maps is not
@@ -60,8 +60,8 @@ def identify(brain):
         return None
 
     evidence = 0
-    for (x, y), tile in brain.imap.tiles.items():
-        char = _TERRAIN_CHAR.get(tile.state)
+    for (x, y) in brain.imap.tiles:
+        char = _TERRAIN_CHAR.get(brain.imap.terrain_at(x, y))
         if char is None:
             continue
         evidence += 1

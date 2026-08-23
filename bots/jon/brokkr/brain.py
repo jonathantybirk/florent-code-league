@@ -35,6 +35,11 @@ STEP_DIR = {(0, -1): Direction.NORTH, (1, 0): Direction.EAST,
 
 TURRET_TYPES = (EntityType.GUNNER, EntityType.SENTINEL, EntityType.LAUNCHER)
 
+# Rounds a unit sighting is treated as still true. Bots move every round, so
+# this is short; the point is only to avoid walking into one we can see.
+UNIT_MEMORY = 2
+_OVERLAY_NAMES = ("TOOK_FIRE_HERE", "CONVEYOR_ISSUE", "HARVESTER_ISSUE")
+
 
 class Brain:
     """What this unit knows. Rebuilt lazily once per round."""
@@ -107,27 +112,17 @@ class Brain:
         blocked: set[tuple[int, int]] = set()
         launcher_hazards: set[tuple[int, int]] = set()
         friendly_launchers: list[tuple[int, int]] = []
-        for key, tile in imap.tiles.items():
-            name = _STATE_NAME[tile.state]
-            if name.startswith("OUR_BOT_ON_CONVEYOR") or name.startswith("ENEMY_BOT_ON_CONVEYOR"):
+        for key in imap.tiles:
+            if self._solid(key):
                 blocked.add(key)
+            building = imap.building_at(*key)
+            if building is None:
                 continue
-            passable = imap.is_passable(*key)
-            if passable is False:
-                blocked.add(key)
+            name = _STATE_NAME[building]
             if name == "OUR_LAUNCHER":
                 friendly_launchers.append(key)
             elif name == "ENEMY_LAUNCHER":
                 launcher_hazards |= _ring(key, self.width, self.height)
-        # A Core occupies 2x2 but the engine reports it at its anchor, so
-        # get_nearby_entities yields one position and InternalMap marks one
-        # tile CORE. The other three come back from get_tile_env as EMPTY --
-        # terrain under a building is still terrain -- and a Builder will
-        # happily route a lane through its own base and then deadlock, unable
-        # to build the conveyor it is standing next to. Expanding both anchors
-        # is the correction; it is not an optimisation.
-        blocked |= _block(imap.our_core)
-        blocked |= _block(imap.enemy_core())
         # Our own tile is never an obstacle to ourselves; travel() also exempts
         # the source, but other callers read `blocked` directly.
         blocked.discard(self.me)
@@ -135,6 +130,35 @@ class Brain:
                        threat=self._threat(),
                        launcher_hazards=launcher_hazards,
                        friendly_launchers=tuple(friendly_launchers))
+
+    def _solid(self, key) -> bool:
+        """Whether a Builder is stopped by this tile.
+
+        Deliberately not InternalMap.is_passable, for one reason: that treats
+        any recorded unit as blocking, and unit records do not expire. A
+        Builder seen once on a tile keeps that tile blocked for the rest of
+        the match even after it has walked away, so routes bend around ghosts
+        and the map slowly fills with obstacles that are not there.
+
+        Terrain and buildings are stable enough to trust at any age; a unit
+        sighting is only worth believing while it is fresh.
+        """
+        imap = self.imap
+        terrain = imap.terrain_at(*key)
+        if terrain is not None and _STATE_NAME[terrain] == "WALL":
+            return True
+        building = imap.building_at(*key)
+        if building is not None:
+            name = _STATE_NAME[building]
+            if name != "EMPTY" and not ("CONVEYOR" in name or "SPLITTER" in name
+                                        or name in _OVERLAY_NAMES):
+                return True
+        unit = imap.unit_at(*key)
+        if unit is not None and _STATE_NAME[unit] != "EMPTY":
+            age = imap.age(*key)
+            if age is not None and age <= UNIT_MEMORY:
+                return True
+        return False
 
     def _threat(self) -> set[tuple[int, int]]:
         """Tiles on a known enemy turret's firing line.
@@ -147,8 +171,11 @@ class Brain:
         """
         out: set[tuple[int, int]] = set()
         imap = self.imap
-        for key, tile in imap.tiles.items():
-            name = _STATE_NAME[tile.state]
+        for key in imap.tiles:
+            building = imap.building_at(*key)
+            if building is None:
+                continue
+            name = _STATE_NAME[building]
             if not name.startswith("ENEMY_"):
                 continue
             if name.startswith("ENEMY_GUNNER_"):
@@ -212,7 +239,7 @@ class Brain:
         downstream query -- free_ore, is_passable, the route ban set --
         sees a shared deposit exactly as it sees one we found ourselves.
         """
-        code = STATE_CODE["ORE_FREE"]
+        code = STATE_CODE["ORE"]
         added = 0
         for x, y in tiles:
             if not (0 <= x < self.width and 0 <= y < self.height):
@@ -239,17 +266,41 @@ class Brain:
         return min(mine, key=lambda t: abs(t[0] - self.me[0]) + abs(t[1] - self.me[1]))
 
     def free_ore(self) -> list[tuple[int, int]]:
-        """Known ore tiles with nothing built on them."""
-        return [key for key, tile in self.imap.tiles.items()
-                if _STATE_NAME[tile.state] == "ORE_FREE"]
+        """Known ore tiles with nothing built on them.
+
+        Terrain and buildings are separate layers now, so "is ore" and "is
+        free" are two questions rather than one state code.
+        """
+        imap = self.imap
+        out = []
+        for key in imap.tiles:
+            if _name_or_none(imap.terrain_at(*key)) != "ORE":
+                continue
+            building = imap.building_at(*key)
+            if building is None or _STATE_NAME[building] == "EMPTY":
+                out.append(key)
+        return out
+
+    def is_free_ore(self, tile) -> bool:
+        """Ore terrain with nothing standing on it.
+
+        Terrain and buildings are separate layers, so a free deposit reads as
+        terrain ORE *and* building EMPTY -- asking the building layer alone
+        answers "EMPTY", which is not the same question.
+        """
+        if _name_or_none(self.imap.terrain_at(*tile)) != "ORE":
+            return False
+        building = self.imap.building_at(*tile)
+        return building is None or _STATE_NAME[building] == "EMPTY"
 
     def our_harvesters(self) -> list[tuple[int, int]]:
-        return [key for key, tile in self.imap.tiles.items()
-                if _STATE_NAME[tile.state] == "OUR_HARVESTER"]
+        return [key for key in self.imap.tiles
+                if _name_or_none(self.imap.building_at(*key)) == "OUR_HARVESTER"]
 
     def our_conveyors(self) -> set[tuple[int, int]]:
-        return {key for key, tile in self.imap.tiles.items()
-                if _STATE_NAME[tile.state].startswith(("OUR_CONVEYOR", "OUR_BOT_ON_CONVEYOR"))}
+        return {key for key in self.imap.tiles
+                if (_name_or_none(self.imap.building_at(*key)) or "")
+                .startswith(("OUR_CONVEYOR", "OUR_SPLITTER"))}
 
 
 def _block(anchor) -> set[tuple[int, int]]:
@@ -274,3 +325,7 @@ _FACING_DELTA = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0),
 # Imported here rather than at module scope in internal_map's namespace so the
 # name lookup in the hot loops above is a plain tuple index.
 from utils.GCS.Base.protocol import TILE_STATES as _STATE_NAME  # noqa: E402
+
+
+def _name_or_none(state):
+    return None if state is None else _STATE_NAME[state]

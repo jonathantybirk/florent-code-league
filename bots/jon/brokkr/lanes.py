@@ -87,6 +87,53 @@ def plan_lane(brain, deposit):
     return chain, sink
 
 
+def connected(brain):
+    """Our conveyor tiles that actually reach the Core.
+
+    A belt only pays if a stack can walk all the way in, so "we own a
+    conveyor" and "that conveyor delivers" are different questions. Flood out
+    from the Core through our own belt to answer the second.
+    """
+    core = brain.core_tiles()
+    if not core:
+        return set()
+    ours = brain.our_conveyors()
+    reached = set()
+    frontier = [tile for tile in core]
+    seen = set(core)
+    while frontier:
+        current = frontier.pop()
+        for nb in orthogonal(current):
+            if nb in seen or nb not in ours:
+                continue
+            seen.add(nb)
+            reached.add(nb)
+            frontier.append(nb)
+    return reached
+
+
+def orphaned_harvesters(brain):
+    """Our Harvesters whose belt no longer reaches the Core.
+
+    This is what an enemy harasser leaves behind, and until now it was
+    permanent: a deposit with our Harvester on it is no longer ORE_FREE, so no
+    Builder would ever look at it again, and the 20 titanium it cost sat there
+    producing into a severed belt for the rest of the match. Cutting our lane
+    was therefore worth far more to the opponent than cutting theirs was to
+    us -- they had to be repaired, we did not.
+    """
+    core = brain.core_tiles()
+    if not core:
+        return []
+    live = connected(brain) | core
+    out = []
+    for tile in brain.our_harvesters():
+        if not any(nb in live for nb in orthogonal(tile)):
+            out.append(tile)
+    out.sort(key=lambda t: min(abs(t[0] - c[0]) + abs(t[1] - c[1]) for c in core))
+    return out
+
+
 def conveyor_facings(route, sink):
     """Direction each route tile's conveyor must face, as ``{tile: Direction}``.
 

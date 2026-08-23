@@ -24,7 +24,7 @@
 | 0 | UNKNOWN |
 | 1 | EMPTY |
 | 2 | WALL |
-| 3 | ORE_FREE |
+| 3 | ORE |
 | 4 | OUR_HARVESTER |
 | 5 | OUR_BARRIER |
 | 6 | OUR_CONVEYOR_N |
@@ -83,21 +83,13 @@
 | 59 | ENEMY_LAUNCHER |
 | 60 | ENEMY_CORE |
 | 61 | ENEMY_BUILDER_BOT |
-| 62 | OUR_BOT_ON_CONVEYOR_N |
-| 63 | OUR_BOT_ON_CONVEYOR_E |
-| 64 | OUR_BOT_ON_CONVEYOR_S |
-| 65 | OUR_BOT_ON_CONVEYOR_W |
-| 66 | ENEMY_BOT_ON_CONVEYOR_N |
-| 67 | ENEMY_BOT_ON_CONVEYOR_E |
-| 68 | ENEMY_BOT_ON_CONVEYOR_S |
-| 69 | ENEMY_BOT_ON_CONVEYOR_W |
-| 70 | TOOK_FIRE_HERE |
-| 71 | CONVEYOR_ISSUE |
-| 72 | HARVESTER_ISSUE |
+| 62 | TOOK_FIRE_HERE |
+| 63 | CONVEYOR_ISSUE |
+| 64 | HARVESTER_ISSUE |
 | 103 | ESCAPE_RUN |
 | 104 | ESCAPE_REMOTE |
 | 105 | ESCAPE_CONTROL |
-| 73..102 | (spare) |
+| 65..102 | (spare) |
 
 ## Field values
 
@@ -113,6 +105,7 @@
 | ASSIGN | slot(16) · period(8) · phase(8) |
 | SYMMETRY | kind(3): MIRROR_X / MIRROR_Y / ROT_180 |
 | DIRECTIVE | x(W) · y(H) · task(24) |
+| GRANT | x(W) · y(H) · slot(16) · kind(3) · facing(9) |
 
 task: 0=FIX_HARVESTER (unaddressed, any sender), 1-15=FIX_CONVEYOR for the builder in that slot (Core only), 16=BUILD_HERE, 17=SCOUT_HERE, 18=DEFEND_HERE, 19-23 spare
 

@@ -236,10 +236,9 @@ def _menders_home(brain) -> int:
     if not spots:
         return 0
     count = 0
-    for key, tile in brain.imap.tiles.items():
-        if key not in spots:
-            continue
-        if _STATES[tile.state].startswith(("OUR_BUILDER_BOT", "OUR_BOT_ON_CONVEYOR")):
+    for key in spots:
+        unit = brain.imap.unit_at(*key)
+        if unit is not None and _STATES[unit].startswith("OUR_BUILDER_BOT"):
             count += 1
     return count
 
@@ -258,9 +257,10 @@ def _place(player, ct) -> None:
 
 
 def _have_turrets(brain) -> bool:
-    for tile in brain.imap.tiles.values():
-        name = _STATES[tile.state]
-        if name.startswith(("OUR_GUNNER_", "OUR_SENTINEL_")):
+    for key in brain.imap.tiles:
+        building = brain.imap.building_at(*key)
+        if building is not None and _STATES[building].startswith(
+                ("OUR_GUNNER_", "OUR_SENTINEL_")):
             return True
     return False
 

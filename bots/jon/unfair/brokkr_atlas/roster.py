@@ -55,7 +55,7 @@ ATTACKERS = 1
 # heal. See the negative result in llm-slop-analysis: forcing this floor
 # measured worse, so it is deliberately 0 and kept only as the name of the
 # idea.
-MIN_MINERS = 0
+MIN_MINERS = 1
 
 
 def econ_target(width: int, height: int) -> int:

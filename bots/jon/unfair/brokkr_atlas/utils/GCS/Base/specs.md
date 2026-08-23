@@ -61,7 +61,9 @@ the encoder.
 | `gcs.py` | per-unit facade: `absorb`, `publish`, `queue`, `send_raw`, Core helpers |
 | `interfaces.py` | the `MapSource` contract the internal map fulfils, plus placeholders for the logistics / behaviour modules |
 | `tests/test_gcs.py` (repo root) | headless tests: `.venv/bin/python -m pytest tests/test_gcs.py` |
-| `bots/gcsprobe/` | real-engine probe bot used for end-to-end verification; prints a `GCSTRACE` JSON line per unit per round |
+| `trace.py` | `Tracer.emit()` — the per-round `GCSTRACE` line any bot can print for the visualiser |
+| `bots/gcsprobe/` | random-walk probe bot for end-to-end verification |
+| `bots/starter_gcs/` | the starter bot running on the GCS — the real-logic verification build |
 | `tools/gcs_viz.py` | turns a probe replay into **Store Scope**, a side-by-side viewer of the board and the decoded store; `--report` prints reckoning/learned-fact tallies |
 
 ## Slots
@@ -88,6 +90,19 @@ as a parity bit (receivers ignore `UNKNOWN`-state facts). The raw `IDLE_A`/`IDLE
 unused. (The visualiser found the original bug: a builder that idled once lost that round's move and its
 reckoned position drifted for the rest of the match.)
 
+## Three layers per tile, one fact per layer
+A fact describes **one layer** of a tile. `WALL` / `ORE` are **terrain** — what the ground is, which never
+changes, so an `ORE` fact is never cancelled by anything built on top of it. `OUR_`/`ENEMY_` building codes
+are the **building** layer; `OUR_BUILDER_BOT` / `ENEMY_BUILDER_BOT` are the **unit** layer. `EMPTY` means
+"nothing built or standing here" (a negative) and says nothing about the ground. A tile with ore, an enemy
+conveyor and an enemy bot on it is three facts; losing the conveyor is a fourth, `EMPTY`. A Core occupies a
+2×2 block: all four tiles are `OUR_CORE`. Our own builder bots are never announced — teammates track them
+by dead reckoning.
+
+## Who announces the symmetry
+Whichever unit works the map's symmetry out first announces it (`CONTROL/SYMMETRY`), once; a unit that has
+already seen one on the store never repeats it. The Core is not special here.
+
 ## Per-sender layouts (most-significant first; `fact = FOV × 106`)
 - Builder: `move(5) · fact_a · fact_b · aux(16)` — 1.004× full. `aux` = slot granted to a friendly
   turret/launcher named by a fact in the same message.
@@ -106,8 +121,9 @@ addressed to that builder slot (Core only), 16–18 = BUILD/SCOUT/DEFEND_HERE).
 1. Core spawns in round R and writes `ASSIGN(slot)` the same round (outranks the HP announcement).
 2. **The engine first runs the newborn in round R+1** (verified live) — the round the ASSIGN is readable.
    It matches on `first_run − 1 == R` and takes the slot.
-3. Round R+1 is the **resync round**: every unit (Core included) writes `pos(W·H) · fact`. Readers decode
-   the R+2 snapshot as resync format; dead reckoning restarts from exact positions.
+3. Round R+1 is the **resync round**: every unit (Core included) writes `pos(W·H) · kind(5) · fact`. Readers
+   decode the R+2 snapshot as resync format; dead reckoning restarts from exact positions and any reader
+   learns every slot's owner kind. The same happens every `RESYNC_PERIOD` rounds outside spawn windows.
 4. Rounds R+2 … R+1+`ONBOARD_ROUNDS` (8): the Core streams absolute-coordinate **chains** (one absolute fact +
    one fact relative to it, window radius 9 in its own slot / 6 in a borrowed turret slot on 30×30) through
    its own slot and every turret/launcher slot; turrets stay silent. The Core keeps a per-slot model of what
@@ -198,9 +214,13 @@ any tile on either map for the details.
 - `has_conveyor_issue`, `has_harvester_issue` (logistics) and `on_directive` (behaviour) are stubs returning
   nothing.
 - A builder sharing a slot (`period > 1`) that moves more than once between writes drifts in readers'
+  reckoning until the next resync round (at most `RESYNC_PERIOD` rounds away).
   reckoning until the next resync round.
 - Enemy-builder movement inference (the TODO above) is not implemented; enemy bots are plain tile states.
 - A message deferred by a resync/onboarding round keeps its priority; `ASSIGN` is queued at priority 1000 so
   nothing deferred can ever push it out of its spawn round (that bug cost a newborn its slot once).
+- Readers learn the Core's position only from the resync round, never from `OUR_CORE` facts (the Core
+  publishes all four block tiles, and guessing the anchor from one of them once sent every reader's idea
+  of the Core wandering across the map).
 - `SYMMETRY` is delivered as a control event (`RoundResult.events`); applying it is the internal map's job
   (see `bots/utils/internal_map/Base/specs.md`).

@@ -22,7 +22,10 @@ from .protocol import (
     CORE_HP_MAX,
     CTRL_ASSIGN,
     CTRL_DIRECTIVE,
+    CTRL_GRANT,
     CTRL_SYMMETRY,
+    GRANT_ARG_RADICES,
+    RESYNC_KINDS,
     ESCAPE_CONTROL,
     ESCAPE_REMOTE,
     ESCAPE_RUN,
@@ -72,6 +75,7 @@ class Decoded:
     aux: int = 0                # slot grant (builders; 0 = none)
     events: list[ControlEvent] = field(default_factory=list)
     position: tuple[int, int] | None = None   # absolute pos (resync messages)
+    kind: str | None = None                    # sender kind (resync messages)
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +203,7 @@ def decode_standard(kind: str, value: int, sender_pos, map_w: int, map_h: int) -
 
     state_a = digits["fact_a"] % S_ALPHABET
     if state_a in (ESCAPE_RUN, ESCAPE_REMOTE, ESCAPE_CONTROL):
+        out.aux = 0          # the trailing fields are payload here, not a grant
         _decode_escape(kind, state_a, digits, sender_pos, map_w, map_h, out)
         return out
 
@@ -290,6 +295,12 @@ def _decode_escape(kind, state, digits, sender_pos, map_w, map_h, out: Decoded):
             x, rest = divmod(args_val, map_h * TASK_RADIX)
             y, task = divmod(rest, TASK_RADIX)
             out.events.append(ControlEvent(CTRL_DIRECTIVE, (x, y, task)))
+        elif ckind == CTRL_GRANT:
+            tail = codec.capacity(GRANT_ARG_RADICES)
+            x, rest = divmod(args_val, map_h * tail)
+            y, rest = divmod(rest, tail)
+            slot, gkind, facing = codec.unpack(rest, GRANT_ARG_RADICES)
+            out.events.append(ControlEvent(CTRL_GRANT, (x, y, slot, gkind, facing)))
         else:
             raise CodecError(f"unknown control kind {ckind}")
 
@@ -337,30 +348,44 @@ def directive_args(x: int, y: int, task: int, map_h: int) -> int:
     return (x * map_h + y) * TASK_RADIX + task
 
 
+def grant_args(x: int, y: int, slot: int, gkind: int, facing: int, map_h: int) -> int:
+    tail = codec.capacity(GRANT_ARG_RADICES)
+    return (x * map_h + y) * tail + codec.pack((slot, gkind, facing), GRANT_ARG_RADICES)
+
+
 # ---------------------------------------------------------------------------
-# resync format:  pos(W*H) * fact(FOV*S)
+# resync format:  pos(W*H) * kind(5) * fact(FOV_max*S)
 # ---------------------------------------------------------------------------
+# The fact digit uses the largest FOV table so the radix is the same for
+# every sender; a reader decodes the kind first, then the fact against that
+# kind's own table.
+_FOV_MAX = max(FOV_TILES.values())
+
 
 def encode_resync(kind: str, pos: tuple[int, int], f: Fact | None,
                   map_w: int, map_h: int):
     fact_digit = _fact_digit(kind, pos, f)
     if fact_digit is None:
         fact_digit = 0
-    radices = (map_w * map_h, FOV_TILES[kind] * S_ALPHABET)
+    radices = (map_w * map_h, len(RESYNC_KINDS), _FOV_MAX * S_ALPHABET)
     try:
-        return codec.pack((pos[0] * map_h + pos[1], fact_digit), radices)
+        return codec.pack((pos[0] * map_h + pos[1], RESYNC_KINDS.index(kind), fact_digit), radices)
     except ValueError:
         return None
 
 
-def decode_resync(kind: str, value: int, map_w: int, map_h: int) -> Decoded:
-    radices = (map_w * map_h, FOV_TILES[kind] * S_ALPHABET)
-    pos_v, fact_digit = codec.unpack(value, radices)
+def decode_resync(value: int, map_w: int, map_h: int) -> Decoded:
+    """Returns Decoded with .position, .kind (str) and up to one fact."""
+    radices = (map_w * map_h, len(RESYNC_KINDS), _FOV_MAX * S_ALPHABET)
+    pos_v, kind_i, fact_digit = codec.unpack(value, radices)
     pos = divmod(pos_v, map_h)
+    kind = RESYNC_KINDS[kind_i]
     out = Decoded(position=pos)
-    f = _decode_fact(kind, pos, fact_digit)
-    if f is not None and _valid(f, map_w, map_h):
-        out.facts.append(f)
+    out.kind = kind
+    if fact_digit // S_ALPHABET < FOV_TILES[kind]:
+        f = _decode_fact(kind, pos, fact_digit)
+        if f is not None and _valid(f, map_w, map_h):
+            out.facts.append(f)
     return out
 
 
