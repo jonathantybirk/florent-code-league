@@ -52,6 +52,11 @@ class Brain:
         self.index: int | None = None      # spawn order, assigned by the Core
         self.job = None
         self.first_round: int | None = None
+        self.stuck = 0                     # turns since we got closer to the goal
+        # Deposits this unit has proved it cannot reach from where it keeps
+        # ending up. Per-unit, not shared: a lane unreachable for a Builder
+        # stranded in the enemy half is perfectly reachable for one at home.
+        self.blacklist: set[tuple[int, int]] = set()
         self.map_name: str | None = None   # set once the atlas recognises it
         self.atlas_done = False
 
