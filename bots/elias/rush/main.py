@@ -664,12 +664,27 @@ class Player:
             if len(self.chain) > MAX_CHAIN:
                 self.chain = []
 
-        # Lay the belt from the Core end outward, so the final tile faces the Core itself.
+        # Lay the belt from the Core end outward. WHICH WAY a conveyor faces is the whole thing:
+        # chain[0] is the ore and chain[-1] is the tile beside our Core, so titanium flows with
+        # ASCENDING index. Facing each tile at chain[idx - 1] pointed every belt back at the ore,
+        # and a chain that dead-ends scores exactly zero on titanium_collected -- the primary
+        # tiebreak -- while still looking like a finished economy in the build log.
         for idx in range(len(self.chain) - 1, 0, -1):
             key = self.chain[idx]
             if key in self.occupied:
                 continue
-            onward = self.chain[idx - 1]
+            if idx == len(self.chain) - 1:
+                # Last link: empty it into the Core footprint, not into the tile behind it.
+                onward = None
+                for _dir, ddx, ddy in CARDINALS:
+                    step = (key[0] + ddx, key[1] + ddy)
+                    if step in self.mine_tiles:
+                        onward = step
+                        break
+                if onward is None:
+                    continue
+            else:
+                onward = self.chain[idx + 1]
             facing = None
             for direction, dx, dy in CARDINALS:
                 if (key[0] + dx, key[1] + dy) == onward:
