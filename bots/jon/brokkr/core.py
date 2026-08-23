@@ -14,15 +14,8 @@ from fcode import EntityType, GameError
 
 import debug
 import defence
+import roster
 import store
-
-# Builders past this cost more in cost scaling (+20% each, on every later
-# build) than an extra lane returns on the maps in the pool. Economies in the
-# ladder's top ten run 4-7; the larger number only pays where there is ore for
-# it, so it scales with the board.
-BUILDER_TARGET_SMALL = 4
-BUILDER_TARGET_LARGE = 6
-LARGE_MAP_AREA = 500
 
 # Titanium held back from spawning so a Builder that reaches its deposit can
 # actually pay for the lane it walked to.
@@ -121,9 +114,7 @@ def _ammo(player, ct) -> None:
 
 def _spawn(player, ct) -> None:
     brain = player.brain
-    target = (BUILDER_TARGET_LARGE
-              if brain.width * brain.height >= LARGE_MAP_AREA
-              else BUILDER_TARGET_SMALL)
+    target = roster.econ_target(brain.width, brain.height)
     cost = ct.get_builder_bot_cost()
     if player.spawned >= target:
         if not _needs_menders(player, ct, cost):

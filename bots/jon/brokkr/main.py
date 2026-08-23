@@ -44,3 +44,8 @@ class Player:
                 import traceback
                 debug.log("EXC " + traceback.format_exc())
             return
+        if debug.ON:
+            used = ct.get_cpu_time_elapsed()
+            if used > 3000:
+                debug.log(f"CPU r{ct.get_current_round()} "
+                          f"{ct.get_entity_type().value} {ct.get_id()} {used}us")
