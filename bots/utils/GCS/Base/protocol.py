@@ -76,11 +76,15 @@ def turret_slots_from() -> int:
 # the Core streams archive knowledge through turret/launcher slots
 # (speaker=1); those units stay silent and are exempt from liveness
 # reclamation for the duration.
-ONBOARD_ROUNDS = 8               # hyperparameter W
+# Hyperparameter W.  A bot may set it lower (like GCS_SLOTS, before creating
+# any GCS object): the Core cannot spawn while a window is open, so a bot that
+# wants to spawn builders on consecutive rounds trades onboarding for cadence
+# (W = 0: spawn, resync, spawn, ... every other round).
+ONBOARD_ROUNDS = 8
 # An owner that has not written within this many rounds of being assigned or
 # granted a slot is presumed never to have taken it; the slot is reclaimed.
 # Longer than an onboarding window, during which turrets are silenced.
-TAKEOVER_GRACE = ONBOARD_ROUNDS + 4
+TAKEOVER_GRACE = 12
 # Verified against the live engine (fcode 2.3.9): a builder spawned by the
 # Core in round R gets its first run() in round R+1 — the very round the
 # Core's ASSIGN becomes readable.  A newborn therefore knows it was spawned
@@ -241,8 +245,15 @@ CTRL_GRANT = 3      # args = x(W) * y(H) * slot(16) * kind(3) * facing(9)   [bui
 #                     turret's own registry is empty when it first reads it.
 #                     kind: 0 gunner, 1 sentinel, 2 launcher;
 #                     facing: 0 none (launcher), 1..8 = N,NE,E,SE,S,SW,W,NW
-# kinds 4..7 spare
+CTRL_STATUS = 4     # args = field(4) * value(512): one team-state scalar
+#                     CORE_FLAGS  (Core)      value = go + 2*econ_ok + 4*threat + 8*ring_extra
+#                     ETA         (attacker)  steps to its post, 0..99 (99 = unknown/done)
+#                     ENEMY_CORE_HP (anyone)  0..500, sent on change
+#                     ENEMY_MENDERS (turrets) enemy builders beside the enemy Core
+# kinds 5..7 spare
 GRANT_ARG_RADICES = (16, 3, 9)         # slot, kind, facing  (after x, y)
+STATUS_FIELDS = ("CORE_FLAGS", "ETA", "ENEMY_CORE_HP", "ENEMY_MENDERS")
+STATUS_VALUE_RADIX = 512
 GRANT_KINDS = ("gunner", "sentinel", "launcher")
 
 ASSIGN_ARG_RADICES = (16, 8, 8)        # slot, period, phase
@@ -342,7 +353,8 @@ def dump_protocol() -> str:
             "| ASSIGN | slot(16) · period(8) · phase(8) |",
             "| SYMMETRY | kind(3): MIRROR_X / MIRROR_Y / ROT_180 |",
             "| DIRECTIVE | x(W) · y(H) · task(24) |",
-            "| GRANT | x(W) · y(H) · slot(16) · kind(3) · facing(9) |", "",
+            "| GRANT | x(W) · y(H) · slot(16) · kind(3) · facing(9) |",
+            "| STATUS | field(4) · value(512): CORE_FLAGS / ETA / ENEMY_CORE_HP |", "",
             "task: 0=FIX_HARVESTER (unaddressed, any sender), "
             "1-15=FIX_CONVEYOR for the builder in that slot (Core only), "
             "16=BUILD_HERE, 17=SCOUT_HERE, 18=DEFEND_HERE, 19-23 spare", ""]

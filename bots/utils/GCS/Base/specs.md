@@ -62,8 +62,8 @@ the encoder.
 | `interfaces.py` | the `MapSource` contract the internal map fulfils, plus placeholders for the logistics / behaviour modules |
 | `tests/test_gcs.py` (repo root) | headless tests: `.venv/bin/python -m pytest tests/test_gcs.py` |
 | `trace.py` | `Tracer.emit()` — the per-round `GCSTRACE` line any bot can print for the visualiser |
-| `bots/gcsprobe/` | random-walk probe bot for end-to-end verification |
-| `bots/starter_gcs/` | the starter bot running on the GCS — the real-logic verification build |
+| `bots/test/gcsprobe/` | random-walk probe bot for end-to-end verification |
+| `bots/test/hildr_gcs/` | hildr@01ee9ce rebuilt on the GCS — the real-logic verification build; `teamstate.py` maps hildr's 16 ad-hoc slots onto the GCS |
 | `tools/gcs_viz.py` | turns a probe replay into **Store Scope**, a side-by-side viewer of the board and the decoded store; `--report` prints reckoning/learned-fact tallies |
 
 ## Slots
@@ -194,11 +194,11 @@ class Player:
         self.gcs.map.observe(ct)                  # own eyesight, from where we ended the round
         self.gcs.publish(ct)                      # call LAST, after moving
 ```
-`bots/gcsprobe/main.py` is a complete working example.
+`bots/test/gcsprobe/main.py` is a small complete example; `bots/test/hildr_gcs/` a real bot on the GCS.
 
 ## Verifying visually
 ```
-.venv/bin/fcode run gcsprobe starter maps/frostgate.map26 --seed 3 --replay probe.replay26
+.venv/bin/fcode run test/gcsprobe starter maps/frostgate.map26 --seed 3 --replay probe.replay26
 .venv/bin/python tools/gcs_viz.py probe.replay26 store-scope.html    # open in a browser
 .venv/bin/python tools/gcs_viz.py probe.replay26 --report            # tallies per unit
 ```

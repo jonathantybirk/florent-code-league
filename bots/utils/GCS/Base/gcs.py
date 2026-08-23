@@ -26,8 +26,10 @@ from .protocol import (
     CTRL_ASSIGN,
     CTRL_DIRECTIVE,
     CTRL_GRANT,
+    CTRL_STATUS,
     CTRL_SYMMETRY,
     GRANT_KINDS,
+    STATUS_FIELDS,
     NEWBORN_FIRST_RUN_DELAY,
     SLOT_CORE,
     STATE_CODE,
@@ -50,6 +52,7 @@ class OutMessage:
     remote: Fact | None = None
     control: tuple[int, int] | None = None    # (kind, packed args)
     raw: int | None = None
+    grant: tuple | None = None                # (x, y, kind, facing, avoid): slot picked at send time
 
 
 class GCS:
@@ -65,6 +68,7 @@ class GCS:
         self.last_written: int | None = None
         self.restate_cursor = 0                # cycles through known facts
         self.symmetry_announced = False
+        self.status: dict[str, int] = {}       # latched STATUS fields heard
         self.queued: list[tuple[float, OutMessage]] = []
         # Core only: everyone knows HP starts at CORE_HP_MAX, so the first
         # announcement happens only once the Core has drifted from it
@@ -110,6 +114,10 @@ class GCS:
         for _slot, ev in result.events:
             if ev.kind == CTRL_SYMMETRY and hasattr(self.map, "set_symmetry"):
                 self.map.set_symmetry(ev.args[0])
+            elif ev.kind == CTRL_STATUS:
+                field, val = ev.args
+                if field < len(STATUS_FIELDS):
+                    self.status[STATUS_FIELDS[field]] = val
             elif ev.kind == CTRL_GRANT:
                 x, y, _s, gkind, facing = ev.args
                 name = "OUR_" + GRANT_KINDS[gkind].upper()
@@ -120,9 +128,8 @@ class GCS:
         for sender, args in result.lost_grants:
             if sender == self.slot:
                 x, y, lost_slot, gkind, facing = args
-                new = self.registry.pick_turret_slot(spread=self.slot or 0, avoid=(lost_slot,))
-                if new is not None:
-                    self.grant_turret(x, y, GRANT_KINDS[gkind], (facing - 1) if facing else None, new)
+                self.grant_turret(x, y, GRANT_KINDS[gkind], (facing - 1) if facing else None,
+                                  avoid=(lost_slot,))
         core_pos = self.registry.owners[SLOT_CORE].pos
         if core_pos is not None and hasattr(self.map, "note_core_block"):
             self.map.note_core_block(core_pos)        # the whole 2x2, exactly
@@ -208,8 +215,7 @@ class GCS:
 
         # a GRANT mid-onboarding would make the new turret write into a slot
         # the Core may be streaming through: hold it until the window closes
-        if (message is not None and message.type == "control" and message.control
-                and message.control[0] == CTRL_GRANT and reg.in_onboard_window(round_no)):
+        if message is not None and message.type == "grant" and reg.in_onboard_window(round_no):
             self.queued.append((priority, message))
             message = None
 
@@ -289,6 +295,16 @@ class GCS:
             value = messages.encode_remote(self.kind, m.remote, w, h, move=move)
         elif m.type == "control" and m.control:
             value = messages.encode_control(self.kind, *m.control, move=move)
+        elif m.type == "grant" and m.grant:
+            x, y, gkind, facing, avoid, fixed = m.grant
+            slot = fixed if fixed is not None else \
+                self.registry.pick_turret_slot(spread=self.slot or 0, avoid=avoid)
+            if slot is None:
+                print("[GCS] no free slot for a grant; dropped")
+                return self._publish_restate(ct, move)
+            args = messages.grant_args(x, y, slot, GRANT_KINDS.index(gkind),
+                                       0 if facing is None else facing + 1, self.registry.map_h)
+            value = messages.encode_control(self.kind, CTRL_GRANT, args, move=move)
         elif m.type == "raw" and m.raw is not None:
             value = m.raw
         if value is None or value == self.last_written:
@@ -344,15 +360,23 @@ class GCS:
         """Queue a SYMMETRY announcement (any unit may send one)."""
         self.queue(OutMessage("control", control=(CTRL_SYMMETRY, kind)), priority=90.0)
 
-    def grant_turret(self, x: int, y: int, kind: str, facing: int | None, slot: int):
+    def grant_turret(self, x: int, y: int, kind: str, facing: int | None, slot: int | None = None,
+                     avoid=()):
         """Builder: announce the friendly turret/launcher we just built at
-        (x, y) and grant it `slot`, in absolute coordinates (CONTROL/GRANT) —
+        (x, y) and grant it a slot, in absolute coordinates (CONTROL/GRANT) —
         the turret's own registry is empty when it reads this, so a
-        FOV-relative fact would mean nothing to it.
+        FOV-relative fact would mean nothing to it.  The slot is picked when
+        the message actually goes out (grants can be held back by a window,
+        and a slot picked earlier may be taken by then).
         kind: 'gunner' / 'sentinel' / 'launcher'; facing: 0..7 (N,NE,..) or None."""
-        args = messages.grant_args(x, y, slot, GRANT_KINDS.index(kind),
-                                   0 if facing is None else facing + 1, self.registry.map_h)
-        self.queue(OutMessage("control", control=(CTRL_GRANT, args)), priority=500.0)
+        self.queue(OutMessage("grant", grant=(x, y, kind, facing, tuple(avoid), slot)), priority=500.0)
+
+    def send_status(self, field: str, value: int, priority: float = 300.0):
+        """Queue a team-state scalar (CONTROL/STATUS): field is one of
+        protocol.STATUS_FIELDS, value 0..511.  Readers latch it."""
+        self.queue(OutMessage("control", control=(CTRL_STATUS,
+                              messages.status_args(STATUS_FIELDS.index(field), value))),
+                   priority=priority)
 
     def send_directive(self, x: int, y: int, task: int):
         """Core: any task.  Builders: FIX_HARVESTER only (protocol rule)."""

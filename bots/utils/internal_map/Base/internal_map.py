@@ -387,7 +387,10 @@ class InternalMap:
             cur.round = self.round
             return False
         if cur is not None and cur.state == state:
-            cur.round = max(cur.round, self.round)
+            # a teammate restating a bot sighting is not a new sighting: units
+            # move, so only own eyes refresh a unit record's age
+            if not (layer == "unit" and source == GCS):
+                cur.round = max(cur.round, self.round)
             if cur.source == INFERRED:
                 cur.source = source
             cur.published = cur.published or published

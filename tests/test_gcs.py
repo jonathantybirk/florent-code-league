@@ -629,3 +629,18 @@ def test_untaken_grant_is_reclaimed_after_grace():
         world.step()
     assert s not in core.gcs.registry.owners
 
+
+
+def test_status_control_latches():
+    world = World()
+    core = Unit("core", (2, 2)); world.units.append(core); world.step()
+    core.gcs.core_announce_assign(1); world.step()
+    b = Unit("builder_bot", (3, 2)); world.units.append(b)
+    for _ in range(12):
+        world.step()
+    core.gcs.send_status("CORE_FLAGS", 1 + 2 * 1 + 8 * 2)     # go, econ_ok, ring_extra 2
+    world.step(); world.step()
+    assert b.gcs.status["CORE_FLAGS"] == 19
+    b.gcs.send_status("ENEMY_CORE_HP", 437)
+    world.step(); world.step()
+    assert core.gcs.status["ENEMY_CORE_HP"] == 437

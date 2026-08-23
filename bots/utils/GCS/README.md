@@ -23,7 +23,7 @@ Pure declarations; everything else is generated from them. Read top to bottom:
 - **Reserved raw values** — the top 516 u32 values are not messages: two (unused) idle values, two free,
   and a 512-value block meaning "Core HP is exactly *h*" (written only when it drifts by >50).
 - **Slot map** — Core 0, builders upward from 1, turrets downward from the top; `GCS_SLOTS` lets a bot keep
-  some engine slots for itself (`starter_gcs` keeps 12–15).
+  some engine slots for itself.
 - **Timing conventions** — spawn → `ASSIGN` → resync round → onboarding window. This block is the protocol's
   calendar; every reader computes the same calendar from the round number.
 - **`TILE_STATES`** — the 65-code alphabet. Note the three *layers* comment: `WALL`/`ORE` are terrain,
@@ -91,7 +91,7 @@ detectors and `on_directive` are placeholders for logistics/behaviour.
 ### 9. Verification and tooling
 - `tests/test_gcs.py`, `tests/test_internal_map.py` — headless; the `World`/`FakeController` harness at the
   top of `test_gcs.py` is the quickest way to see a whole round's choreography.
-- `bots/gcsprobe` (random walk) and `bots/starter_gcs` (real logic) run the module in the engine; both print
+- `bots/test/gcsprobe` (random walk) and `bots/test/hildr_gcs` (hildr on the GCS) run the module in the engine; both print
   a `GCSTRACE` line per unit per round via `GCS/Base/trace.py`.
 - `tools/gcs_viz.py replay --report` prints reckoning/fact tallies; `tools/gcs_viz.py replay out.html` is
   Store Scope — click a unit, see its internal map beside the truth and the store as it decodes it.
