@@ -115,7 +115,10 @@ already seen one on the store never repeats it. The Core is not special here.
 `RUN` (start index, direction, length, state), `REMOTE` (one absolute fact — also the automatic fallback
 when a sender has nothing inside its FOV to say), `CONTROL` (`ASSIGN`, `SYMMETRY` (3 kinds, no coords),
 `DIRECTIVE` = `x · y · task(24)` where task 0 = FIX_HARVESTER (anyone, unaddressed), 1–15 = FIX_CONVEYOR
-addressed to that builder slot (Core only), 16–18 = BUILD/SCOUT/DEFEND_HERE).
+addressed to that builder slot (Core only), 16–18 = BUILD/SCOUT/DEFEND_HERE; `GRANT` = `x · y · slot(16) ·
+kind(3) · facing(9)`, a builder granting the turret/launcher it just built a slot, in absolute coordinates
+because the turret's registry is empty when it reads it; `STATUS` = `field(4) · value(512)`, one team-state
+scalar — `CORE_FLAGS`, `ETA`, `ENEMY_CORE_HP`, `ENEMY_MENDERS` — latched by readers).
 
 ## Spawn choreography (all common knowledge, zero header bits)
 1. Core spawns in round R and writes `ASSIGN(slot)` the same round (outranks the HP announcement).
@@ -134,6 +137,36 @@ addressed to that builder slot (Core only), 16–18 = BUILD/SCOUT/DEFEND_HERE).
 6. Readers decode onboarding chains only in the Core's slot and in slots they *know* are turret/launcher
    owned. A slot whose owner is still unknown (a latecomer's view of an older builder) is skipped rather
    than guessed, so a builder's standard message can never be misread as a chain.
+
+## hildr on the GCS (`bots/test/hildr_gcs`)
+hildr@01ee9ce rebuilt with the GCS as its only communication: its logic is untouched, its `_read`/`_write`
+calls go through `teamstate.py`, which answers each of hildr's 16 ad-hoc slots from the GCS — heartbeats →
+liveness, enemy Core → symmetry, sentinel/harvester counts → registry and map, and the team-state scalars
+(`GO`, `ECON_OK`, `THREAT`, `ring_extra`, `ETA`, enemy Core HP, enemy menders) → `CONTROL/STATUS`. Roles
+follow from slots: the attacker is the builder in slot 1, the miner the lowest live builder slot above it.
+hildr sets `ONBOARD_ROUNDS = 0` because it spawns menders on consecutive rounds and the Core cannot spawn
+while a window is open — with W = 0 it spawns every other round, the floor under this design.
+
+Result on royale, seed 3: beats the starter in 32 rounds (original: 33); the mirror against the original
+runs the full 1000 rounds and is decided on stored titanium either way (the original wins it, as it also
+does against itself as team B). Over that game: 75,341 reckonings, 0 off; 0 contradicting facts; 0
+warnings; every sentinel held a unique slot.
+
+Protocol holes found by running real logic (all fixed; the structural ones were consulted):
+- A newly built turret could not read a FOV-relative grant (its registry knows nobody's position): grants
+  are `CONTROL/GRANT` in absolute coordinates; a slotless turret reads unknown slots speculatively for its
+  own grant. The slot is picked when the grant is *sent* — a grant held back by a window could otherwise
+  name a slot taken meanwhile.
+- Resync messages carry the sender's kind, so a unit that never heard who owns a slot can still split the
+  number (position × fact, whose radix depends on the kind).
+- An escape message's payload digit was being read as an `aux` slot grant, registering phantom owners
+  (even outside the GCS range, which crashed readers). The aux-grant path is gone.
+- Same-round duplicate grants settle identically for every reader (lowest sender slot wins; the loser
+  re-grants); a granted slot never taken is reclaimed after `TAKEOVER_GRACE`.
+- A teammate restating a bot sighting no longer refreshes that sighting's age in the map.
+
+**hildr as-is cannot host the GCS**: it uses all 16 slots with five different writers, several writing
+different slots in the same round, so no collision-free packing frees enough slots — hence the adapter.
 
 ## Deviations from the plan made during implementation
 - The Core takes part in the resync round like every other unit — that is how newborns learn its position.
