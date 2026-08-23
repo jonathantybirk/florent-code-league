@@ -20,7 +20,7 @@ from .protocol import STATE_CODE
 CLASS_WEIGHTS: dict[str, float] = {
     "ENEMY_CORE": 10.0,
     "ENEMY_GUNNER": 8.0, "ENEMY_SENTINEL": 8.0, "ENEMY_LAUNCHER": 8.0,
-    "ENEMY_BUILDER_BOT": 7.0, "ENEMY_BOT_ON_CONVEYOR": 7.0,
+    "ENEMY_BUILDER_BOT": 7.0,
     "ORE": 6.0,
     "CONVEYOR_ISSUE": 5.0, "HARVESTER_ISSUE": 5.0,
     "WALL": 4.0, "ENEMY_BARRIER": 4.0,

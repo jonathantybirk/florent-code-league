@@ -95,11 +95,12 @@ FOV_TILES = {
 # A tile has two layers and a fact describes ONE of them:
 #   terrain  — EMPTY / WALL / ORE: what the ground is; never changes, so an ORE
 #              fact is never cancelled by anything built on top of it;
-#   occupant — a building or unit (the OUR_/ENEMY_ codes) standing on the
-#              terrain.  An EMPTY fact means "no occupant" (a negative) and
-#              says nothing about the ground.
-# A tile with ore and a harvester on it is therefore two facts: ORE and
-# OUR_HARVESTER.
+#   building — a structure on the terrain (harvester, conveyor, turret, ...);
+#   unit     — a Builder Bot standing on the tile (possibly on a conveyor).
+# Each is its own fact: a tile with ore, a conveyor and an enemy bot on it is
+# three facts (ORE, ENEMY_CONVEYOR_E, ENEMY_BUILDER_BOT).  An EMPTY fact means
+# "nothing built or standing here" (a negative) and says nothing about the
+# ground.
 _CARDINALS = ("N", "E", "S", "W")
 _EIGHT = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 
@@ -118,11 +119,9 @@ TILE_STATES: tuple[str, ...] = tuple(
     ["UNKNOWN", "EMPTY", "WALL", "ORE"]                      # 4  terrain
     + _team_block("OUR_")                                    # 29 ours
     + _team_block("ENEMY_")                                  # 29 theirs
-    + [f"OUR_BOT_ON_CONVEYOR_{d}" for d in _CARDINALS]       # 4  combos ours
-    + [f"ENEMY_BOT_ON_CONVEYOR_{d}" for d in _CARDINALS]     # 4  combos theirs
     + ["TOOK_FIRE_HERE", "CONVEYOR_ISSUE", "HARVESTER_ISSUE"]  # 3 overlays
 )
-# Codes 73..102 are spare; 103..105 are the escape codes.
+# Codes 65..102 are spare; 103..105 are the escape codes.
 S_ALPHABET = 106
 ESCAPE_RUN = 103
 ESCAPE_REMOTE = 104
@@ -130,7 +129,7 @@ ESCAPE_CONTROL = 105
 ESCAPES = (ESCAPE_RUN, ESCAPE_REMOTE, ESCAPE_CONTROL)
 
 STATE_CODE: dict[str, int] = {name: i for i, name in enumerate(TILE_STATES)}
-assert len(TILE_STATES) == 73 and len(STATE_CODE) == 73
+assert len(TILE_STATES) == 65 and len(STATE_CODE) == 65
 assert max(STATE_CODE.values()) < ESCAPE_RUN <= S_ALPHABET - 3
 
 # CONVEYOR_ISSUE / HARVESTER_ISSUE are a *status overlay*: the receiver keeps
@@ -309,7 +308,7 @@ def dump_protocol() -> str:
     out += [f"| {ESCAPE_RUN} | ESCAPE_RUN |",
             f"| {ESCAPE_REMOTE} | ESCAPE_REMOTE |",
             f"| {ESCAPE_CONTROL} | ESCAPE_CONTROL |",
-            f"| 73..102 | (spare) |", ""]
+            f"| 65..102 | (spare) |", ""]
     out += ["## Field values", "",
             f"- move: {', '.join(f'{i}={v}' for i, v in enumerate(MOVE_VALUES))}",
             f"- turn: {', '.join(f'{i}={v}' for i, v in enumerate(TURN_VALUES))}"

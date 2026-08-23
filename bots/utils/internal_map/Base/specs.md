@@ -10,19 +10,22 @@ Everything above is the original brief. `internal_map.py` is the implementation;
 the headless tests (`.venv/bin/python -m pytest tests/test_internal_map.py`).
 
 ## What it is
-One `InternalMap` per unit. Every tile has **two layers**, each with its own record:
+One `InternalMap` per unit. Every tile has **three layers**, each with its own record:
 
 - **terrain** — `EMPTY` / `WALL` / `ORE`, what the ground is. Never changes, so ore knowledge is never
   erased by whatever is built on top of it.
-- **occupant** — a building or unit on the terrain (`OUR_…` / `ENEMY_…`), or `EMPTY` for "nothing here".
-  Ages, and is cleared by a negative.
+- **building** — a structure on the terrain (`OUR_…` / `ENEMY_…` building codes), or `EMPTY` for "nothing
+  built here". Ages, and is cleared by a negative.
+- **unit** — a Builder Bot on the tile (`OUR_BUILDER_BOT` / `ENEMY_BUILDER_BOT`), or `EMPTY`. Bots move
+  every round, so this layer is never worth a negative on the store; age handles it. Our own bots are
+  recorded but never announced (teammates dead-reckon them).
 
-A tile with ore and a harvester is two facts (`ORE`, `OUR_HARVESTER`); a Core fills all four tiles of its
-2×2 block (`our_core` / `enemy_core()` give the top-left anchor). Each record holds:
+A tile with ore, a conveyor and a bot is three facts; a Core fills all four tiles of its 2×2 block
+(`our_core` / `enemy_core()` give the top-left anchor). Each record holds:
 
 | field | meaning |
 |---|---|
-| `state` | a code from the GCS tile-state alphabet (`bots/utils/GCS/Base/protocol.py` → `TILE_STATES`), e.g. `WALL`, `ORE`, `OUR_CONVEYOR_E`, `ENEMY_GUNNER_N`, `OUR_BOT_ON_CONVEYOR_S` |
+| `state` | a code from the GCS tile-state alphabet (`bots/utils/GCS/Base/protocol.py` → `TILE_STATES`), e.g. `WALL`, `ORE`, `OUR_CONVEYOR_E`, `ENEMY_GUNNER_N`, `ENEMY_BUILDER_BOT` |
 | `round` | the round the information dates from; `age(x, y)` = current round − this |
 | `source` | `SEEN` (own eyes), `GCS` (a teammate said so), `INFERRED` (derived from the map's symmetry) |
 | `published` | whether this fact is already on the store — ours or anyone's |
@@ -30,7 +33,7 @@ A tile with ore and a harvester is two facts (`ORE`, `OUR_HARVESTER`); a Core fi
 The two inputs from the brief are the two entry points:
 
 - **`observe(ct)`** — own eyesight. Scans every tile and entity in vision and records terrain, buildings
-  with their facing, units, and the "builder standing on a conveyor" combos. Skips the unit itself
+  with their facing, and bots — each in its own layer. Skips the unit itself
   (teammates track us by dead reckoning). Also records `TOOK_FIRE_HERE` on our own tile when our HP dropped
   and no enemy turret is in sight.
 - **`apply_fact(fact, from_gcs=True)`** — the store. Anything that arrives this way is marked published on
@@ -69,8 +72,8 @@ any `OUR_CORE` tile, so builders derive the enemy Core too. Verified live on fro
 derived `(16, 9)`, the real enemy Core.
 
 ## Queries for other modules
-`terrain_at(x, y)`, `occupant_at(x, y)`, `state_at(x, y)` (occupant if any, else terrain), `age(x, y)`,
-`is_passable(x, y)` (True/False/None-if-unknown; conveyors and splitters are
+`terrain_at(x, y)`, `building_at(x, y)`, `unit_at(x, y)`, `state_at(x, y)` (unit, else building, else
+terrain), `age(x, y)`, `is_passable(x, y)` (True/False/None-if-unknown; conveyors and splitters are
 walkable, everything else that is built is not), `enemy_core()`, `our_core`, `tiles` (the raw records).
 
 ## Not in scope here

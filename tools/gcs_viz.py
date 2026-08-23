@@ -245,7 +245,7 @@ td.raw.changed{color:var(--text)}
       <span><i class="dash" style="color:var(--accent)"></i>heard via the store</span>
       <span><i class="dash" style="color:var(--muted)"></i>inferred from symmetry</span>
       <span><i style="background:var(--bad)"></i>disagrees with truth</span>
-      <span>faded = old information · ground colour and the glyph on it are separate facts</span>
+      <span>faded = old information · ground colour, building glyph and bot dot are three separate facts</span>
     </div>
     <div class="status" id="status"></div>
   </section>
@@ -280,7 +280,7 @@ function mapUpTo(viewer, r) {
     const t = R[i].traces[viewer];
     if (t && t.map_delta) for (const [x,y,st,src,rnd,layer] of t.map_delta) {
       const k = x+","+y, cur = c.tiles.get(k) || {};
-      cur[layer || "o"] = {st, src, rnd, at:i};          // "t" = terrain, "o" = occupant
+      cur[layer] = {st, src, rnd, at:i};          // "t" terrain, "b" building, "u" unit
       c.tiles.set(k, cur);
     }
   }
@@ -309,7 +309,7 @@ function drawGrid(ctx, g) {
 }
 function glyph(ctx, cx, cy, size, name, color) {
   // units: circle; buildings: square; turrets/conveyors get a facing tick
-  const unit = name.endsWith("BUILDER_BOT") || name.includes("BOT_ON_CONVEYOR");
+  const unit = name.endsWith("BUILDER_BOT");
   ctx.fillStyle = color;
   if (unit) { ctx.beginPath(); ctx.arc(cx, cy, size*.3, 0, Math.PI*2); ctx.fill(); }
   else if (name.endsWith("CORE")) ctx.fillRect(cx-size*.42, cy-size*.42, size*.84, size*.84);
@@ -369,7 +369,10 @@ function drawInternal() {
   const tiles = mapUpTo(viewer, round);
   ctx.fillStyle = C.unknown; ctx.fillRect(0,0,imap.width,imap.height);
   let known = 0, seen = 0, heard = 0, inferred = 0, wrong = 0, terrainKnown = 0;
-  const entsNow = new Map(); for (const e of rd.ents) entsNow.set(e.pos[0]+","+e.pos[1], e);
+  // truth per tile, split by layer: a conveyor and the bot on it are both there
+  const entsNow = new Map();
+  for (const e of rd.ents) { const k = e.pos[0]+","+e.pos[1], cur = entsNow.get(k) || {};
+    if (e.type === "builder_bot") cur.unit = e; else cur.building = e; entsNow.set(k, cur); }
   const border = (rec, px, py) => {
     ctx.lineWidth = 1.5;
     if (rec.src === "s") { ctx.setLineDash([]); ctx.strokeStyle = C.text; ctx.globalAlpha = .35; }
@@ -377,33 +380,46 @@ function drawInternal() {
     else { ctx.setLineDash([1,2]); ctx.strokeStyle = C.muted; ctx.globalAlpha = .8; }
     ctx.strokeRect(px+1.5, py+1.5, g.size-3, g.size-3); ctx.setLineDash([]); ctx.globalAlpha = 1;
   };
+  const live = rec => rec && stateName(rec.st) !== "EMPTY" ? rec : null;
   for (const [k, tile] of tiles) {
     const [x, y] = k.split(",").map(Number), px = g.ox+x*g.size, py = g.oy+y*g.size;
-    const terr = tile.t, occ = tile.o && stateName(tile.o.st) !== "EMPTY" ? tile.o : null;
+    const terr = tile.t, bld = live(tile.b), unit = live(tile.u);
     known++;
-    const src = (occ || terr || tile.o).src; if (src==="s") seen++; else if (src==="g") heard++; else inferred++;
+    const top = unit || bld || terr || tile.b || tile.u;
+    if (top.src==="s") seen++; else if (top.src==="g") heard++; else inferred++;
     // terrain layer: what the unit believes the ground is
     const tname = terr ? stateName(terr.st) : null;
     ctx.fillStyle = tname==="WALL" ? C.wall : tname==="ORE" ? C.ore : C.floor;
     ctx.fillRect(px, py, g.size, g.size);
     let disagree = false;
     if (terr) { terrainKnown++; if (terrainOf(tname) !== DATA.tiles[y][x]) disagree = true; }
-    // occupant layer: a building or unit on top
-    if (occ) {
-      const name = stateName(occ.st), e = entsNow.get(k), ours = name.startsWith("OUR_");
+    const truth = entsNow.get(k) || {};
+    // building layer
+    if (bld) {
+      const name = stateName(bld.st), ours = name.startsWith("OUR_"), age = round - bld.rnd;
       const onCore = DATA.cores.some(c => x>=c.pos[0] && x<=c.pos[0]+1 && y>=c.pos[1] && y<=c.pos[1]+1 && (c.owner===1)===ours);
-      const age = round - occ.rnd;
+      const e = truth.building;
       if (name.endsWith("CORE")) { if (!onCore) disagree = true; }
       else if (name.startsWith("TOOK_FIRE") || name.endsWith("_ISSUE")) {}
-      else if (!e) disagree = age > 0;                         // stale sighting: nothing there now
+      else if (!e) disagree = age > 0;
       else if ((e.team==="A") !== ours) disagree = true;
       ctx.globalAlpha = Math.max(.35, 1 - age/60);
-      glyph(ctx, px+g.size/2, py+g.size/2, g.size, name, ours ? C.ours : name.startsWith("ENEMY_") ? C.theirs : C.muted);
+      glyph(ctx, px+g.size/2, py+g.size/2, g.size, name, ours ? C.ours : C.theirs);
+      ctx.globalAlpha = 1;
+    }
+    // unit layer: a bot on top, drawn smaller so the building stays visible
+    if (unit) {
+      const name = stateName(unit.st), ours = name.startsWith("OUR_"), age = round - unit.rnd;
+      const e = truth.unit;
+      if (!e) disagree = disagree || age > 0; else if ((e.team==="A") !== ours) disagree = true;
+      ctx.globalAlpha = Math.max(.35, 1 - age/60);
+      ctx.fillStyle = ours ? C.ours : C.theirs; ctx.beginPath(); ctx.arc(px+g.size/2, py+g.size/2, g.size*.22, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = C.panel; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.globalAlpha = 1;
     }
     if (disagree) { wrong++; ctx.fillStyle = C.bad; ctx.globalAlpha = .45; ctx.fillRect(px+1, py+1, g.size-2, g.size-2); ctx.globalAlpha = 1; }
-    border(occ || terr || tile.o, px, py);
-    const at = Math.max(terr ? terr.at : -1, tile.o ? tile.o.at : -1);
+    border(top, px, py);
+    const at = Math.max(...[tile.t, tile.b, tile.u].filter(Boolean).map(r => r.at));
     if (at === round) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.strokeRect(px+1, py+1, g.size-2, g.size-2); }
   }
   drawGrid(ctx, g);
@@ -481,7 +497,7 @@ imap.addEventListener('mousemove', ev => { const p = tileAt(imap, ev); const el 
   if (!tile) { el.innerHTML = `(${p}) <b>never heard of</b>`; return; }
   const v = DATA.tiles[p[1]][p[0]];
   const desc = rec => `<b>${stateName(rec.st)}</b> (${SRC[rec.src]}, from round ${rec.rnd}, ${round-rec.rnd} old)`;
-  el.innerHTML = `(${p}) ground: ${tile.t ? desc(tile.t) : '<b>unknown</b>'} · on it: ${tile.o ? desc(tile.o) : '<b>unknown</b>'} · truth ground: ${v===1?'wall':v===2?'ore':'empty'}`; });
+  el.innerHTML = `(${p}) ground: ${tile.t ? desc(tile.t) : '<b>unknown</b>'} · building: ${tile.b ? desc(tile.b) : '<b>unknown</b>'} · bot: ${tile.u ? desc(tile.u) : '<b>unknown</b>'} · truth ground: ${v===1?'wall':v===2?'ore':'empty'}`; });
 
 // transport
 const scrub = document.getElementById('scrub'); scrub.max = R.length-1;

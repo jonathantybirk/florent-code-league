@@ -87,7 +87,7 @@ class Player:
         the viewer rebuilds the unit's whole internal map from these."""
         out = []
         for (x, y), t in self.gcs.map.tiles.items():
-            for layer, rec in (("t", t.terrain), ("o", t.occupant)):
+            for layer, rec in (("t", t.terrain), ("b", t.building), ("u", t.unit)):
                 if rec is None:
                     continue
                 key = (x, y, layer)
