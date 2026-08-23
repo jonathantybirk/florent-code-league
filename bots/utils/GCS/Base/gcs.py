@@ -61,7 +61,7 @@ class GCS:
         self.last_pub_pos: tuple[int, int] | None = None   # where we last wrote from
         self.last_written: int | None = None
         self.restate_cursor = 0                # cycles through known facts
-        self.symmetry_announced = False        # Core only
+        self.symmetry_announced = False
         self.queued: list[tuple[float, OutMessage]] = []
         # Core only: everyone knows HP starts at CORE_HP_MAX, so the first
         # announcement happens only once the Core has drifted from it
@@ -102,6 +102,9 @@ class GCS:
         for _slot, ev in result.events:
             if ev.kind == CTRL_SYMMETRY and hasattr(self.map, "set_symmetry"):
                 self.map.set_symmetry(ev.args[0])
+        core_pos = self.registry.owners[SLOT_CORE].pos
+        if core_pos is not None and hasattr(self.map, "note_core_block"):
+            self.map.note_core_block(core_pos)        # the whole 2x2, exactly
         self._dispatch_directives(result)
         return result
 
@@ -150,8 +153,9 @@ class GCS:
         if not reg.may_write(self.slot, round_no):
             return []                       # off-phase, or the Core borrowed us
 
-        # the Core announces the map's symmetry once, as soon as it knows it
-        if (self.kind == "core" and not self.symmetry_announced
+        # whoever works out the map's symmetry first announces it, once;
+        # nobody repeats it after it has been on the store
+        if (not self.symmetry_announced and not reg.symmetry_heard
                 and self.map.symmetry() is not None):
             self.symmetry_announced = True
             self.core_announce_symmetry(self.map.symmetry())
@@ -309,6 +313,7 @@ class GCS:
         self.queue(OutMessage("control", control=(CTRL_ASSIGN, args)), priority=1000.0)
 
     def core_announce_symmetry(self, kind: int):
+        """Queue a SYMMETRY announcement (any unit may send one)."""
         self.queue(OutMessage("control", control=(CTRL_SYMMETRY, kind)), priority=90.0)
 
     def send_directive(self, x: int, y: int, task: int):

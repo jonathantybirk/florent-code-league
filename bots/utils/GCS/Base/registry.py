@@ -29,6 +29,7 @@ from .messages import ControlEvent, Decoded, Fact
 from .protocol import (
     BUILDER_SLOTS_FROM,
     CTRL_ASSIGN,
+    CTRL_SYMMETRY,
     GRANT_STATES,
     ONBOARD_ROUNDS,
     SLOT_CORE,
@@ -47,7 +48,6 @@ for _i, _d in enumerate(_EIGHT):
     _GRANT_KIND[STATE_CODE[f"OUR_GUNNER_{_d}"]] = ("gunner", _i)
     _GRANT_KIND[STATE_CODE[f"OUR_SENTINEL_{_d}"]] = ("sentinel", _i)
 _GRANT_KIND[STATE_CODE["OUR_LAUNCHER"]] = ("launcher", None)
-_OUR_CORE = STATE_CODE["OUR_CORE"]
 
 
 @dataclass
@@ -87,6 +87,7 @@ class SlotRegistry:
         self.onboard_until: int | None = None           # last onboarding write-round
         # the Core's per-slot model of what each unit already knows
         self.known: dict[int, set[tuple[int, int]]] = {}
+        self.symmetry_heard: bool = False       # a SYMMETRY has been on the store
 
     # ------------------------------------------------------------------
     # per-round decode of the whole store
@@ -195,11 +196,9 @@ class SlotRegistry:
             result.events.append((slot, ev))
             if ev.kind == CTRL_ASSIGN and slot == SLOT_CORE:
                 self._on_assign(ev, wrote_round)
+            elif ev.kind == CTRL_SYMMETRY:
+                self.symmetry_heard = True
         self._apply_grants(decoded, result)
-        # any OUR_CORE fact pins down the Core's position for future decodes
-        for f in decoded.facts:
-            if f.state == _OUR_CORE:
-                self.owners[SLOT_CORE].pos = (f.x, f.y)
 
     def _apply_grants(self, decoded: Decoded, result: RoundResult):
         """A builder fact naming a friendly turret + aux!=0 assigns that slot."""

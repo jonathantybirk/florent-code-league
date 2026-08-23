@@ -245,7 +245,7 @@ td.raw.changed{color:var(--text)}
       <span><i class="dash" style="color:var(--accent)"></i>heard via the store</span>
       <span><i class="dash" style="color:var(--muted)"></i>inferred from symmetry</span>
       <span><i style="background:var(--bad)"></i>disagrees with truth</span>
-      <span>faded = old information</span>
+      <span>faded = old information · ground colour and the glyph on it are separate facts</span>
     </div>
     <div class="status" id="status"></div>
   </section>
@@ -278,7 +278,11 @@ function mapUpTo(viewer, r) {
   if (r < c.upto) { c.upto = -1; c.tiles = new Map(); }
   for (let i = c.upto + 1; i <= r; i++) {
     const t = R[i].traces[viewer];
-    if (t && t.map_delta) for (const [x,y,st,src,rnd] of t.map_delta) c.tiles.set(x+","+y, {st, src, rnd, at:i});
+    if (t && t.map_delta) for (const [x,y,st,src,rnd,layer] of t.map_delta) {
+      const k = x+","+y, cur = c.tiles.get(k) || {};
+      cur[layer || "o"] = {st, src, rnd, at:i};          // "t" = terrain, "o" = occupant
+      c.tiles.set(k, cur);
+    }
   }
   c.upto = r;
   return c.tiles;
@@ -291,9 +295,13 @@ let round = 0, viewer = viewers[0], timer = null, C = {};
 const geo = cv => { const size = Math.min(cv.width / W, cv.height / H); return {size, ox:(cv.width-size*W)/2, oy:(cv.height-size*H)/2}; };
 
 function stateName(st){ return STATES[st] || ("#"+st); }
-function terrainOf(name){ return name==="WALL" ? 1 : name==="ORE_FREE" ? 2 : name==="EMPTY" ? 0 : null; }
+function terrainOf(name){ return name==="WALL" ? 1 : name==="ORE" ? 2 : name==="EMPTY" ? 0 : null; }
 
 function drawGrid(ctx, g) {
+  // axis labels: x runs right, y runs down, (0,0) top-left — the engine's own convention
+  ctx.fillStyle = C.muted; ctx.font = `${Math.max(8, g.size*.38)}px "IBM Plex Mono",monospace`; ctx.textAlign = "left"; ctx.textBaseline = "top";
+  for (let x=0;x<W;x++) ctx.fillText(x, g.ox+x*g.size+2, g.oy+1);
+  for (let y=1;y<H;y++) ctx.fillText(y, g.ox+2, g.oy+y*g.size+1);
   ctx.strokeStyle = C.line; ctx.lineWidth = 0.5; ctx.globalAlpha = .6;
   for (let x=0;x<=W;x++){ctx.beginPath();ctx.moveTo(g.ox+x*g.size,g.oy);ctx.lineTo(g.ox+x*g.size,g.oy+H*g.size);ctx.stroke();}
   for (let y=0;y<=H;y++){ctx.beginPath();ctx.moveTo(g.ox,g.oy+y*g.size);ctx.lineTo(g.ox+W*g.size,g.oy+y*g.size);ctx.stroke();}
@@ -362,35 +370,41 @@ function drawInternal() {
   ctx.fillStyle = C.unknown; ctx.fillRect(0,0,imap.width,imap.height);
   let known = 0, seen = 0, heard = 0, inferred = 0, wrong = 0, terrainKnown = 0;
   const entsNow = new Map(); for (const e of rd.ents) entsNow.set(e.pos[0]+","+e.pos[1], e);
-  for (const [k, rec] of tiles) {
-    const [x, y] = k.split(",").map(Number), name = stateName(rec.st);
-    known++; if (rec.src==="s") seen++; else if (rec.src==="g") heard++; else inferred++;
-    const terr = terrainOf(name), truthTerr = DATA.tiles[y][x];
-    const age = round - rec.rnd, alpha = terr !== null ? 1 : Math.max(.35, 1 - age/60);
-    const px = g.ox+x*g.size, py = g.oy+y*g.size;
-    // base: what the unit believes the ground is
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = name==="WALL" ? C.wall : name==="ORE_FREE" ? C.ore : C.floor;
-    ctx.fillRect(px, py, g.size, g.size);
-    let disagree = false;
-    if (terr !== null) { terrainKnown++; if (terr !== truthTerr) disagree = true; }
-    else {
-      // a building/unit belief: compare against what is really there now
-      const e = entsNow.get(k), ours = name.startsWith("OUR_");
-      if (!e && !name.endsWith("CORE")) disagree = age > 0 && !name.startsWith("TOOK_FIRE");   // stale sighting
-      else if (e && ((e.team==="A") !== ours)) disagree = true;
-      ctx.globalAlpha = alpha;
-      glyph(ctx, px+g.size/2, py+g.size/2, g.size, name, ours ? C.ours : name.startsWith("ENEMY_") ? C.theirs : C.muted);
-      ctx.globalAlpha = 1;
-    }
-    if (disagree) { wrong++; ctx.fillStyle = C.bad; ctx.globalAlpha = .45; ctx.fillRect(px+1, py+1, g.size-2, g.size-2); ctx.globalAlpha = 1; }
-    // source as border style
+  const border = (rec, px, py) => {
     ctx.lineWidth = 1.5;
     if (rec.src === "s") { ctx.setLineDash([]); ctx.strokeStyle = C.text; ctx.globalAlpha = .35; }
     else if (rec.src === "g") { ctx.setLineDash([3,2]); ctx.strokeStyle = C.accent; ctx.globalAlpha = .9; }
     else { ctx.setLineDash([1,2]); ctx.strokeStyle = C.muted; ctx.globalAlpha = .8; }
     ctx.strokeRect(px+1.5, py+1.5, g.size-3, g.size-3); ctx.setLineDash([]); ctx.globalAlpha = 1;
-    if (rec.at === round) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.strokeRect(px+1, py+1, g.size-2, g.size-2); }
+  };
+  for (const [k, tile] of tiles) {
+    const [x, y] = k.split(",").map(Number), px = g.ox+x*g.size, py = g.oy+y*g.size;
+    const terr = tile.t, occ = tile.o && stateName(tile.o.st) !== "EMPTY" ? tile.o : null;
+    known++;
+    const src = (occ || terr || tile.o).src; if (src==="s") seen++; else if (src==="g") heard++; else inferred++;
+    // terrain layer: what the unit believes the ground is
+    const tname = terr ? stateName(terr.st) : null;
+    ctx.fillStyle = tname==="WALL" ? C.wall : tname==="ORE" ? C.ore : C.floor;
+    ctx.fillRect(px, py, g.size, g.size);
+    let disagree = false;
+    if (terr) { terrainKnown++; if (terrainOf(tname) !== DATA.tiles[y][x]) disagree = true; }
+    // occupant layer: a building or unit on top
+    if (occ) {
+      const name = stateName(occ.st), e = entsNow.get(k), ours = name.startsWith("OUR_");
+      const onCore = DATA.cores.some(c => x>=c.pos[0] && x<=c.pos[0]+1 && y>=c.pos[1] && y<=c.pos[1]+1 && (c.owner===1)===ours);
+      const age = round - occ.rnd;
+      if (name.endsWith("CORE")) { if (!onCore) disagree = true; }
+      else if (name.startsWith("TOOK_FIRE") || name.endsWith("_ISSUE")) {}
+      else if (!e) disagree = age > 0;                         // stale sighting: nothing there now
+      else if ((e.team==="A") !== ours) disagree = true;
+      ctx.globalAlpha = Math.max(.35, 1 - age/60);
+      glyph(ctx, px+g.size/2, py+g.size/2, g.size, name, ours ? C.ours : name.startsWith("ENEMY_") ? C.theirs : C.muted);
+      ctx.globalAlpha = 1;
+    }
+    if (disagree) { wrong++; ctx.fillStyle = C.bad; ctx.globalAlpha = .45; ctx.fillRect(px+1, py+1, g.size-2, g.size-2); ctx.globalAlpha = 1; }
+    border(occ || terr || tile.o, px, py);
+    const at = Math.max(terr ? terr.at : -1, tile.o ? tile.o.at : -1);
+    if (at === round) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.strokeRect(px+1, py+1, g.size-2, g.size-2); }
   }
   drawGrid(ctx, g);
   const me = rd.ents.find(e => e.id === viewer);
@@ -463,10 +477,11 @@ board.addEventListener('click', ev => { const p = tileAt(board, ev); if (!p) ret
   const id = e ? e.id : core ? viewers.find(v => kindOf[v]==="core") : null;
   if (id !== null && id !== undefined) { viewer = id; document.getElementById('viewer').value = id; draw(); } });
 imap.addEventListener('mousemove', ev => { const p = tileAt(imap, ev); const el = document.getElementById('inspectMap'); if (!p) return;
-  const rec = mapUpTo(viewer, round).get(p[0]+","+p[1]);
-  if (!rec) { el.innerHTML = `(${p}) <b>never heard of</b>`; return; }
+  const tile = mapUpTo(viewer, round).get(p[0]+","+p[1]);
+  if (!tile) { el.innerHTML = `(${p}) <b>never heard of</b>`; return; }
   const v = DATA.tiles[p[1]][p[0]];
-  el.innerHTML = `(${p}) believes <b>${stateName(rec.st)}</b> · ${SRC[rec.src]} · information from round ${rec.rnd} (${round-rec.rnd} rounds old) · learned in round ${rec.at} · truth: ${v===1?'wall':v===2?'ore':'empty'}`; });
+  const desc = rec => `<b>${stateName(rec.st)}</b> (${SRC[rec.src]}, from round ${rec.rnd}, ${round-rec.rnd} old)`;
+  el.innerHTML = `(${p}) ground: ${tile.t ? desc(tile.t) : '<b>unknown</b>'} · on it: ${tile.o ? desc(tile.o) : '<b>unknown</b>'} · truth ground: ${v===1?'wall':v===2?'ore':'empty'}`; });
 
 // transport
 const scrub = document.getElementById('scrub'); scrub.max = R.length-1;
@@ -529,8 +544,8 @@ def report(data: dict) -> str:
         for (x, y), st in learned.items():
             name = states[st] if st < len(states) else ""
             v = data["tiles"][y][x]
-            if name in ("WALL", "ORE_FREE", "EMPTY"):
-                if (name, v) in (("WALL", 1), ("ORE_FREE", 2), ("EMPTY", 0)):
+            if name in ("WALL", "ORE"):          # EMPTY means "no occupant", not ground
+                if (name, v) in (("WALL", 1), ("ORE", 2)):
                     agree += 1
                 else:
                     contradict += 1

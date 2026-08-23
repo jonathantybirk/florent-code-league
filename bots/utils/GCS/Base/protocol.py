@@ -91,6 +91,15 @@ FOV_TILES = {
 # ---------------------------------------------------------------------------
 # 0 is UNKNOWN/filler.  "OUR_"/"ENEMY_" blocks are 29 codes each.  Facings use
 # cardinal order N,E,S,W and eight-direction order N,NE,E,SE,S,SW,W,NW.
+#
+# A tile has two layers and a fact describes ONE of them:
+#   terrain  — EMPTY / WALL / ORE: what the ground is; never changes, so an ORE
+#              fact is never cancelled by anything built on top of it;
+#   occupant — a building or unit (the OUR_/ENEMY_ codes) standing on the
+#              terrain.  An EMPTY fact means "no occupant" (a negative) and
+#              says nothing about the ground.
+# A tile with ore and a harvester on it is therefore two facts: ORE and
+# OUR_HARVESTER.
 _CARDINALS = ("N", "E", "S", "W")
 _EIGHT = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 
@@ -106,7 +115,7 @@ def _team_block(prefix: str) -> list[str]:
 
 
 TILE_STATES: tuple[str, ...] = tuple(
-    ["UNKNOWN", "EMPTY", "WALL", "ORE_FREE"]                 # 4  terrain
+    ["UNKNOWN", "EMPTY", "WALL", "ORE"]                      # 4  terrain
     + _team_block("OUR_")                                    # 29 ours
     + _team_block("ENEMY_")                                  # 29 theirs
     + [f"OUR_BOT_ON_CONVEYOR_{d}" for d in _CARDINALS]       # 4  combos ours

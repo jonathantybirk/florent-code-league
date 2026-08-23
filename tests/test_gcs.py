@@ -33,7 +33,7 @@ from bots.utils.GCS.Base.protocol import (
 W, H = 30, 30
 EMPTY = STATE_CODE["EMPTY"]
 WALL = STATE_CODE["WALL"]
-ORE = STATE_CODE["ORE_FREE"]
+ORE = STATE_CODE["ORE"]
 
 
 # ---------------------------------------------------------------------------

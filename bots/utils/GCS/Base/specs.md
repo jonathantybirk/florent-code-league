@@ -88,6 +88,17 @@ as a parity bit (receivers ignore `UNKNOWN`-state facts). The raw `IDLE_A`/`IDLE
 unused. (The visualiser found the original bug: a builder that idled once lost that round's move and its
 reckoned position drifted for the rest of the match.)
 
+## Two layers per tile, one fact per layer
+A fact describes **one layer** of a tile. `WALL` / `ORE` are **terrain** — what the ground is, which never
+changes, so an `ORE` fact is never cancelled by anything built on top of it. Every `OUR_`/`ENEMY_` code is
+an **occupant** standing on the terrain, and `EMPTY` means "no occupant" (a negative) and says nothing about
+the ground. A tile with ore and a harvester on it is therefore two facts, `ORE` and `OUR_HARVESTER`, and
+losing the harvester is a third, `EMPTY`. A Core occupies a 2×2 block: all four tiles are `OUR_CORE`.
+
+## Who announces the symmetry
+Whichever unit works the map's symmetry out first announces it (`CONTROL/SYMMETRY`), once; a unit that has
+already seen one on the store never repeats it. The Core is not special here.
+
 ## Per-sender layouts (most-significant first; `fact = FOV × 106`)
 - Builder: `move(5) · fact_a · fact_b · aux(16)` — 1.004× full. `aux` = slot granted to a friendly
   turret/launcher named by a fact in the same message.
@@ -202,5 +213,8 @@ any tile on either map for the details.
 - Enemy-builder movement inference (the TODO above) is not implemented; enemy bots are plain tile states.
 - A message deferred by a resync/onboarding round keeps its priority; `ASSIGN` is queued at priority 1000 so
   nothing deferred can ever push it out of its spawn round (that bug cost a newborn its slot once).
+- Readers learn the Core's position only from the resync round, never from `OUR_CORE` facts (the Core
+  publishes all four block tiles, and guessing the anchor from one of them once sent every reader's idea
+  of the Core wandering across the map).
 - `SYMMETRY` is delivered as a control event (`RoundResult.events`); applying it is the internal map's job
   (see `bots/utils/internal_map/Base/specs.md`).
