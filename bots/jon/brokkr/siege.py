@@ -43,12 +43,42 @@ SENTINEL_AMMO = 10
 # Core's own map read 2 on a map where eight were running and the siege never
 # opened at all. Passive income alone is 2.5 Ti a round; anything above this
 # means Harvesters are actually delivering, which is the thing being asked.
-MIN_INCOME = 5.0
-MIN_TITANIUM = 140
+# Measured against Leviathan on bifrost: their economy and ours were level at
+# turn 45 -- six Harvesters to five -- and they won because on turn 42 they
+# put a Sentinel three tiles from our Core and we never attacked at all. The
+# old thresholds (income 5, titanium 140) were not reached until turn 116 on a
+# quiet map and never at all under pressure, so the siege was decoration.
+#
+# The race is one we should want. Trading Sentinel lines is decided by whose
+# Core survives the other's ammunition, and mending is 4 HP per titanium
+# against shooting's 1.8 -- which is the exchange brokkr already wins against
+# every rusher it meets.
+MIN_INCOME = 2.6            # anything above passive income alone
+MIN_TITANIUM = 70
+MIN_ROUND = 35
 
-# Ammunition to hold once a siege is open. Below this the Sentinels are
-# ornaments; far above it we are hoarding titanium the economy could compound.
-AMMO_TARGET = 60
+# Ammunition to bank once a siege is open, and the volley rules that spend it.
+#
+# A Sentinel firing whenever it can afford a shot is worthless against a Core
+# somebody is mending: 18 damage every two rounds is 9 a round, and one enemy
+# Builder repairs 4 HP a round for 1 Ti. Measured on midgard, brokkr held one
+# Sentinel and hovered at 50-60 ammunition for 200 rounds, shooting the whole
+# time and never taking their Core below full -- the exact "trickle-fire"
+# failure hildr's log records.
+#
+# What beats menders is arriving faster than they can repair, which means
+# holding fire until enough shots are banked to spend them together. Killing a
+# 500 HP Core is 28 Sentinel shots, so the bank is sized for most of one.
+AMMO_TARGET = 240
+
+# Hold fire below this, then keep firing down to the floor. The hysteresis is
+# what makes it a volley rather than a trickle at a higher threshold.
+VOLLEY_START = 90
+VOLLEY_FLOOR = 10
+
+# Sentinels to put on the line before the ammunition matters. One cannot
+# out-damage a single mender; three out-damage four.
+SIEGE_SENTINELS = 3
 
 _DIR_BY_DELTA = {
     (0, -1): Direction.NORTH, (1, 0): Direction.EAST,
@@ -65,9 +95,11 @@ def enemy_core_tiles(brain):
     return {(x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1)}
 
 
-def ready(brain, titanium: int, income: float) -> bool:
+def ready(brain, titanium: int, income: float, round_number: int) -> bool:
     """Whether the economy can fund an attack, and there is somewhere to send it."""
     if not enemy_core_tiles(brain):
+        return False
+    if round_number < MIN_ROUND:
         return False
     return income >= MIN_INCOME and titanium >= MIN_TITANIUM
 
@@ -106,6 +138,13 @@ def firing_spots(brain):
         seen.add(spot)
         unique.append((spot, facing))
     return unique
+
+
+def volley(ammo: int, firing: bool) -> bool:
+    """Whether a Sentinel on the line should shoot this round."""
+    if firing:
+        return ammo >= VOLLEY_FLOOR
+    return ammo >= VOLLEY_START
 
 
 def ammo_wanted(ammo: int, titanium: int, reserve: int) -> int:

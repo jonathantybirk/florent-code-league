@@ -67,9 +67,14 @@ def run(player, ct) -> None:
         debug.log(f"r{brain.round} b{ct.get_id()} INDEX={brain.index}")
     _gossip(brain, ct)
 
-    if _mend(player, ct):
-        return
+    # The siege outranks mending. An attacker recalled to heal is an attacker
+    # that never arrives, and against an economy the healing exchange is one
+    # we lose anyway -- they can afford to spend more on damage than we can on
+    # repair. The Builders that mend are chosen by roster.is_mender, which
+    # never picks an attacker, so this is an ordering rule and not a contest.
     if _besiege(player, ct):
+        return
+    if _mend(player, ct):
         return
     _mine(player, ct)
 
