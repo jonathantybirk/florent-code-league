@@ -68,6 +68,8 @@ ECON_RESERVE = 90          # titanium set aside for the Harvester and belt while
 SNIPE_BANK = 20            # ammunition banked before the ring snipes: two shots kill a Harvester
 GO_LOW_HP = 120            # always finish a Core this low if we out-damage the menders
 TIE_FLOOR = 5              # titanium never converted: the dead-heat tiebreak
+STALL_ROUNDS = 15          # HOLD this long with a quiet home means the game is now an income race
+MINERS_STALL = 2           # home Builders hired for the long game
 ATTACKER_DIG_REACH = 0     # steps the attack Builder walks to dig out a turret shooting the ring
 
 # communication store
@@ -200,6 +202,8 @@ class Player:
         self.heals = []
         self.shots = []
         self.go_held = False
+        self.hold_since = None
+        self.spawn_total = 0
         self.plan_round = 0
         self.ring_seen = 0
         # builder
@@ -382,16 +386,35 @@ class Player:
         home_builders = menders + (1 if mining else 0)
         need_menders = max(0, want_menders - home_builders)
 
+        # ---- the stall: the rush is banked behind their menders, so the game is an income race.
+        # The burst that ends these games costs ~500 Ti of ammunition; passive income reaches it
+        # fifty rounds after round 1000.  Two miners and three Harvesters reach it by ~150.
+        stuck = (built >= SENTINEL_TARGET and self.hold_since is not None
+                 and self.round - self.hold_since > STALL_ROUNDS
+                 and self.round - self.last_hit > 20)
+        if stuck and home_builders < MINERS_STALL and self._read(ct, SLOT_HARVEST) < HARVESTERS_MAX:
+            want_menders = max(want_menders, home_builders + 1)
+            need_menders = max(0, want_menders - home_builders)
+
         # ---- the attack Builder, then menders, then ammunition
         spawned_now = self._keep_attacker(ct, built)
         if not spawned_now and need_menders:
             cost = self._builder_cost(ct)
             if self.plan == 'mend' or mend_first:
                 spare = ti - (ring_reserve if alive == 0 and built == 0 else 0)
+            elif stuck:
+                spare = ti - SNIPE_BANK            # income is the burst; the miner comes first
             else:
                 spare = ti - ring_reserve - mend_reserve - max(0, kill_ammo - ammo)
+            # Replacement discipline (steward_hardened's lesson): a Builder bought into the same
+            # fire that killed the last one is a donation.  Past a handful, each further one
+            # needs a fat bank behind it.
+            if self.spawn_total >= 8:
+                spare -= 150
             if ti >= cost and spare >= cost:
                 spawned_now = self._spawn_home(ct)
+                if spawned_now:
+                    self.spawn_total += 1
 
         # ---- GO / HOLD for the ring
         go = 1
@@ -404,8 +427,13 @@ class Player:
             self.go_held = True
             if go == 0 and ammo >= SNIPE_BANK:
                 go = 2                             # a volley at a mender, then bank again
+            if go != 1 and self.hold_since is None:
+                self.hold_since = self.round
+            elif go == 1:
+                self.hold_since = None
         else:
             self.go_held = False
+            self.hold_since = None
         self.go = go
         self._write(ct, SLOT_GO, go)
         # ---- mining
@@ -419,7 +447,7 @@ class Player:
         self._write(ct, SLOT_ECON_OK, self.round + 1 if econ_ok else 0)
         # The Harvester pays for itself in forty rounds.  While the kill is further off than that
         # on passive income alone, it comes first -- but only while someone can actually build it.
-        econ_first = econ_ok and harvesters == 0 and menders > 0 and (go != 1 or (kill_ammo - bank) > 100)
+        econ_first = econ_ok and harvesters == 0 and home_builders > 0 and (go != 1 or (kill_ammo - bank) > 100)
 
         # ---- ammunition, lazily
         self._feed_ammo(ct, alive, go, 0 if finishing else ring_reserve, need_menders,
