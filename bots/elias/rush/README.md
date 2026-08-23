@@ -135,12 +135,12 @@ therefore exercise the discovered-terrain path a ladder rotation would force.
 | `nash/flagship` | **28/30** | was 25/30 before the anchor fix |
 | `rivals/vigil` | **28/30** | |
 | `zoo/adgato` (mirror rusher) | **27/30** | |
-| `rivals/vanguard` | **26/30** | was 25/30 before the anchor fix |
-| **TOTAL** | **229/240** | 210/240 at the start of 2026-08-23 |
+| `rivals/vanguard` | **27/30** | was 25/30 before the anchor fix |
+| **TOTAL** | **230/240** | 210/240 at the start of 2026-08-23 |
 
 Every one of the 240 games now ends in a Core kill; there are no round-1000 tiebreaks left.
 Cross-checks on the two other populations: 33 retired maps **146/198**, 8 archive opponents
-(`rivals/`, `nash/`) **224/240** -- and our bot beats every bot in this repo.
+(`rivals/`, `nash/`) **226/240** -- and our bot beats every bot in this repo.
 
 ### The three changes that did it
 
@@ -153,6 +153,9 @@ Cross-checks on the two other populations: 33 retired maps **146/198**, 8 archiv
 3. **The anchor was Launcher-blind** (+4). `_flood` priced pickup rings for ROUTING, but
    `_next_stand` used unweighted BFS -- so we routed around them and then stood in one for four
    build rounds. The gain lands only on the two opponents that field Launchers.
+4. **The replacement-Builder reserve was unconditional** (+1). About 36 Ti held back for the whole
+   rush against a Builder that almost never dies, out of a kill budget with ~60 Ti of slack. Now
+   gated on the SLOT_BUILDER heartbeat going stale.
 
 ### Rules that came out of the failures
 
