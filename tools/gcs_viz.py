@@ -225,13 +225,13 @@ td.raw.changed{color:var(--text)}
 
 <main>
   <section class="panel">
-    <h2>Engine truth <span id="truthSub"></span></h2>
+    <h2>Engine truth, as the selected unit's turn began <span id="truthSub"></span></h2>
     <canvas id="board" width="800" height="800"></canvas>
     <div class="inspect" id="inspectTruth">Hover a tile.</div>
     <div class="legend">
       <span><i style="background:var(--ore)"></i>ore</span>
       <span><i style="background:var(--wall)"></i>wall</span>
-      <span><i class="dot" style="background:var(--truth)"></i>our unit (slot number) — click to select</span>
+      <span><i class="dot" style="background:var(--truth)"></i>our unit (slot number) — click to select; units that act after the selected one are shown where they were when it looked</span>
       <span><i class="dot" style="background:var(--enemy)"></i>enemy unit / building</span>
       <span><i class="ring" style="color:var(--ok)"></i>selected unit's reckoning — matches where the unit was at the end of last round</span>
       <span><i class="ring" style="color:var(--bad)"></i>reckoning off (line to truth)</span>
@@ -333,6 +333,15 @@ function glyph(ctx, cx, cy, size, name, color) {
   }
 }
 
+function entsAtTurn() {
+  // The board as it stood when the selected unit took its turn: units run in
+  // id order, so anything with a higher id had not moved yet this round and
+  // is placed where it ended the previous round — exactly what the selected
+  // unit could see when it updated its map.
+  const before = {}; if (round > 0) for (const e of R[round-1].ents) before[e.id] = e.pos;
+  return R[round].ents.map(e => (e.id > viewer && before[e.id]) ? {...e, pos: before[e.id]} : e);
+}
+
 function drawTruth() {
   const g = geo(board), ctx = bctx, rd = R[round], t = rd.traces[viewer];
   ctx.fillStyle = C.floor; ctx.fillRect(0,0,board.width,board.height);
@@ -349,8 +358,13 @@ function drawTruth() {
     ctx.fillStyle = C.accent; ctx.globalAlpha = .10;
     for (let dy=-rr;dy<=rr;dy++) for (let dx=-rr;dx<=rr;dx++) if (dx*dx+dy*dy<=r2) ctx.fillRect(g.ox+(vpos[0]+dx)*g.size, g.oy+(vpos[1]+dy)*g.size, g.size, g.size);
     ctx.globalAlpha = 1; }
-  for (const e of rd.ents) {
-    const cx = g.ox+(e.pos[0]+.5)*g.size, cy = g.oy+(e.pos[1]+.5)*g.size, color = e.team==="A" ? C.truth : C.enemy;
+  // The board as it stood when the selected unit took its turn: units run in
+  // id order, so anything with a higher id had not moved yet this round and
+  // is drawn where it ended the previous round.  That is exactly what the
+  // selected unit could see when it updated its map.
+  for (const e of entsAtTurn()) {
+    const p = e.pos;
+    const cx = g.ox+(p[0]+.5)*g.size, cy = g.oy+(p[1]+.5)*g.size, color = e.team==="A" ? C.truth : C.enemy;
     if (["builder_bot","gunner","launcher","sentinel"].includes(e.type)) {
       ctx.beginPath(); ctx.arc(cx, cy, g.size*.36, 0, Math.PI*2); ctx.fillStyle = color; ctx.fill();
       const slotNow = (rd.traces[e.id] || {}).slot;
@@ -383,7 +397,7 @@ function drawInternal() {
   let known = 0, seen = 0, heard = 0, inferred = 0, wrong = 0, terrainKnown = 0;
   // truth per tile, split by layer: a conveyor and the bot on it are both there
   const entsNow = new Map();
-  for (const e of rd.ents) { const k = e.pos[0]+","+e.pos[1], cur = entsNow.get(k) || {};
+  for (const e of entsAtTurn()) { const k = e.pos[0]+","+e.pos[1], cur = entsNow.get(k) || {};
     if (e.type === "builder_bot") cur.unit = e; else cur.building = e; entsNow.set(k, cur); }
   const border = (rec, px, py) => {
     ctx.lineWidth = 1.5;
@@ -497,10 +511,10 @@ function tileAt(cv, ev) { const g = geo(cv), rect = cv.getBoundingClientRect();
   const x = Math.floor(((ev.clientX-rect.left) * cv.width/rect.width - g.ox)/g.size), y = Math.floor(((ev.clientY-rect.top) * cv.height/rect.height - g.oy)/g.size);
   return (x>=0 && y>=0 && x<W && y<H) ? [x,y] : null; }
 board.addEventListener('mousemove', ev => { const p = tileAt(board, ev); const el = document.getElementById('inspectTruth'); if (!p) return;
-  const v = DATA.tiles[p[1]][p[0]], e = R[round].ents.find(e => e.pos[0]===p[0] && e.pos[1]===p[1]);
+  const v = DATA.tiles[p[1]][p[0]], e = entsAtTurn().find(e => e.pos[0]===p[0] && e.pos[1]===p[1]);
   el.innerHTML = `(${p}) <b>${v===1?'wall':v===2?'ore':'empty'}</b>` + (e ? ` · <b>${e.type}</b> #${e.id} team ${e.team} hp ${e.hp}/${e.maxhp}${slotOf[e.id]!==undefined?' · slot '+slotOf[e.id]:''}` : ''); });
 board.addEventListener('click', ev => { const p = tileAt(board, ev); if (!p) return;
-  const e = R[round].ents.find(e => e.team==="A" && e.pos[0]===p[0] && e.pos[1]===p[1] && kindOf[e.id]);
+  const e = entsAtTurn().find(e => e.team==="A" && e.pos[0]===p[0] && e.pos[1]===p[1] && kindOf[e.id]);
   const core = DATA.cores.find(c => c.owner===1 && p[0]>=c.pos[0] && p[0]<=c.pos[0]+1 && p[1]>=c.pos[1] && p[1]<=c.pos[1]+1);
   const id = e ? e.id : core ? viewers.find(v => kindOf[v]==="core") : null;
   if (id !== null && id !== undefined) { viewer = id; document.getElementById('viewer').value = id; draw(); } });
