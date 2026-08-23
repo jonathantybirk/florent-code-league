@@ -53,10 +53,18 @@ PAYLOAD_SPACE = CORE_HP_BASE     # == 2**32 - 516; payloads are 0..PAYLOAD_SPACE
 # ---------------------------------------------------------------------------
 SLOT_CORE = 0                    # the Core always owns slot 0
 BUILDER_SLOTS_FROM = 1           # builders take 1, 2, ... upward
-TURRET_SLOTS_FROM = 15           # turrets/launchers take 15, 14, ... downward
 TURRET_RESERVED_SLOTS = 2        # hyperparameter n: bottom slots builders may
-                                 # never evict turrets from (14 and 15)
-STORE_SIZE = 16
+                                 # never evict turrets from (the last two)
+STORE_SIZE = 16                  # the engine's store
+# How many of the engine's slots the GCS protocol owns: slots 0 .. GCS_SLOTS-1.
+# A bot that keeps its own ad-hoc slots may set this lower BEFORE creating
+# any GCS object (e.g. protocol.GCS_SLOTS = 12 leaves 12..15 to the bot);
+# turrets/launchers then pool downward from GCS_SLOTS-1.
+GCS_SLOTS = 16
+
+
+def turret_slots_from() -> int:
+    return GCS_SLOTS - 1
 
 # ---------------------------------------------------------------------------
 # Timing conventions (all common knowledge, so none costs wire bits)
@@ -69,6 +77,15 @@ STORE_SIZE = 16
 # (speaker=1); those units stay silent and are exempt from liveness
 # reclamation for the duration.
 ONBOARD_ROUNDS = 8               # hyperparameter W
+# Besides the spawn-triggered resync, every unit also writes RESYNC format on
+# rounds that are a multiple of RESYNC_PERIOD (unless a spawn window is
+# open), so latecomers — newly built turrets above all — get everyone's kind
+# and exact position within a bounded time, and any reckoning drift heals.
+RESYNC_PERIOD = 25
+# An owner that has not written within this many rounds of being assigned or
+# granted a slot is presumed never to have taken it; the slot is reclaimed.
+# Longer than an onboarding window, during which turrets are silenced.
+TAKEOVER_GRACE = ONBOARD_ROUNDS + 4
 # Verified against the live engine (fcode 2.3.9): a builder spawned by the
 # Core in round R gets its first run() in round R+1 — the very round the
 # Core's ASSIGN becomes readable.  A newborn therefore knows it was spawned
@@ -91,6 +108,16 @@ FOV_TILES = {
 # ---------------------------------------------------------------------------
 # 0 is UNKNOWN/filler.  "OUR_"/"ENEMY_" blocks are 29 codes each.  Facings use
 # cardinal order N,E,S,W and eight-direction order N,NE,E,SE,S,SW,W,NW.
+#
+# A tile has two layers and a fact describes ONE of them:
+#   terrain  — EMPTY / WALL / ORE: what the ground is; never changes, so an ORE
+#              fact is never cancelled by anything built on top of it;
+#   building — a structure on the terrain (harvester, conveyor, turret, ...);
+#   unit     — a Builder Bot standing on the tile (possibly on a conveyor).
+# Each is its own fact: a tile with ore, a conveyor and an enemy bot on it is
+# three facts (ORE, ENEMY_CONVEYOR_E, ENEMY_BUILDER_BOT).  An EMPTY fact means
+# "nothing built or standing here" (a negative) and says nothing about the
+# ground.
 _CARDINALS = ("N", "E", "S", "W")
 _EIGHT = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 
@@ -106,14 +133,12 @@ def _team_block(prefix: str) -> list[str]:
 
 
 TILE_STATES: tuple[str, ...] = tuple(
-    ["UNKNOWN", "EMPTY", "WALL", "ORE_FREE"]                 # 4  terrain
+    ["UNKNOWN", "EMPTY", "WALL", "ORE"]                      # 4  terrain
     + _team_block("OUR_")                                    # 29 ours
     + _team_block("ENEMY_")                                  # 29 theirs
-    + [f"OUR_BOT_ON_CONVEYOR_{d}" for d in _CARDINALS]       # 4  combos ours
-    + [f"ENEMY_BOT_ON_CONVEYOR_{d}" for d in _CARDINALS]     # 4  combos theirs
     + ["TOOK_FIRE_HERE", "CONVEYOR_ISSUE", "HARVESTER_ISSUE"]  # 3 overlays
 )
-# Codes 73..102 are spare; 103..105 are the escape codes.
+# Codes 65..102 are spare; 103..105 are the escape codes.
 S_ALPHABET = 106
 ESCAPE_RUN = 103
 ESCAPE_REMOTE = 104
@@ -121,7 +146,7 @@ ESCAPE_CONTROL = 105
 ESCAPES = (ESCAPE_RUN, ESCAPE_REMOTE, ESCAPE_CONTROL)
 
 STATE_CODE: dict[str, int] = {name: i for i, name in enumerate(TILE_STATES)}
-assert len(TILE_STATES) == 73 and len(STATE_CODE) == 73
+assert len(TILE_STATES) == 65 and len(STATE_CODE) == 65
 assert max(STATE_CODE.values()) < ESCAPE_RUN <= S_ALPHABET - 3
 
 # CONVEYOR_ISSUE / HARVESTER_ISSUE are a *status overlay*: the receiver keeps
@@ -144,16 +169,13 @@ TURN_VALUES = ("NONE", "CW", "CCW")
 # speaker (radix 2) — turret/launcher slots only: 1 = the Core is speaking
 #                   through this slot (onboarding, absolute coordinates).
 SPEAKER_VALUES = ("SELF", "CORE")
-# aux (radix 16)  — Builder Bots only: a GCS slot id.  When a fact in the same
-#                   message names a friendly turret/launcher, aux grants that
-#                   unit this slot (0 = no grant; slot 0 is the Core's and can
-#                   never be granted).
+# aux (radix 16)  — Builder Bots only.  Reserved (always 0 in standard
+#                   messages).  It was meant to grant a slot alongside a
+#                   friendly-turret fact, but a newborn turret cannot resolve
+#                   FOV-relative facts, so grants are CONTROL/GRANT messages
+#                   in absolute coordinates instead.  In escape messages the
+#                   digit is part of the payload and means nothing on its own.
 AUX_NO_GRANT = 0
-# States that make a Builder Bot's aux digit mean "this unit is granted a slot".
-GRANT_STATES = frozenset(
-    STATE_CODE[n] for n in STATE_CODE
-    if n.startswith(("OUR_GUNNER_", "OUR_SENTINEL_")) or n == "OUR_LAUNCHER"
-)
 
 # ---------------------------------------------------------------------------
 # Per-sender-type message layouts (standard format)
@@ -218,7 +240,15 @@ CONTROL_KINDS = 8
 CTRL_ASSIGN = 0     # args = slot(16) * period(8) * phase(8)   [Core only]
 CTRL_SYMMETRY = 1   # args = kind(3)                           [Core only]
 CTRL_DIRECTIVE = 2  # args = x(W) * y(H) * task(24)
-# kinds 3..7 spare
+CTRL_GRANT = 3      # args = x(W) * y(H) * slot(16) * kind(3) * facing(9)   [builders]
+#                     the friendly turret/launcher just built at (x, y) is
+#                     granted `slot`; absolute coordinates, because the
+#                     turret's own registry is empty when it first reads it.
+#                     kind: 0 gunner, 1 sentinel, 2 launcher;
+#                     facing: 0 none (launcher), 1..8 = N,NE,E,SE,S,SW,W,NW
+# kinds 4..7 spare
+GRANT_ARG_RADICES = (16, 3, 9)         # slot, kind, facing  (after x, y)
+GRANT_KINDS = ("gunner", "sentinel", "launcher")
 
 ASSIGN_ARG_RADICES = (16, 8, 8)        # slot, period, phase
 SYMMETRY_KINDS = ("MIRROR_X", "MIRROR_Y", "ROT_180")   # args radix 3
@@ -257,11 +287,14 @@ RUN_DIR_RADIX = 4
 # ---------------------------------------------------------------------------
 # RESYNC round format
 # ---------------------------------------------------------------------------
-# The round after an ASSIGN becomes readable, every unit writes
-#   pos(W*H) * fact(FOV*S)
-# — its absolute position plus one ordinary fact.  The newborn's first-ever
-# message uses the same format.  Readers know the round from having decoded
-# the ASSIGN, so the format costs no header.
+# The round after an ASSIGN becomes readable, and every RESYNC_PERIOD-th
+# round, every unit writes
+#   pos(W*H) * kind(5) * fact(FOV*S)
+# — its absolute position, its entity kind (so a reader that has never heard
+# of this slot can decode it and learn who owns it), plus one ordinary fact.
+# The newborn's first-ever message uses the same format.  Readers know the
+# round from the ASSIGN or the calendar, so the format costs no header.
+RESYNC_KINDS = ("core", "builder_bot", "gunner", "sentinel", "launcher")
 
 # ---------------------------------------------------------------------------
 # Onboarding chain format (Core speaking, absolute coordinates)
@@ -300,7 +333,7 @@ def dump_protocol() -> str:
     out += [f"| {ESCAPE_RUN} | ESCAPE_RUN |",
             f"| {ESCAPE_REMOTE} | ESCAPE_REMOTE |",
             f"| {ESCAPE_CONTROL} | ESCAPE_CONTROL |",
-            f"| 73..102 | (spare) |", ""]
+            f"| 65..102 | (spare) |", ""]
     out += ["## Field values", "",
             f"- move: {', '.join(f'{i}={v}' for i, v in enumerate(MOVE_VALUES))}",
             f"- turn: {', '.join(f'{i}={v}' for i, v in enumerate(TURN_VALUES))}"
@@ -312,7 +345,8 @@ def dump_protocol() -> str:
             "| kind | args |", "|---|---|",
             "| ASSIGN | slot(16) · period(8) · phase(8) |",
             "| SYMMETRY | kind(3): MIRROR_X / MIRROR_Y / ROT_180 |",
-            "| DIRECTIVE | x(W) · y(H) · task(24) |", "",
+            "| DIRECTIVE | x(W) · y(H) · task(24) |",
+            "| GRANT | x(W) · y(H) · slot(16) · kind(3) · facing(9) |", "",
             "task: 0=FIX_HARVESTER (unaddressed, any sender), "
             "1-15=FIX_CONVEYOR for the builder in that slot (Core only), "
             "16=BUILD_HERE, 17=SCOUT_HERE, 18=DEFEND_HERE, 19-23 spare", ""]
