@@ -368,7 +368,7 @@ class Player:
                 self.plan = 'mend'
         finishing = ehp <= GO_LOW_HP
         # What the kill costs from here, if the ring is to keep shooting.
-        full = 9 * SENTINEL_TARGET
+        full = 9 * max(SENTINEL_TARGET, alive)
         kill_ammo = (10.0 * ehp / 18.0) * (full / max(1, full - eheal)) if net_us > 0 or alive == 0 else 0
         can_finish = alive > 0 and net_us > 0 and ammo + max(0, ti - ring_reserve) >= BURST_SLACK * kill_ammo
         stalled = (self.plan == 'race' and built >= SENTINEL_TARGET
@@ -416,10 +416,12 @@ class Player:
         if stuck and home_builders < MINERS_STALL and self._read(ct, SLOT_HARVEST) < HARVESTERS_MAX:
             want_menders = max(want_menders, home_builders + 1)
             need_menders = max(0, want_menders - home_builders)
-        # A fifth Sentinel out of surplus: +9 dps against their fixed mending shortens the burst
-        # and cuts its cost.  Only from money the burst does not need.
+        # A fifth and sixth Sentinel out of surplus: +9 dps each against their mending shortens
+        # the burst and cuts its cost -- and when their ring mends more than four Sentinels deal,
+        # growing the ring is the ONLY thing that makes the burst finite.
         if (stuck and self.ring_extra < RING_EXTRA_MAX
-                and bank > kill_ammo + self._sentinel_cost(ct) + 120):
+                and (bank > kill_ammo + self._sentinel_cost(ct) + 120
+                     or (net_us <= 12 and bank > 250 + self._sentinel_cost(ct)))):
             self.ring_extra += 1
 
         # ---- the attack Builder, then menders, then ammunition
