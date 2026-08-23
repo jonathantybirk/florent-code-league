@@ -17,6 +17,7 @@ from bots.utils.miningstrat import (
     MiningContext,
     MiningPlanner,
     MiningPolicy,
+    MiningStrategies,
     Owner,
     RouteEstimate,
     Terrain,
@@ -207,6 +208,33 @@ class MiningPlannerTests(unittest.TestCase):
         new_deposit = next(d for d in plan.deposit_decisions if d.tile == (7, 1))
         self.assertEqual(new_deposit.disposition.name, "ACCEPTED")
         self.assertNotEqual(new_deposit.core_input, (3, 1))
+
+    def test_default_strategy_hooks_preserve_the_existing_plan(self):
+        ctx = context(deposits=((6, 1), (1, 7)))
+        implicit = MiningPlanner().plan(ctx)
+        explicit = MiningPlanner(strategies=MiningStrategies()).plan(ctx)
+        self.assertEqual(implicit, explicit)
+
+    def test_blind_opening_can_be_replaced_without_replacing_other_stages(self):
+        calls = []
+
+        def no_blind_expansion(ctx, lanes, count, note):
+            calls.append((ctx.round, len(lanes), count))
+            note(1, "test.blind_override", "custom blind opening selected")
+            return ()
+
+        ctx = context(deposits=())
+        plan = MiningPlanner(
+            MiningPolicy(verbosity=1),
+            strategies=MiningStrategies(blind_expansion=no_blind_expansion),
+        ).plan(ctx)
+
+        self.assertEqual(calls, [(ctx.round, 0, 1)])
+        self.assertEqual(plan.corridors, ())
+        self.assertEqual(plan.jobs, ())
+        self.assertTrue(
+            any(event.event == "test.blind_override" for event in plan.debug_events)
+        )
 
 
 if __name__ == "__main__":
