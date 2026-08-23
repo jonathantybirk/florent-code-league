@@ -1,9 +1,0 @@
-3 bots x 37 rivals x 4 maps = 888 games
-  200/888
-  400/888
-  600/888
-  800/888
-                     starter adaptive attack_w frontier frontier frontier siege_v1 siege_v2 titanium   baiter  nemesis   reaver  riptide   turtle    vg_v1    vg_v2    vg_v3    vg_v4    vg_v5    vg_v6    vg_v7 econ_lab    uw_v1    uw_v2   v233_a   v233_b   v233_c   v233_d   v233_e   v233_f   v233_g   v233_h   lockin claude_c claude_c claude_c   strat1
-          vanguard    8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      7-1      6-2      8-0      6-2      6-2      6-2      6-2      5-3      5-3      4-4      8-0      8-0      8-0      8-0      8-0      |  275-21    92.9%
-          undertow    8-0      7-1      8-0      8-0      8-0      8-0      8-0      7-1      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      8-0      6-2      8-0      5-3      5-3      6-2      4-4      4-4      6-2      4-4      8-0      8-0      8-0      8-0      8-0      |  270-26    91.2%
-            jonbot    7-1      7-1      8-0      8-0      8-0      8-0      8-0      7-1      8-0      6-2      4-4      2-6      6-2      4-4      6-2      6-2      6-2      6-2      6-2      6-2      6-2      8-0      3-5      2-6      5-3      2-6      2-6      2-6      3-5      2-6      1-7      1-7      8-0      8-0      8-0      8-0      8-0      |  204-92    68.9%
