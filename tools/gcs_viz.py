@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Render a .replay26 from a match of bots/gcsprobe into a self-contained HTML
+"""Render a .replay26 from a match of a GCS-tracing bot (bots/test/*) into a self-contained HTML
 page showing the game board side by side with the Global Communication Store,
 round by round, as seen through any of our units' registries.
 

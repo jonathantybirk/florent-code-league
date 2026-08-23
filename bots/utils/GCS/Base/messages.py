@@ -23,8 +23,10 @@ from .protocol import (
     CTRL_ASSIGN,
     CTRL_DIRECTIVE,
     CTRL_GRANT,
+    CTRL_STATUS,
     CTRL_SYMMETRY,
     GRANT_ARG_RADICES,
+    STATUS_VALUE_RADIX,
     RESYNC_KINDS,
     ESCAPE_CONTROL,
     ESCAPE_REMOTE,
@@ -301,6 +303,9 @@ def _decode_escape(kind, state, digits, sender_pos, map_w, map_h, out: Decoded):
             y, rest = divmod(rest, tail)
             slot, gkind, facing = codec.unpack(rest, GRANT_ARG_RADICES)
             out.events.append(ControlEvent(CTRL_GRANT, (x, y, slot, gkind, facing)))
+        elif ckind == CTRL_STATUS:
+            field, val = divmod(args_val, STATUS_VALUE_RADIX)
+            out.events.append(ControlEvent(CTRL_STATUS, (field, val)))
         else:
             raise CodecError(f"unknown control kind {ckind}")
 
@@ -346,6 +351,10 @@ def assign_args(slot: int, period: int = 1, phase: int = 0) -> int:
 
 def directive_args(x: int, y: int, task: int, map_h: int) -> int:
     return (x * map_h + y) * TASK_RADIX + task
+
+
+def status_args(field: int, value: int) -> int:
+    return field * STATUS_VALUE_RADIX + value
 
 
 def grant_args(x: int, y: int, slot: int, gkind: int, facing: int, map_h: int) -> int:

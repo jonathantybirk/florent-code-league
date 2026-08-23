@@ -34,7 +34,6 @@ from .protocol import (
     CTRL_SYMMETRY,
     GRANT_KINDS,
     TAKEOVER_GRACE,
-    ONBOARD_ROUNDS,
     SLOT_CORE,
     STATE_CODE,
     TURRET_RESERVED_SLOTS,
@@ -258,7 +257,7 @@ class SlotRegistry:
         self.known.setdefault(slot, set())
         # the round we are IN right now (wrote_round + 1) is the resync round
         self.resync_write_round = wrote_round + 1
-        self.onboard_until = wrote_round + 1 + ONBOARD_ROUNDS
+        self.onboard_until = wrote_round + 1 + P.ONBOARD_ROUNDS
 
     def _liveness(self, snapshot, wrote_round, resync, onboard, result):
         if self.prev_snapshot is None:
