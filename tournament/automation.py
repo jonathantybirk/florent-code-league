@@ -446,18 +446,20 @@ MAX_RESUBMIT_WALLTIME_MINUTES = 1440
 
 
 def _escalated_walltime(settings: dict, attempt: int) -> dict:
-    """`settings` with the walltime scaled up for re-submission attempt `attempt` (1-based)."""
+    """`settings` with the walltime scaled up for re-submission attempt `attempt` (1-based).
+
+    Walltime is requested per job from that job's own batch (hpc.walltime_minutes), so escalation
+    is a multiplier on that calculation rather than a new flat number -- a retry of a small job
+    still asks for a small-job walltime, just a more generous one.
+    """
     try:
-        base = int(str(settings["walltime"]).split(":")[0])
-    except (KeyError, ValueError):
-        return settings
-    # A cap must never make a recovery request *shorter* than the validated base configuration.
-    # This happened when the base was raised to 960 minutes but the old cap remained 720.
-    scaled = max(
-        base,
-        min(base * RESUBMIT_WALLTIME_FACTOR ** attempt, MAX_RESUBMIT_WALLTIME_MINUTES),
-    )
-    return {**settings, "walltime": str(scaled)}
+        scale = float(settings.get("walltime_scale", 1))
+    except (TypeError, ValueError):
+        scale = 1.0
+    # Only ever upwards: a cap that shortened a retry is what let the same element die three times.
+    # The absolute minute ceiling is applied by hpc.walltime_minutes(), which knows the batch size
+    # this scale will be multiplied against; clamping the multiplier here could only guess.
+    return {**settings, "walltime_scale": max(scale, scale * RESUBMIT_WALLTIME_FACTOR ** attempt)}
 
 
 def _resubmit_count(run_dir: Path) -> int:
