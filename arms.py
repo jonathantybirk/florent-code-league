@@ -325,6 +325,16 @@ PAIRING_FLOOR = 0.5
 # show the value promotion actually uses.
 DELTA_SIMS = 10000
 
+# Promotion also requires COVERAGE: a build must have faced at least QUALIFY_MIN of the
+# CLOSEST_K teams nearest us in rating before its delta is even compared. Opponents upgrade
+# constantly, so a build scored on a lopsided slice of the field was measured against a
+# different -- usually easier -- field than its rivals. These live here, beside the
+# simulation, because the live feed publishes the same verdict the farm acts on: a site that
+# shows a build topping the delta column without showing that it is ineligible reads as the
+# farm ignoring its own metric.
+CLOSEST_K = 10
+QUALIFY_MIN = 7
+
 
 def _require(d: dict, key: str, what: str):
     """Nothing here defaults. A plausible number computed from a guessed k-factor
@@ -375,6 +385,34 @@ def matchup_rates(live: dict, key: str) -> dict[str, tuple[float, float]]:
         rec[0] += _require(m, "games_for", "matchup")
         rec[1] += _require(m, "games_against", "matchup")
     return {team: (w, l) for team, (w, l) in out.items()}
+
+
+def closest_by_rating(field: list[dict], rating: float, k: int = CLOSEST_K) -> list[dict]:
+    """The k teams nearest us in rating: whose results our own rating actually turns on."""
+    return sorted(field, key=lambda r: abs(r["rating"] - rating))[:k]
+
+
+def faced_team_names(live: dict, key: str) -> set[str]:
+    """Every team this build has played, across all of their versions and ours.
+
+    Deliberately not restricted to an opponent's current build, unlike `matchup_rates`:
+    coverage asks whether we have met a TEAM at all, while a win rate asks about the bot
+    they are running now.
+    """
+    return {m["opponent"] for m in live.get("matchups", []) if m.get("key") == key}
+
+
+def qualification(live: dict, key: str, field: list[dict],
+                  rating: float) -> tuple[int, int, bool]:
+    """(faced, needed, is it enough) against the closest opponents.
+
+    The farm keeps its own variant that can fall back to the farm's series log when the feed
+    knows nothing about a build; the rule and the thresholds are these.
+    """
+    closest = closest_by_rating(field, rating)
+    faced = faced_team_names(live, key)
+    seen = sum(1 for r in closest if r["teamName"] in faced)
+    return seen, min(QUALIFY_MIN, len(closest)), seen >= QUALIFY_MIN
 
 
 def simulated_rating(
