@@ -12,7 +12,6 @@ import hashlib
 import json
 from collections import defaultdict
 from datetime import UTC, datetime
-from itertools import combinations
 from pathlib import Path
 
 from maps.generated.generate_maps import read_map
@@ -29,8 +28,10 @@ from tournament.rating import evaluate
 
 
 POOL_LABELS = {
-    "official": "New official maps",
-    "legacy": "Old official maps",
+    "legacy": "Official maps (pre-06 Aug)",
+    "official-20260806": "Official maps (06 Aug)",
+    "official-20260813": "Official maps (13 Aug)",
+    "official-20260821": "Official maps (21 Aug, live)",
     "secret": "Secret maps",
 }
 
@@ -412,8 +413,9 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     # the held-out maps into the official numbers would silently redefine every published rating,
     # so each pool is evaluated separately and the page picks one.
     #
-    # There are three pools now, and the two official ones overlap: atoll, hive and jackpot are in
-    # both. Selecting several pools therefore means their union, deduplicated -- a map played once
+    # There are five pools now -- four official eras plus the held-out one -- and consecutive
+    # official eras overlap, because every replacement so far retained some of its predecessor's
+    # maps. Selecting several pools therefore means their union, deduplicated -- a map played once
     # is one map, however many pools claim it -- so the combinations are built from label sets
     # rather than by concatenating pools.
     map_labels = sorted({row["map"] for row in benchmark_matches})
@@ -452,13 +454,25 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     def _pool_key(parts: tuple[str, ...]) -> str:
         return "_" + "_".join(parts)
 
+    # Which combinations to offer. With three pools the full powerset was seven entries and worth
+    # publishing whole. There are five now (four official eras plus the held-out pool), and the
+    # powerset is thirty-one -- each one a separate Nash evaluation over every map in it, and each
+    # one a line on a picker nobody can read. So the offer is curated: every pool on its own, the
+    # union of all official eras (what a "rated across everything we have" number means), and that
+    # union plus the held-out maps. Adding an era grows this list by one, not by doubling it.
+    official_available = [pool for pool in available if pool != "secret"]
+    offered: list[tuple[str, ...]] = [(pool,) for pool in available]
+    if len(official_available) > 1:
+        offered.append(tuple(official_available))
+        if "secret" in available:
+            offered.append((*official_available, "secret"))
+
     pools: dict[str, list[str]] = {"": sorted(covered[primary])}
     pool_parts: dict[str, tuple[str, ...]] = {"": (primary,)}
-    for size in range(1, len(available) + 1):
-        for parts in combinations(available, size):
-            union = sorted({name for pool in parts for name in covered[pool]})
-            pools[_pool_key(parts)] = union
-            pool_parts[_pool_key(parts)] = parts
+    for parts in offered:
+        union = sorted({name for pool in parts for name in covered[pool]})
+        pools[_pool_key(parts)] = union
+        pool_parts[_pool_key(parts)] = parts
 
     # Per-map ratings come first: a bot's Nash-core map count is an aggregate over them, so the
     # pooled rows cannot be finished until every map has been solved.
@@ -508,10 +522,10 @@ def build(run_dir: Path, output_dir: Path) -> dict:
     if "" not in pools:
         raise RuntimeError("the primary map pool is incomplete; refusing to publish")
 
-    # Seven selectable combinations over three pools, and several of them coincide while the
-    # current pool is only partly played -- `official + legacy` is the same set of maps as
-    # `legacy` until the twelve new maps have been run, and the primary pool's "" key is by
-    # construction a second name for one of them. Nash averaging over 144 bots is the expensive
+    # Several selectable combinations coincide while a new pool is only partly played -- the
+    # all-eras union is the same set of maps as the older eras alone until the new pool's maps
+    # have been run, and the primary pool's "" key is by construction a second name for one of
+    # them. Nash averaging over 144 bots is the expensive
     # part of this build, so identical label sets are solved once, and only the first key of each
     # set carries its rankings into the bundle: publishing four byte-identical 144-row tables
     # tripled index.json for nothing.

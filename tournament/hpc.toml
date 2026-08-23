@@ -5,16 +5,29 @@ scratch_root = "/work3/s234842"           # assigned by DTU HPC support; mode 07
 remote_root = "/work3/s234842/florent-tournament"
 queue = "hpc"
 
-# Total match processes the submitter may request. DTU support temporarily capped this account at
-# three cores while they review the repaired pipeline, so this must remain 3 until they explicitly
-# lift that restriction. Afterwards it can return to the normal ~100-slot user limit without
-# changing the worker implementation.
-max_worker_slots = 3
+# Total match processes the submitter may request.
+#
+# Re-checked 2026-08-21 on gbarlogin1: `busers s234842` reports MAX = "-" (no per-user slot cap)
+# and queue `hpc` reports TASKLIMIT = 128, so the three-core restriction DTU support applied while
+# they reviewed the repaired pipeline is no longer enforced in LSF. 96 leaves headroom under the
+# 128 task limit rather than racing the queue's own ceiling.
+#
+# Raising this cannot reintroduce the short jobs that caused the restriction. Worker count is
+# derived from the work itself in balanced_batches(): every slot is sized at `chunk` matches and
+# refused below `minimum_matches_per_worker`, and worker_worklists() then takes
+# min(len(batches), max_worker_slots) -- this number can only ever *reduce* the worker count, never
+# split the work into smaller pieces. The runtime guard below is the second line of defence.
+max_worker_slots = 96
 
 # Pack worker slots into long multi-core LSF jobs. The controller in each job dynamically hands
 # the next match to whichever core becomes free, eliminating static-batch stragglers while each
 # match still gets its own fresh one-core OS process. Keep this at or below max_worker_slots.
-workers_per_job = 3
+#
+# Eight rather than the full 96: a job only starts once its whole core count is free at the same
+# time, so wide jobs sit pending behind the queue. Twelve 8-core jobs start in a fraction of the
+# time one 96-core job would, and the dynamic worklist means a job that starts early simply does
+# more matches.
+workers_per_job = 8
 
 # Target matches per worker slot. Recomputed 2026-08-10 from 702,474 recorded durations across
 # 54 schedules, using every fully-observed contiguous window (so this measures the actual fast

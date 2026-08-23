@@ -221,33 +221,65 @@ def test_official_and_generated_map_sets_are_disjoint():
     assert set(resolve("all")) == official | generated
 
 
-def test_the_two_official_pools_are_named_and_overlap():
-    """Both pools sit bare in maps/, so only the name lists tell the eras apart.
+def test_every_official_era_is_named_and_consecutive_eras_overlap():
+    """All eras sit bare in maps/, so only the name lists tell them apart.
 
-    They share atoll, hive and jackpot: the 2026-08-06 pool replacement kept three maps. That is
-    why combining pools has to mean the union rather than concatenation, and why neither pool can
-    be recovered by globbing maps/.
+    Each replacement kept some of its predecessor's maps -- 2026-08-06 kept atoll, hive and
+    jackpot; 2026-08-13 kept five of that pool; 2026-08-21 kept five of the 13 Aug pool. That is
+    why combining pools has to mean the union rather than concatenation, and why no era can be
+    recovered by globbing maps/.
     """
-    current, legacy = set(resolve("official")), set(resolve("legacy"))
-    assert len(current) == 15
-    assert len(legacy) == 21
-    assert {path.stem for path in current & legacy} == {"atoll", "hive", "jackpot"}
-    assert all(path.parent.name == "maps" for path in current | legacy)
+    from tournament.maps import CURRENT_POOL, OFFICIAL_POOLS
+
+    eras = {name: set(resolve(name)) for name in OFFICIAL_POOLS}
+    assert len(eras["legacy"]) == 21
+    assert all(len(eras[name]) == 15 for name in eras if name != "legacy")
+    assert all(path.parent.name == "maps" for maps in eras.values() for path in maps)
+
+    order = list(OFFICIAL_POOLS)
+    overlaps = [
+        {path.stem for path in eras[earlier] & eras[later]}
+        for earlier, later in zip(order, order[1:])
+    ]
+    assert overlaps[0] == {"atoll", "hive", "jackpot"}
+    assert overlaps[1] == {"antler", "archipelago", "drumlin", "fjordgate", "nordkap"}
+    assert overlaps[2] == {"auroraveil", "glacierkeep", "icefloe", "midgard", "valkyrie"}
+
+    # `official` is the live era under its moving name, which is exactly why nothing new should
+    # use it: it meant a different fifteen maps a week ago.
+    assert set(resolve("official")) == eras[CURRENT_POOL]
 
 
 def test_combining_the_official_pools_deduplicates_the_overlap():
-    assert len(resolve("all_official")) == 15 + 21 - 3
-    assert set(resolve("all_official")) == set(resolve("official")) | set(resolve("legacy"))
+    from tournament.maps import OFFICIAL_POOLS
+
+    union = set(resolve("all_official"))
+    assert union == set().union(*(set(resolve(name)) for name in OFFICIAL_POOLS))
+    # 21 + 15 + 15 + 15 named slots, minus the 13 maps a later era retained from an earlier one.
+    assert len(union) == 21 + 15 + 15 + 15 - 13
 
 
 def test_a_map_reports_every_pool_it_belongs_to():
     from tournament.maps import pools_of
 
-    assert pools_of("atoll") == ("official", "legacy")
-    assert pools_of("antler") == ("official",)
+    assert pools_of("atoll") == ("legacy", "official-20260806")
+    assert pools_of("antler") == ("official-20260806", "official-20260813")
+    assert pools_of("midgard") == ("official-20260813", "official-20260821")
+    assert pools_of("holmgang") == ("official-20260821",)
     assert pools_of("duel") == ("legacy",)
     assert pools_of("secret/anything") == ("secret",)
     assert pools_of("generated/stress/whatever") == ()
+
+
+def test_a_retired_era_keeps_its_maps_after_the_pool_moves_on():
+    """The 13 Aug era was reconstructed from ladder history after it stopped being served.
+
+    Its maps left `fcode maps list` on 21 Aug and are only downloadable by name now, so a missing
+    file here means someone pruned maps/ to the live pool and silently truncated every rating
+    published over that era.
+    """
+    retired = {"drakkarfjord", "frostgate", "ragnarok", "royale", "yulerune"}
+    assert retired <= {path.stem for path in resolve("official-20260813")}
 
 
 def test_map_labels_distinguish_the_corpora():
@@ -539,8 +571,31 @@ def test_default_batch_is_sized_over_fifteen_minutes_at_the_fastest_observed_rat
     assert settings["chunk"] >= settings["minimum_matches_per_worker"]
     assert settings["minimum_matches_per_worker"] >= 500
     assert settings["minimum_runtime_seconds"] == 15 * 60
-    assert settings["max_worker_slots"] == 3
     assert settings["workers_per_job"] <= settings["max_worker_slots"]
+    # The `hpc` queue reports TASKLIMIT 128. Asking for more than it will ever grant does not
+    # queue the surplus, it just makes the submitter's own accounting wrong.
+    assert settings["max_worker_slots"] <= 128
+
+
+def test_no_slot_cap_can_produce_a_worker_below_the_fifteen_minute_floor():
+    """The 2026-08 restriction came from short jobs, so the floor must not depend on the cap.
+
+    Worker count is derived from the work in balanced_batches() and the cap can only reduce it,
+    so every core keeps at least `minimum` matches whatever max_worker_slots is set to.
+    """
+    from tournament.hpc import config, worker_worklists
+
+    settings = config()
+    minimum = int(settings["minimum_matches_per_worker"])
+    target = int(settings["chunk"])
+    for cap in (1, 3, 8, 96, 128):
+        for total in (minimum, 999, 5_000, 60_000, 200_000):
+            groups = worker_worklists(
+                list(range(1, total + 1)), target, minimum, cap, int(settings["workers_per_job"])
+            )
+            assert sum(cores for cores, _ in groups) <= cap
+            for cores, worklist in groups:
+                assert len(worklist) / cores >= minimum
 
 
 def test_too_little_work_is_refused_instead_of_creating_a_short_cluster_job():

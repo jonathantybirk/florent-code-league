@@ -187,59 +187,79 @@ bots here go 21/42, each winning every map as player A.
 
 ## Map sets
 
-Jon's synthetic corpora are kept separate on disk from the official maps, but the two *official*
-pools cannot be — they overlap. A map set therefore picks a tree to glob or a name list to read:
+Jon's synthetic corpora are kept separate on disk from the official maps, but the *official* pools
+cannot be — consecutive eras overlap. A map set therefore picks a tree to glob or a name list to
+read:
 
 | `--maps` | maps | games per pair | where |
 |---|---|---|---|
-| `official` | 15 | 30 | `maps.CURRENT_OFFICIAL` — the live competition pool |
-| `legacy` | 21 | 42 | `maps.LEGACY_OFFICIAL` — the pool before 2026-08-06 |
-| `all_official` (what runs use) | 33 | 66 | the union of the two |
+| `official-20260821` | 15 | 30 | the live competition pool, released 21 Aug |
+| `official-20260813` | 15 | 30 | released 13 Aug, retired 21 Aug |
+| `official-20260806` | 15 | 30 | released 6 Aug, retired 13 Aug |
+| `legacy` | 21 | 42 | `maps.POOL_LEGACY` — the pool before 2026-08-06 |
+| `all_official` (what runs use) | 53 | 106 | the union of all four eras |
 | `generated` | 82 | 164 | `maps/generated/**` |
-| `all` | 115 | 230 | official ∪ legacy ∪ generated |
+| `all` | 135 | 270 | all official eras ∪ generated |
 | `screen` | 6 | 12 | the fast subset for iteration |
 | `secret` | 10 | 20 | `tournament/custom_maps/*.map26` |
-| `official_secret` | 25 | 50 | current official + held-out |
-| `all_official_secret` | 43 | 86 | both official pools + held-out |
+| `official_secret` | 25 | 50 | live official + held-out |
+| `all_official_secret` | 63 | 126 | every official era + held-out |
+
+`official` still resolves, to whichever era is live (`maps.CURRENT_POOL`). Nothing new should use
+it: it meant a different fifteen maps on 5 Aug, on 12 Aug and on 20 Aug, so a rating labelled
+`official` cannot be read six weeks later. Name the era.
 
 Every pair plays every map in **both orders**, which is what makes first-player advantage cancel in
 the aggregate. Generated-map labels are prefixed (`generated/stress/...`) so they can never collide
 with an official map in the CSV.
 
-### Three pools, two of which overlap
+### Four official eras, each overlapping its neighbour
 
-On **2026-08-06** Florent replaced the competition pool: twelve new maps, and three of the old
-twenty-one — `atoll`, `hive`, `jackpot` — carried over. All thirty-three sit bare in `maps/`, so
-the pools are told apart by the name tuples in `tournament/maps.py` and by nothing else. Two
-consequences, both of which look wrong at a glance and are not:
+Florent has replaced the competition pool three times, and each replacement kept part of its
+predecessor:
 
-- **Globbing `maps/` is now a bug.** It silently merges the eras. `pools_of(label)` is the only
-  supported way to ask which pool a map is in, and it returns *both* for the three shared maps.
-- **Combining pools means the union, never concatenation.** New + old is 33 maps, not 36, and a
-  bot's record on `atoll` counts once. The website's checkboxes work the same way.
+| released | kept from the previous pool |
+|---|---|
+| 2026-08-06 | `atoll`, `hive`, `jackpot` |
+| 2026-08-13, 06:53–07:13 UTC | `antler`, `archipelago`, `drumlin`, `fjordgate`, `nordkap` |
+| 2026-08-21, 07:33–08:13 UTC | `auroraveil`, `glacierkeep`, `icefloe`, `midgard`, `valkyrie` |
 
-The old pool is kept whole, shared maps included, rather than trimmed to the 18 that are
-exclusively old. Its name list is what every published rating before 2026-08-06 *means*; making
-the pools disjoint after the fact would redefine those numbers retroactively.
+All fifty-three sit bare in `maps/`, so the eras are told apart by the name tuples in
+`tournament/maps.py` and by nothing else. Two consequences, both of which look wrong at a glance
+and are not:
 
-Adding a map to the competition pool is a manual step: `fcode maps sync` downloads it, and
-`CURRENT_OFFICIAL` has to be edited to match. Nothing fails if you forget — runs simply keep
-playing the fifteen maps the tuple lists, and the omission is invisible. `fcode maps list` prints
-what the platform actually serves.
+- **Globbing `maps/` is a bug.** It silently merges the eras. `pools_of(label)` is the only
+  supported way to ask which pool a map is in, and it returns *every* era that claims it.
+- **Combining pools means the union, never concatenation.** All four eras are 53 maps, not 66, and
+  a bot's record on `atoll` counts once. The website's checkboxes work the same way.
 
-#### The new pool is not the published default yet
+Pools are named for their release date because the alternative has already failed twice: a tuple
+called `CURRENT_OFFICIAL` was accurate for seven days and then quietly meant something else, while
+every rating published under the name `official` kept the name. `legacy` is the exception — it
+predates our records, we do not know its release date, and inventing one to fit the scheme would
+be worse than an honest label.
 
-`site_data.build` promotes a pool to the headline only once the run has played **all** of it, and
-the current pool is three maps in (the three it inherited). Until a run covers the other twelve
-across the whole field, `default_pool` stays on `legacy` and the new pool is offered as a
-selectable-but-thin option, labelled with its coverage. Getting it promoted needs a full backfill
-of the field over the twelve new maps — `automation.RUN_MAP_SPEC` only schedules *challengers*, so
-incremental ticks never fill in the field's own pairwise results.
+#### The 13 Aug era was reconstructed after the fact
+
+Nobody recorded the 13 Aug pool while it was live; it was rebuilt on 21 Aug from ladder match
+history. `fcode maps list` only ever serves the *live* pool, so the era's membership came from the
+maps actually drawn in ladder games between the two switch times: 80 sampled matches, 400 map
+draws, saturating at fifteen names with 70 consecutive samples adding nothing. The same method
+re-derived the 6 Aug pool exactly, which is the check that makes the reconstruction trustworthy.
+
+The map files themselves survived because `/api/maps/download?name=…` still serves retired maps by
+name long after they leave the pool — that is how `drakkarfjord`, `frostgate`, `ragnarok`, `royale`
+and `yulerune` are in `maps/` at all. **Do not prune `maps/` to the live pool.** Deleting a retired
+map silently truncates every rating published over the era that contained it, and the next
+reconstruction will cost another few hundred API calls.
+
+If a pool switch is noticed while it is happening, recording the new tuple takes a minute:
+`fcode maps sync`, then add a `POOL_<date>` tuple and an `OFFICIAL_POOLS` entry.
 
 ### Syncing maps also tightens the compliance bar
 
-`compliance.MAPS` globs `maps/`, so downloading the twelve new maps widened the timing probe from
-21 maps to 33 with nobody choosing that. The new pool is physically bigger -- `archipelago` and
+`compliance.MAPS` globs `maps/`, so each pool sync widens the timing probe with nobody choosing
+that: 21 maps to 33 on 6 Aug, and 33 to 53 on 21 Aug when the 13 and 21 Aug eras landed together. The new pool is physically bigger -- `archipelago` and
 `snowflake` are 26x26, `eider` and `heart` 28x20 -- and **11 of 71 bots went over the 10 ms turn
 limit** and out of every published field, leaving 60.
 
