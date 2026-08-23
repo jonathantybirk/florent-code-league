@@ -28,11 +28,22 @@ BUILDER_TARGET_SMALL = 4
 #   roster 6/7 -> 66/90 and 31/90   ( 97/180)
 BUILDER_TARGET_LARGE = 5
 
-# Builders cutting belt in the enemy half. Two and three measure the same
-# overall (125/180 each); three is kept because its gain is against the
-# economy, which is seven of the ladder's top ten, and its loss is against the
-# rush, which brokkr already beats.
-HARASSERS = 3
+# Builders cutting belt in the enemy half, as a share of the roster rather
+# than a constant.
+#
+# A constant 3 was catastrophic on small maps and invisible in the aggregate.
+# Small maps buy 4 Builders, so index 0 guards, 1-3 harass, and 4 does not
+# exist: nobody mines at all. Every one of the 27 Core-destroyed losses
+# against steward was on a 4-Builder map -- helheim 6 of 6 -- and in those
+# games we collected 626 titanium to their 3031, while on the 5-Builder maps
+# the same build collected 3267 to their 942. The bimodality is the tell:
+# whoever's economy dies loses, and ours died wherever this left no miners.
+HARASSER_MARGIN = 2
+
+
+def harassers(target: int) -> int:
+    """How many Builders may harass, leaving the guard and a miner behind."""
+    return max(1, target - HARASSER_MARGIN)
 
 # Builders that plant the Sentinel line. The walk is most of the cost and the
 # line's damage is bounded by ammunition rather than by turret count, so more
@@ -55,13 +66,13 @@ def econ_target(width: int, height: int) -> int:
 
 def _attacker_first(target: int) -> int:
     """Lowest index that may attack, never colliding with a harasser."""
-    return max(HARASSERS + 1, target - ATTACKERS)
+    return max(harassers(target) + 1, target - ATTACKERS)
 
 
 def is_harasser(index: int, target: int, allowed: bool) -> bool:
     if not allowed or index is None or target <= 3:
         return False               # too small a roster to spare anybody
-    return 1 <= index <= HARASSERS
+    return 1 <= index <= harassers(target)
 
 
 def is_attacker(index: int, target: int, siege_open: bool) -> bool:
