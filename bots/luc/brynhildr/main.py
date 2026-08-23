@@ -575,8 +575,21 @@ class Player:
         # in danger.  On holmgang the Core waited thirty rounds on an unfunded finish, mending
         # nothing, while three Gunners took it from 353 to 24.
         finish_bank = ammo + max(0, ti - TIE_FLOOR)
+        # Decisive: we kill before we die, so every reserve and the tiebreak floor yield to
+        # the next shot.  On skald their Core stood at 20 HP -- one shot -- while we held
+        # 8 Ti and 2 ammunition behind a five-mender reserve and an 8 Ti floor, and lost.
+        heal_us = 4 * menders if menders else 0
+        t_us_now = ehp / net_us if (alive > 0 and net_us > 0) else None
+        t_them_now = hp / (their_dps - heal_us) if their_dps > heal_us else None
+        decisive = (t_us_now is not None and ehp <= GO_LOW_HP
+                    and (t_them_now is None or t_us_now <= t_them_now))
+        # A finish is only a finish if the remaining kill can be paid for now.  On valkyrie
+        # the "finish" was one income-funded shot every four rounds -- 18 damage against 32 of
+        # mending -- while finishing suppressed the menders and the banking that could have
+        # held the game.
+        shots_left = 10 * (ehp // 18 + 1)
         finishing = (ehp <= GO_LOW_HP and alive > 0 and net_us > 0
-                     and (finish_bank >= kill_ammo or hp >= 250))
+                     and (finish_bank >= kill_ammo or (decisive and finish_bank >= shots_left)))
         # A lost Sentinel is not replaced while the kill is funded by what we hold: on
         # fimbulwinter the 66 Ti replacement was 6.6 shots and gefn's Core stood at 18 HP
         # when the ammunition ran out.  Two Sentinels out-damage any mending we can beat.
@@ -609,7 +622,9 @@ class Player:
         # that was LOSING the race left four Sentinels with no ammunition in front of a
         # 176 HP Core.  When the kill is funded only the finish-line rule below adds a mender.
         near_kill = (alive >= 3 and net_us > 0 and bank >= 0.6 * kill_ammo and hp >= 250)
-        if (mend_first or (self.plan is None and threatened)) and not can_finish and not near_kill:
+        racing_now = (alive >= 3 and can_finish and self.hold_total <= STALL_ROUNDS) or near_kill
+        ring_far = alive < 3 and our_eta > 15 and landing > 0
+        if (mend_first or (self.plan is None and threatened)) and (not (can_finish or near_kill) or ring_far):
             # Sized to what a barrier cannot stop: a Gunner with a lane gets a 3 Ti barrier and
             # a Builder beside it (steward's Gunners hold fire on a tended barrier), a Gunner
             # touching the footprint gets dug out.  Menders are for Sentinels.
@@ -763,6 +778,9 @@ class Player:
         # ...and a kill that is nearly funded counts as racing: on longhouse the burst was
         # 8 Ti short of the threshold, the Core bought a 78 Ti turret instead, and steward's
         # Core went from 260 back to 416 while ours bled out.  Only real danger overrides.
+        # ...and only with a ring actually standing: with two Sentinels placed the formula
+        # still priced the kill at a full ring's rate, 'racing' suppressed every mender, and
+        # spar_wall's Gunners took the Core from 500 to 66 while 300 Ti sat in the bank.
         racing = (go == 1 and alive > 0 and can_finish) or near_kill
         turret_wanted = (COUNTER_TURRETS and threatened and self.sentinels_on_us > 0 and turret_budget
                          and landing > 0 and need_menders == 0 and not racing)
@@ -817,9 +835,11 @@ class Player:
 
         # ---- ammunition, lazily
         reserve_extra = mend_reserve + defence_reserve + (ECON_RESERVE if econ_first else 0)
-        hold_for_builders = need_home if not (go == 1 and alive > 0 and can_finish) else 0
+        if finishing and decisive:
+            reserve_extra = 0
+        hold_for_builders = need_home if not (go == 1 and alive > 0 and can_finish) and not finishing else 0
         self._feed_ammo(ct, alive, go, 0 if finishing else ring_reserve, hold_for_builders,
-                        threatened, mend_first, reserve_extra, finishing, stuck, their_dps)
+                        threatened, mend_first, reserve_extra, finishing, stuck, their_dps, decisive)
 
     def _publish_shooter(self, ct):
         """Name one turret for the home squad: a Sentinel if any reaches us (the counter-turret's
@@ -1079,7 +1099,7 @@ class Player:
             return False
 
     def _feed_ammo(self, ct, alive, go, ring_reserve, need_home, threatened, mend_first,
-                   mend_reserve, finishing, stuck=False, threatened_dps=0):
+                   mend_reserve, finishing, stuck=False, threatened_dps=0, decisive=False):
         """Keep two shots per living Sentinel banked, and nothing more: titanium is flexible,
         ammunition is not.  The burst is paid for the round the Core says GO, and a Core within
         reach of the finish gets every point we have.  A Builder the Core wants -- mender or
@@ -1118,6 +1138,8 @@ class Player:
             if want <= 0:
                 return
             floor = TIE_FLOOR
+            if decisive:
+                floor = 0
             if finishing and alive > 0:
                 # The floor settles a round in which both Cores die.  If ours will outlive
                 # theirs by the one shot the floor is holding, the floor is the shot: gefn's
