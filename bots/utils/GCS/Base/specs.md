@@ -88,12 +88,14 @@ as a parity bit (receivers ignore `UNKNOWN`-state facts). The raw `IDLE_A`/`IDLE
 unused. (The visualiser found the original bug: a builder that idled once lost that round's move and its
 reckoned position drifted for the rest of the match.)
 
-## Two layers per tile, one fact per layer
+## Three layers per tile, one fact per layer
 A fact describes **one layer** of a tile. `WALL` / `ORE` are **terrain** — what the ground is, which never
-changes, so an `ORE` fact is never cancelled by anything built on top of it. Every `OUR_`/`ENEMY_` code is
-an **occupant** standing on the terrain, and `EMPTY` means "no occupant" (a negative) and says nothing about
-the ground. A tile with ore and a harvester on it is therefore two facts, `ORE` and `OUR_HARVESTER`, and
-losing the harvester is a third, `EMPTY`. A Core occupies a 2×2 block: all four tiles are `OUR_CORE`.
+changes, so an `ORE` fact is never cancelled by anything built on top of it. `OUR_`/`ENEMY_` building codes
+are the **building** layer; `OUR_BUILDER_BOT` / `ENEMY_BUILDER_BOT` are the **unit** layer. `EMPTY` means
+"nothing built or standing here" (a negative) and says nothing about the ground. A tile with ore, an enemy
+conveyor and an enemy bot on it is three facts; losing the conveyor is a fourth, `EMPTY`. A Core occupies a
+2×2 block: all four tiles are `OUR_CORE`. Our own builder bots are never announced — teammates track them
+by dead reckoning.
 
 ## Who announces the symmetry
 Whichever unit works the map's symmetry out first announces it (`CONTROL/SYMMETRY`), once; a unit that has

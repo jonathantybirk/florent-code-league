@@ -5,16 +5,20 @@ eyesight (`observe(ct)`) and facts absorbed from the Global Communication
 Store (`apply_fact(fact, from_gcs=True)`) — and it fulfils the GCS module's
 `MapSource` contract, so a unit's GCS publishes straight out of it.
 
-Every tile has two layers, each with its own record:
+Every tile has three layers, each with its own record:
 
     terrain   what the ground is: EMPTY / WALL / ORE.  Terrain never changes,
               so once a unit knows a tile has ore, nothing built on top of it
               ever erases that knowledge.
-    occupant  a building or unit standing on the terrain (the OUR_/ENEMY_
-              codes), or nothing.  This layer ages and can be cleared by a
-              negative (an EMPTY fact: "nothing stands here any more").
+    building  a structure on the terrain (harvester, conveyor, turret, Core,
+              barrier, ...), or EMPTY for "nothing built here".
+    unit      a Builder Bot standing on the tile, or EMPTY.  Bots move every
+              round, so this layer is never worth a negative on the store —
+              age handles it.
 
-A tile with ore and a harvester on it is two facts: ORE and OUR_HARVESTER.
+A tile with ore, a conveyor and an enemy bot on it is three independent
+facts: ORE, ENEMY_CONVEYOR_E, ENEMY_BUILDER_BOT.  Losing the conveyor is a
+fourth (EMPTY), which means "nothing built or standing here any more".
 
 Per record it keeps the state code (from the GCS tile-state alphabet), the
 round the information dates from (its age), how it was obtained, and whether
@@ -25,7 +29,7 @@ Terms
 state        an integer code from bots.utils.GCS.Base.protocol.TILE_STATES.
 source       SEEN (own eyes) / GCS (a teammate told us) / INFERRED (derived
              from the map's symmetry).
-negative     an EMPTY fact on a tile whose occupant we knew: it is gone.
+negative     an EMPTY fact on a tile where we knew a building: it is gone.
 symmetry     maps come in three mirror kinds (left-right, top-bottom,
              180° rotation).  Once known, every terrain tile implies its twin
              and the enemy Core's position follows from our own.
@@ -49,12 +53,24 @@ OUR_CORE, ENEMY_CORE = STATE_CODE["OUR_CORE"], STATE_CODE["ENEMY_CORE"]
 TERRAIN = frozenset({EMPTY, WALL, ORE})
 OVERLAYS = frozenset(STATE_CODE[n] for n in ("TOOK_FIRE_HERE", "CONVEYOR_ISSUE", "HARVESTER_ISSUE"))
 CORE_BLOCK = ((0, 0), (1, 0), (0, 1), (1, 1))      # a Core fills a 2x2 block
+OUR_BUILDER_BOT = STATE_CODE["OUR_BUILDER_BOT"]
+UNIT_STATES = frozenset({OUR_BUILDER_BOT, STATE_CODE["ENEMY_BUILDER_BOT"]})
+
+
+def layer_of(state: int) -> str:
+    """Which layer a wire fact belongs to.  EMPTY is routed by the caller
+    (it clears both building and unit)."""
+    if state in (WALL, ORE):
+        return "terrain"
+    if state in UNIT_STATES:
+        return "unit"
+    return "building"
 
 _EIGHT = ("NORTH", "NORTHEAST", "EAST", "SOUTHEAST", "SOUTH", "SOUTHWEST", "WEST", "NORTHWEST")
 _EIGHT_SHORT = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 _CARDINAL_SHORT = {"NORTH": "N", "EAST": "E", "SOUTH": "S", "WEST": "W"}
 
-# how many rounds an occupant sighting stays "fresh" for priority purposes
+# how many rounds a building/unit sighting stays "fresh" for priority purposes
 FRESH_ROUNDS = 30
 # minimum observed tile pairs that must agree before a symmetry is trusted
 SYMMETRY_MIN_EVIDENCE = 6
@@ -71,7 +87,8 @@ class Record:
 @dataclass
 class Tile:
     terrain: Record | None = None
-    occupant: Record | None = None
+    building: Record | None = None
+    unit: Record | None = None
 
 
 class InternalMap:
@@ -99,7 +116,8 @@ class InternalMap:
         me = ct.get_position()
 
         changed: list[Fact] = []
-        occupants: dict[tuple[int, int], int] = {}
+        buildings: dict[tuple[int, int], int] = {}
+        units: dict[tuple[int, int], int] = {}
         my_id = ct.get_id()
         for eid in ct.get_nearby_entities():
             if eid == my_id and ct.get_entity_type().value != "core":
@@ -110,10 +128,11 @@ class InternalMap:
             p = ct.get_position(eid)
             if state in (OUR_CORE, ENEMY_CORE):          # a Core fills its 2x2 block
                 for dx, dy in CORE_BLOCK:
-                    occupants[(p.x + dx, p.y + dy)] = state
-                continue
-            key = (p.x, p.y)
-            occupants[key] = self._combine(occupants[key], state) if key in occupants else state
+                    buildings[(p.x + dx, p.y + dy)] = state
+            elif state in UNIT_STATES:
+                units[(p.x, p.y)] = state
+            else:
+                buildings[(p.x, p.y)] = state
 
         for tile in ct.get_nearby_tiles():
             key = (tile.x, tile.y)
@@ -121,9 +140,12 @@ class InternalMap:
             terrain = WALL if env == "wall" else ORE if env == "ore_titanium" else EMPTY
             if self._record(key, terrain, SEEN):
                 changed.append(Fact(key[0], key[1], terrain))
-            occ = occupants.get(key, EMPTY)
-            if self._record(key, occ, SEEN, layer="occupant"):
-                changed.append(Fact(key[0], key[1], occ))
+            b = buildings.get(key, EMPTY)
+            if self._record(key, b, SEEN, layer="building"):
+                changed.append(Fact(key[0], key[1], b))
+            u = units.get(key, EMPTY)
+            if self._record(key, u, SEEN, layer="unit"):
+                changed.append(Fact(key[0], key[1], u))
 
         self._note_fire(ct, me)
         self._infer_symmetry()
@@ -147,25 +169,15 @@ class InternalMap:
             return None
         return STATE_CODE.get(name)
 
-    @staticmethod
-    def _combine(a: int, b: int) -> int:
-        """Builder on a conveyor → the combo code; otherwise keep the building."""
-        na, nb = TILE_STATES[a], TILE_STATES[b]
-        bot, conv = (na, nb) if na.endswith("BUILDER_BOT") else (nb, na)
-        if bot.endswith("BUILDER_BOT") and "_CONVEYOR_" in conv:
-            team = "OUR_" if bot.startswith("OUR_") else "ENEMY_"
-            return STATE_CODE[f"{team}BOT_ON_CONVEYOR_{conv[-1]}"]
-        return a if not na.endswith("BUILDER_BOT") else b
-
     def _note_fire(self, ct, me) -> None:
         """HP dropped with no enemy turret in sight: mark our tile as under
         fire from something unseen (low-priority but shareable)."""
         hp = ct.get_hp()
         if self._last_hp is not None and hp < self._last_hp:
-            seen_now = (t.occupant for t in self.tiles.values()
-                        if t.occupant and t.occupant.source == SEEN and t.occupant.round == self.round)
+            seen_now = (t.building for t in self.tiles.values()
+                        if t.building and t.building.source == SEEN and t.building.round == self.round)
             if not any(TILE_STATES[r.state].startswith(("ENEMY_GUNNER", "ENEMY_SENTINEL")) for r in seen_now):
-                self._record((me.x, me.y), TOOK_FIRE_HERE, SEEN, layer="occupant")
+                self._record((me.x, me.y), TOOK_FIRE_HERE, SEEN, layer="building")
         self._last_hp = hp
 
     # ------------------------------------------------------------------
@@ -174,18 +186,22 @@ class InternalMap:
     def apply_fact(self, fact: Fact, from_gcs: bool = True) -> None:
         """Record a fact.  A fact that came off the store is already known to
         the whole team, so it is marked published on arrival.  WALL/ORE go
-        to the terrain layer; everything else (EMPTY included — it means
-        "no occupant") to the occupant layer."""
-        layer = "terrain" if fact.state in (WALL, ORE) else "occupant"
-        self._record((fact.x, fact.y), fact.state, GCS if from_gcs else SEEN,
-                     layer=layer, published=from_gcs)
+        to the terrain layer, bots to the unit layer, everything else to the
+        building layer; EMPTY clears both building and unit."""
+        src = GCS if from_gcs else SEEN
+        key = (fact.x, fact.y)
+        if fact.state == EMPTY:
+            self._record(key, EMPTY, src, layer="building", published=from_gcs)
+            self._record(key, EMPTY, src, layer="unit", published=True)
+            return
+        self._record(key, fact.state, src, layer=layer_of(fact.state), published=from_gcs)
 
     def note_shared(self, facts) -> None:
         for f in facts:
             t = self.tiles.get((f.x, f.y))
             if t is None:
                 continue
-            for rec in (t.terrain, t.occupant):
+            for rec in (t.terrain, t.building, t.unit):
                 if rec is not None and rec.state == f.state:
                     rec.published = True
 
@@ -193,7 +209,7 @@ class InternalMap:
         """Unpublished facts from both layers, best first."""
         cands = []
         for (x, y), t in self.tiles.items():
-            for rec in (t.terrain, t.occupant):
+            for rec in (t.terrain, t.building, t.unit):
                 if rec is not None and not rec.published:
                     cands.append((self._score(rec), Fact(x, y, rec.state)))
         cands.sort(key=lambda pair: -pair[0])
@@ -202,7 +218,7 @@ class InternalMap:
     def known_facts(self) -> list[Fact]:
         out = []
         for (x, y), t in self.tiles.items():
-            for rec in (t.terrain, t.occupant):
+            for rec in (t.terrain, t.building, t.unit):
                 if rec is not None and rec.state != EMPTY:
                     out.append(Fact(x, y, rec.state))
         return out
@@ -217,39 +233,48 @@ class InternalMap:
         t = self.tiles.get((x, y))
         return t.terrain.state if t and t.terrain else None
 
-    def occupant_at(self, x: int, y: int) -> int | None:
-        """Occupant state, EMPTY if known empty, None if never seen."""
+    def building_at(self, x: int, y: int) -> int | None:
+        """Building state, EMPTY if known clear, None if never seen."""
         t = self.tiles.get((x, y))
-        return t.occupant.state if t and t.occupant else None
+        return t.building.state if t and t.building else None
+
+    def unit_at(self, x: int, y: int) -> int | None:
+        """Unit state, EMPTY if known clear, None if never seen."""
+        t = self.tiles.get((x, y))
+        return t.unit.state if t and t.unit else None
 
     def state_at(self, x: int, y: int) -> int | None:
-        """The most specific thing known: the occupant if any, else terrain."""
-        occ = self.occupant_at(x, y)
-        if occ is not None and occ != EMPTY:
-            return occ
+        """The most specific thing known: unit, else building, else terrain."""
+        for v in (self.unit_at(x, y), self.building_at(x, y)):
+            if v is not None and v != EMPTY:
+                return v
         return self.terrain_at(x, y)
 
     def age(self, x: int, y: int) -> int | None:
-        """Age of the occupant record if it holds something, else of the
-        terrain record."""
+        """Age of the most specific record present (unit, building, terrain)."""
         t = self.tiles.get((x, y))
         if t is None:
             return None
-        rec = t.occupant if t.occupant and t.occupant.state != EMPTY else (t.terrain or t.occupant)
+        for rec in (t.unit, t.building):
+            if rec and rec.state != EMPTY:
+                return self.round - rec.round
+        rec = t.terrain or t.building or t.unit
         return self.round - rec.round if rec else None
 
     def is_passable(self, x: int, y: int) -> bool | None:
         """True/False if known, None if the tile has never been seen.  Walls,
         barriers, harvesters, turrets, cores and builders block movement;
         conveyors and splitters do not."""
-        terr, occ = self.terrain_at(x, y), self.occupant_at(x, y)
-        if terr is None and occ is None:
+        terr, b, u = self.terrain_at(x, y), self.building_at(x, y), self.unit_at(x, y)
+        if terr is None and b is None and u is None:
             return None
         if terr == WALL:
             return False
-        if occ is None or occ == EMPTY or occ in OVERLAYS:
+        if u is not None and u != EMPTY:
+            return False                # a bot stands there (for now)
+        if b is None or b == EMPTY or b in OVERLAYS:
             return True
-        name = TILE_STATES[occ]
+        name = TILE_STATES[b]
         return "CONVEYOR" in name or "SPLITTER" in name
 
     @property
@@ -275,7 +300,7 @@ class InternalMap:
         state = OUR_CORE if ours else ENEMY_CORE
         for dx, dy in CORE_BLOCK:
             self._record((anchor[0] + dx, anchor[1] + dy), state, GCS,
-                         layer="occupant", published=True)
+                         layer="building", published=True)
 
     def set_symmetry(self, kind: int) -> None:
         """Accept a SYMMETRY control event from the store."""
@@ -350,7 +375,7 @@ class InternalMap:
 
         Newer information wins, except that a teammate's report never
         overrides what we saw ourselves in the same or a later round.  An
-        overlay (fire / issue) does not displace a real occupant.  Re-
+        overlay (fire / issue) does not displace a real building.  Re-
         confirming a known state refreshes its round but keeps it published.
         """
         if not (0 <= key[0] < self.w and 0 <= key[1] < self.h):
@@ -369,17 +394,20 @@ class InternalMap:
             return False
         if cur is not None and source == GCS and cur.source == SEEN and cur.round >= self.round:
             return False            # our own fresh eyes beat a teammate's report
-        if state == EMPTY and (layer == "terrain" or cur is None or cur.state in OVERLAYS):
-            # plain ground is never broadcast (EMPTY on the wire means "no
-            # occupant"), and "nothing here" where nothing was known is not news
+        if state == EMPTY and (layer != "building" or cur is None or cur.state in OVERLAYS):
+            # plain ground and "no bot here" are never broadcast (bots move
+            # every round; EMPTY on the wire means nothing built or standing),
+            # and "nothing built" where nothing was known is not news
             published = True
+        if state == OUR_BUILDER_BOT:
+            published = True        # teammates track our own bots by dead reckoning
         setattr(tile, layer, Record(state, self.round, source, published))
         if layer == "terrain" and self._symmetry is not None and source != INFERRED:
             self._infer_twin(key, getattr(tile, layer))
         return True
 
     def _block_anchor(self, core_state: int) -> tuple[int, int] | None:
-        keys = [k for k, t in self.tiles.items() if t.occupant and t.occupant.state == core_state]
+        keys = [k for k, t in self.tiles.items() if t.building and t.building.state == core_state]
         if not keys:
             return None
         return min(x for x, _ in keys), min(y for _, y in keys)
