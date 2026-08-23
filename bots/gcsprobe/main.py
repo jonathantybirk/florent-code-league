@@ -87,10 +87,14 @@ class Player:
         the viewer rebuilds the unit's whole internal map from these."""
         out = []
         for (x, y), t in self.gcs.map.tiles.items():
-            rec = (t.state, t.source[0], t.round)
-            if self._dumped.get((x, y)) != rec:
-                self._dumped[(x, y)] = rec
-                out.append([x, y, t.state, t.source[0], t.round])
+            for layer, rec in (("t", t.terrain), ("o", t.occupant)):
+                if rec is None:
+                    continue
+                key = (x, y, layer)
+                val = (rec.state, rec.source[0], rec.round)
+                if self._dumped.get(key) != val:
+                    self._dumped[key] = val
+                    out.append([x, y, rec.state, rec.source[0], rec.round, layer])
         return out
 
     def _trace(self, ct, kind, result, written_before):
@@ -107,6 +111,7 @@ class Player:
             "slots": {s: d for s, d in result.per_slot.items()},
             "learned": [[f.x, f.y, f.state] for f in result.facts],
             "known": len(self.gcs.map.tiles),
+            "our_core": self.gcs.map.our_core,
             "map_delta": self._map_delta(),
             "symmetry": self.gcs.map.symmetry(),
             "enemy_core": self.gcs.map.enemy_core(),

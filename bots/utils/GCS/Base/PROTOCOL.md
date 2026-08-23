@@ -24,7 +24,7 @@
 | 0 | UNKNOWN |
 | 1 | EMPTY |
 | 2 | WALL |
-| 3 | ORE_FREE |
+| 3 | ORE |
 | 4 | OUR_HARVESTER |
 | 5 | OUR_BARRIER |
 | 6 | OUR_CONVEYOR_N |

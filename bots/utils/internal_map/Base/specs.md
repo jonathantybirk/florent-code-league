@@ -10,11 +10,19 @@ Everything above is the original brief. `internal_map.py` is the implementation;
 the headless tests (`.venv/bin/python -m pytest tests/test_internal_map.py`).
 
 ## What it is
-One `InternalMap` per unit. It holds one record per tile the unit knows anything about:
+One `InternalMap` per unit. Every tile has **two layers**, each with its own record:
+
+- **terrain** — `EMPTY` / `WALL` / `ORE`, what the ground is. Never changes, so ore knowledge is never
+  erased by whatever is built on top of it.
+- **occupant** — a building or unit on the terrain (`OUR_…` / `ENEMY_…`), or `EMPTY` for "nothing here".
+  Ages, and is cleared by a negative.
+
+A tile with ore and a harvester is two facts (`ORE`, `OUR_HARVESTER`); a Core fills all four tiles of its
+2×2 block (`our_core` / `enemy_core()` give the top-left anchor). Each record holds:
 
 | field | meaning |
 |---|---|
-| `state` | a code from the GCS tile-state alphabet (`bots/utils/GCS/Base/protocol.py` → `TILE_STATES`), e.g. `WALL`, `ORE_FREE`, `OUR_CONVEYOR_E`, `ENEMY_GUNNER_N`, `OUR_BOT_ON_CONVEYOR_S` |
+| `state` | a code from the GCS tile-state alphabet (`bots/utils/GCS/Base/protocol.py` → `TILE_STATES`), e.g. `WALL`, `ORE`, `OUR_CONVEYOR_E`, `ENEMY_GUNNER_N`, `OUR_BOT_ON_CONVEYOR_S` |
 | `round` | the round the information dates from; `age(x, y)` = current round − this |
 | `source` | `SEEN` (own eyes), `GCS` (a teammate said so), `INFERRED` (derived from the map's symmetry) |
 | `published` | whether this fact is already on the store — ours or anyone's |
@@ -39,8 +47,9 @@ write actually carried), `known_facts()` (everything, for restating), `symmetry(
   rounds (`score = class_weight × max(0.1, 1 − age/30)`). Class weights are the GCS's
   `interfaces.CLASS_WEIGHTS`.
 - **Negatives are news, plain emptiness is not.** Seeing `EMPTY` where we recorded a building or unit is a
-  fact worth publishing (the thing is gone). Seeing `EMPTY` on a tile we never knew is recorded but marked
-  published — nobody needs to be told that an unknown tile has nothing on it.
+  fact worth publishing (the thing is gone). Seeing no occupant on a tile we never knew, or plain ground
+  under anything, is recorded but marked published — nobody needs to be told that. On the wire `EMPTY`
+  always means "no occupant".
 - **Overlays don't replace identity.** `TOOK_FIRE_HERE`, `CONVEYOR_ISSUE`, `HARVESTER_ISSUE` are applied on
   top of whatever the tile holds; they only become the tile's state if it was empty or unknown.
 - **Re-confirming a fact refreshes its round but keeps it published** — nothing new to tell anyone.
@@ -49,8 +58,8 @@ write actually carried), `known_facts()` (everything, for restating), `symmetry(
 Maps come in three kinds (`SYMMETRY_KINDS`): `MIRROR_X` (left-right), `MIRROR_Y` (top-bottom), `ROT_180`.
 Every unit infers the kind itself: each observed terrain tile whose twin under a candidate kind is also
 observed either supports the candidate or eliminates it; once one candidate remains with at least
-`SYMMETRY_MIN_EVIDENCE = 6` supporting pairs it is adopted. The Core additionally announces it once on the
-store (`CONTROL/SYMMETRY`), and `set_symmetry()` accepts that, so newborns don't have to re-derive it.
+`SYMMETRY_MIN_EVIDENCE = 6` supporting pairs it is adopted. Whichever unit gets there first announces it once
+on the store (`CONTROL/SYMMETRY`); `set_symmetry()` accepts that, so the others don't have to re-derive it.
 
 Once known: every observed terrain tile implies its twin, recorded as `INFERRED` and **marked published**
 (anyone who knows the symmetry can derive it, so it never costs store bandwidth); and `enemy_core()` follows
@@ -60,7 +69,8 @@ any `OUR_CORE` tile, so builders derive the enemy Core too. Verified live on fro
 derived `(16, 9)`, the real enemy Core.
 
 ## Queries for other modules
-`state_at(x, y)`, `age(x, y)`, `is_passable(x, y)` (True/False/None-if-unknown; conveyors and splitters are
+`terrain_at(x, y)`, `occupant_at(x, y)`, `state_at(x, y)` (occupant if any, else terrain), `age(x, y)`,
+`is_passable(x, y)` (True/False/None-if-unknown; conveyors and splitters are
 walkable, everything else that is built is not), `enemy_core()`, `our_core`, `tiles` (the raw records).
 
 ## Not in scope here
