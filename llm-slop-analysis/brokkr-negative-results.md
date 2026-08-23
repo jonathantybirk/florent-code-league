@@ -123,3 +123,33 @@ The lesson is about the measurement, not the bot: "did nothing this turn" and
 first. The tool's classification was corrected rather than deleted, because
 the thing it *is* reliable at -- a unit stuck on one intent for a whole match
 -- found both of the largest bugs so far.
+
+## Defensive turrets lose, whichever turret it is (2026-08-23)
+
+Two independent attempts, months apart in reasoning, both catastrophic:
+
+| | vs hildr | vs steward |
+|---|---|---|
+| baseline (mending only) | **87/90** | **54/90** |
+| up to 3 defensive Gunners | 17/30 (scaled ≈51/90) | ≈15/90 |
+| up to 2 counter-battery Sentinels | 54/90 | 41/90 |
+
+The Sentinel version was built specifically to answer why the Gunner version
+failed -- 18 damage every two rounds along a five-tile ray that pierces walls,
+placed by asking the engine's own `can_fire_from` rather than by deriving an
+aim ourselves. It kills a 25 HP Gunner in two shots. It still lost 33
+percentage points against the rush.
+
+The arithmetic says why, and it is the same arithmetic that makes brokkr work
+at all. Healing is 4 HP per titanium. A Sentinel is 1.8 HP of damage per
+titanium of ammunition, and every titanium converted to ammunition is a
+titanium that can no longer heal -- conversion is one-way. So a defensive
+turret does not merely underperform mending, it *competes with* mending for
+the same currency and loses at more than 2:1. On top of that each turret adds
+20% to the cost of every later build.
+
+**Defence in this game is mending, and the way to reduce incoming damage is to
+take away the economy that pays for it.** Harassment moved the same matchup
+from 24/90 to 60/90 -- more than every defensive idea tried, combined, and in
+the opposite direction. Treat "we need better defence" as a prompt to cut more
+belt.
