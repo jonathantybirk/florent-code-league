@@ -24,3 +24,12 @@ All-map 10 ms evidence against Spar Econ, all 53 maps and both seats:
 The earlier 21-map, three-opponent panel was 93-33 versus 90-36 for the parent.
 The implementation remains one generic movement helper plus one start-key gate;
 there are no scripted map openings.
+
+First online round (submission v121): 8-17 against the same five team names,
+but not a paired repeat of v120. The maps and seeds all differed and several
+opponents had changed submission versions. Critically, 24 of the 25 games used
+starts where v120 and v121 are byte-for-byte identical; only OpenSverige's Skald
+game exercised a fallback key. Therefore the round is adverse online evidence
+for the lineage, but it cannot attribute the 12-win swing to the gates. Keep the
+remaining scheduled rounds and judge qualification/expected Elo on the combined
+feed rather than overfitting this draw.
