@@ -25,9 +25,10 @@ def maps_available() -> list[str]:
     return sorted(p.stem for p in (ROOT / "maps").glob("*.map26"))
 
 
-def play(bot_a: str, bot_b: str, map_name: str, tle: int) -> str | None:
+def play(bot_a: str, bot_b: str, map_name: str, tle: int, seed: int) -> str | None:
     """Return the *path* of the winning bot, or None if the match did not resolve."""
-    cmd = ["uv", "run", "fcode", "run", bot_a, bot_b, map_name]
+    cmd = ["uv", "run", "fcode", "run", bot_a, bot_b, map_name,
+           "--seed", str(seed)]
     if tle:
         cmd += ["--tle", str(tle)]
     try:
@@ -51,6 +52,7 @@ def main() -> int:
     ap.add_argument("--maps", default="", help="comma list of map names, or a count")
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--tle", type=int, default=0, help="per-turn CPU limit in ms")
+    ap.add_argument("--seed", type=int, default=1, help="engine seed")
     args = ap.parse_args()
 
     all_maps = maps_available()
@@ -73,7 +75,7 @@ def main() -> int:
     def run_one(job):
         opp, m, seat = job
         a, b = (args.bot, opp) if seat == "A" else (opp, args.bot)
-        w = play(a, b, m, args.tle)
+        w = play(a, b, m, args.tle, args.seed)
         return opp, m, seat, w
 
     with cf.ThreadPoolExecutor(max_workers=args.jobs) as ex:
