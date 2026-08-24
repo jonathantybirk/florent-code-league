@@ -44,9 +44,12 @@ def run(player, ct):
             return
     work = plan.work[crew.index]
     while crew.lane < len(work):
-        lane = plan.lanes[work[crew.lane]]
+        lane_index = work[crew.lane]
+        lane = plan.lanes[lane_index]
         if _advance(ct, plan, crew, lane, me):
             return
+        plan.completed.add(lane.deposit)
+        plan.finished.add(lane_index)
         crew.lane += 1
         crew.tile = 0
         crew.path = None
@@ -126,13 +129,25 @@ def _route(plan, me, goal):
     board = plan.board
     blocked = plan.deposits - {goal}
     return (walk.route(board, me, goal, blocked)
-            or walk.route(board, me, goal)
+            or walk.route(board, me, goal, plan.completed)
             or [])
 
 
 def _idle(ct, plan, crew, me) -> None:
-    """Nothing left in this Builder's plan."""
-    _trace(ct, crew, me, "idle")
+    """Park off the planned network instead of blocking somebody else's lane."""
+    goal = plan.spawns[crew.index]
+    active = set().union(*(tiles for index, tiles in enumerate(plan.construction)
+                           if index not in plan.finished))
+    if me not in active:
+        _trace(ct, crew, me, "parked")
+        return
+    for spot in plan.board.neighbours(me):
+        if spot not in active and walk.step(ct, me, spot):
+            _trace(ct, crew, me, f"-> {spot} to clear lane")
+            return
+    if goal is not None and me != goal:
+        _trace(ct, crew, me, f"-> {goal} to clear lane")
+        _approach(ct, plan, crew, me, goal)
 
 
 def _trace(ct, crew, me, what) -> None:

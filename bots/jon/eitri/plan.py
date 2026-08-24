@@ -23,7 +23,8 @@ _CACHE = {}
 
 
 class Plan:
-    __slots__ = ("board", "lanes", "work", "spawns", "deposits")
+    __slots__ = ("board", "lanes", "work", "spawns", "deposits", "completed",
+                 "finished", "construction")
 
     def __init__(self, board, lanes, work, spawns):
         self.board = board
@@ -35,6 +36,12 @@ class Plan:
         # deposit stops dead the moment it is dug -- so routes avoid
         # them from the start rather than discovering it later.
         self.deposits = frozenset(lane.deposit for lane in lanes)
+        self.completed = set()
+        self.finished = set()
+        self.construction = tuple(
+            frozenset([lane.entry] + [tile for tile, _ in lane.tiles])
+            for lane in lanes
+        )
 
     def index_of(self, tile, round_):
         """Which Builder is standing on `tile`, by the seat it was spawned into.
