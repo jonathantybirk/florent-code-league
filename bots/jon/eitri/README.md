@@ -23,7 +23,7 @@ margin.
 Against `bots/common/donothingbot`, across all 53 atlas maps at 1,000 rounds
 from seat A:
 
-- total collected titanium: 1,687,200, up from 1,469,620;
+- total collected titanium: 1,687,570, up from 1,469,620;
 - execution: 96% of the planner's perfect schedule, up from 91%;
 - planner quality: 92% of the capacity-aware ceiling, up from 85%;
 - Sweden improves from 2,240 to 15,200 Ti (14% to 94% execution).
@@ -36,9 +36,13 @@ from seat A:
 
 The strict successor comparison against `e06a0c5` covers both starting seats:
 
-- seat A: 1,687,200 versus 1,640,390 (+46,810), zero regressions;
+- seat A: 1,687,570 versus 1,640,390 (+47,180), zero regressions;
 - seat B: 1,686,220 versus 1,618,680 (+67,540), zero regressions;
-- combined: +114,350 Ti across 106 map/seat cases.
+- combined: +114,720 Ti across 106 map/seat cases.
+
+Finished builders also treat every unfinished planned deposit as reserved. On
+String this prevents one from parking on the final ore tile and raises actual
+income by 370 Ti without changing any other map/seat result.
 
 The benchmark separates executor quality from planner quality:
 
