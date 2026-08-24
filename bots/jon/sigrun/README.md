@@ -16,74 +16,114 @@ symmetric, so a build against a copy of itself, both seats, scores **exactly**
 (map, seat) alone: a five-seed run returns 5-0 or 0-5 in all thirty cells. One seed
 is the whole head-to-head, and a change is worth precisely the seats it turns.
 
-## What this fork changes: paths B opens with a miner
+## What this fork changes
 
-`openingstrat/` (vendored from `brynhildr_econ_opening`) spawns one precomputed
-mining Builder on round 0 and starts brynhildr's attacker on round 1. It is enabled
-on exactly one start.
+Two things. Both are small; the second is the one that matters.
 
-**16-14 against v109** on the pool, from 15-15 -- one seat turned. Across the
-five-bot panel on paths alone: **+3 on seeds 1-3, and +7 on the held-out seeds
-4-10 (49/70 against the flagship's 42/70)**.
+### 1. The anti-grinder rule must not outlive the Core it protects
+
+`spar_wall` beats v109 0-3 on eleven pool starts, always by a Core kill between
+rounds 98 and 221, always with titanium still in the bank -- 516 Ti on valkyrie A,
+162 on glacierkeep A. Traced round by round on glacierkeep A: from round 47 the Core
+takes a measured **28 HP a round** from four Gunners holding lanes, the mend squad is
+sized correctly at **five** from round 80, and **not one mender is ever bought** for
+the next 170 rounds while the bank climbs.
+
+One line does it:
+
+```python
+if self.home_deaths >= 2 and threatened:
+    need_menders = 0
+```
+
+Two menders die to those Gunners by round 45, and from then on the Core refuses to
+buy any mender at all while anything is shooting it. Against a grinder that is right
+-- bodies that die faster than they heal are the enemy's ammunition. Once the Core
+itself is the thing being ground it is a suicide pact. The rule now yields when a
+settled siege has the Core under `SIEGE_HP`:
+
+```python
+if (self.home_deaths >= 2 and threatened
+        and not (siege_len >= SIEGE_SETTLED and hp < SIEGE_HP)):
+    need_menders = 0
+```
+
+glacierkeep A against spar_wall goes from a loss on round 221 to a **win on round
+814**. Across the panel it is **+12** and nothing regresses.
+
+Three larger fixes were written first, upstream of this line -- raise the squad when
+dying with a bank, size it to the measured damage instead of the `min(landing, 7)` a
+barrier is assumed to take off it, let the squad outrank re-feeding the ring -- and
+**all three produced byte-identical results**, because every one of them was
+downstream of a gate that had already zeroed `need_menders`. Stacked on top of the
+one-line fix afterwards they measured 97-23 against its 98-22, so none is carried.
+The instrumenting is what found this; the guessing found nothing.
+
+### 2. paths B opens with a miner
+
+`openingstrat/` (vendored from `brynhildr_econ_opening`) spawns one precomputed mining
+Builder on round 0 and starts brynhildr's attacker on round 1, on exactly one start.
+
+Run on all thirty pool starts the opening turns four seats against v109 -- bifrost B,
+glacierkeep A, helheim B, paths B -- and gating all four is **56-34 against v109** but
+**328-122 against the panel**, below v109's own 332-118. Priced per start across the
+panel the four are **-4, +0, -3 and +3**: the opening's tempo is worth its titanium
+against v109's own rush and against almost nothing else. Only paths B survives being
+priced against a field: +3 on the seeds it was chosen from, **+7 on held-out seeds
+4-10** (49/70 against 42/70).
+
+Selecting starts against a single opponent is fitting to that opponent, even when the
+instrument has no noise in it. That is the whole lesson of the four-start build.
 
 The catalog is cut from 3,539 lines to the one map the gate can reach, and
 `_opening_enabled` requires `terrain.py` to *name* the map as well as match its size
-and Core, so a foreign map sharing a start cannot get paths' plan laid on terrain
-that does not describe it.
+and Core, so a foreign map sharing a start cannot get paths' plan laid on terrain that
+does not describe it.
 
-## Why only one start, and the mistake that found it
-
-Run on all thirty pool starts, the opening turns four seats against v109: bifrost B,
-glacierkeep A, helheim B, paths B. Gating all four is **56-34 against v109** -- and
-**328-122 against the panel, down from the flagship's 332-118.**
-
-Priced per start across the whole panel, the four are **-4, +0, -3 and +3**. The
-opening's tempo is worth its titanium against v109's own rush and against almost
-nothing else; three of the four seats it turns in the mirror it loses everywhere
-else. Selecting starts against a single opponent -- even the flagship, even with a
-noiseless instrument -- is fitting to that opponent. Only paths B survives being
-priced against a field, and only paths B is enabled.
-
-## Everything else that was measured, and thrown away
+## Where it stands
 
 Panel: fifteen pool maps, both seats, seeds 1-3, 450 games a build.
 
 | build | total | v109 | brokkr | steward | spar_wall | spar_sentinel |
 |---|---|---|---|---|---|---|
-| v109 (control) | 332-118 | 45-45 | 78-12 | 78-12 | 56-34 | 75-15 |
-| + the four-start opening gate | 328-122 | 56-34 | 81-9 | 69-21 | 50-40 | 72-18 |
-| + `HARVESTERS_MAX` 7, `ECON_ROUND` 30 | 331-119 | 45-45 | 74-16 | 78-12 | 59-31 | 75-15 |
-| + the harvester cap raised only in the income war | 331-119 | 48-42 | 74-16 | 78-12 | 56-34 | 75-15 |
-| + a home Launcher against loitering Builders | 321-129 | 37-53 | 78-12 | 78-12 | 56-34 | 72-18 |
-| + that Launcher and the economy pair | 316-134 | 37-53 | 73-17 | 78-12 | 56-34 | 72-18 |
+| v109 (the flagship) | 332-118 | 45-45 | 78-12 | 78-12 | 56-34 | 75-15 |
+| **sigrun** | **344-106** | **51-39** | 78-12 | 78-12 | **59-31** | **78-12** |
 
-**The home Launcher is a negative result and the most instructive one.** The bot
-already has the flinging half -- `_launcher` throws any adjacent enemy Builder to
-the far side of the map -- and its own comment says "we never build one". A Gunner
-is measured off against harassers because a squad digs 25 HP out faster than 7
-damage a round kills one, and a Launcher never has to kill anything: 20 Ti, no
-ammunition, cannot miss, and one throw puts a digger five tiles from the wall it was
-laying. It still lost. Against brokkr, the harassment bot it was built for, the
-column did not move at all (78-12 either way) -- the trigger never fired, because a
-harasser steps in and out and `loiter` peaked at five of the six consecutive rounds
-the Gunner rule wants. Rebuilt on cumulative visits it did fire, and cost eight
-games of the mirror. Titanium spent at home while the rush needs every point is the
-same disease the Gunner had; not having to kill anything does not cure it.
+Head to head on the pool, one seed: **17-13**, from 15-15.
 
-**The tuning is at a local optimum.** Twenty-one single-constant perturbations, 150
-games each against v109: most scored exactly 75-75 -- the constant never binds in
-games this short -- and the two that moved, `BURST_SLACK` and `SNIPE_BANK`, were
-worse in both directions. A seventeen-point flip search over structural switches
-(`SENTINEL_TARGET`, `JOIN_BELTS`, `REBUILD_RING`, `DENY_ORE`, `SHIELD_RING`,
-`AVOID_COVERED_SPOTS`, `HOME_BUILDER_AT_START`, ...) found nothing worth more than
-+2 starts in the mirror, and the four-start result above is the reason a mirror
-flip is not by itself evidence.
+## What was measured and thrown away
+
+| build | total |
+|---|---|
+| + the four-start opening gate | 328-122 |
+| + `HARVESTERS_MAX` 7, `ECON_ROUND` 30 | 331-119 |
+| + the harvester cap raised only in the income war | 331-119 |
+| + a home Launcher against loitering Builders | 321-129 |
+| + that Launcher and the economy pair | 316-134 |
+
+**The home Launcher is a negative result.** The bot already has the flinging half --
+`_launcher` throws any adjacent enemy Builder to the far side of the map -- and its own
+comment says "we never build one". A Gunner is measured off against harassers because a
+squad digs 25 HP out faster than 7 damage a round kills one, and a Launcher never has
+to kill anything: 20 Ti, no ammunition, cannot miss, and one throw puts a digger five
+tiles from the wall it was laying. It still lost. Against brokkr, the harassment bot it
+was built for, the column did not move at all (78-12 either way) -- the trigger never
+fired, because a harasser steps in and out and `loiter` peaked at five of the six
+consecutive rounds the Gunner rule wants. Rebuilt on cumulative visits it did fire, and
+cost eight games of the mirror.
+
+**The constants are at a local optimum.** Twenty-one perturbations against v109, 150
+games each: most scored exactly 75-75 -- the constant never binds in games this short --
+and the two that moved, `BURST_SLACK` and `SNIPE_BANK`, were worse in both directions.
+Re-run against the four-bot panel (the right question), fourteen of them landed within
++-2 of control's 96-24. A seventeen-point structural flip search found nothing worth
+more than +2 starts in the mirror, and the four-start gate is why a mirror flip is not
+by itself evidence.
 
 **Two changes believed on 53-map evidence do not survive the pool.** The
 x/codex-wallguard siege guard (`brynhildr@533601b`) is 54-52 across all 53 maps and
-**42-48** on the pool, with bifrost 0-6. The terrain-gated econ opening as shipped
-(`brynhildr_econ_opening@3453e4a`, whose gate was fitted against v110) is **14-16**.
-Together, 15-15.
+**42-48** on the pool, bifrost 0-6. The shipped terrain-gated econ opening
+(`brynhildr_econ_opening@3453e4a`, fitted against v110) is **14-16**. Together, 15-15.
 
 ## Reproducing
 
