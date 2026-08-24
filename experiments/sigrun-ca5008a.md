@@ -1,5 +1,8 @@
 # sigrun@ca5008a
 
+Superseded before upload by `sigrun@5b3fba2`, which retains this cadence and
+lifts the Harvester cap only after the existing forage verdict.
+
 Competitive timing-preserving economy successor to `sigrun@338a1ad`, submitted
 at the tail of ordinary `test_next` for three rounds. It is not in
 `queue_front`.
