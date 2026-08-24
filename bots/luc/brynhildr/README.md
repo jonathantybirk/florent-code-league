@@ -43,12 +43,6 @@ the broad extra-mender response was measured locally and rejected.
 Maps won in both seats: 11/15 against hildr78, 9/15 against steward, 10/15 against gefn.
 (Goal rows re-measured on the planned-ring build, seeds 1-2 of 60: hildr78 54/60, steward
 52/60, gefn 50/60; spar_wall 38/60, spar_sentinel 50/60, brokkr 49/60.)
-
-The Launcher-rush response preserves the v126 selective-premine panel result (305/360):
-hildr78 50/60, steward 46/60, gefn 56/60, spar_sentinel 52/60, brokkr 56/60,
-spar_wall 45/60.  It no longer collapses the calculated mend squad to one Builder when
-two or more enemy Gunners are firing point-blank, the pattern in all five v126 losses to
-sporks.
 Off the pool (sweden, bridge, quarry, duel, showdown, vault) it runs without the bundled
 terrain and without crashing; 7/12 against steward and brokkr. Worst unit-turn on a 30x30
 map: 2.7 ms against the 10 ms limit (about 4.3 ms at the ladder's 1.6x).
