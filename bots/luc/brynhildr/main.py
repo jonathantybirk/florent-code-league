@@ -143,6 +143,7 @@ SLOT_HOMES = 3             # slots 13..15
 ATK_ECON = 1 << 8          # the attacker has seen a Harvester or belt of theirs
 ATK_RUSH = 1 << 9          # the attacker has seen a Builder of theirs on our side of the map
 ATK_BUILDERS_SHIFT = 10    # bits 10-12: distinct enemy Builders the attacker has seen, 0-7
+ATK_ECON_ASSETS_SHIFT = 13 # bits 13-15: distinct enemy Harvesters/belt tiles seen, 0-7
 
 ORD_THREAT = 1             # something that can hit our Core is in sight / hitting it
 ORD_ECON = 2               # the Core is willing to pay for mining
@@ -540,6 +541,8 @@ class Player:
         scout = _flags(self._read(ct, SLOT_BUILDER))
         self.eta = scout & 0xFF
         enemy_builders_seen = (scout >> ATK_BUILDERS_SHIFT) & 7
+        enemy_econ_assets_seen = (scout >> ATK_ECON_ASSETS_SHIFT) & 7
+        mass_economy = enemy_builders_seen >= 4 or enemy_econ_assets_seen >= 4
         if scout & ATK_ECON or enemy_builders_seen >= 3:
             self.scout_econ = True
         if scout & ATK_RUSH:
@@ -619,7 +622,7 @@ class Player:
             # clean four-Sentinel kill until their economy has already won.
             # Keep the conservative assumption for ordinary 1--3 Builder
             # openings, but trust what the ring can actually see after four.
-            if enemy_builders_seen < 4:
+            if not mass_economy:
                 priced = max(eheal, HEAL_ASSUMED)
         kill_ammo = (10.0 * ehp / 18.0) * (full / max(1, full - priced)) if net_us > 0 or alive == 0 else 0
         # Finish a Core this low -- when the finish can be paid for, or ours is not the one
@@ -829,7 +832,7 @@ class Player:
         if their_near is not None or potential > 0 or self.seen_turrets:
             self.scout_rush = True
         if (ECON_OPENING and self.spawned and not ring_up and not threatened
-                and self.scout_econ and not self.scout_rush):
+                and self.scout_econ and not self.scout_rush and not mass_economy):
             want_miners = 1
         if ECON_AFTER_RING and (ring_up or self.round >= ECON_ROUND):
             want_miners = 1
@@ -1485,7 +1488,10 @@ class Player:
 
     def _scout_word(self):
         word = (ATK_ECON if self.econ_seen else 0) | (ATK_RUSH if self.rush_seen else 0)
-        return word | (min(7, len(self.enemy_ids)) << ATK_BUILDERS_SHIFT)
+        econ_assets = len(self.enemy_belts | self.enemy_harv)
+        return (word
+                | (min(7, len(self.enemy_ids)) << ATK_BUILDERS_SHIFT)
+                | (min(7, econ_assets) << ATK_ECON_ASSETS_SHIFT))
 
     def _recount_ring(self, ct):
         """A planted Sentinel seen gone comes off the count, so the walk plants another."""
