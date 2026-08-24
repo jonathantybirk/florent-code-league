@@ -213,10 +213,14 @@ so they are standing there, able to heal, when the attack comes.  That is the wa
   not built on, not under an enemy barrier, and not beside an enemy Launcher (it flings
   Builders of either team; the Core's spawn and the menders' post selection skip those
   `grab_zone` tiles too).  One more than the usable count is allowed, to dig.
-- **The money** comes from the bank now: the ring reserve is kept (the rush still goes) and
-  the mend float, but not the burst reserve (`kill_hold`) that otherwise blocks a mender
-  while the bank is short of a kill -- a kill that has to be fired while their Sentinels shoot
-  a Core no mender can reach was never going to be paid for.
+- **The money** comes from the bank now, behind the mend float only: neither the burst
+  reserve (`kill_hold`) nor the ring's reserve stands in front of the squad.  A kill that has
+  to be fired while their Sentinels shoot a Core no mender can reach was never going to be
+  paid for; and on 0033's 12x12 (match `5afa8b97` game 3) the rebuild reserve for four
+  Sentinels at post-rush prices -- 330 Ti, after 0033's Builders had dug the ring out -- sat
+  in front of a 60 Ti mender while one Sentinel took the Core from 500 to 0 with 130-206 Ti
+  in the bank.  The same rebuild reserve now yields to a mender whenever the Core is being
+  shot in a stalled game, as the burst reserve already did after Big O.
 - **The squad holds, the rest mine.**  While the waller (a loitering Builder or a Launcher)
   stands at our ring, the Core names how many ring tiles are to be held (`ORD_HOLD_SHIFT`,
   bits 14-15 of the orders word) and the first that many of our Builders on the ring, in tile
@@ -234,7 +238,10 @@ to the build before it, game for game (hildr78 27/30, steward 26/30, gefn 25/30,
 and then seats two Sentinels (`wallstub2`: midgard, skald, paths, auroraveil, both seats),
 v109 survived every game but stalled -- three of eight went to round 1000, its first mender
 bought at round 42-84 after the first shot had landed, min Core HP 76-160 -- while this build
-killed in all eight, the squad standing from round 10-21, min Core HP 152-336.
+killed in all eight, the squad standing from round 10-21, min Core HP 152-336.  With diggers
+added to the stub (`wallstub3`, its wallers shoot our Sentinels out -- 0033's habit), v109 took
+both auroraveil seats to round 1000 and lost one on titanium stored; this build killed in all
+six games (skald 250/303, paths 167/43, auroraveil 400/303).
 
 ## Comms (16 slots)
 

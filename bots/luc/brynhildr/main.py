@@ -932,24 +932,30 @@ class Player:
             cost = self._builder_cost(ct)
             if need_menders:
                 if wall_mode and not racing:
-                    # The wall watch buys from the bank.  The ring's own reserve is kept (the
-                    # rush still goes); the burst's is not -- a burst that has to be fired
-                    # while their Sentinels shoot a Core no mender can reach was never going
-                    # to be paid for.
-                    spare = ti - ring_reserve - mend_reserve
+                    # The wall watch buys from the bank: neither the burst's reserve nor the
+                    # ring's stands in front of it.  A burst fired while their Sentinels shoot
+                    # a Core no mender can reach was never going to be paid for, and on 0033's
+                    # 12x12 the rebuild reserve for four Sentinels at post-rush prices (330 Ti)
+                    # sat in front of a 60 Ti mender while one Sentinel took the Core from 500
+                    # to 0 with 130-206 Ti in the bank.
+                    spare = ti - mend_reserve
                 elif (self.plan == 'mend' or mend_first) and not racing:
                     spare = ti - (ring_reserve if alive == 0 and built == 0 else 0)
                 elif stuck:
                     spare = ti - SNIPE_BANK
                 else:
                     kill_hold = max(0, kill_ammo - ammo)
+                    ring_hold_ti = ring_reserve
                     if landing > 0 and self.hold_total > STALL_ROUNDS and not (can_finish or near_kill):
                         # Big O parked one Sentinel and our Core died in 56 rounds with
                         # 98 Ti banked for a 500-ammo burst that was never going to be
                         # paid for.  While damage lands and the kill is not close, the
-                        # mender is the purchase.
+                        # mender is the purchase -- ahead of the ring's rebuild as well:
+                        # 0033 dug our ring out and one Sentinel took the Core from 500 to 0
+                        # behind a 330 Ti rebuild reserve, with 130-206 Ti in the bank.
                         kill_hold = 0
-                    spare = ti - ring_reserve - mend_reserve - kill_hold
+                        ring_hold_ti = 0
+                    spare = ti - ring_hold_ti - mend_reserve - kill_hold
             else:
                 # The miner.  The ring and the mend float come first; the kill does not --
                 # a kill that is not affordable now is what the miner's income pays for.
