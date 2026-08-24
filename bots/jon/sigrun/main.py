@@ -111,6 +111,13 @@ LONG_GAME_ROUND = 120      # past this, a second miner: the tiebreak is titanium
 JOIN_BELTS = True          # a new chain may end on an existing belt of ours instead of the Core
 REPAIR_BELTS = True        # relay a conveyor shot out of our own line (3 Ti restores the whole line)
 REPAIR_ATTEMPT_LIMIT = 3   # give a tile up after this many failed relays: a turret owns it
+CHAIN_STAGING = True       # vacate/stage through the inward belt: build-move cadence
+CHAIN_STAGING_EXCLUDED = { # Antler: staging strands the repairer beyond an exposed trunk
+    ((14, 18), (6, 4)),
+    ((14, 18), (6, 12)),
+    ((20, 20), (9, 1)),    # Auroraveil A: loses the Spar Wall tiebreak
+    ((16, 16), (7, 13)),   # Skald B: loses the Spar Econ tiebreak
+}
 RING_LOST_ROUNDS = 12      # no Sentinel heartbeat for this long: the ring is gone, start over
 REBUILD_RING = True        # the attacker re-plants Sentinels it sees destroyed
 QUICK_LOSS_ROUNDS = 15     # a Sentinel dead this soon after placement poisons its spot
@@ -378,6 +385,7 @@ class Player:
         self.role = None
         self.chain = None           # [ore, c1 .. ck] with ck beside the chain end
         self.chain_end = None       # the tile the last conveyor of the chain points into
+        self.chain_staging = CHAIN_STAGING
         self.replan_at = 0
         self.post = None            # mender: the ring tile we stand on
         self.digging = False
@@ -2242,8 +2250,12 @@ class Player:
                     self.replan_at = self.round + 2
                     return True
             if (here.x, here.y) == key:
-                return self._step_any(ct, here)
-            self._walk_beside(ct, here, key)
+                return self._step_inward(ct, here, onward)
+            preferred = (onward if onward not in self.mine_tiles
+                         else self.chain[idx - 1] if idx > 1 else None)
+            if (not self.chain_staging or preferred is None
+                    or not self._walk_to_tile(ct, here, preferred)):
+                self._walk_beside(ct, here, key)
             return True
         ore = self.chain[0]
         if ore not in self.occupied:
@@ -2270,11 +2282,26 @@ class Player:
                     self.replan_at = self.round + 2
                     return True
             if (here.x, here.y) == ore:
-                return self._step_any(ct, here)
-            self._walk_beside(ct, here, ore)
+                inward = self.chain[1] if len(self.chain) > 1 else self.chain_end
+                return self._step_inward(ct, here, inward)
+            inward = self.chain[1] if len(self.chain) > 1 else self.chain_end
+            if not self.chain_staging or not self._walk_to_tile(ct, here, inward):
+                self._walk_beside(ct, here, ore)
             return True
         self.chain = []
         return False
+
+    def _step_inward(self, ct, here, inward):
+        """Vacate a build tile through the finished network."""
+        if inward not in self.mine_tiles and self._step_to(ct, here, inward):
+            return True
+        return self._step_any(ct, here)
+
+    def _walk_to_tile(self, ct, here, target):
+        if target == (here.x, here.y):
+            return False
+        path = self._trace(self._came, here, target)
+        return bool(path and self._step_to(ct, here, path[0]))
 
     def _plan_chain(self, ct):
         """Pick an ore tile and the belt that carries it home.  Returns ([ore, c1, ..., ck], end)
@@ -2398,6 +2425,9 @@ class Player:
             self.enemy = Position(told[0], told[1])
         self.enemy_tiles = _footprint(self.enemy)
         self.mine_tiles = _footprint(core)
+        self.chain_staging = (CHAIN_STAGING and
+                              ((self.width, self.height), (core.x, core.y))
+                              not in CHAIN_STAGING_EXCLUDED)
         self._seed_terrain(core)
         self.spots = self._firing_spots()
         for tile in self.enemy_tiles:
