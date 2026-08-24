@@ -63,6 +63,9 @@ CLUSTER_BONUS = 1          # ...and each free spot within two steps of the stand
 HEAL_ASSUMED = 12          # HP/round an undefended Core is assumed to raise once shot at:
                            # the builders walk back, or new ones are spawned
 USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known pool
+CHAIN_STAGING_EXCLUDED = { # staging strands the repairer beyond Antler's exposed trunk
+    ((14, 18), (6, 4)), ((14, 18), (6, 12)),
+}
 CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
 
 HOME_BUILDER_AT_START = False  # a Builder at home on round 0 costs 60 Ti effective: six shots, the kill
@@ -394,6 +397,7 @@ class Player:
         self.ring_target = SENTINEL_TARGET
         self.stand_rounds = 0       # rounds at the anchor without placing
         self.home_slot = None
+        self.chain_staging = True
         self.laid = {}              # conveyor tile -> facing, laid by this miner
         self.my_harvesters = set()
         self.repair_fail = {}
@@ -2195,7 +2199,11 @@ class Player:
                     return True
             if (here.x, here.y) == key:
                 return self._step_inward(ct, here, onward)
-            self._walk_beside(ct, here, key)
+            preferred = (onward if onward not in self.mine_tiles
+                         else self.chain[idx - 1] if idx > 1 else None)
+            if (not self.chain_staging or preferred is None
+                    or not self._walk_to_tile(ct, here, preferred)):
+                self._walk_beside(ct, here, key)
             return True
         ore = self.chain[0]
         if ore not in self.occupied:
@@ -2224,7 +2232,9 @@ class Player:
             if (here.x, here.y) == ore:
                 inward = self.chain[1] if len(self.chain) > 1 else self.chain_end
                 return self._step_inward(ct, here, inward)
-            self._walk_beside(ct, here, ore)
+            inward = self.chain[1] if len(self.chain) > 1 else self.chain_end
+            if not self.chain_staging or not self._walk_to_tile(ct, here, inward):
+                self._walk_beside(ct, here, ore)
             return True
         self.chain = []
         return False
@@ -2308,6 +2318,12 @@ class Player:
             return True
         return self._step_any(ct, here)
 
+    def _walk_to_tile(self, ct, here, target):
+        if target == (here.x, here.y):
+            return False
+        path = self._trace(self._came, here, target)
+        return bool(path and self._step_to(ct, here, path[0]))
+
     def _enemy_beside(self, ct, key):
         """A Harvester outputs to ANY adjacent building: an ore beside their belt feeds them."""
         try:
@@ -2357,6 +2373,9 @@ class Player:
             self.enemy = Position(told[0], told[1])
         self.enemy_tiles = _footprint(self.enemy)
         self.mine_tiles = _footprint(core)
+        self.chain_staging = (
+            ((self.width, self.height), (core.x, core.y)) not in CHAIN_STAGING_EXCLUDED
+        )
         self._seed_terrain(core)
         self.spots = self._firing_spots()
         for tile in self.enemy_tiles:
