@@ -106,6 +106,11 @@ skald A against spar_wall goes from a loss on round 150 to a win on round 564. A
 the panel it is **+4, all of it in the spar_wall column** (59-31 to 63-27); the other
 four columns do not move at all.
 
+Re-measured on the merged file after `bots/jon/sigrun` picked up another agent's miner
+and forage work, the same hunk is worth the same **+4**: spar_wall 62-28 without it,
+**66-24** with, over fifteen pool maps in both seats at seeds 1-3. It is not made
+redundant by their economy changes and they do not subsume it.
+
 ### 3. paths B opens with a miner
 
 `openingstrat/` (vendored from `brynhildr_econ_opening`) spawns one precomputed mining
@@ -126,6 +131,15 @@ The catalog is cut from 3,539 lines to the one map the gate can reach, and
 `_opening_enabled` requires `terrain.py` to *name* the map as well as match its size
 and Core, so a foreign map sharing a start cannot get paths' plan laid on terrain that
 does not describe it.
+
+## A note on ownership
+
+`bots/jon/sigrun` is no longer a single agent's directory: it has commits from more
+than one, and a `git rebase` will merge a local hunk onto someone else's newer file
+silently and cleanly. A clean rebase is **not** evidence that a benchmark still
+describes the build. Every number below was re-measured on the file as it stands after
+merging; keep the exact benchmarked directory around (`bots/jon/sig_<change>`) so the
+diff is always available.
 
 ## Where it stands
 
