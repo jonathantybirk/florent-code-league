@@ -1,0 +1,5 @@
+source_commit = "f3c1fd7ba"
+source_path = "bots/luc/warden"
+engine = "2.3.3"
+status = "development"
+variant = "conditional-relay-cap"

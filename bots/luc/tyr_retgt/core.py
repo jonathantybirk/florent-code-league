@@ -1,0 +1,301 @@
+"""Core opening, doctrine choice, and reinforcement spawning."""
+
+import sys
+from typing import TYPE_CHECKING
+
+import doctrine
+from fcode import Controller, Direction, Environment, Position
+
+from constants import (HEARTBEAT_MASK, HEARTBEAT_SHIFT,
+                       MAX_LIVE_BUILDERS, MAX_OPENING_BUILDERS,
+                       MAX_TOTAL_BUILDERS, ORE_HINT_COUNT, ORE_HINTS,
+                       PAD_FIRST_ORDER,
+                       REINFORCE_RESERVE,
+                       SLOT_BUILDER_HEARTBEAT, SLOT_BUILDER_TICKET,
+                       CORE_DYING_FLAG, ECONOMY_DEAD_FLAG,
+                       SLOT_CORE_DAMAGED, SLOT_OWN_CORE)
+from utils import pack_core, pack_ticket
+
+if TYPE_CHECKING:
+    from main import Player
+
+
+CARDINALS = (Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
+
+# Surplus titanium no longer becomes extra Builders. Each one adds +20% to
+# every future build cost, so spending a healthy bank on Builders is the most
+# expensive way there is to convert titanium into nothing: it drained the
+# opening 380 Ti to 18 by round 7 and tripled the price of the defence it was
+# meant to build. Reinforcements now mean replacing a dead Builder, nothing
+# more; surplus goes into Launchers and Harvesters instead.
+MIN_TITANIUM_RESERVE = 60
+AMMO_TARGET = 120
+# Below this much ammunition the team is effectively disarmed: no turret can
+# fire, and MIN_AMMO_FOR_GUNNER gates every Builder turret-building path.
+# Refilling to here outranks the construction reserve, which otherwise left
+# the pool pinned at 0-1 for whole matches.
+COMBAT_AMMO_FLOOR = 80
+# The only titanium held back while restoring that floor.
+EMERGENCY_RESERVE = 10
+# The alarm escalates: 1 recalls the economy Builder to defend, 2 additionally
+# pulls the ring Builder onto healing duty. Healing restores 4 HP for a flat
+# 1 Ti regardless of scale, so two menders out-heal a Gunner's 10 dmg/round
+# and fully cancel a Sentinel's 6 -- defence is titanium-positive.
+CRITICAL_HP = 300
+
+
+def run(player: "Player", ct: Controller) -> None:
+    """Run the opening, then keep spawning attackers from surplus titanium."""
+    _watch_income(player, ct)
+    _keep_ammunition(ct)
+    if not hasattr(player, "repair_alert"):
+        player.repair_alert = False
+    hp, max_hp = ct.get_hp(ct.get_id()), ct.get_max_hp(ct.get_id())
+    _watch_survival(player, ct, hp)
+    if hp <= max_hp - 50:
+        player.repair_alert = True
+    elif hp == max_hp:
+        player.repair_alert = False
+    if not hasattr(player, "builders_spawned"):
+        player.builders_spawned = 0
+        core = ct.get_position()
+        player.doctrine = doctrine.classify(ct)
+        print(f"DOCTRINE round={ct.get_current_round()} "
+              f"map={ct.get_map_width()}x{ct.get_map_height()} "
+              f"core={tuple(core)} choice={doctrine.NAMES[player.doctrine]}",
+              file=sys.stderr, flush=True)
+        ores = [tile for tile in ct.get_nearby_tiles()
+                if ct.get_tile_env(tile) == Environment.ORE_TITANIUM
+                and ct.get_tile_building_id(tile) is None]
+        ores.sort(key=lambda tile: (tile.distance_squared(core), tile.x, tile.y))
+        player.opening_ore_targets = ores
+        # The Core already knows where the nearest ore is -- it picks the spawn
+        # ring tile from exactly this list -- and until now it kept that to
+        # itself, leaving each Builder to rediscover the same deposits a tile
+        # of fog at a time. The ticket slot has 24 bits spare, so the two
+        # nearest go out with the ticket. Written once, on the Core's first
+        # turn: a Builder increments the ticket and carries the hints forward,
+        # so rewriting them every round would reset the ticket to zero and
+        # give every Builder the same index.
+        if ORE_HINTS:
+            ct.write_store(
+                SLOT_BUILDER_TICKET,
+                pack_ticket(0, [tuple(ore) for ore
+                                in ores[:ORE_HINT_COUNT]]),
+            )
+    ct.write_store(SLOT_OWN_CORE,
+                   pack_core(ct.get_position(), player.doctrine))
+    alarm = int(player.repair_alert)
+    if player.repair_alert and hp <= CRITICAL_HP:
+        alarm = 2
+    # Bit 2 is the economy, not the Core: no free store slot was left, and the
+    # two alarms are read by different code paths anyway.
+    if getattr(player, "income_dead", False):
+        alarm |= ECONOMY_DEAD_FLAG
+    if getattr(player, "core_dying", False):
+        alarm |= CORE_DYING_FLAG
+    ct.write_store(SLOT_CORE_DAMAGED, alarm)
+
+    economy_builders = doctrine.economy_builders(player.doctrine)
+    role = player.builders_spawned
+    resources = ct.get_global_resources()
+    builder_cost = ct.get_builder_bot_cost()
+    if resources < builder_cost:
+        return
+    # Count the Builders that answered last round, rather than asking only
+    # whether any did. The guard at the enemy's Core kills attackers -- ours
+    # included -- and a lineage that waits for *every* Builder to die before
+    # replacing one plays the rest of the game a body down.
+    stamp = ct.read_store(SLOT_BUILDER_HEARTBEAT)
+    fresh = (stamp >> HEARTBEAT_SHIFT) >= ct.get_current_round()
+    live = bin(stamp & HEARTBEAT_MASK).count("1") if fresh else 0
+    if role >= MAX_OPENING_BUILDERS:
+        if not (getattr(player, "income_dead", False)
+                or getattr(player, "core_dying", False)):
+            return
+        if live >= MAX_LIVE_BUILDERS or role >= MAX_TOTAL_BUILDERS:
+            return
+        if resources < builder_cost + REINFORCE_RESERVE:
+            return
+
+    # Spawn order has to agree with the role order the Builders assign
+    # themselves in builder.py, or a Builder spawns at the wrong end of the
+    # map for the job it is about to pick up. Under PAD_FIRST_ORDER that order
+    # is pad, then attackers, then miners; the pad and the attackers all want
+    # the enemy-facing side of the spawn ring, and only the miners want ore.
+    if PAD_FIRST_ORDER:
+        mining_role = role - (doctrine.launcher_builders(player.doctrine)
+                              + doctrine.attack_builders(player.doctrine))
+    else:
+        mining_role = role if role < economy_builders else -1
+    if 0 <= mining_role < min(economy_builders,
+                             len(player.opening_ore_targets)):
+        target = player.opening_ore_targets[mining_role]
+        goals = [target.add(direction) for direction in CARDINALS
+                 if _on_map(ct, target.add(direction))]
+    else:
+        target = _scout_target(ct, max(0, role - economy_builders))
+        goals = [target]
+
+    candidates = [tile for tile in ct.get_nearby_tiles(2) if ct.can_spawn(tile)]
+    candidates.sort(key=lambda tile: (
+        min(_chebyshev(tile, goal) for goal in goals),
+        tile.distance_squared(target),
+        tile.x,
+        tile.y,
+    ))
+    if candidates:
+        ct.spawn_builder(candidates[0])
+        player.builders_spawned += 1
+
+
+# Rounds of income the watchdog averages over, and the per-round titanium below
+# which the economy counts as dead. Passive income is 10 every 4 rounds, i.e.
+# 2.5 a round, and arrives whatever happens; a single connected Harvester adds
+# the same again. So anything at or under the passive rate means no Harvester
+# is delivering, however many we think we built.
+INCOME_WINDOW = 60
+DEAD_INCOME_PER_ROUND = 2.8
+# Nothing is judged before this: the opening legitimately has no Harvester yet.
+INCOME_GRACE_ROUND = 60
+
+
+def _watch_income(player, ct) -> None:
+    """Raise a flag when titanium stops arriving.
+
+    A hole in the conveyor line is invisible to a Builder that has walked away
+    -- `_broken_network_tiles` only reports tiles it can currently see -- but
+    it is perfectly visible here, because the titanium stops coming. Traced on
+    vase: the tile feeding the Core died on round 7 and the Harvester upstream
+    of it mined into a dead end for the remaining 993 rounds while every
+    Builder reported itself busy and healthy.
+
+    Income is measured as the sum of the positive round-to-round changes in the
+    team balance. Spending only ever makes a change negative, so this is a
+    lower bound on income and never a false alarm from a spending spree.
+    """
+    resources = ct.get_global_resources()
+    previous = getattr(player, "last_resources", None)
+    if previous is not None and resources > previous:
+        player.income_seen = getattr(player, "income_seen", 0) + (resources - previous)
+    player.last_resources = resources
+    round_number = ct.get_current_round()
+    if round_number < INCOME_GRACE_ROUND:
+        player.income_dead = False
+        player.income_window_start = round_number
+        player.income_seen = 0
+        return
+    span = round_number - getattr(player, "income_window_start", 0)
+    if span >= INCOME_WINDOW:
+        rate = getattr(player, "income_seen", 0) / max(span, 1)
+        player.income_dead = rate <= DEAD_INCOME_PER_ROUND
+        player.income_window_start = round_number
+        player.income_seen = 0
+
+
+# Trailing rounds the death projection averages damage over, and how many
+# rounds of survival the Core insists on. The window is short enough to see a
+# wave, long enough not to panic at one volley; the horizon covers walking a
+# fresh Builder into place plus four Gunner rounds to kill the shooter.
+PROJECT_WINDOW = 20
+PROJECT_HORIZON = 60
+# Nothing is judged before this. An early rush is the reactive guard's fight:
+# spawning bodies into it is the measured -30pp refill catastrophe (longship
+# seat a: the projection fired on round 14, bought two Builders at +20% each,
+# and the opening died of the scale bill). The projection exists for the
+# mid-game shape where the guard is dead and the bank is rich.
+PROJECT_GRACE_ROUND = 40
+
+
+def _watch_survival(player, ct, hp: int) -> None:
+    """Raise a flag when the Core's own HP curve says it dies soon.
+
+    The HP curve already integrates everything -- shooters we cannot see,
+    barriers soaking, menders healing -- so no unit's vision is needed.
+    Projection: damage rate over the last PROJECT_WINDOW rounds, dead within
+    PROJECT_HORIZON rounds at that rate. The flag stays live while the
+    projection holds and clears when the bleeding stops.
+    """
+    round_number = ct.get_current_round()
+    history = getattr(player, "hp_history", None)
+    if history is None:
+        history = player.hp_history = []
+    history.append((round_number, hp))
+    while history and history[0][0] < round_number - PROJECT_WINDOW:
+        history.pop(0)
+    if round_number < PROJECT_GRACE_ROUND:
+        player.core_dying = False
+        return
+    damage = history[0][1] - hp
+    span = max(round_number - history[0][0], 1)
+    player.core_dying = (damage > 0
+                         and hp <= (damage / span) * PROJECT_HORIZON)
+
+
+def _scout_target(ct: Controller, index: int) -> Position:
+    """Split symmetry candidates when visible ore jobs run out.
+
+    Farthest candidate first: a two-player map is built to be fair, so the
+    Cores are placed as far apart as the symmetry allows. Measured on the
+    published pool the farthest of the three candidates is the true enemy
+    Core on 28 of 42 map-sides against 4 of 42 for nearest-first.
+    """
+    core = ct.get_position()
+    candidates = [
+        Position(ct.get_map_width() - 2 - core.x,
+                 ct.get_map_height() - 2 - core.y),
+        Position(ct.get_map_width() - 2 - core.x, core.y),
+        Position(core.x, ct.get_map_height() - 2 - core.y),
+    ]
+    unique = []
+    for candidate in candidates:
+        if candidate not in unique:
+            unique.append(candidate)
+    unique.sort(key=lambda c: -core.distance_squared(c))
+    return unique[index % len(unique)]
+
+
+def _chebyshev(a: Position, b: Position) -> int:
+    return max(abs(a.x - b.x), abs(a.y - b.y))
+
+
+def _on_map(ct: Controller, position: Position) -> bool:
+    return 0 <= position.x < ct.get_map_width() and 0 <= position.y < ct.get_map_height()
+
+
+def _keep_ammunition(ct) -> None:
+    """Turn titanium into ammunition, or no turret we own can fire at all.
+
+    Engine 2.3.3 replaced 2.2.0's per-turret ammunition with a global pool the
+    Core fills by conversion: 1 titanium for 1 ammunition, at most once per
+    team per turn, no action cooldown, usable the same turn.
+    """
+    try:
+        held = ct.get_global_ammo()
+        if held >= AMMO_TARGET:
+            return
+        # Scaled Harvester and Launcher costs can exceed the old fixed 60-Ti
+        # reserve. Converting down to 60 made waiting Builders permanently
+        # unaffordable even while the replay showed 80 Ti between rounds.
+        construction_reserve = max(
+            MIN_TITANIUM_RESERVE,
+            ct.get_harvester_cost(),
+            ct.get_launcher_cost(),
+        )
+        amount = min(
+            AMMO_TARGET - held,
+            ct.get_global_resources() - construction_reserve,
+        )
+        if held < COMBAT_AMMO_FLOOR:
+            amount = max(amount, min(
+                COMBAT_AMMO_FLOOR - held,
+                ct.get_global_resources() - EMERGENCY_RESERVE,
+            ))
+        if amount > 0 and ct.can_convert_ammo(amount):
+            ct.convert_ammo(amount)
+    except Exception as error:  # noqa: BLE001 - never let this kill the Core
+        print(
+            f"PLAN_FAILED id={ct.get_id()} round={ct.get_current_round()} "
+            f"action=convert ammunition reason={type(error).__name__}: {error}"
+        )
+        return

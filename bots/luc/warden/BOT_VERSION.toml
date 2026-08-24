@@ -1,0 +1,5 @@
+source_commit = "7227061c4"
+source_path = "bots/luc/valkyrie"
+engine = "2.3.3"
+status = "development"
+variant = "vigil-repair-and-writeoff-ported-back"

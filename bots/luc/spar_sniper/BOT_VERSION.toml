@@ -1,0 +1,5 @@
+source_commit = "62df0ec39"
+source_path = "bots/luc/mimir"
+engine = "2.3.6"
+status = "fixture"
+variant = "Sentinel-only siege, imitating the live counter that grinds a Core down"

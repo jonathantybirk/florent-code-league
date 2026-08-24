@@ -1,0 +1,5 @@
+source_commit = "abaeeed3c"
+source_path = "bots/luc/ragnarok"
+engine = "2.3.3"
+status = "development"
+variant = "pad-first-opening"

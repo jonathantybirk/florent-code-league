@@ -1,0 +1,5 @@
+source_commit = "59941c6e8"
+source_path = "bots/luc/vor"
+engine = "2.3.6"
+status = "development"
+variant = "vor plus the sabotage doctrine: broken enemy belts get walled, the enemy base gets ringed with barriers minus one door, and a Sentinel covers the door from outside Core-alarm range"

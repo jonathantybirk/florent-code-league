@@ -1,0 +1,3 @@
+source_path = "bots/luc/ragnarok_fair"
+engine = "2.3.3"
+status = "development"
