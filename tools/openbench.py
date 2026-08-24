@@ -50,11 +50,15 @@ def _best(board):
     """The lanes eitri would actually pick: the better of the two lay orders."""
     picks, field = network.survey(board)
     best = None
-    for order in (picks, picks[::-1]):
+    baseline = None
+    for index, order in enumerate(network.insertion_orders(picks)):
+        if index == 2:
+            baseline = best[0]
         lanes = network.lay(board, order, field)
         work, spawns, done = crew_mod.assign(board, lanes)
         worth = crew_mod.value(lanes, done)
-        if best is None or worth > best[0]:
+        eligible = index < 2 or worth > baseline + network.ORDER_GAIN_MIN
+        if (best is None or worth > best[0]) and eligible:
             best = (worth, lanes)
     return best[1]
 
