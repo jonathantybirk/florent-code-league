@@ -425,6 +425,7 @@ class Player:
         self.launch_goal = None     # committed goal for the no-progress escape hatch
         self.launch_stuck = 0       # consecutive rounds unable to advance toward that goal
         self.launch_wait = 0        # rounds spent beside the pad waiting to be thrown
+        self.launch_used = False    # a wall-escape pad throws one friendly; no ping-pong loop
         # sentinel
         self.slot = None
         self.guard = None           # True for a home-guard Sentinel (cannot reach the enemy Core)
@@ -3607,7 +3608,7 @@ class Player:
                     own = ct.get_position(bid)
                     self.mine_tiles = _footprint(own)
                     break
-            if enemy is not None or own is not None:
+            if not self.launch_used and (enemy is not None or own is not None):
                 enemy_tiles = _footprint(enemy) if enemy is not None else ()
                 own_tiles = _footprint(own) if own is not None else ()
                 best = None
@@ -3631,6 +3632,7 @@ class Player:
                             best = (rank, origin, tile)
                 if best is not None:
                     ct.launch(best[1], best[2])
+                    self.launch_used = True
                     return
             home = Position(self.mine_tiles[0][0], self.mine_tiles[0][1]) if self.mine_tiles else None
             if home is None:
