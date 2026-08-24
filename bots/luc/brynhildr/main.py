@@ -1302,6 +1302,25 @@ class Player:
                             self.grab_zone.add((p.x + dx, p.y + dy))
             free = 0
             held = 0
+            own_set = set(own)
+            passable = {}
+            def open_tile(key):
+                if key in passable:
+                    return passable[key]
+                ok = False
+                try:
+                    pos = Position(key[0], key[1])
+                    ok = (ct.get_tile_env(pos) != Environment.WALL
+                          and ct.get_tile_building_id(pos) is None)
+                except Exception:
+                    ok = False                     # outside vision or the map: not a way in
+                passable[key] = ok
+                return ok
+            # A free ring tile counts only if a Builder can get to it: on OpenSverige's game 1
+            # the Core bought five menders for free tiles enclosed by their barriers, and they
+            # stood at distance two while two Sentinels shot the Core -- 250 Ti that were the
+            # counter-Sentinels bought at rounds 89 and 115 instead of 40.
+            candidates = []
             for key in ring:
                 if key in self.grab_zone:
                     continue
@@ -1315,7 +1334,25 @@ class Player:
                     if ct.get_team(uid) == mine:
                         held += 1
                     continue
-                free += 1
+                candidates.append(key)
+            opened = set()
+            for key in candidates:
+                for _d, dx, dy in CARDINALS:
+                    step = (key[0] + dx, key[1] + dy)
+                    if step in own_set or step in ring_set:
+                        continue
+                    if open_tile(step):
+                        opened.add(key)
+                        break
+            for key in candidates:
+                if key in opened:
+                    free += 1
+                    continue
+                for _d, dx, dy in CARDINALS:
+                    step = (key[0] + dx, key[1] + dy)
+                    if step in opened:
+                        free += 1
+                        break
             self.ring_free = free
             self.ring_held = held
             self.ring_walled = walled

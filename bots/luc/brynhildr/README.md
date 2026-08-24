@@ -210,9 +210,14 @@ so they are standing there, able to heal, when the attack comes.  That is the wa
   `WALL_MEMORY` (40) rounds after the last sighting.
 - **The squad**: `want_menders` rises to `WALL_SQUAD` (3) -- 12 HP a round out-heals the two
   Sentinels that follow -- but never above the tiles it can use: ring tiles that are not wall,
-  not built on, not under an enemy barrier, and not beside an enemy Launcher (it flings
-  Builders of either team; the Core's spawn and the menders' post selection skip those
-  `grab_zone` tiles too).  One more than the usable count is allowed, to dig.
+  not built on, not under an enemy barrier, not beside an enemy Launcher (it flings Builders
+  of either team; the Core's spawn and the menders' post selection skip those `grab_zone`
+  tiles too), and reachable -- a free tile has to have an open way in from outside the ring,
+  or a free neighbour on the ring that has one.  On the ladder (match `ac83d781` game 1) the
+  Core bought five menders for free tiles OpenSverige had enclosed with barriers, and they
+  stood at distance two while two Sentinels shot the Core: 250 Ti that were the counter-
+  Sentinels bought at rounds 89 and 115 instead of 40.  One more than the usable count is
+  allowed, to dig.
 - **The money** comes from the bank now, behind the mend float only: neither the burst
   reserve (`kill_hold`) nor the ring's reserve stands in front of the squad.  A kill that has
   to be fired while their Sentinels shoot a Core no mender can reach was never going to be
