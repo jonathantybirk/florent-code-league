@@ -18,13 +18,14 @@ bug that had three of four Builders frozen from round twenty-four.
 import atlas
 import crew
 import network
+import walk
 
 _CACHE = {}
 
 
 class Plan:
     __slots__ = ("board", "lanes", "work", "spawns", "deposits", "completed",
-                 "finished", "construction")
+                 "finished", "construction", "transit")
 
     def __init__(self, board, lanes, work, spawns):
         self.board = board
@@ -42,6 +43,7 @@ class Plan:
             frozenset([lane.entry] + [tile for tile, _ in lane.tiles])
             for lane in lanes
         )
+        self.transit = _transit(board, lanes, work, spawns, self.deposits)
 
     def index_of(self, tile, round_):
         """Which Builder is standing on `tile`, by the seat it was spawned into.
@@ -88,3 +90,20 @@ def _build(ct, home):
             best = (worth, lanes, work, spawns)
     _, lanes, work, spawns = best
     return Plan(board, lanes, work, spawns)
+
+
+def _transit(board, lanes, work, spawns, deposits):
+    """Tiles crew must cross before and between their assigned lanes."""
+    reserved = []
+    for start, jobs in zip(spawns, work):
+        paths = set()
+        for lane_index in jobs:
+            lane = lanes[lane_index]
+            path = (walk.route(board, start, lane.entry,
+                               deposits - {lane.entry})
+                    or walk.route(board, start, lane.entry)
+                    or ())
+            paths.update(path)
+            start = lane.stand
+        reserved.append(frozenset(paths))
+    return tuple(reserved)

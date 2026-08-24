@@ -12,7 +12,7 @@ The one BFS is for crossing from a finished lane to the next one.
 import debug
 import plan as planning
 import walk
-from fcode import Direction
+from fcode import Direction, EntityType
 
 # Rounds of being unable to take the next step before we assume something is
 # parked in the way for good and route around it.
@@ -22,7 +22,8 @@ PATIENCE = 3
 class Crewman:
     """Where this Builder is in its plan. One per unit, alive for the match."""
 
-    __slots__ = ("index", "lane", "tile", "path", "stalled")
+    __slots__ = ("index", "lane", "tile", "path", "stalled", "traffic",
+                 "traffic_rounds")
 
     def __init__(self):
         self.index = None       # which seat of the crew we are
@@ -30,6 +31,8 @@ class Crewman:
         self.tile = 0           # how far along the current lane
         self.path = None        # cached route to a lane we have not reached
         self.stalled = 0
+        self.traffic = frozenset()
+        self.traffic_rounds = 0
 
 
 def run(player, ct):
@@ -138,11 +141,17 @@ def _route(plan, me, goal):
 def _idle(ct, plan, crew, me) -> None:
     """Park off the planned network instead of blocking somebody else's lane."""
     goal = plan.spawns[crew.index]
-    active = set().union(*(tiles for index, tiles in enumerate(plan.construction)
-                           if index not in plan.finished))
-    if me not in active:
+    transit = set().union(*(tiles for index, tiles in enumerate(plan.transit)
+                            if index != crew.index))
+    construction = set().union(
+        *(tiles for index, tiles in enumerate(plan.construction)
+          if index not in plan.finished)
+    )
+    jam = me in transit and _traffic(ct, crew, me)
+    if me not in construction and not jam:
         _trace(ct, crew, me, "parked")
         return
+    active = construction | (transit if jam else set())
     for spot in plan.board.neighbours(me):
         if spot not in active and walk.step(ct, me, spot):
             _trace(ct, crew, me, f"-> {spot} to clear lane")
@@ -150,6 +159,23 @@ def _idle(ct, plan, crew, me) -> None:
     if goal is not None and me != goal:
         _trace(ct, crew, me, f"-> {goal} to clear lane")
         _approach(ct, plan, crew, me, goal)
+
+
+def _traffic(ct, crew, me) -> bool:
+    """Whether the same friendly Builder has been stuck beside us."""
+    try:
+        nearby = frozenset(
+            unit for unit in ct.get_nearby_units(2)
+            if tuple(ct.get_position(unit)) != me
+            and ct.get_team(unit) == ct.get_team()
+            and ct.get_entity_type(unit) == EntityType.BUILDER_BOT
+        )
+    except Exception:
+        return False
+    crew.traffic_rounds = (crew.traffic_rounds + 1
+                           if nearby & crew.traffic else bool(nearby))
+    crew.traffic = nearby
+    return crew.traffic_rounds >= PATIENCE
 
 
 def _trace(ct, crew, me, what) -> None:
