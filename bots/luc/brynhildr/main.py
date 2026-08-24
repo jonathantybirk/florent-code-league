@@ -142,7 +142,8 @@ SLOT_BEAT0 = 4             # Sentinel heartbeats, one slot each: round + 1
 SLOT_BEATS = 5             # slots 4..8
 SLOT_SHOOTER = 9           # Core -> home: a turret hitting our Core, packed, + 65536 * (1 Sentinel | 2 + facing*4 Gunner)
 SLOT_EHEAL = 10            # enemy Builders beside the enemy Core, written by the ring
-SLOT_GO = 11               # 1: shoot the Core.  0: hold, snipe menders, bank.  2: one volley
+SLOT_GO = 11               # low bits: 1 shoot Core, 0 hold, 2 one volley; bit 2 marks a home spawn
+GO_HOME_SPAWN = 4          # Core spawned a home Builder this round; visible on its first turn
 SLOT_EHP = 12              # enemy Core HP, written by the ring (0 = unknown)
 SLOT_HOME0 = 13            # home Builder heartbeats: (round + 1) + 65536 * (mining | harvesters << 1)
 SLOT_HOMES = 3             # slots 13..15
@@ -852,7 +853,6 @@ class Player:
         else:
             self.go_held = False
         self.go = go
-        self._write(ct, SLOT_GO, go)
 
         # ---- the economy (steward): a first-class purchase, not a stall reflex
         # The round-1000 tiebreak is titanium collected, and only Harvesters collect.  Every
@@ -954,6 +954,7 @@ class Player:
         # ---- the attack Builder, then menders, then the miner, then ammunition
         # A replacement attacker leaves its spawn tile next round; a wall guard keeps the
         # healing seat.  Fill the defensive ring first, then resume the normal attack plan.
+        spawned_home = False
         spawned_now = (self._keep_attacker(ct, built)
                        if not wall_pressure or need_menders == 0 else False)
         if not spawned_now and need_home:
@@ -985,7 +986,14 @@ class Player:
             if ti >= cost and spare >= cost:
                 spawned_now = self._spawn_home(ct)
                 if spawned_now:
+                    spawned_home = True
                     self.spawn_total += 1
+
+        # Spawned units first run next round, when this buffered marker is visible.  Without
+        # it, a defensive Builder bought after the attacker dies sees no attack heartbeat and
+        # walks away as the replacement attacker.  Besvikomat bled two menders by 1 HP/round
+        # for 390 rounds while the paid-for third mender marched across Stavkirke.
+        self._write(ct, SLOT_GO, go | (GO_HOME_SPAWN if spawned_home else 0))
 
         # ---- orders to the home squad
         econ_ok = (safe and need_menders == 0 and self.miners_hwm > 0
@@ -1370,7 +1378,8 @@ class Player:
         if self.role is None:
             ring_done = (self._read(ct, SLOT_BUILT) & 0xFF) >= SENTINEL_TARGET + (_extra(self._read(ct, SLOT_ENEMY)) & 3)
             attacker_alive = _fresh(_beat(self._read(ct, SLOT_BUILDER)), self.round, 2)
-            self.role = 'home' if (ring_done or attacker_alive) else 'attack'
+            core_marked_home = bool(self._read(ct, SLOT_GO, 1) & GO_HOME_SPAWN)
+            self.role = 'home' if (core_marked_home or ring_done or attacker_alive) else 'attack'
 
         if self.role == 'home':
             self._home(ct, here)
@@ -3513,7 +3522,7 @@ class Player:
     def _act(self, ct):
         if self._counter_battery(ct):
             return
-        go = self._read(ct, SLOT_GO, 1)
+        go = self._read(ct, SLOT_GO, 1) & 3
         if go == 1:
             for key in self.enemy_tiles:
                 spot = Position(key[0], key[1])
