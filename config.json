@@ -378,6 +378,18 @@
       "Pivot",
       "HTTP 418",
       "kladde chatte tville (och oss)"
+    ],
+    "eitri@e06a0c5": [
+      "Bean counters",
+      "not adgato",
+      "Pantheon",
+      "Leviathan",
+      "sporks",
+      "O(1)",
+      "Focalground",
+      "Pivot",
+      "HTTP 418",
+      "kladde chatte tville (och oss)"
     ]
   },
   "_opponents_for": "bot_id -> ordered team names, five played per round, the rest carried in state.opponents_pending. Overrides the policy entirely. v70 has already faced all 20 of its nearest teams, so this is the nine unfaced teams rated above us (1810-2036) plus not adgato, the team it has seen least (one game).",
@@ -440,7 +452,7 @@
   "queue_front": [
     "brynhildr@e9eccd8:3",
     "brynhildr@be4f2e2:3",
-    "eitri@4cb5cb5:3",
+    "eitri@e06a0c5:3",
     "brynhildr@3c77244:3",
     "jonbot_income@5f35893:3",
     "brynhildr@12a8c52:3",
