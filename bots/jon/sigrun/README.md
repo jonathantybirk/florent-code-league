@@ -358,3 +358,15 @@ seeds 1-3 after; the goal trio rose to 80/76/75 of 90.
 Guard Sentinels (a line that cannot reach the enemy Core) take no heartbeat slot and shoot
 turrets, then Builders, then the enemy economy, then untended barriers. Gunners are never
 built by this bot but run steward's module if one exists.
+# Mining cadence
+
+The Core's economy authorization and build timing are unchanged. Once mining
+is authorized, a miner vacates a build tile inward through its finished belt
+and stages on the inward tile while approaching the next build. This removes
+step-away/step-back cycles without changing combat, repair, or spawning.
+
+Paired seed-1 panel, 15 maps, both seats, versus Hildr, Steward, Gefn, Spar
+Econ, and Spar Wall: **127-23**, versus **122-28** for `sigrun@338a1ad`.
+The game-level matrix has five loss-to-win flips and no win-to-loss flips.
+Antler and the two reproduced negative starts (Auroraveil A, Skald B) retain
+the parent movement.
