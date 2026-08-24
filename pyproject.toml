@@ -5,9 +5,13 @@ description = "Bot for the Florent Code League 2026"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "anthropic>=0.120.2",
-    "fcode==2.3.6",
+    "fcode==2.3.9",
 ]
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

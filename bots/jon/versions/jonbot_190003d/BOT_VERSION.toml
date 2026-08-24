@@ -1,0 +1,4 @@
+source_commit = "190003df53dbdaec2ae40ea3e182dc615f8cc461"
+source_path = "bots/jon/fair/jonbot"
+engine = "2.3.3"
+status = "historical-version"

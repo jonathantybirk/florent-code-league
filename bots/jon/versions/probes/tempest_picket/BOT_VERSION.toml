@@ -1,0 +1,4 @@
+source_commit = "b0eea4a70081a31f149ab5e0c95ea791472746bd"
+source_path = "bots/jon/versions/probes/tempest_picket"
+engine = "2.3.3"
+status = "probe"

@@ -1,0 +1,3571 @@
+[
+ {
+  "teamId": "fb0e7053-f8f3-4cc8-a38f-1856a518c7d2",
+  "teamName": "not adgato",
+  "nameStyle": null,
+  "rating": 2354.245132795905,
+  "matchesPlayed": 1854,
+  "members": [
+   {
+    "id": "5ywd7Zh7fj14LW91VgoVPK2wy8TCOdKI",
+    "name": "adgato",
+    "image": "https://cdn.discordapp.com/avatars/652879574132326400/3f564244a9e0dc46ccedb0a8e1214847.png",
+    "country": "FR",
+    "affiliation": "test",
+    "isStudent": false
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "non-student",
+  "bio": "test of time",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "47803c19-e264-4492-bd62-fbdd58cfd7e6",
+  "teamName": "Bean counters",
+  "nameStyle": null,
+  "rating": 2193.086183676291,
+  "matchesPlayed": 2294,
+  "members": [
+   {
+    "id": "PXTj5IqEkrqEdtH3QV00tejUzgdxEswl",
+    "name": "aarol",
+    "image": "https://cdn.discordapp.com/avatars/329234541229113344/a29c74727dd6a1a2232d12c36b012bd8.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "eZjkb7Jm9zSm9BBfy2S5uBB5j2GFcMr5",
+    "name": "Niilo",
+    "image": "https://cdn.discordapp.com/embed/avatars/0.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "ySfwNZDwKghnqKzbrgTUdS5dV7GcuRzD",
+    "name": "Akseli",
+    "image": "https://cdn.discordapp.com/avatars/399913803908907018/51f4de4506f6d04d4dc1d5ce6dfe2433.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "bEOlU4ybigQsznb9VMkiEtH9pAqmUEGt",
+    "name": "Rasmus",
+    "image": "https://cdn.discordapp.com/avatars/421986317514047496/18357e4194eeaae246d0ec32691dddd6.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "Maximize shareholder value",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "57175ea4-e87f-44ed-a8c4-d5ee8ba31ecd",
+  "teamName": "sporks",
+  "nameStyle": null,
+  "rating": 2159.2226002628654,
+  "matchesPlayed": 1754,
+  "members": [
+   {
+    "id": "PBfDiKWB43SsjDihqoPP3eqX5AKFYVhK",
+    "name": "Erik Ji",
+    "image": "https://cdn.discordapp.com/avatars/688018118492291080/8f92abc6911c4b2adac8ff25f6c5a53c.png",
+    "country": "US",
+    "affiliation": "Rutgers University",
+    "isStudent": true
+   },
+   {
+    "id": "k8Y6gK89uCf3hC848awYidnTePgnGzLV",
+    "name": "Give me a job",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "JP",
+    "affiliation": "Sundai preparatory school",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "5283c84d-69b0-437b-8dc0-dcb8437a5e48",
+  "teamName": "ph",
+  "nameStyle": null,
+  "rating": 2120.975018532195,
+  "matchesPlayed": 1133,
+  "members": [
+   {
+    "id": "SDTjgOKq7eYeuzLvlKvh739JquSo8S7F",
+    "name": "Lyca",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "20064efa-c6a9-4c46-acb7-3f7ea9f9b1c9",
+  "teamName": "Pivot",
+  "nameStyle": null,
+  "rating": 2114.7191167106116,
+  "matchesPlayed": 2014,
+  "members": [
+   {
+    "id": "uoFLSqS2a8o4zEeyKIn4dHlJFPbvdagC",
+    "name": "Danny",
+    "image": "https://cdn.discordapp.com/avatars/1063820518446338150/8dc9352c91ca00da605253f826e4a394.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   },
+   {
+    "id": "qcBPleVY2N01lP0I4irwffVgPMSKPBBh",
+    "name": "clu | Chu",
+    "image": "https://cdn.discordapp.com/avatars/705013130132193331/21e2c95f038a97bf6351971f47ff5f26.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "3a7b78b8-5d79-4e55-94a3-7732fcaa4105",
+  "teamName": "Pantheon",
+  "nameStyle": null,
+  "rating": 2081.9329462585733,
+  "matchesPlayed": 2270,
+  "members": [
+   {
+    "id": "eZ7LL6bSPFD02G7qBz6JWqyprrrSqz5r",
+    "name": "HerbertTheBird",
+    "image": "https://cdn.discordapp.com/avatars/1000264381759750195/0742daa98b68fc67645c232d31d10077.png",
+    "country": "US",
+    "affiliation": "University of Oxford",
+    "isStudent": true
+   },
+   {
+    "id": "Ptk1x1Bc19sHgxxJvvRQnPvCmcE0CXTD",
+    "name": "SkyeNXT",
+    "image": "https://cdn.discordapp.com/avatars/1153926877979869194/14c45d80084c34acf15e6a9b168d049b.png",
+    "country": "AQ",
+    "affiliation": "Georgia Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "qJdiCdR4wDflNVX3Svn2XWZb1daBR0bH",
+    "name": "AlexT",
+    "image": "https://cdn.discordapp.com/embed/avatars/4.png",
+    "country": "US",
+    "affiliation": "Georgia Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "0xnGhIiM5NT84ST9Z5fadV9JLOZWsZWA",
+    "name": "osteo",
+    "image": "https://cdn.discordapp.com/avatars/738550740234141828/a027c20b3066a8c53b4bcac774e71f5a.png",
+    "country": "CA",
+    "affiliation": "Dolphin Group",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "The Pantheon forgot when sprint was and played poker all day.",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "26286680-d861-4f9e-9073-a6201bd48d3b",
+  "teamName": "Leviathan",
+  "nameStyle": null,
+  "rating": 2058.808339000346,
+  "matchesPlayed": 1842,
+  "members": [
+   {
+    "id": "7G3B0emVftlUmIAg6Q2Q17fcHdsI1A07",
+    "name": "Havic",
+    "image": "https://cdn.discordapp.com/avatars/592312470819831812/965caa251a5145d14a89c9061e8ca64d.png",
+    "country": "DE",
+    "affiliation": "Technical University of Munich",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "12fdece5-48c9-4913-9533-6d95b73e22ab",
+  "teamName": "HTTP 418",
+  "nameStyle": null,
+  "rating": 2026.4294635207827,
+  "matchesPlayed": 2302,
+  "members": [
+   {
+    "id": "JJfS6irDxv5sez1dHI3J0h5KdVVc9aTV",
+    "name": "Peter",
+    "image": "https://cdn.discordapp.com/avatars/185853314963865600/8235c4982a20160fa1264739694de3e5.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   },
+   {
+    "id": "V3GX4Kwcaadaexb6AwycK7VVCQu0gkyD",
+    "name": "Jules Pierce",
+    "image": "https://cdn.discordapp.com/avatars/679337156421877770/9f0c7c08c626646ac9f7238acc38bb33.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   },
+   {
+    "id": "EWttbWOmT3L3oeWyNVtPbqWUwf9R12OZ",
+    "name": "Mark",
+    "image": "https://cdn.discordapp.com/avatars/448566102910566421/c8292ad6d4138afafcd83da83310b6e4.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   },
+   {
+    "id": "4PgBoH3EavGPaRlzkFzS5ZfK1RbHuyfI",
+    "name": "Niklas Raatikainen",
+    "image": "https://cdn.discordapp.com/avatars/879993368980127744/0b1e8bc0528dac5129e7fd00aabeb8f6.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "Teapot",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "7419695b-3b8f-4a50-8cce-e545b086c670",
+  "teamName": "O(1)",
+  "nameStyle": null,
+  "rating": 2019.3643975126945,
+  "matchesPlayed": 1643,
+  "members": [
+   {
+    "id": "s3zjkyM5vGQJ52MabQ6H6tgjfJPguTSI",
+    "name": "Lucio",
+    "image": "https://cdn.discordapp.com/embed/avatars/4.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "017419af-711a-40b0-9826-60cc754bd840",
+  "teamName": "Lorem Ipsum",
+  "nameStyle": null,
+  "rating": 2001.378716341108,
+  "matchesPlayed": 1891,
+  "members": [
+   {
+    "id": "i77xL2zXroub5rXSxO1jjGPiBiAbS8LC",
+    "name": "Coderz75",
+    "image": "https://cdn.discordapp.com/avatars/754532384984137772/2d26dedf3c65f680927c4ee77e5e13db.png",
+    "country": "US",
+    "affiliation": "University of Washington",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "16",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "03ab46df-7058-49ec-a9f5-592f86e9a95a",
+  "teamName": "Clankers",
+  "nameStyle": null,
+  "rating": 2000.683988125214,
+  "matchesPlayed": 1398,
+  "members": [
+   {
+    "id": "v7wqdFOA9xswpHov2Gsg8LTKDaODJKEL",
+    "name": "Austen Wayne",
+    "image": "https://cdn.discordapp.com/avatars/706377752445452387/f9495a56d2f2c2fca09b6be69d29f53e.png",
+    "country": "AU",
+    "affiliation": "University of Melbourne",
+    "isStudent": true
+   },
+   {
+    "id": "cH6BZgpEzEhRVlXJ9VATfJFiHeOCmUTL",
+    "name": "user149",
+    "image": "https://cdn.discordapp.com/avatars/1097510607055503390/a8320e73afb9194a9c5d085199dc3e0c.png",
+    "country": "AU",
+    "affiliation": "UNIVERSITY OF NEW SOUTH WALES",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "The robot overlords are coming",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "c7571c87-f960-4c88-a13d-14340bb3200f",
+  "teamName": "kladde chatte tville (och oss)",
+  "nameStyle": null,
+  "rating": 1942.7904214290538,
+  "matchesPlayed": 1797,
+  "members": [
+   {
+    "id": "9WXRXZzI41oZiC5aP6IZL0ntJQdq644b",
+    "name": "Zazmuz",
+    "image": "https://cdn.discordapp.com/avatars/277473748637057024/e8cdebf9e03a93c0f20d80a3588fbe0f.png",
+    "country": "SE",
+    "affiliation": "Chalmers University of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "JuvwXERp2A0I1d3LMyjjPTD8ZxHr5B6B",
+    "name": "Joshua Andersson",
+    "image": "https://cdn.discordapp.com/avatars/217704901889884160/33cb97be9d68657d7bfb32d5bb149307.png",
+    "country": "SE",
+    "affiliation": "Chalmers University of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "vojSYFrk2fcuZeC3fqjkIoFtIi16r5j0",
+    "name": "Erik Adebahr",
+    "image": "https://cdn.discordapp.com/avatars/526311892675854336/254a5d61277daf887063d23422701d43.png",
+    "country": "SE",
+    "affiliation": "G\u00f6teborgs H\u00f6gre Samskola",
+    "isStudent": true
+   },
+   {
+    "id": "Mn3S2beaBKtvLOUtEpFazElMKveY9BHK",
+    "name": "Haire",
+    "image": "https://cdn.discordapp.com/avatars/348843498390290433/f0ef5891c9023899189e8089ec2b77dc.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "78b72cb2-22c7-4e17-bd36-2883eb5a8524",
+  "teamName": "The Flotte Experience",
+  "nameStyle": null,
+  "rating": 1930.1643229876904,
+  "matchesPlayed": 2295,
+  "members": [
+   {
+    "id": "4Bw3BulSwv9Rx5fK5Zvk9ve3qEun2Zyw",
+    "name": "Isak",
+    "image": "https://cdn.discordapp.com/avatars/246939248903585792/5af7c730b727ca0f474bf5b96ef0634a.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "r1vo05IjQVPcdTZtThdCQ4KVIgp2I7RU",
+    "name": "fetknol",
+    "image": "https://cdn.discordapp.com/avatars/227133032132247552/deb5e0dd27485a22d87bbc22cf313717.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "We keep drifting",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "32087804-2dde-4265-acb2-b6ec9039fbee",
+  "teamName": "Juusto",
+  "nameStyle": null,
+  "rating": 1919.5294070079913,
+  "matchesPlayed": 901,
+  "members": [
+   {
+    "id": "UdqVxxcTedDYq8ym21bthceTFbE5aeqv",
+    "name": "Barad-d\u00fbr",
+    "image": "s3:avatar:UdqVxxcTedDYq8ym21bthceTFbE5aeqv/1786461552246.webp",
+    "country": "FI",
+    "affiliation": "Hive Helsinki / Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "kjv6MMCEC5BH3agAB7QrrM5OAQ0LXJGV",
+    "name": "TokenKing",
+    "image": "s3:avatar:kjv6MMCEC5BH3agAB7QrrM5OAQ0LXJGV/1786461451253.webp",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   },
+   {
+    "id": "pLX3n5Hd3L4xLKX3wystzpAE4YrSRGSt",
+    "name": "c0r0p0",
+    "image": "s3:avatar:pLX3n5Hd3L4xLKX3wystzpAE4YrSRGSt/1786360364180.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "\ud83e\uddc0",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "86d0b484-783c-47dc-99d9-6ed9af2794f8",
+  "teamName": "lingling_40h",
+  "nameStyle": null,
+  "rating": 1896.3435403780002,
+  "matchesPlayed": 1300,
+  "members": [
+   {
+    "id": "vXJzIYwRfrL6GB9NvDIzpcrOhTABmlez",
+    "name": "Zhe Xiao",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "SE",
+    "affiliation": "T\u00e4by Enskilda Gymnasium",
+    "isStudent": true
+   },
+   {
+    "id": "7wH9Eby5b43V3D5xjYLzEV1z9weQDVnO",
+    "name": "NinG2SE",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "SE",
+    "affiliation": "T\u00e4by Enskilda Gymnaisum",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "9810ba35-66a9-4af3-9a2f-06651aef4109",
+  "teamName": "Erebus",
+  "nameStyle": null,
+  "rating": 1874.6898453500833,
+  "matchesPlayed": 2310,
+  "members": [
+   {
+    "id": "3f08XmqQ4h0zshUeJBtgJWa6GBS0eFQ2",
+    "name": "Oogway",
+    "image": "https://cdn.discordapp.com/embed/avatars/1.png",
+    "country": "US",
+    "affiliation": "interlake hs",
+    "isStudent": true
+   },
+   {
+    "id": "UPH52wmGl4DPqORhMsRnkBWYRfa4AYaU",
+    "name": "sagarftw",
+    "image": "https://cdn.discordapp.com/avatars/722256097120878634/4526954c591bc1f55f65cfb8499decf7.png",
+    "country": "US",
+    "affiliation": "Presonance",
+    "isStudent": true
+   },
+   {
+    "id": "YEpy5egFJ171MmRGAnlDw5VyObg45m8f",
+    "name": "ic3d_",
+    "image": "https://cdn.discordapp.com/avatars/323868295772241931/b68750d566efec9cb180d61d929db9a8.png",
+    "country": "PT",
+    "affiliation": "None",
+    "isStudent": false
+   },
+   {
+    "id": "xSS0rsYYWvfnEPc3yQZ0Iem7Ag3YC1en",
+    "name": "oni",
+    "image": "https://cdn.discordapp.com/avatars/278976242378604544/0b31c63391694364598ce4dbbd1d73a1.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "arise from khaos",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ebd8d82a-7365-4ccb-af0b-defea3a1ac4d",
+  "teamName": "gsxWins",
+  "nameStyle": null,
+  "rating": 1870.590902458671,
+  "matchesPlayed": 2282,
+  "members": [
+   {
+    "id": "CVJJN8r5zffWmOoXsqcV6oa8K9hqyy2J",
+    "name": "RedRonin",
+    "image": "https://cdn.discordapp.com/avatars/292943417720176641/d39d41442cbac8b65e9c00b03d8d7812.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "uWE0vtEm6kukDZBpcGKH98MQh2wXULNF",
+    "name": "el_polako_",
+    "image": "https://cdn.discordapp.com/embed/avatars/0.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "ifjyxUX1pdNbm0hU4Jdh1pAONIyrDpEZ",
+    "name": "Hoang Dung Nguyen",
+    "image": "https://cdn.discordapp.com/avatars/680453096110817440/4aa5076993569b625007439fcedcf741.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "DPVJD8hKsuZZWJtq07Zyky1EGUWt3DyE",
+    "name": "Anna",
+    "image": "https://cdn.discordapp.com/embed/avatars/4.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "balls",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "e9be6a8c-fb2a-4fd2-970e-5f19352b6d48",
+  "teamName": "Besvikomat",
+  "nameStyle": null,
+  "rating": 1848.0084240255774,
+  "matchesPlayed": 2311,
+  "members": [
+   {
+    "id": "G6MnHyVBKYB1TpPtYf1GqDEyZ1T74Ie7",
+    "name": "simon",
+    "image": "https://cdn.discordapp.com/avatars/203945490738446336/91c7d60c94062f3eb4421c032ca8f351.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "m1l9uevj40L8LQ0pOdTrznAoeZpkofag",
+    "name": "Trathalgar",
+    "image": "https://cdn.discordapp.com/avatars/317944704585039872/d8faadc4c58aab29234a04ac8c42c194.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "Xh8awcDg5WBTP2P92LyNvcxZyTn4YOBp",
+    "name": "Vilmer",
+    "image": "https://cdn.discordapp.com/avatars/266485940703199234/8f08c67c8521a66e45955ce253e3de68.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "Disappointment machine",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "8cf9b751-00d3-484a-b0ed-e3073ae1d46f",
+  "teamName": "Jython",
+  "nameStyle": null,
+  "rating": 1845.5594246012402,
+  "matchesPlayed": 2088,
+  "members": [
+   {
+    "id": "JorxUlfI1hlFAsyDmZPb5c6q5mHecgWx",
+    "name": "matthewwh",
+    "image": "https://cdn.discordapp.com/avatars/849242501617549392/495bda601eeeae4ed69503692829142b.png",
+    "country": "US",
+    "affiliation": "\u2191   \u2191   \u2191   \u2191   \u2191",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "Recombobulating...",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "00191498-aa36-4f5a-aafb-e432e57607e8",
+  "teamName": "Focalground",
+  "nameStyle": null,
+  "rating": 1836.7813976660932,
+  "matchesPlayed": 1301,
+  "members": [
+   {
+    "id": "LItaSDiIKvrWo7U5oafWifaZv5fqVNsU",
+    "name": "Gnivom",
+    "image": "https://cdn.discordapp.com/avatars/440896007832862750/e9159084228793683b1f5c4b7ad463d6.png",
+    "country": "SE",
+    "affiliation": "Martin Hesselborn AB",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "bfbb9a68-b37a-4a61-b0ea-d36369c8f65a",
+  "teamName": "I Stone",
+  "nameStyle": null,
+  "rating": 1829.980241446985,
+  "matchesPlayed": 1921,
+  "members": [
+   {
+    "id": "1f6gE6wYaPebPIyFxb1902yY7G9Gzu2w",
+    "name": "Johannes",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "DE",
+    "affiliation": "Technical University of Munich",
+    "isStudent": true
+   },
+   {
+    "id": "NQVUKD3yqfDr35hkYV0wLWKE0HuVC59a",
+    "name": "Konstantin Preu\u00dfer",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "DE",
+    "affiliation": "Technical University Darmstadt",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "Rush to your momma please.\nNot our core.",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "74ae65ff-96ae-4da5-a43e-692eb6fee38f",
+  "teamName": "0033",
+  "nameStyle": null,
+  "rating": 1781.220999854961,
+  "matchesPlayed": 2266,
+  "members": [
+   {
+    "id": "AdWw6z96feFDZL2IP54HnscOzJHRjuEh",
+    "name": "Edvin",
+    "image": "https://cdn.discordapp.com/avatars/717726101836791818/b986c5d6bbcfe8b47a76d46ae3874321.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "3300",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "379a5d80-9921-4c9e-949b-f9b1dcba16be",
+  "teamName": "OpenSverige",
+  "nameStyle": null,
+  "rating": 1775.848195203074,
+  "matchesPlayed": 1661,
+  "members": [
+   {
+    "id": "THv6JWVf1ZEhKKAlDl4eydtux4DwPbWi",
+    "name": "x3r0",
+    "image": "https://cdn.discordapp.com/avatars/663229592764547128/7257ddd545b2a4197211968561e5b6f5.png",
+    "country": "SE",
+    "affiliation": "northtrygg.se",
+    "isStudent": false
+   },
+   {
+    "id": "tYk6Q0sww3xy13f28pvt7lXcLGe67JHp",
+    "name": "Jimmy76",
+    "image": "https://cdn.discordapp.com/avatars/128835557211111424/1f6097c71b63c8bc7754c175598a9849.png",
+    "country": "SE",
+    "affiliation": "OpenSverige",
+    "isStudent": true
+   },
+   {
+    "id": "0aavtEZjrT35hs86jBcfxAljkB6Gqyss",
+    "name": "Mr.Smith",
+    "image": "https://cdn.discordapp.com/avatars/762354874633027634/28ca866cb64a9c52984a1a08cb910032.png",
+    "country": "SE",
+    "affiliation": "Opensverige",
+    "isStudent": false
+   },
+   {
+    "id": "CRoDsAXPXbICAprhfU2pjEH2qUP1kWD1",
+    "name": "Moonfarm",
+    "image": "https://cdn.discordapp.com/avatars/156523773988700161/35930e619c80f4f96b277362fcc98b1f.png",
+    "country": "SE",
+    "affiliation": "hiremara.com",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": "Underwear-coders, doing this for fun. Hate daylight, prefer a cold basement.",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "5734f3eb-4098-49f5-bbf1-49531d0ce811",
+  "teamName": "TRRR",
+  "nameStyle": null,
+  "rating": 1748.0352766767296,
+  "matchesPlayed": 917,
+  "members": [
+   {
+    "id": "OmPaxnnY1UC32e4zI04ZJiM16z4p1XiO",
+    "name": "Theo Jansson",
+    "image": "https://cdn.discordapp.com/avatars/455482725013520404/ced741fe68c43abb112a61b100346281.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "9kIy7O3PuaBv7520nfw8Xc6XrYdMnGkb",
+    "name": "Ruiming",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "iDPZIRVBn55PyCH8433f6ENsp7mdbzSE",
+    "name": "Ruben Rystedt",
+    "image": "https://cdn.discordapp.com/avatars/792503808369623050/4faf992aeb882ce3245d9028fbdb0e17.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "rrbpJVdaVrvnHts73Q9JjiBzhrIyB6SW",
+    "name": "Rea",
+    "image": "https://cdn.discordapp.com/embed/avatars/5.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "25288fdb-f3a0-4ae2-964f-2fd7eb9b11d7",
+  "teamName": "farming_200s",
+  "nameStyle": null,
+  "rating": 1745.232120255069,
+  "matchesPlayed": 2210,
+  "members": [
+   {
+    "id": "JyHn4yxCJhcvhxP9FbtkHCjQyg27ReXV",
+    "name": "Henry Mao",
+    "image": "s3:avatar:JyHn4yxCJhcvhxP9FbtkHCjQyg27ReXV/1784154710791.webp",
+    "country": "SE",
+    "affiliation": "T\u00e4by Enskilda Gymnasium",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "b  r  u  h",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "a5631594-3000-457e-890d-29d547f9de93",
+  "teamName": "Ouroboros",
+  "nameStyle": null,
+  "rating": 1733.9385368432172,
+  "matchesPlayed": 2306,
+  "members": [
+   {
+    "id": "wMdfZ4GdZhUZFq23me0dfFfe8z2Sr6Jg",
+    "name": "ImAlno",
+    "image": "https://cdn.discordapp.com/avatars/295559304067678208/9d95ecf76a7a5b5ffb69c07b3a1ad949.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "vH9KbbCr0Mpn6qO5ovqiVUVO00Gr91bK",
+    "name": "Jollybob",
+    "image": "https://cdn.discordapp.com/avatars/495245284067115032/182c515db46f47badd6306cc16b287e5.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "II5Q7W6jAP7IoC8aIjhHr0gqJvqEm8It",
+    "name": "S K I N K E N",
+    "image": "https://cdn.discordapp.com/avatars/281096286747230229/cd8fca58a13a39a84797808d278b298e.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "The Unbreakable Loop",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "0774b1b2-df40-4cf2-915e-5d5a6133a13a",
+  "teamName": "Banminary",
+  "nameStyle": null,
+  "rating": 1729.9716125189095,
+  "matchesPlayed": 2313,
+  "members": [
+   {
+    "id": "815GSHNGdWVYrbx217Vjd8oqhZWEf738",
+    "name": "Dang Vu Hai Dang",
+    "image": "https://cdn.discordapp.com/avatars/526234727321960450/18a04f0a80e4e77e0d9c383f85947019.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "709cglZclWrkLYZVGryyTRkNWtnI4tC1",
+    "name": "Dung Nguyen",
+    "image": "https://cdn.discordapp.com/avatars/558269028125245442/05773922c382588a6b3008e2ce0ed77d.png",
+    "country": "FI",
+    "affiliation": "LAB University of Applied Sciences",
+    "isStudent": true
+   },
+   {
+    "id": "hU84CeybljGyXRlXlvP2lKrWXlJHbXgB",
+    "name": "Khoi Do",
+    "image": "https://cdn.discordapp.com/avatars/643080899558244372/6f54d56a42344a70b818c2912afc9532.png",
+    "country": "FI",
+    "affiliation": "Tampere University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "if the train crashes it will derail no matter how hard it crashes",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "b61a01d3-b5e0-465a-9b1b-f541862bb5c4",
+  "teamName": "Atlas",
+  "nameStyle": null,
+  "rating": 1703.6592206868725,
+  "matchesPlayed": 2284,
+  "members": [
+   {
+    "id": "7IN8GIZXy2IflIuCGhiUYUrrDreLZZXt",
+    "name": "Pandemian",
+    "image": "https://cdn.discordapp.com/avatars/662652859036336128/cda614c5a82f9b19db25b211963a1dda.png",
+    "country": "GR",
+    "affiliation": "National and Kapodistrian University of Athens",
+    "isStudent": true
+   },
+   {
+    "id": "wsWBx0dVZRfAxmbTFytgtoeayhQmCZzR",
+    "name": "Panos",
+    "image": "https://cdn.discordapp.com/avatars/372703407276032020/712f0ed099246e41eedca63b9bf46a28.png",
+    "country": "GR",
+    "affiliation": "National and Kapodistrian University of Athens",
+    "isStudent": true
+   },
+   {
+    "id": "HJvjskM7U94V08lg58uLjt6uF63F9qJS",
+    "name": "jeb47",
+    "image": "https://cdn.discordapp.com/avatars/586547600942039040/fe8feb6ebd108f4cd099a5154fb605ee.png",
+    "country": "GR",
+    "affiliation": "National and Kapodistrian University of Athens",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "Carrying the weight, and making it look light",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "4691bd56-45c2-460c-a5a5-eb7563c594cb",
+  "teamName": "DinooniD",
+  "nameStyle": null,
+  "rating": 1695.4584916233216,
+  "matchesPlayed": 773,
+  "members": [
+   {
+    "id": "wVsoaGoCG3cfifZR7kYwUh5mzPhJOeSK",
+    "name": "Dino",
+    "image": "https://cdn.discordapp.com/avatars/1040945041193058304/65a0c00f655a4b65180049a3410da5ea.png",
+    "country": "US",
+    "affiliation": "Georgia Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "oniDDino",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "648d1d5b-5443-4257-a0aa-7048661b612d",
+  "teamName": "team lazy",
+  "nameStyle": null,
+  "rating": 1687.830092973633,
+  "matchesPlayed": 2299,
+  "members": [
+   {
+    "id": "sJtCHZnCQhdkJzF8QT7AN5xGBTNl77cF",
+    "name": "Ivar",
+    "image": "https://cdn.discordapp.com/avatars/171625661058777088/b49690aa71af43eb1b86fece1e6ebdf5.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "0 handwritten lines of code 0 wins 1000 claude hallucinations",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "6634407e-0c49-4330-89e7-e4179bb691bf",
+  "teamName": "jmc",
+  "nameStyle": null,
+  "rating": 1685.9638552564033,
+  "matchesPlayed": 377,
+  "members": [
+   {
+    "id": "kVCd2vFVdsPilu6To6oGJ0LBGl2SMy9B",
+    "name": "jmc",
+    "image": "https://cdn.discordapp.com/avatars/209607873787985920/1e37a4375f473110560e97a36b3368f0.png",
+    "country": "US",
+    "affiliation": "Georgia Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "perfectly balanced game",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "b538e523-2250-4c1d-b718-e73b77ebad55",
+  "teamName": "Landers",
+  "nameStyle": null,
+  "rating": 1685.3201365218056,
+  "matchesPlayed": 2312,
+  "members": [
+   {
+    "id": "XleoeF9tr41ZWk0p3RNulLdP9OZVAaaZ",
+    "name": "Alessandro Aldini",
+    "image": "s3:avatar:XleoeF9tr41ZWk0p3RNulLdP9OZVAaaZ/1783858634512.webp",
+    "country": "IT",
+    "affiliation": "Sapienza Universit\u00e0 di Roma (Starting Oct 2026)",
+    "isStudent": true
+   },
+   {
+    "id": "rBUvcVMHDVP79ejKcDHn4AYL6VGi3xsJ",
+    "name": "Davide D'Annibale",
+    "image": "https://cdn.discordapp.com/avatars/1525859619837055166/157e517cdbf371a47aaead44675714a3.png",
+    "country": "IT",
+    "affiliation": "Liceo Scientifico e Linguistico di Ceccano",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "805df4d2-53cb-40d0-b538-af8772b3ae3d",
+  "teamName": "Jacobs Code",
+  "nameStyle": null,
+  "rating": 1683.891204692822,
+  "matchesPlayed": 2176,
+  "members": [
+   {
+    "id": "eJIhIT0QvLps2bW5Qe0KkUpRmoWrTDLg",
+    "name": "Jacob Ekedahl",
+    "image": "https://cdn.discordapp.com/embed/avatars/4.png",
+    "country": "SE",
+    "affiliation": "Jacobs Code",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "jacobscode.com",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "f3362833-2d7a-4636-9a3c-e4f10fcebdc1",
+  "teamName": "Big O",
+  "nameStyle": null,
+  "rating": 1636.605425154061,
+  "matchesPlayed": 1342,
+  "members": [
+   {
+    "id": "Lk3hl7AiTFmXGlJflcPoIQk6aJDjj0Id",
+    "name": "EP",
+    "image": "https://cdn.discordapp.com/avatars/414098305371340831/414a097bc9ff77958b81929dd9ae66e7.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "jkDUYsd6akGUkrjG4ThxVQVdQBI7ascJ",
+    "name": "victor",
+    "image": "https://cdn.discordapp.com/embed/avatars/5.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "UELRtKdRDh4opCl4uAHdHea1BIyd4TAm",
+    "name": "Gustav R\u00e5hl\u00e9n",
+    "image": "https://cdn.discordapp.com/avatars/585882242337996800/736d3f6c698dd5195349ca3a35659902.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "7fd91e77-812c-44da-bce7-457be94d2548",
+  "teamName": "Powered by SmartFridge",
+  "nameStyle": null,
+  "rating": 1631.679218230088,
+  "matchesPlayed": 2277,
+  "members": [
+   {
+    "id": "Z5Pyxn28gdstCTCjZwhC9d3dLtecZ7Nq",
+    "name": "Jonathan",
+    "image": "https://cdn.discordapp.com/avatars/240208366318780426/5de8f0e5c8a29052f146103c47d15277.png",
+    "country": "DK",
+    "affiliation": "DTU - Technical University of Denmark",
+    "isStudent": true
+   },
+   {
+    "id": "I9ilqDKnXyCwC7LpLvkrsOYmgKVCqJyg",
+    "name": "Lucas Rieneck Gottfried Pedersen",
+    "image": "https://cdn.discordapp.com/avatars/710743311635447848/beb9fefb12fd98eea52f8fa9609f9299.png",
+    "country": "DK",
+    "affiliation": "DTU - Technical University of Denmark",
+    "isStudent": true
+   },
+   {
+    "id": "4bWK6UxA6hw6GXhMoW1rxXc162RsEcpi",
+    "name": "V\u00e6k Larsen",
+    "image": "https://cdn.discordapp.com/avatars/274678777727025173/cfc44e4eebb70303f1be4f720c771135.png",
+    "country": "DK",
+    "affiliation": "DTU - Technical University of Denmark",
+    "isStudent": true
+   },
+   {
+    "id": "0NJRki6cBZbH3Fn09fHbaBrlm4JLK5DH",
+    "name": "NoHaxRelax",
+    "image": "https://cdn.discordapp.com/avatars/517795889377443861/edeabe2616e79495d6ee99d797ae5b8f.png",
+    "country": "DK",
+    "affiliation": "techincal university of denmark",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "b1b79905-260a-4ceb-b491-2b87f426d439",
+  "teamName": "Well have a look",
+  "nameStyle": null,
+  "rating": 1631.022981363078,
+  "matchesPlayed": 854,
+  "members": [
+   {
+    "id": "MYQipd3YcqhQ9rCmQf26onHFnSrICjnP",
+    "name": "Lennart",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "SE",
+    "affiliation": "University of Uppsala",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "Yeah, I'm Batman",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "bd5df261-fb0e-476e-920a-96ef88f7d441",
+  "teamName": "Torsko",
+  "nameStyle": null,
+  "rating": 1630.6496341165941,
+  "matchesPlayed": 1359,
+  "members": [
+   {
+    "id": "RVKZA9FWK0aXo3QKzdywHCcEhYo14v0t",
+    "name": "Niklas",
+    "image": "https://cdn.discordapp.com/avatars/122301616828317699/a28bde575fc2f0cef319fa8e027cda0a.png",
+    "country": "NO",
+    "affiliation": "None",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "43a1e488-543d-4d51-a066-4f9bf039d1fb",
+  "teamName": "Troupe",
+  "nameStyle": null,
+  "rating": 1604.9105667889526,
+  "matchesPlayed": 1972,
+  "members": [
+   {
+    "id": "gzEvwS4heKhdVBfclHMASe4qWlwk5B6b",
+    "name": "Harun",
+    "image": "https://cdn.discordapp.com/avatars/339702785757151234/527e21afe52df1dac03e93f4b78968e7.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "PB61qnTCxhL2RsaFCxjIKeIDsSg8zxIC",
+    "name": "Albin Sand",
+    "image": "https://cdn.discordapp.com/embed/avatars/5.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "BcYvNe4MUxIGgJ2nlbPGUkKaeexkf1Tz",
+    "name": "Olivia",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "2f1Zokl3pWr7XlbpEPorEbSURPkGfbNN",
+    "name": "Axel Segendorf",
+    "image": "https://cdn.discordapp.com/avatars/297670853183799296/c8036511339c57565782dc5bcb9a6a93.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ea0d33c8-ca2b-497a-9be0-1837379eab1e",
+  "teamName": "Coreflood",
+  "nameStyle": null,
+  "rating": 1574.032458192902,
+  "matchesPlayed": 2287,
+  "members": [
+   {
+    "id": "5hV3sG8fPSVZWAxC64ZsNRaJAhdbra2a",
+    "name": "Abduvohid Ilhomov",
+    "image": "https://cdn.discordapp.com/avatars/359340940005212161/920d6c1e96ab0481477f42aba9c44a38.png",
+    "country": "SE",
+    "affiliation": "Stockholms university",
+    "isStudent": true
+   },
+   {
+    "id": "GQNOlBkXUJKKHI4MP6RYBNIsJAjc6Gwu",
+    "name": "Karam",
+    "image": "https://cdn.discordapp.com/avatars/595617418982719488/0df88ee8b678ad6250eff12d48cb1d06.png",
+    "country": "SE",
+    "affiliation": "Blekinge institute of technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "gemini-3.6-flash all the way",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "5d46712b-cefb-42dc-923e-1717ee5d2281",
+  "teamName": "diverge",
+  "nameStyle": null,
+  "rating": 1554.1420555072673,
+  "matchesPlayed": 1230,
+  "members": [
+   {
+    "id": "bRSEXpIiqUrx1SEMHSYY8BX3CJUK3iBC",
+    "name": "Raunak Redkar",
+    "image": "https://cdn.discordapp.com/avatars/239474799125069824/f98c014969b86fb39794133e52794e12.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "c0722596-b36d-4aab-a4ed-16e9119a336b",
+  "teamName": "Viktor5776",
+  "nameStyle": null,
+  "rating": 1552.0829214165715,
+  "matchesPlayed": 1408,
+  "members": [
+   {
+    "id": "Pyeo7VaZldgnXXlazsAwYsMcXp0BNCtx",
+    "name": "Viktor",
+    "image": "https://cdn.discordapp.com/avatars/217651151808495626/782f0a3f712c12429fdf73da3d4b3652.png",
+    "country": "SE",
+    "affiliation": "Chalmers",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "f670dfed-dfee-421b-8c01-a67b8a278ce3",
+  "teamName": "The Bisons",
+  "nameStyle": null,
+  "rating": 1543.599428322338,
+  "matchesPlayed": 1687,
+  "members": [
+   {
+    "id": "rgWSLjLmeSIqAn0nnKZdPG2KTKfcY5XP",
+    "name": "sammosios",
+    "image": "s3:avatar:rgWSLjLmeSIqAn0nnKZdPG2KTKfcY5XP/1784359392106.webp",
+    "country": "GR",
+    "affiliation": "KTH AI Society",
+    "isStudent": true
+   },
+   {
+    "id": "WKqyAXgjuv9JgOAjEeX5L3tKUMUUUlSe",
+    "name": "pavlospn",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "GR",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "r6sg3IB0PltcRmTwjThqQ1DywI1EXmI6",
+    "name": "Spitfire",
+    "image": "https://cdn.discordapp.com/avatars/489040254255366154/3ca1bc0998b1549d2377e1c5d8dac52f.png",
+    "country": "GB",
+    "affiliation": "University College London",
+    "isStudent": true
+   },
+   {
+    "id": "gRLomeW4UavSZYT1aQErc3PwlclndDWy",
+    "name": "Gencer Sarp",
+    "image": "https://cdn.discordapp.com/avatars/646634918591332383/300ca50d8e584b8c398bd903d06c662b.png",
+    "country": "DK",
+    "affiliation": "University of Oxford",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "dc7cfe89-627d-44fd-849c-44bc8bfcae40",
+  "teamName": "Rookie League",
+  "nameStyle": null,
+  "rating": 1540.0521664274618,
+  "matchesPlayed": 321,
+  "members": [
+   {
+    "id": "a60HIUyZ6q1ahHbB08PDEjQdCBhUbAch",
+    "name": "Eric",
+    "image": "https://cdn.discordapp.com/avatars/712671142816514118/62815377157f33a1e8ccaa92abf53170.png",
+    "country": "FI",
+    "affiliation": "University of Helsinki",
+    "isStudent": true
+   },
+   {
+    "id": "RVPVnexRS65f90wmh9rCKlOfyizKT641",
+    "name": "Sticky Chicken",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "z47bND9xhOjYQku8URYYdsuqSzZokpzi",
+    "name": "_christopherwang_",
+    "image": "https://cdn.discordapp.com/avatars/1266161824328581231/97493a6e8ad53ed505b4dd88be916073.png",
+    "country": "SE",
+    "affiliation": "Lund University",
+    "isStudent": true
+   },
+   {
+    "id": "DCf2INHQWqbhTvO6v3c11Vr3ayByXEng",
+    "name": "GamingGnawer",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "b7cafd9f-265f-4932-b8b2-f5ba80a6a5ba",
+  "teamName": "opensverige - plan B",
+  "nameStyle": null,
+  "rating": 1535.350995111026,
+  "matchesPlayed": 1266,
+  "members": [
+   {
+    "id": "sFncopAeFeU139pKv9snwwyJHrmRZYIN",
+    "name": "\ud835\ude3d\ud835\ude56\ud835\ude61\ud835\ude69\ud835\ude5e\ud835\ude60\ud835\ude6a\ud835\ude62",
+    "image": "https://cdn.discordapp.com/avatars/565960678985170991/e8162827f9576ca66130d2a1fd8a8b4d.png",
+    "country": "SE",
+    "affiliation": "opensverige",
+    "isStudent": false
+   },
+   {
+    "id": "MVdFtYoMkKkuoibbzOavPfQojw46Cuw4",
+    "name": "klown",
+    "image": "https://cdn.discordapp.com/avatars/1350190996520173598/802310dd688a698cef36560a1159bd79.png",
+    "country": "SE",
+    "affiliation": "OpenSverige",
+    "isStudent": false
+   },
+   {
+    "id": "B5wDdBH3eMlZyxGsYAieLfs7yprBjifV",
+    "name": "Jaw_b",
+    "image": "https://cdn.discordapp.com/embed/avatars/0.png",
+    "country": "SE",
+    "affiliation": "OpenSverige",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": "OpenSverige.se - Plan B",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "f61d19c1-600e-457b-861b-dbeb6b3d8691",
+  "teamName": "OopsGotYourElo",
+  "nameStyle": null,
+  "rating": 1502.9841406199776,
+  "matchesPlayed": 2314,
+  "members": [
+   {
+    "id": "lLDoySSwsyVovmNBbCihAdHiDLVCa0A6",
+    "name": "Ijtihed",
+    "image": "https://cdn.discordapp.com/avatars/1340627341730250816/67b8152f410a811f09c4fd067432b6ee.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "ht6ZJld5pT274dQbxoy091bBquYDn6TC",
+    "name": "Touko Ursin",
+    "image": "https://cdn.discordapp.com/avatars/346100187267072000/19c133773c192190d1ef2e1e04ee0f7e.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "v0OCqZyHAoSs63JoT3BTKgFBZuGrWWAw",
+    "name": "mojolake",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "FI",
+    "affiliation": "Aalto",
+    "isStudent": true
+   },
+   {
+    "id": "CxIwHfDePwgEKfQeIeUySAjr9S0XkSwM",
+    "name": "Sypher",
+    "image": "https://cdn.discordapp.com/avatars/478831790560378880/03b2478740a1abf46a5b8857b02b5a6c.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "915b92bb-c943-4374-8b99-437b97ad1edb",
+  "teamName": "Ordo Asparagus",
+  "nameStyle": null,
+  "rating": 1472.2059343426372,
+  "matchesPlayed": 614,
+  "members": [
+   {
+    "id": "zbWcc1ldPwXWJEFgv4vQbVOBGPREQiBE",
+    "name": "vegetable",
+    "image": "https://cdn.discordapp.com/avatars/113291908943482880/3c7bef17caa6155bb3cccc5eb303e283.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "eceb8455-7cb3-442b-ba40-c6597c16b446",
+  "teamName": "Lunds Stallions",
+  "nameStyle": null,
+  "rating": 1460.5973756186088,
+  "matchesPlayed": 2276,
+  "members": [
+   {
+    "id": "uoy2AVk4USWdkWOobo6AkYvlOuubqM6G",
+    "name": "Paolo Totaro",
+    "image": "https://cdn.discordapp.com/embed/avatars/1.png",
+    "country": "SE",
+    "affiliation": "Lund University",
+    "isStudent": true
+   },
+   {
+    "id": "PCJ9jKyQDRoQV0YF83weZ66tGLvy1bLt",
+    "name": "Martijn Waterlander",
+    "image": "https://cdn.discordapp.com/embed/avatars/1.png",
+    "country": "SE",
+    "affiliation": "Lund University",
+    "isStudent": true
+   },
+   {
+    "id": "sSIMREfS7BGxQuTEf2CWpVWD81dAzc3K",
+    "name": "Pengjun Cen",
+    "image": "https://cdn.discordapp.com/avatars/1276635183378075803/f5f18fefc6ed53d1d2cd8951988077d3.png",
+    "country": "SE",
+    "affiliation": "Lund University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "6338766e-14ca-486c-881c-84011c22b3ba",
+  "teamName": "OpenSverige - Plan C",
+  "nameStyle": null,
+  "rating": 1450.416725427175,
+  "matchesPlayed": 818,
+  "members": [
+   {
+    "id": "JL9VXmkTkvPLgcZegv9TKIOJEEyx7dC2",
+    "name": "blashyrkh",
+    "image": "https://cdn.discordapp.com/embed/avatars/4.png",
+    "country": "SE",
+    "affiliation": "OpenSverige",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "c587b37c-f1ce-43ae-ab02-4e775d262cdd",
+  "teamName": "Drachenlord",
+  "nameStyle": null,
+  "rating": 1439.8611687742869,
+  "matchesPlayed": 391,
+  "members": [
+   {
+    "id": "W2oLNZAD5IyuEfdcK4fCULQh7eQypw2t",
+    "name": "lxorb",
+    "image": "https://cdn.discordapp.com/avatars/400943307171037194/a_cbcffef81bfbb1c3cd49079763376bbe.gif",
+    "country": "CH",
+    "affiliation": "ETH Z\u00fcrich",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "b2deaacd-08ad-4c14-b97b-b4f382d82ea3",
+  "teamName": "Askar City",
+  "nameStyle": null,
+  "rating": 1438.1958312303336,
+  "matchesPlayed": 2164,
+  "members": [
+   {
+    "id": "BGgWkQy20hBOWTJRML2F4bgdOPG0qOCw",
+    "name": "bawar_f",
+    "image": "https://cdn.discordapp.com/avatars/343457225324625922/617660d84941cefebe8a29785b941a96.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   },
+   {
+    "id": "UfVrOL6eSfvEQhiSWDCivLZyKuEbjUmu",
+    "name": "Fabian Forsberg",
+    "image": "https://cdn.discordapp.com/avatars/261842066022072321/ffc402707f26f7631e2829ca0a1324e2.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "3771bc13-b92b-47c6-a190-e1aeb9c36fed",
+  "teamName": "Kleos",
+  "nameStyle": null,
+  "rating": 1435.1122811350833,
+  "matchesPlayed": 1670,
+  "members": [
+   {
+    "id": "VT9abggzBdO1sb3leUe518JoxBdBIljR",
+    "name": "Babak",
+    "image": "https://cdn.discordapp.com/avatars/197334264650399744/ebf1d987e85a11c221e1ec97f87c341d.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "9JX9ZU69XwA6dbdXT4nmaueZZTNxykHn",
+    "name": "Jinhao Ruan",
+    "image": "https://cdn.discordapp.com/avatars/352789937466114050/86dc93c66bd2d2dae947fe83bdb2edc8.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of technology",
+    "isStudent": true
+   },
+   {
+    "id": "DiyLBVWlmEwZDHdRwTq91ssa8chfL3SL",
+    "name": "~Rem~",
+    "image": "https://cdn.discordapp.com/avatars/294852452954669056/6c03d72c90941119ce9e75e2f98a446f.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "dfa9be96-f6f6-490b-9c79-d22f9b42369d",
+  "teamName": "Kings College Munich",
+  "nameStyle": null,
+  "rating": 1422.9101510520447,
+  "matchesPlayed": 1434,
+  "members": [
+   {
+    "id": "AMLYO0kp3zyfukTaG1JAlejNQ2Y3UEgd",
+    "name": "cuitin",
+    "image": "https://cdn.discordapp.com/avatars/730009898942988299/967a85ae2f90b20a476061f3b1c5e1f4.png",
+    "country": "DE",
+    "affiliation": "King's College London",
+    "isStudent": true
+   },
+   {
+    "id": "evbuxQpwMnYaqg4l7siciA6qe5BMfznW",
+    "name": "Nick",
+    "image": "https://cdn.discordapp.com/avatars/996087324351934536/10ce4ba0d677035d14182abed31e7468.png",
+    "country": "DE",
+    "affiliation": "Technical University Munich",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ac0a2192-1dac-4746-b714-7f9c7b7991fa",
+  "teamName": "1337",
+  "nameStyle": null,
+  "rating": 1407.3910801711108,
+  "matchesPlayed": 2132,
+  "members": [
+   {
+    "id": "lSZN5IFfYjxcjyjoBwN04Mbw7g0s8Q1b",
+    "name": "Umar",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "FI",
+    "affiliation": "University of Oulu",
+    "isStudent": true
+   },
+   {
+    "id": "zpZedHmoa3NEtRoOkVPXbtu2zY2lmxNl",
+    "name": "Aditya Singh",
+    "image": "https://cdn.discordapp.com/embed/avatars/5.png",
+    "country": "FI",
+    "affiliation": "University of Oulu",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "d667ee5b-bb42-4708-9ed4-cd26e32a14a2",
+  "teamName": "Hugging Farce",
+  "nameStyle": null,
+  "rating": 1394.9004608270927,
+  "matchesPlayed": 1358,
+  "members": [
+   {
+    "id": "BpSUr4ID6x8BiD5SAcTqmz23VF9Bh13J",
+    "name": "Joni Ranta",
+    "image": "https://cdn.discordapp.com/avatars/406788972132696064/1749686f0a679d3ae4542ec7a31d20c2.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "palZSUvGMRP3A7iqzyn1dwIWFKNeWbXQ",
+    "name": "Miika",
+    "image": "https://cdn.discordapp.com/avatars/345152077485572097/570a43866ae8d3a83165e4c4856e8fbf.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   },
+   {
+    "id": "n4E2cnjxLchoN2jiTSrgWzngRUkC3zNp",
+    "name": "Luuka5",
+    "image": "https://cdn.discordapp.com/avatars/571312233162735630/64b6f07a0b86d2863d534249a5c4744a.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "01a47fc5-5ae0-433c-94a5-f3efe6e48ec0",
+  "teamName": "Orizon",
+  "nameStyle": null,
+  "rating": 1382.7276789166872,
+  "matchesPlayed": 2299,
+  "members": [
+   {
+    "id": "hPFVXrRKMTY0FY4xYb4kx8uoyxwcjoGU",
+    "name": "Lohithsai Yadala Chanchu",
+    "image": "https://cdn.discordapp.com/avatars/620597116472918017/9bb57362b0b7b33f7c0150d7d6abf131.png",
+    "country": "AQ",
+    "affiliation": "Orizon",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "https://x.com/LohithsaiYC",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "c8629ab8-e497-4af9-92a2-7cae2a99fb52",
+  "teamName": "potatis",
+  "nameStyle": null,
+  "rating": 1382.4444820832084,
+  "matchesPlayed": 621,
+  "members": [
+   {
+    "id": "bgPJ8sB0hPjquwbKR4iBK7ef9N3oZYXl",
+    "name": "Marcus",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "74e43df6-bad7-474b-8e37-0ea44a2c80f1",
+  "teamName": "CtrlAltDefeat",
+  "nameStyle": null,
+  "rating": 1381.3258663317304,
+  "matchesPlayed": 2216,
+  "members": [
+   {
+    "id": "eCPs6hQ5UBEgdy6bmQ6bYA9RFSkJZPwO",
+    "name": "prajwal",
+    "image": "https://cdn.discordapp.com/avatars/685916896624902185/4542cc49869791c1a31110ce1af13f01.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "YKwXoR1Qn0cQhjp0wViwyxAu9KQsr8tk",
+    "name": "Lo",
+    "image": "https://cdn.discordapp.com/avatars/1082260841874849883/9f923a7f6626a3af276c7be68cb5dca8.png",
+    "country": "SE",
+    "affiliation": "Stockholm School of Economics",
+    "isStudent": true
+   },
+   {
+    "id": "G75lLOYqHGPksehOJJGg91oS91QbWSLY",
+    "name": "Env1sE",
+    "image": "https://cdn.discordapp.com/avatars/818063238791954450/d9ecdc32793ae0faffe7f9b9cab360f5.png",
+    "country": "SE",
+    "affiliation": "hhs.se",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "might alt+f4 soon",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "74de0a45-c1d2-4691-9537-7e8312938373",
+  "teamName": "Deploy Then Understand",
+  "nameStyle": null,
+  "rating": 1345.9864326112415,
+  "matchesPlayed": 627,
+  "members": [
+   {
+    "id": "Z88J2z34jUu4deNsibQQ0OhepFd8G11H",
+    "name": "Yasmine",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "DK",
+    "affiliation": "DTU - Technical University of Denmark",
+    "isStudent": true
+   },
+   {
+    "id": "j4QT2ByhcPpgigck0tJk3pT8Z15JmDtt",
+    "name": "Koleskab",
+    "image": "s3:avatar:j4QT2ByhcPpgigck0tJk3pT8Z15JmDtt/1783461926928.webp",
+    "country": "DK",
+    "affiliation": "DTU - Technical University of Denmark",
+    "isStudent": true
+   },
+   {
+    "id": "4R74tlvRpIwYsW9lPw3ciU8Kcf97iOvi",
+    "name": "wikycool",
+    "image": "https://cdn.discordapp.com/avatars/840115309230424084/8f352db1505add8e6cc594967ef32ed6.png",
+    "country": "DK",
+    "affiliation": "Technical University of Denmark",
+    "isStudent": true
+   },
+   {
+    "id": "lgwW9yrjA67VRXTHa3bcb7XEBNafY3bT",
+    "name": "Lex",
+    "image": "https://cdn.discordapp.com/avatars/661605173700853783/6e1f6696f1a98a6a862ab2dc23350a9e.png",
+    "country": "DK",
+    "affiliation": "DTU - Technical University of Denmark",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "87007cdb-a535-4fe3-9761-24645604b91d",
+  "teamName": "Team imeto",
+  "nameStyle": null,
+  "rating": 1328.1692171400089,
+  "matchesPlayed": 889,
+  "members": [
+   {
+    "id": "nChXzzoMX61vjYypUitYROxZ3bwwxYrK",
+    "name": "Melker",
+    "image": "https://cdn.discordapp.com/embed/avatars/5.png",
+    "country": "SE",
+    "affiliation": "imeto consulting",
+    "isStudent": false
+   },
+   {
+    "id": "u6c6mz3m4i4tFVee85pEY0pcE5j6xL3W",
+    "name": "Joel",
+    "image": "https://cdn.discordapp.com/avatars/206362163575521280/7c3814f87e095381097474fb53787efe.png",
+    "country": "SE",
+    "affiliation": "Theca Systems",
+    "isStudent": false
+   },
+   {
+    "id": "IZgN6LWNiegV6ESLOO5zVRMKMs8kTLGJ",
+    "name": "Noah Tell",
+    "image": "https://cdn.discordapp.com/avatars/192343041934229505/7f378c7399e9ddcf25113b0b8724f821.png",
+    "country": "SE",
+    "affiliation": "imeto",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": "><>",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "4f58f904-538d-48f8-93a5-fdc7b4c5ef72",
+  "teamName": "No",
+  "nameStyle": null,
+  "rating": 1325.1653534850304,
+  "matchesPlayed": 389,
+  "members": [
+   {
+    "id": "GXoAtCXf95vpi4QHYycwkh4HpsaetLnQ",
+    "name": "lill_m8",
+    "image": "https://cdn.discordapp.com/avatars/681868775242465320/a62d601a0bd34377cfaad62ca0ee5928.png",
+    "country": "SE",
+    "affiliation": "KTH Kungliga Tekniska H\u00f6gskolan",
+    "isStudent": true
+   },
+   {
+    "id": "xf4KyfcPVKJEoUeTKmd3CDSrAb0rIs9T",
+    "name": "Kat0002",
+    "image": "https://cdn.discordapp.com/avatars/1218312152708808825/55ae4f073ed362736c03adeea1353035.png",
+    "country": "CH",
+    "affiliation": "Nfinite Context",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "f71a9567-4a16-43d1-9550-c7f7f9243632",
+  "teamName": "Part-timers",
+  "nameStyle": null,
+  "rating": 1320.682353139126,
+  "matchesPlayed": 2285,
+  "members": [
+   {
+    "id": "CunVcUb9VJIW6NhXsp5WaUupe76rfSPl",
+    "name": "Noah Pimentel",
+    "image": "https://cdn.discordapp.com/avatars/286275676607086593/b7bd1b1d4cbbdc7f6313e29afcb9a3c2.png",
+    "country": "SE",
+    "affiliation": "Klarum",
+    "isStudent": true
+   },
+   {
+    "id": "GHPPvxPzZy732kR53pI2XOVoVb4z93w4",
+    "name": "Niklavs",
+    "image": "https://cdn.discordapp.com/avatars/415585630160945156/7e56d20018130821403c6210ed1de7de.png",
+    "country": "SE",
+    "affiliation": "Klarum",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": "https://www.youtube.com/watch?v=f9Jz3ESNzxI&list=RDf9Jz3ESNzxI&start_radio=1",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "03623b3a-50c8-49fe-8b6b-0bed1bddd9b7",
+  "teamName": "Oresund Overflow",
+  "nameStyle": null,
+  "rating": 1319.0889437207986,
+  "matchesPlayed": 2084,
+  "members": [
+   {
+    "id": "mzo7GSHKFPFVyNXfEBJcqTnmhPdPRcsI",
+    "name": "FJ",
+    "image": "https://cdn.discordapp.com/embed/avatars/1.png",
+    "country": "SE",
+    "affiliation": "Stockholm University",
+    "isStudent": true
+   },
+   {
+    "id": "fP7yHw9iRU57v3qbMuXbkrPzCOVxI2Hs",
+    "name": "Ahmad Habib",
+    "image": "https://cdn.discordapp.com/avatars/1280160315073368198/873dd9c0e7d6207544896a91a95277a7.png",
+    "country": "SE",
+    "affiliation": "dalarna university",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "1056f91a-3bfa-4057-8d79-cd1c47e596be",
+  "teamName": "SingleCore",
+  "nameStyle": null,
+  "rating": 1297.7299416395454,
+  "matchesPlayed": 1951,
+  "members": [
+   {
+    "id": "LzSGPwXItzaHeOTW7Rkv6GjaTJxwDrRS",
+    "name": "Jakub",
+    "image": "s3:avatar:LzSGPwXItzaHeOTW7Rkv6GjaTJxwDrRS/1785362952349.webp",
+    "country": "PL",
+    "affiliation": "DTU - Technical University of Denmark",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "cracked",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ed36dea6-5c1f-442d-aa48-db7e6c82872b",
+  "teamName": "Tyvrets",
+  "nameStyle": null,
+  "rating": 1293.1928474985689,
+  "matchesPlayed": 1654,
+  "members": [
+   {
+    "id": "mVgdWOck3ZablPj5Z5JeXHKtrxQCqDmZ",
+    "name": "SimonKane",
+    "image": "https://cdn.discordapp.com/avatars/381146674975866880/4c794e093025e772e074e1f0cf290603.png",
+    "country": "SE",
+    "affiliation": "Kanew",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "48340ad8-701f-4a40-850d-1f3f3d56d8ca",
+  "teamName": "Team 48",
+  "nameStyle": null,
+  "rating": 1278.005082535015,
+  "matchesPlayed": 2257,
+  "members": [
+   {
+    "id": "SjYTnUhPZ7JeTMXRceqSwNyIVkvB426a",
+    "name": "Samuel Leigh",
+    "image": "https://cdn.discordapp.com/avatars/541538870802513920/65579715f8a12a1fb48da0ca5b44a567.png",
+    "country": "GB",
+    "affiliation": "London School of Economics",
+    "isStudent": true
+   },
+   {
+    "id": "4CigGlgdxe5KitoLXr58gSFAfOem320R",
+    "name": "ThePope",
+    "image": "https://cdn.discordapp.com/avatars/926414331988553759/ebfa5399f8d740031a9e4897df964915.png",
+    "country": "GB",
+    "affiliation": "LSE",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "0c1fea85-495c-41e3-bb30-f6665ddd2cd4",
+  "teamName": "Powerpuff Girls",
+  "nameStyle": null,
+  "rating": 1264.2037779857958,
+  "matchesPlayed": 1816,
+  "members": [
+   {
+    "id": "GudzBrAgIddxZqXQh9Fp1u7leSOS0JFO",
+    "name": "Hamit",
+    "image": "s3:avatar:GudzBrAgIddxZqXQh9Fp1u7leSOS0JFO/1786071363996.webp",
+    "country": "GB",
+    "affiliation": "University of Southampton",
+    "isStudent": true
+   },
+   {
+    "id": "WPvRuE7jXcbcWZ2S6BXFIpJVhcdcDHKY",
+    "name": "Faizan",
+    "image": "https://cdn.discordapp.com/avatars/624688891991031822/58444660624536f204a67e0c88dfcfeb.png",
+    "country": "GB",
+    "affiliation": "brunel university",
+    "isStudent": true
+   },
+   {
+    "id": "zfX2DX9wnP0sCJT5PHGdP9A2J2BGExTr",
+    "name": "Tom",
+    "image": "https://cdn.discordapp.com/avatars/763673309245603840/b58f0311b073013872375120317c9956.png",
+    "country": "GB",
+    "affiliation": "Brunel University",
+    "isStudent": true
+   },
+   {
+    "id": "qZfBl2Na9i371ucxgaOpGFYlMwhBEKLI",
+    "name": "Joachim",
+    "image": "https://cdn.discordapp.com/avatars/762068397634355250/520083f674b8deebffe235b44b7a63a3.png",
+    "country": "GB",
+    "affiliation": "Brunel University",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": "Fighting crime, trying to save the world, here they come just in time, the Powerpuff Girls!",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "7aab74cd-772f-444b-a6c5-0009f416494e",
+  "teamName": "Mimercraft",
+  "nameStyle": null,
+  "rating": 1237.2034671105607,
+  "matchesPlayed": 1817,
+  "members": [
+   {
+    "id": "mkcN3QYQ6EbHZ6tvmrJCvYzUm5ZRiAEV",
+    "name": "Zeth Danielsson",
+    "image": "https://cdn.discordapp.com/avatars/134476337200103424/2c1c759ec5e5a8a7106792afdec5020b.png",
+    "country": "SE",
+    "affiliation": "Magic Mimer Entertainment",
+    "isStudent": false
+   },
+   {
+    "id": "DEonJ3JQ7UBZvsGuTUKCFO2xm4Vn4vDP",
+    "name": "Felix Cenusa",
+    "image": "https://cdn.discordapp.com/avatars/215532807584350208/8183f2eb0704021d2698c00e7aad12ac.png",
+    "country": "SE",
+    "affiliation": "qedas",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": "Karlskrona",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ca7d1e49-7bf1-4d57-b69d-03cd291071aa",
+  "teamName": "SoloHaHa",
+  "nameStyle": null,
+  "rating": 1218.5761147195724,
+  "matchesPlayed": 322,
+  "members": [
+   {
+    "id": "PsPlDmCHnqFLctpMsjSq0aWwVZO5PEMl",
+    "name": "Sibor2000",
+    "image": "https://cdn.discordapp.com/avatars/375341608717123585/a72f3d4fcb4e11f4d732f1ba3174e29a.png",
+    "country": "DK",
+    "affiliation": "DTU - Technical University of Denmark",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ae0dc454-90a6-4315-afce-caa3400e1685",
+  "teamName": "the one piece",
+  "nameStyle": null,
+  "rating": 1217.2464936164947,
+  "matchesPlayed": 2194,
+  "members": [
+   {
+    "id": "qsJWvIcBVBOGsHsWxrcTfE2vbHm04NKU",
+    "name": "Rishav",
+    "image": "https://cdn.discordapp.com/avatars/1293220659228311647/0b5b2e652a967919c8127876185c45d3.png",
+    "country": "IN",
+    "affiliation": "kr mangalam university",
+    "isStudent": true
+   },
+   {
+    "id": "MueVwrpX7BpcOeqzLrLPMbOqORpyHxwV",
+    "name": "S Tharudhatri",
+    "image": "https://cdn.discordapp.com/avatars/704298801430790212/252e7ec48f0e50809299cd739a4a9d92.png",
+    "country": "IN",
+    "affiliation": "K R Mangalam University",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "db4ecf72-b4d4-43dd-b94b-66d29bbdb81d",
+  "teamName": "Git Glam",
+  "nameStyle": null,
+  "rating": 1135.7554621587883,
+  "matchesPlayed": 1671,
+  "members": [
+   {
+    "id": "q2kFUXYJdBYdLmJxpxoA4zkssUgeZUpa",
+    "name": "Ellicogg",
+    "image": "https://cdn.discordapp.com/avatars/607292724676132875/ffaa5fd2725854f97018eeb64ad30a63.png",
+    "country": "SE",
+    "affiliation": "Uppsala University",
+    "isStudent": true
+   },
+   {
+    "id": "PdixLJl3sK0gXrYpieuuoc7KGM9UWilC",
+    "name": "Annika",
+    "image": "https://cdn.discordapp.com/avatars/1030849503273685104/ddddbdb2a71bd069e8280964ede4abff.png",
+    "country": "SE",
+    "affiliation": "Uppsala University",
+    "isStudent": true
+   },
+   {
+    "id": "QKHA7nEJn9krDOuav2Tph59IVGhYkNRf",
+    "name": "EllenBellen",
+    "image": "https://cdn.discordapp.com/avatars/1150531787785781399/1628fc11e7961d85181295493426b775.png",
+    "country": "SE",
+    "affiliation": "Uppsala University",
+    "isStudent": true
+   },
+   {
+    "id": "h0ZJqYUFpCGJgo74AdJNWdrz7ZzCatiG",
+    "name": "Alexandra Barbu",
+    "image": "https://cdn.discordapp.com/avatars/1143845185625792643/90a4895e267dd7f9e09c75d25bd948da.png",
+    "country": "SE",
+    "affiliation": "Uppsala University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "67fd8683-c7dc-433d-a962-aba14fb99d72",
+  "teamName": "Hiver01",
+  "nameStyle": null,
+  "rating": 1122.1174269737196,
+  "matchesPlayed": 1219,
+  "members": [
+   {
+    "id": "1JztENuA4rjoEDS2SvyiH99fDZTEPQSh",
+    "name": "Hiver",
+    "image": "https://cdn.discordapp.com/avatars/809504230196510771/837cddbdac7b3ba957b4a79c31552d45.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "787dda79-ced2-4496-aa54-3efe7b087ef1",
+  "teamName": "Memtrace",
+  "nameStyle": null,
+  "rating": 1112.1587947566604,
+  "matchesPlayed": 2032,
+  "members": [
+   {
+    "id": "le6qsIGZrL7Nf2A3YZNapDUHZCNrmPan",
+    "name": "RoX_KD",
+    "image": "https://cdn.discordapp.com/avatars/261614742374711296/b9133049d84aad1d8de74269ff7ebdbd.png",
+    "country": "DK",
+    "affiliation": "Memtrace",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "df8fccb1-5f98-427d-b37f-efb624edfc45",
+  "teamName": "PromptNPray",
+  "nameStyle": null,
+  "rating": 1070.3147999304936,
+  "matchesPlayed": 2260,
+  "members": [
+   {
+    "id": "5t47VlsuW5h3d3ygzhq3AnUnVBg066FB",
+    "name": "Zak",
+    "image": "https://cdn.discordapp.com/avatars/176651219245203457/813e938495d965650f07eb1fa9a54b82.png",
+    "country": "SE",
+    "affiliation": "BTH",
+    "isStudent": true
+   },
+   {
+    "id": "GPv5xeDSjBwR91UkrPkOCm8GiHh0KBf6",
+    "name": "Bokhtair Mehedy",
+    "image": "https://cdn.discordapp.com/avatars/1488424370912100452/9a5aeac75fcca6bd7e4766b9ef687cb6.png",
+    "country": "SE",
+    "affiliation": "Blekinge Institue of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "t2oM1HpqgsLWpuVOwob0B4oXdvFm4Sj3",
+    "name": "chappi",
+    "image": "https://cdn.discordapp.com/avatars/1182912854752501842/97a0b89b414d7194fe6d238a432c62ba.png",
+    "country": "SE",
+    "affiliation": "BTH",
+    "isStudent": false
+   },
+   {
+    "id": "rwNuXfm9szxknG82XfMx0JOkEtz72xTV",
+    "name": "Ahnaf Abdullah",
+    "image": "https://cdn.discordapp.com/embed/avatars/0.png",
+    "country": "BD",
+    "affiliation": "Independent University, Bangladesh",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "366dc887-e256-4d5c-a5e8-015fb12a52a0",
+  "teamName": "ArjunWorks",
+  "nameStyle": null,
+  "rating": 1050.17377938771,
+  "matchesPlayed": 1636,
+  "members": [
+   {
+    "id": "PPAtvZsXdM1a3Me0u49CHlxfG4P1yFtW",
+    "name": "Arjun Ponnaganti",
+    "image": "https://cdn.discordapp.com/embed/avatars/5.png",
+    "country": "SE",
+    "affiliation": "arjunworks",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": "Solo founder-builder from Uppsala. Building autonomous bots with fast iteration, disciplined testing, and AI-assisted coding. Competing under arjunworks.",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "757afa4a-d1b9-4c85-b25c-d8c53d29c141",
+  "teamName": "Innovex",
+  "nameStyle": null,
+  "rating": 1047.3015193426263,
+  "matchesPlayed": 1991,
+  "members": [
+   {
+    "id": "MLf4ufbKbBYtQHKgctLWyitpJRmDDQZY",
+    "name": "Subhranshu Mohanty",
+    "image": "s3:avatar:MLf4ufbKbBYtQHKgctLWyitpJRmDDQZY/1785764392945.webp",
+    "country": "IN",
+    "affiliation": "SAI International School",
+    "isStudent": true
+   },
+   {
+    "id": "iLKCovcWRBWWalw2kfpuM6TcBnxhgN5P",
+    "name": "Afiya",
+    "image": "s3:avatar:iLKCovcWRBWWalw2kfpuM6TcBnxhgN5P/1785764528113.webp",
+    "country": "IN",
+    "affiliation": "SAI International School",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "2d27ece9-7dfa-464d-9dde-26a81665a542",
+  "teamName": "Tim Tam",
+  "nameStyle": null,
+  "rating": 997.0316701673738,
+  "matchesPlayed": 1268,
+  "members": [
+   {
+    "id": "POB3lD9oFiFL26f84vXnoZLUJKnE9ZsP",
+    "name": "Marius Bj\u00f8rhei",
+    "image": "https://cdn.discordapp.com/avatars/543502661236949036/5440150a1538fe7c9acc528c45e12c01.png",
+    "country": "NO",
+    "affiliation": "Olympiadetoppen",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ba734ff9-98d3-424b-b159-c9ebabaa2dd3",
+  "teamName": "Kvarnholmen",
+  "nameStyle": null,
+  "rating": 993.6493348641304,
+  "matchesPlayed": 1894,
+  "members": [
+   {
+    "id": "WPr8c7NKJQDLwo9bePEV3yd6WAw64XMj",
+    "name": "Lucas Hellstr\u00f6m",
+    "image": "https://cdn.discordapp.com/avatars/197062207274614784/7f1cc837f90353fd1f2199c86495c1bd.png",
+    "country": "SE",
+    "affiliation": "Seven Time AB",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "52feee63-8aac-46da-a0be-c11e034bbc9b",
+  "teamName": "Prompt Engineers Anonymous",
+  "nameStyle": null,
+  "rating": 841.2408657384112,
+  "matchesPlayed": 2226,
+  "members": [
+   {
+    "id": "lZ9Q18A3BXQXn3YX0rQHGgwxtG1PZp3q",
+    "name": "BasedSigmaMale",
+    "image": "https://cdn.discordapp.com/avatars/155454297860079616/6733b59668d661785de3563e90f1b0b2.png",
+    "country": "DK",
+    "affiliation": "Aarhus University",
+    "isStudent": true
+   },
+   {
+    "id": "0I7Crype1z2klHZuV5B0CJNHWshL3IJf",
+    "name": "sohail",
+    "image": "https://cdn.discordapp.com/avatars/143444705009598464/1e2b949c36d76e533ddec2da01399437.png",
+    "country": "DK",
+    "affiliation": "Lind Capital",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": "Engineermaxxing",
+  "ladderBanned": false
+ },
+ {
+  "teamId": "8891fb82-4389-4416-87d9-05fabe6c82f7",
+  "teamName": "StarTrekker",
+  "nameStyle": null,
+  "rating": 757.9321607829205,
+  "matchesPlayed": 2136,
+  "members": [
+   {
+    "id": "2Re4QA3bNDi1A6XhJUqhGqNsdNxr5Y8N",
+    "name": "ChainsawMan",
+    "image": "https://cdn.discordapp.com/embed/avatars/0.png",
+    "country": "CN",
+    "affiliation": "University of Sydney",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "05686428-b33b-4e07-a619-13a35a9782f2",
+  "teamName": "Ship Happens",
+  "nameStyle": null,
+  "rating": 756.6379241414869,
+  "matchesPlayed": 1265,
+  "members": [
+   {
+    "id": "neCMJqZ6ZaOo4LlpepOrCqLTQCXkckYf",
+    "name": "Ceylan \u00d6zdemir",
+    "image": "https://cdn.discordapp.com/avatars/1470755180269277318/8409eab1dd50de9aa3ea446fe3feefa6.png",
+    "country": "SE",
+    "affiliation": "CPO Works",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "f7858565-88e4-4547-9e0b-8bc221611ddf",
+  "teamName": "Albert And Einstein",
+  "nameStyle": null,
+  "rating": 746.0685384724184,
+  "matchesPlayed": 1690,
+  "members": [
+   {
+    "id": "w8hO71yR3zPD4GoCmVYrnXpO18xauYy0",
+    "name": "\u144c\u1511\u142f\u1431",
+    "image": "https://cdn.discordapp.com/avatars/254418876081635329/890878b1e0ddfa1bf8e5ff619bfc37a0.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   },
+   {
+    "id": "pem5wWDoDcu9qzsma9tp4UoOEYdnym8z",
+    "name": "Mhirvasm\ud83d\udc3c",
+    "image": "https://cdn.discordapp.com/avatars/548297815718101002/6bf6ad13ef3cdddc7f993b9c59e695c9.png",
+    "country": "FI",
+    "affiliation": "Hive",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "de8e7efa-3bf8-4552-86be-b67f462b6e99",
+  "teamName": "Cookie",
+  "nameStyle": null,
+  "rating": 742.8773545256063,
+  "matchesPlayed": 2057,
+  "members": [
+   {
+    "id": "CqULGb8tg0hFw8TFMG0Jy71OZDDv4eaQ",
+    "name": "Unc. Cookie",
+    "image": "s3:avatar:CqULGb8tg0hFw8TFMG0Jy71OZDDv4eaQ/1785541650200.webp",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "0ca600d2-63bb-41c0-9234-ab37452bdba5",
+  "teamName": "Standalone",
+  "nameStyle": null,
+  "rating": 742.0501542967842,
+  "matchesPlayed": 548,
+  "members": [
+   {
+    "id": "8dPGZCZdyhgCUob6SHSBhZceIIKw41Sh",
+    "name": "Astronerd",
+    "image": "https://cdn.discordapp.com/avatars/344581031011155969/62bed93ca47e55f6e30b50b9d1ef35e6.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "a6273fb2-53e4-45dc-bcb1-d4067dd34f2e",
+  "teamName": "S",
+  "nameStyle": null,
+  "rating": 691.6025832468223,
+  "matchesPlayed": 2290,
+  "members": [
+   {
+    "id": "jZ6R6fsK3MBAdxY6qcXwNlEIv8HyDSrF",
+    "name": "William",
+    "image": "https://cdn.discordapp.com/avatars/643069955603955724/75f7c82f0e1f8fdc2addb51d67ead20c.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "4c970350-bcaa-48b2-9d9b-ded32c130f26",
+  "teamName": "TKB",
+  "nameStyle": null,
+  "rating": 532.3626019590869,
+  "matchesPlayed": 1846,
+  "members": [],
+  "region": "non-nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "4a7f4c9a-6bbd-4883-891c-cf095331b592",
+  "teamName": "vjg",
+  "nameStyle": null,
+  "rating": 475.54191198447586,
+  "matchesPlayed": 2078,
+  "members": [
+   {
+    "id": "F5UkJZmT2w086stpDNxI7KrxJSGaSnzg",
+    "name": "vjg",
+    "image": "https://cdn.discordapp.com/avatars/1267528674383630417/18e3ad93d1842b8a93170b3ad5f71f25.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "22fca991-7662-4e0d-97d3-c6e5d1bbe96e",
+  "teamName": "horse",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "g87tIqCyCW0IfRc9xhzbowF5dao40oxP",
+    "name": "Pasna",
+    "image": "https://cdn.discordapp.com/avatars/206496185924583424/7877823de2ad1fa4968205489cab5b3c.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "54625736-79f5-4196-929d-ecdfcb5f7685",
+  "teamName": "sunflower",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "06l5kGUO7cN2rHOFzzyOAjY8OSfWzdOW",
+    "name": "pechi",
+    "image": "https://cdn.discordapp.com/avatars/553238310374342676/8eb5ab09b2347efe122290f99469cfea.png",
+    "country": "GB",
+    "affiliation": "University of Cambridge",
+    "isStudent": true
+   },
+   {
+    "id": "TjJ8l4HwGLZAp6OFavXLmGDpv5FJJKoy",
+    "name": "Yassine Chebil",
+    "image": "https://cdn.discordapp.com/embed/avatars/1.png",
+    "country": "GB",
+    "affiliation": "University of Oxford",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "81023bf5-c9d0-4553-9879-afb62737ba80",
+  "teamName": "BTW",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "7Yzwg4GNCL9klTQxqSL37VLkm5brTJ7a",
+    "name": "Artem Kuchmambetov",
+    "image": "https://cdn.discordapp.com/avatars/460400887886512128/641272a4976b3e3fa9c2a835d46cbd5b.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ae3301a8-d0ef-476e-9e49-43c7a7d56611",
+  "teamName": "Tether",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "eA56yYbBnpfIBR0i7DV9THFfyhhyfVvi",
+    "name": "Nutshell",
+    "image": "https://cdn.discordapp.com/avatars/853143721016819752/4b5230b3abec05a43ca25b89ae57c478.png",
+    "country": "FI",
+    "affiliation": "Centria University of Applied Sciences",
+    "isStudent": false
+   },
+   {
+    "id": "zvMdHkjxtBa2RiAYOBMaiDErUPskClLW",
+    "name": "Prks",
+    "image": "https://cdn.discordapp.com/avatars/811528493966819348/7bb9640224a22044099e26a53a46e1ec.png",
+    "country": "FI",
+    "affiliation": "Centria University of Applied Sciences",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "7dc62bdd-9d15-4db5-837d-66393dfbba24",
+  "teamName": "Teamjuanjuan",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "RGwmPufo4Br8D5FNLLTl1mVPmLLezbBA",
+    "name": "Zhang Jingyuan",
+    "image": "https://cdn.discordapp.com/avatars/1349510582826438719/1febf1017f64c260bb8d39028bf93dd9.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "87029924-54b2-4bee-b96e-1a2d0d7cf76d",
+  "teamName": "Top Hackers",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "83srVDBjYam1ezeZFFX2jSQGS8RqbEkm",
+    "name": "Ali",
+    "image": "https://cdn.discordapp.com/avatars/1153756517753950258/819d7ed2a2eae1c021a87d165cab0fd6.png",
+    "country": "DK",
+    "affiliation": "Aarhus University",
+    "isStudent": true
+   },
+   {
+    "id": "arfAnmqWKXBTYoPBlh6AkKF0b04KGUot",
+    "name": "Ali MQ",
+    "image": "https://cdn.discordapp.com/avatars/1290597482211971125/de91bb5e4fef030751a8836db17883a0.png",
+    "country": "DK",
+    "affiliation": "Aarus University",
+    "isStudent": true
+   },
+   {
+    "id": "joWuOSpSvmcWbRmJ99cNp5aCI9Bp9DfI",
+    "name": "MoaveniK",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "DK",
+    "affiliation": "Aarhus University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "007db512-1ed8-49f7-8da9-ee514086b197",
+  "teamName": "ZenCoders",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "GHhgjIsM8nHdJlX4Fj35pMffMHMag6fh",
+    "name": "Anindya Kundu",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "SE",
+    "affiliation": "Ericsson AB",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "4cf68088-8fa1-41f4-a697-f2dbbe5ac3e9",
+  "teamName": "piratj",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "7ZcPNVvTGPTGDCjHF4gcypd7B9ElV5HQ",
+    "name": "Jannik",
+    "image": "https://cdn.discordapp.com/avatars/1278359938795573343/f936810db866482c5feb409f405e1028.png",
+    "country": "DE",
+    "affiliation": "KTH Stockholm",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "00ba6b54-88ba-4cbd-9064-be51d56a0fde",
+  "teamName": "3D Sthlm",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "GVaa6kbbFSZphdDG6SH9Ou0PyHlSnxhD",
+    "name": "3D Stockholm",
+    "image": "https://cdn.discordapp.com/avatars/841203660406915073/1c41e8829f0b4d30209ce34c455e66cf.png",
+    "country": "SE",
+    "affiliation": "teknikh\u00f6gskolan",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "8f165c60-912c-47a1-9b89-66244959637f",
+  "teamName": "Code and decode",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "v4eZnp41YvwH5GASwBtvUyMdR8TORO3H",
+    "name": "Tammy",
+    "image": "s3:avatar:v4eZnp41YvwH5GASwBtvUyMdR8TORO3H/1785266080377.webp",
+    "country": "GB",
+    "affiliation": "University of Southampton",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "a09d20ab-7550-48fc-8467-67197c71f921",
+  "teamName": "Uncs",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "ulPattUYKKxhufYUS7pPXnacIl1sQcv0",
+    "name": "Karl oa",
+    "image": "https://cdn.discordapp.com/avatars/163814001430626304/22487c250b4b06a37297f69538aa5f52.png",
+    "country": "SE",
+    "affiliation": "Fireshard AB",
+    "isStudent": false
+   },
+   {
+    "id": "kAIFtwHnzvpoSqZ3uizId9utCqHeZ1dj",
+    "name": "Jerbo",
+    "image": "https://cdn.discordapp.com/avatars/95512264827731968/68d570d97a46da4953dc4dbeba0cac4b.png",
+    "country": "SE",
+    "affiliation": "TomJerbo AB",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "2fb728ef-83bb-4a48-9bd8-7005a1085423",
+  "teamName": "Hirn",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "V7pbVhhWOaJvm7MrlCbUMbf1ivBWdAfe",
+    "name": "Marten",
+    "image": "s3:avatar:V7pbVhhWOaJvm7MrlCbUMbf1ivBWdAfe/1786280609561.webp",
+    "country": "SE",
+    "affiliation": "Hirn Labs at Chalmers University of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "zppFI4fYnvCR3JY4l06ItBMWa2fBhf7f",
+    "name": "Frida Jacobson",
+    "image": "https://cdn.discordapp.com/avatars/142380327774584833/98431fb5bdf2900c6761413b0240f962.png",
+    "country": "SE",
+    "affiliation": "University of Gothenburg",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "eae881f2-9fe2-492d-bb9c-02046fe2dcae",
+  "teamName": "Codzilla",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "1l0fq55jsFmJIAp070PTkdq0Q6dhY4Zf",
+    "name": "Mubeen Khan",
+    "image": "https://cdn.discordapp.com/avatars/294767021953122304/fb790664834371971f6bcf9520c83eb6.png",
+    "country": "FI",
+    "affiliation": "University of Oulu",
+    "isStudent": true
+   },
+   {
+    "id": "ffJwEBpTX3WdOvY1lgKmBje2sI1v0BPN",
+    "name": "Rayed",
+    "image": "https://cdn.discordapp.com/avatars/259184165897895937/ad7b6eef3f7319e7a9067735407dbea4.png",
+    "country": "FI",
+    "affiliation": "University of Oulu",
+    "isStudent": true
+   },
+   {
+    "id": "Tvhn7ezPcdUuZM5dqfyjulFs65j6S6od",
+    "name": "Vu Truong",
+    "image": "https://cdn.discordapp.com/avatars/331244006262439937/1350e47dc6457586c3fa0a8ffbb36b50.png",
+    "country": "FI",
+    "affiliation": "University of Oulu",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "54e1cd89-5e38-4b28-9d3f-0e5ff12c631c",
+  "teamName": "Akeno Cult",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "iZofm3lDxygscuGaJmgzgrtM8daJVzdH",
+    "name": "Kushagra",
+    "image": "https://cdn.discordapp.com/avatars/649971656521154572/f57d7d6bab79aba05a05091731aaa668.png",
+    "country": "IN",
+    "affiliation": "K.R. MANGALAM UNIVERSITY",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "bfcf001a-ce3f-48d6-9bef-4bd7e0fcd8ef",
+  "teamName": "beb",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "9CA3e94WeEuorFKU21v7N85jvPBH8mhw",
+    "name": "Ond\u0159ej M\u00edchal",
+    "image": "https://cdn.discordapp.com/avatars/252216013771374594/983e3c83aca4d4bbeee97ca87c590d55.png",
+    "country": "FI",
+    "affiliation": "Aalto University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "4724791f-b81a-4ea0-a3a0-aa2e8195d631",
+  "teamName": "Hrsi",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "ZdWt8rn7zVbPjUX2FrjfrJMfr8EiAStk",
+    "name": "Abdirahman Hersi",
+    "image": "https://cdn.discordapp.com/avatars/1278046846006333562/13eb2017a9ce277130fc7366c091bc80.png",
+    "country": "SE",
+    "affiliation": "Aveexia",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "f9618282-4a2f-4dc9-8c9e-8cb450f9e4d3",
+  "teamName": "test",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "Cp6Yl6T2PgNQOglAZTsNEWqvjXp61p8N",
+    "name": "Bestefar",
+    "image": "https://cdn.discordapp.com/embed/avatars/4.png",
+    "country": "DK",
+    "affiliation": "Aalto",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "82143670-ddf6-43a9-8c1e-8582b8ecf8ba",
+  "teamName": "Zerg At Heart",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "JKBViDRIIXZHELtIRCCon02zMr0uWWNy",
+    "name": "Zerg At Heart",
+    "image": "https://cdn.discordapp.com/avatars/1475829143810605119/6c5996770c985bcd6e5b68131ff2ba04.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "9fecdc6c-4d97-42f9-9b85-5a55bee6adcc",
+  "teamName": "Matrix",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "PZDfO1tY7TO3whJpHaV1KEg57UEdY515",
+    "name": "Hamed",
+    "image": "https://cdn.discordapp.com/avatars/1042905170868179024/8ae83e327a8e6bfc0b2970fea95fa951.png",
+    "country": "SE",
+    "affiliation": "Matrix OS",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "cb842f8b-05bc-4954-a8cd-88d35fa9cf4e",
+  "teamName": "Royal Botters",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "qsEvb4L4DyEd23E719h2cXEhlq7du8Yf",
+    "name": "Django",
+    "image": "https://cdn.discordapp.com/avatars/179602383385395201/1a6d342b5d2cd94ae342b801c0e9f0c5.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "404f685d-5ed5-45f0-b1b3-d254978b0df0",
+  "teamName": "BetterLateThanNever",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "sQdsNt0zA3KOZ8rtd7I92W9t0OiO2Ldj",
+    "name": "Smokie",
+    "image": "https://cdn.discordapp.com/avatars/720990256270278656/ecf88c1acbec02289d98b5b0c3f5dc3e.png",
+    "country": "SI",
+    "affiliation": "Gimnazija Vi\u010d",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "0c35431d-685d-4d8b-a415-588f1bad892e",
+  "teamName": "yutuan",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "i9lBgNsCyOB1EDXNWEpGbTH1MRv6vMh3",
+    "name": "k-xwang | Xinyu Wang",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "FI",
+    "affiliation": "HIVE",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "69c8cc07-0a13-421f-990e-d58f2a2fda2c",
+  "teamName": "lastpopperian_",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "h32KsydIcHh61Y0Rp3EtKsTEY9aP1zq5",
+    "name": "@lastpopperian_",
+    "image": "https://cdn.discordapp.com/avatars/1062323946730565642/81279e9cd50a596230926079c6ca89b1.png",
+    "country": "FI",
+    "affiliation": "University of Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "9da3fb91-671b-4771-92e7-20012d00ff64",
+  "teamName": "Einherjar",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "iDf1funfbiBBdpGfmXj9Htev2BaNGJh7",
+    "name": "William",
+    "image": "https://cdn.discordapp.com/avatars/269175880721498112/10616b084cc3052e5b84afc59876c899.png",
+    "country": "SE",
+    "affiliation": "Stealth",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "7a724530-ff5d-441b-b56d-1cfd9279fbaa",
+  "teamName": "E3",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "K8pk17ZpesmCxNtBUOHIAOszrYjZ605U",
+    "name": "Alexis Jhon Estacio Marasigan",
+    "image": "https://cdn.discordapp.com/avatars/319937451424743425/21a9e75d86db4685ff45036b6af1aaed.png",
+    "country": "SE",
+    "affiliation": "Redpine",
+    "isStudent": false
+   },
+   {
+    "id": "K713oPPmc728ADVmxSlDiytmfzQGHkce",
+    "name": "VperVale",
+    "image": "https://cdn.discordapp.com/avatars/489074331956150274/90e11ec467bc0c125d7fea06a0b3a2dc.png",
+    "country": "IT",
+    "affiliation": "Politecnico di Milano",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "71da995d-6bed-4114-aaa2-04a37914d329",
+  "teamName": "indico",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "lDucfgQ3ewv4Uxy7AIN3D1J1JRlil0GU",
+    "name": "Nikita Kravtsov",
+    "image": "https://cdn.discordapp.com/avatars/396337106546327562/b86dfe2ef91bd71ce5958648da5cb893.png",
+    "country": "EE",
+    "affiliation": "Tallinn University of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "39bb9bc6-39b5-42e0-9e49-0908157fa337",
+  "teamName": "nkizo",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "bmYb8DO7K92QwMPdAaRtdPDaNGZ08ldy",
+    "name": "nkizo",
+    "image": "https://cdn.discordapp.com/avatars/445928501577777159/d02fe5cd26b8670164d3b708f8b87a85.png",
+    "country": "EE",
+    "affiliation": "University of Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "3d8593da-3bd2-4c7f-9cfc-9660a8ecc38a",
+  "teamName": "Goldman Stanley TMT quants",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "G3zr5Z7iULBnfUouKu6XNwViDQV5ZgaU",
+    "name": "Npc",
+    "image": "https://cdn.discordapp.com/avatars/408993869221593088/91d4b3a193adbca7d85547020979156c.png",
+    "country": null,
+    "affiliation": null,
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ce5c9e1a-3d31-4ead-85e3-c2614d6973f6",
+  "teamName": "old but bronze",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "uhpHC2rUnLOUbIvA9bbBrK0UD0AeWJkE",
+    "name": "oli",
+    "image": "https://cdn.discordapp.com/avatars/404244659024429056/9a59c5e40427bd3a0e01176829dae31c.png",
+    "country": "GB",
+    "affiliation": "University of Cambridge",
+    "isStudent": false
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "3821aeec-a87f-41ad-87fe-f19b130b4fe6",
+  "teamName": "CybWomen",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "XruIfUImatRQFP5dokHOwUdzgllLqsFB",
+    "name": "Seerat",
+    "image": "https://cdn.discordapp.com/avatars/1196174091485466847/87e8450eb2082f179b6bf4fda441d76b.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "48d0f720-87e1-424b-8f70-1d1994975996",
+  "teamName": "Glory",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "39NAsXkXMyMspsvSQdEKrNRvOCb3ROXn",
+    "name": "Glory",
+    "image": "https://cdn.discordapp.com/avatars/515856062377623587/30bbe6e6e6a1b08bf243a7db4a298300.png",
+    "country": "SE",
+    "affiliation": "talje",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "a2e76bd3-4db4-4da4-8a17-6c3f37dfee24",
+  "teamName": "bot4bot",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "Oc1XdmHZZKIDC9E4VkIDo5IZgVCPmlQo",
+    "name": "Hanna",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   },
+   {
+    "id": "wGChsA8saq5SlMEEAQNwzZY6NTxb6RfQ",
+    "name": "Arad",
+    "image": "https://cdn.discordapp.com/avatars/690629521967284235/3125deaed3eb90e793a3c66811f33625.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "250d8caf-12f4-4a6d-b844-a1a5fc28769d",
+  "teamName": "Cerro Rico",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "q8UHxBSBUv4kVP7fWDAQKtlYBxlNwItz",
+    "name": "Leo Fj\u00e4tstr\u00f6m",
+    "image": "https://cdn.discordapp.com/avatars/343469459283116033/ff0c8666372ca5ce44d47098a856f1e1.png",
+    "country": "SE",
+    "affiliation": "Lund University",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "f197faf4-72ee-49c8-a98a-431430ce3356",
+  "teamName": "PixelBotics",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "FQlW7ml6iNeFD8frP13KcDitKxEMJDRW",
+    "name": "Sara",
+    "image": "https://cdn.discordapp.com/avatars/1301181686037610499/a7eec74b804bead0a1a0841210627d5c.png",
+    "country": "SE",
+    "affiliation": "Lovable",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "ec5c9d4a-29db-491a-9e99-b060b44bbe74",
+  "teamName": "sooloo",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "roX3ACAB3kJW9mWSfTJvhAGV3DNW0LVd",
+    "name": "Markkkku",
+    "image": "https://cdn.discordapp.com/embed/avatars/4.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "6b08d8bf-05f3-477b-8a85-01de964d49ed",
+  "teamName": "Make Fire",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "Xe5Y6XK3NAiTKDMK95mL6ZbtTm3yreCs",
+    "name": "IsmailFateen",
+    "image": "https://cdn.discordapp.com/avatars/1244603375845117982/aa9135c771d0c6a4ce0003402b73a55d.png",
+    "country": "EG",
+    "affiliation": "Arab Academy for Science, Technology and Maritime Transport",
+    "isStudent": true
+   },
+   {
+    "id": "T94nXpYGXSZv78pepAUT3YDj5nkcw05M",
+    "name": "3mara",
+    "image": "https://cdn.discordapp.com/avatars/745206051917398064/f4b72dcfc5460ebb86f82ec4168978a3.png",
+    "country": "EG",
+    "affiliation": "Ain Shams University",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "aa69c8d4-7652-4f1f-8b8d-236f20a8803c",
+  "teamName": "KTH",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "dT9nWvbHtlzAXG0cUyb3wN6F9lQQY5TK",
+    "name": "Vinay Keswani",
+    "image": "https://cdn.discordapp.com/embed/avatars/1.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "b630eeea-6a5a-4d3f-9cd2-3192e9a9304e",
+  "teamName": "Team_",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "UekupKQ3j4w0HoiE7OZdA24MsHQl0AKV",
+    "name": "Jontesss",
+    "image": "https://cdn.discordapp.com/embed/avatars/3.png",
+    "country": "SE",
+    "affiliation": "KTH Royal Institute of Technology",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "4fcab3f6-f7f1-464a-a8ca-0050febf7248",
+  "teamName": "Frontier",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "yhwHCYWKRXx32NKTAQPlTd8c0ZKbUjYa",
+    "name": "Vince",
+    "image": "https://cdn.discordapp.com/avatars/185793987850797056/35a28b67314c24101dafef5b05ee1a09.png",
+    "country": "SE",
+    "affiliation": "KTH",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "46c2524b-1fc7-47f4-b296-3e7001e39c5b",
+  "teamName": "Test-Run",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "hDRXwY8leJxMSDM6pjs4InKlHrWWsnRu",
+    "name": "Manas Reddy Arumalla",
+    "image": "https://cdn.discordapp.com/avatars/551655908263067658/cb8d89f1dd8333ca8912f034b286bb8d.png",
+    "country": "DE",
+    "affiliation": "FAU Erlangen-N\u00fcrnberg",
+    "isStudent": true
+   }
+  ],
+  "region": "non-nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "f4d96c11-097d-4f7d-99de-1b9b2efc75fb",
+  "teamName": "Kling Technologies",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "BhCstqkaSd0N5pZdfLJAlxpsQKvP2SPX",
+    "name": "Klingen",
+    "image": "https://cdn.discordapp.com/avatars/188715719930806282/dc78e4777eef396af219760d6797cc4a.png",
+    "country": "SE",
+    "affiliation": "Kling Technologies",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "bc463585-10cb-4343-826c-ef562613bfeb",
+  "teamName": "Viterbi is key",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "jLOJ13rIJmJhqcKyJNsnXoGRD4gO5XPk",
+    "name": "RamtinJ95",
+    "image": "https://cdn.discordapp.com/embed/avatars/2.png",
+    "country": "SE",
+    "affiliation": "intric",
+    "isStudent": false
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "non-student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "994bc2d3-7fd1-44f5-a0fb-e42a7adb7a71",
+  "teamName": "ICECOLD",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "oESYWspadP8Wpr5PO5jnxpXqns67YBEO",
+    "name": "ICECOLD",
+    "image": "https://cdn.discordapp.com/avatars/239787522958426133/b0a143e5bcb59dbe4a18bed58d37a0d2.png",
+    "country": "FI",
+    "affiliation": "Hive Helsinki",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ },
+ {
+  "teamId": "e4ef290a-4b10-4a2f-8272-429035a543a9",
+  "teamName": "FiveGuys-4",
+  "nameStyle": null,
+  "rating": 0,
+  "matchesPlayed": 0,
+  "members": [
+   {
+    "id": "bvrwAcM1YYnG1XfoPtDZLqRi9XsnucqR",
+    "name": "Hoang Phuoc Vu",
+    "image": "https://cdn.discordapp.com/avatars/1041298188084187146/d63da2c9436db19ee3486bf7b96afba3.png",
+    "country": "FI",
+    "affiliation": "hive",
+    "isStudent": true
+   }
+  ],
+  "region": "nordic",
+  "studentStatus": "student",
+  "bio": null,
+  "ladderBanned": false
+ }
+]

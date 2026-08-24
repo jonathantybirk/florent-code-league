@@ -1,0 +1,4 @@
+source_commit = "2ac9d2763b39c5c6ee237b09b1a354f734ba52ba"
+source_path = "bots/jon/probes/sharedglobals"
+engine = "2.3.4"
+status = "probe"

@@ -1,0 +1,4 @@
+source_commit = "4be3de29ebbeca963b045d3247b9c1b2b62b3b86"
+source_path = "bots/common/starter"
+engine = "2.3.3"
+status = "maintained"
