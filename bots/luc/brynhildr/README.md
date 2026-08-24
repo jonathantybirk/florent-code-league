@@ -18,6 +18,11 @@ that beat it: `not adgato` kept one Builder and one Harvester, then placed four
 Sentinels at rounds 62--84, winning three of five while Bean's scaled economy
 was still converting into field defence.
 
+The matching modular four-Builder economy experiment was also tested online as
+v123 and rejected at 2/30: it lost 0--5 to each of Bean counters, not adgato,
+Pantheon, Leviathan, and sporks.  Dense economy is the opponent signature to
+punish, not an opening for Brynhildr to copy.
+
 15 pool maps, both seats, seeds 1-3 (90 games an opponent), fcode 2.3.9:
 
 | opponent | brynhildr | hildr@7a6d86c | steward@366cd1b |
