@@ -138,20 +138,42 @@ def leaderboard_candidates(top_n: int = 3) -> list[dict]:
 
 
 def resolve_source_path(name: str, commit: str) -> str | None:
-    """Find `bots/<owner>/<name>` inside the given commit, across every branch."""
-    try:
-        listing = subprocess.run(
+    """Find `bots/<owner>/<name>` inside the given commit, fetching unseen branches once.
+
+    The farm and bot checkout are separate clones.  Syncing ``x/ladderfarm`` updates the
+    former but does not teach the latter about a commit pushed on a collaborator branch.
+    Queue entries are consumed before export, so treating that stale-clone miss as a final
+    failure silently wastes the requested round.  Fetch every remote branch only on a miss,
+    then retry the exact commit without touching the bot checkout's working tree.
+    """
+    def listing():
+        return subprocess.run(
             ["git", "ls-tree", "-r", "--name-only", commit],
             cwd=BOT_REPO,
             capture_output=True,
             text=True,
             timeout=60,
         )
-    except subprocess.SubprocessError:
+
+    try:
+        result = listing()
+        if result.returncode != 0:
+            fetched = subprocess.run(
+                ["git", "fetch", "--quiet", "origin",
+                 "+refs/heads/*:refs/remotes/origin/*"],
+                cwd=BOT_REPO,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if fetched.returncode != 0:
+                return None
+            result = listing()
+    except (OSError, subprocess.SubprocessError):
         return None
-    if listing.returncode != 0:
+    if result.returncode != 0:
         return None
-    for line in listing.stdout.splitlines():
+    for line in result.stdout.splitlines():
         if line.endswith(f"/{name}/main.py") and line.startswith("bots/"):
             return line[: -len("/main.py")]
     return None
