@@ -474,6 +474,7 @@
   ],
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally.",
   "queue_front": [
+    "brynhildr@6b0b1c1:3",
     "brynhildr@496461e:3",
     "eitri@a3dd609:3",
     "brynhildr@45daadd:3",
