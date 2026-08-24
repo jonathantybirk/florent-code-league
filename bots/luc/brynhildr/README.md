@@ -188,6 +188,42 @@ six Harvesters went down, re-entry near round 530, Core kill at 564 in a game th
 had drawn out to a lost timeout. spar_wall overall 15/30 before, 56/90 across
 seeds 1-3 after; the goal trio rose to 80/76/75 of 90.
 
+## The wall watch (the OpenSverige sweep)
+
+OpenSverige swept v109 0-5 (match `01777bc1`), and all five games had one shape.  A Builder
+and a Launcher leapfrog to our Core and are parked beside it by round 8; barriers go up on the
+ring tiles -- seven of the eight by round 33 in game 1 -- while our bank still holds 450 Ti
+and our attacker is walking; two Sentinels arrive at rounds 44-49, after the rush has spent
+the bank (their four home menders healed the rush back from 54-236 HP every game); one mender
+spawns onto the last free tile and heals 4 a round against 9, and the Core dies on round 112
+with the second mender 2 Ti short.  The Core did nothing about the walls because nothing was
+shooting it yet: `threatened` is what buys menders, and by the time it was true there was no
+tile left to mend from.
+
+Lucas's reading of it: when walls start going up, spawn Builders onto the tiles beside the Core
+so they are standing there, able to heal, when the attack comes.  That is the wall watch
+(`WALL_WATCH`, Core `_wall_watch`):
+
+- **The trigger** is an enemy barrier on a ring tile, or two within Chebyshev 2 of the
+  footprint, or an enemy Launcher within 3 of it with a Builder loitering (OpenSverige's pad
+  lands a round or two before the first barrier, so this fires first).  The watch stays on for
+  `WALL_MEMORY` (40) rounds after the last sighting.
+- **The squad**: `want_menders` rises to `WALL_SQUAD` (3) -- 12 HP a round out-heals the two
+  Sentinels that follow -- but never above the tiles it can use: ring tiles that are not wall,
+  not built on, not under an enemy barrier, and not beside an enemy Launcher (it flings
+  Builders of either team; the Core's spawn and the menders' post selection skip those
+  `grab_zone` tiles too).  One more than the usable count is allowed, to dig.
+- **The money** comes from the bank now: the ring reserve is kept (the rush still goes) and
+  the mend float, but not the burst reserve (`kill_hold`) that otherwise blocks a mender
+  while the bank is short of a kill -- a kill that has to be fired while their Sentinels shoot
+  a Core no mender can reach was never going to be paid for.
+- **Mining is suspended** while the waller (a loitering Builder or a Launcher) stands at our
+  ring: the tiles are the point, and a miner that walks off one hands it over.
+
+It is dormant against everyone who does not wall: the trio and spar_wall panels are identical
+to the build before it, game for game (hildr78 27/30, steward 26/30, gefn 25/30, spar_wall
+19/30 -- spar_wall is a Gunner-mass siege, not a walling).
+
 ## Comms (16 slots)
 
 | slot | writer | content |
