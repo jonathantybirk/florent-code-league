@@ -7,6 +7,15 @@ actually showed.
 
 ## Where it stands
 
+The mass-economy counter at `8973318` additionally carries the attacker's
+observed economy density to the Core.  Four Builders or four belt/Harvester
+assets suppress the speculative opening miner and the phantom 12-HP/round heal
+ring: this preserves all recorded panel wins and changes the Brokkr result from
+49/60 to 50/60.  The rule comes from Bean counters' v92 replays and the strategy
+that beat it: `not adgato` kept one Builder and one Harvester, then placed four
+Sentinels at rounds 62--84, winning three of five while Bean's scaled economy
+was still converting into field defence.
+
 15 pool maps, both seats, seeds 1-3 (90 games an opponent), fcode 2.3.9:
 
 | opponent | brynhildr | hildr@7a6d86c | steward@366cd1b |
