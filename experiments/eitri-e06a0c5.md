@@ -1,5 +1,8 @@
 # eitri@e06a0c5
 
+Superseded before online testing by `eitri@a3dd609`, which adds confirmed
+transit-jam clearing and improves four maps without regression.
+
 Strict six-order planner successor to `eitri@4cb5cb5`. It adds the reverse
 even/odd deposit interleave, which unlocks dense maps that none of the first
 five deterministic orders route well.
