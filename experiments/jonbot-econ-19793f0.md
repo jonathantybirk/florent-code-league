@@ -32,3 +32,10 @@ First online round (submission v120): 20-5. It scored 5-0 versus OpenSverige,
 5-0 versus I Stone, 5-0 versus 0033, 3-2 versus gsxWins, and 2-3 versus Torsko.
 It remains unqualified after five distinct opponents; ladderfarm requires 7 of
 the current closest 10 before comparing expected Elo for promotion.
+
+Second scheduled round: 12-13 -- 4-1 versus TRRR, 3-2 versus Viktor5776,
+2-3 versus Banminary, 3-2 versus Atlas, and 0-5 versus Besvikomat. The two
+farm rounds therefore total 32-18. A separate 4-1 I Stone match occurred
+between them but was not part of either five-opponent farm round. The expanded
+verdict is positive but much less dominant than the initial 20-5 slice, and it
+reinforces judging successors by qualified expected Elo rather than one draw.
