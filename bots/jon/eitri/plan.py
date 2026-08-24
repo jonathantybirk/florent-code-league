@@ -18,6 +18,7 @@ bug that had three of four Builders frozen from round twenty-four.
 import atlas
 import crew
 import network
+import orders
 import walk
 
 _CACHE = {}
@@ -77,6 +78,11 @@ def _build(ct, home):
     if board is None:
         return None
     picks, field = network.survey(board)
+    preferred = orders.get(board.name, board.home)
+    if preferred is not None and frozenset(preferred) == frozenset(picks):
+        lanes = network.lay(board, preferred, field)
+        work, spawns, _ = crew.assign(board, lanes)
+        return Plan(board, lanes, work, spawns)
     best = None
     baseline = None
     for index, order in enumerate(network.insertion_orders(picks)):

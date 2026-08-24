@@ -9,20 +9,26 @@ import board  # noqa: E402
 import builder  # noqa: E402
 import crew  # noqa: E402
 import network  # noqa: E402
+import orders  # noqa: E402
 from fcode import EntityType  # noqa: E402
 
 
 def test_every_map_assigns_every_lane_with_one_to_four_builders():
     for name, (width, height, rows, seats) in atlas_data.MAPS.items():
-        terrain = board.Board(name, width, height, rows, seats[0], seats[1])
-        picks, field = network.survey(terrain)
-        lanes = network.lay(terrain, picks, field)
-        for count in range(1, 5):
-            work, spawns, done = crew.assign(terrain, lanes, count)
-            assigned = [lane for builder in work for lane in builder]
-            assert sorted(assigned) == list(range(len(lanes)))
-            assert len(work) == len(spawns) == count
-            assert len(done) == len(lanes)
+        for seat in range(2):
+            terrain = board.Board(name, width, height, rows,
+                                  seats[seat], seats[1 - seat])
+            picks, field = network.survey(terrain)
+            preferred = orders.get(name, terrain.home)
+            if preferred is not None:
+                assert frozenset(preferred) == frozenset(picks)
+            lanes = network.lay(terrain, preferred or picks, field)
+            for count in range(1, 5):
+                work, spawns, done = crew.assign(terrain, lanes, count)
+                assigned = [lane for builder in work for lane in builder]
+                assert sorted(assigned) == list(range(len(lanes)))
+                assert len(work) == len(spawns) == count
+                assert len(done) == len(lanes)
 
 
 def test_parked_builder_only_yields_to_persistent_friendly_traffic():
