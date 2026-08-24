@@ -18,6 +18,7 @@ lane, so its opening round is a build, not a walk.
 """
 
 from board import STEPS
+import walk
 
 # The match, and how a Harvester pays out over it.
 ROUNDS = 1000
@@ -44,7 +45,7 @@ def assign(board, lanes, count=OPENING):
     for index, lane in enumerate(lanes):
         best = None
         for who in range(count):
-            arrive = free[who] + _walk(where[who], lane.entry)
+            arrive = free[who] + _walk(board, where[who], lane.entry)
             finish = arrive + lane.cost
             if best is None or finish < best[0]:
                 best = (finish, who)
@@ -70,16 +71,13 @@ def value(lanes, done, rounds=ROUNDS):
     return total
 
 
-def _walk(here, there):
-    """A cheap stand-in for the walk between two tiles of the tree.
-
-    Manhattan distance, which is exact down an unobstructed lane and an
-    underestimate around a wall.  The schedule only needs the ordering of
-    candidate finishing times, and a Builder already parked on the far end of
-    a lane is ordered correctly against one still at the Core by this measure.
-    """
+def _walk(board, here, there):
+    """Exact terrain distance between jobs, avoiding future Harvesters."""
     if here is None:
         return 0
+    route = walk.route(board, here, there, board.ore - {there})
+    if route is not None:
+        return len(route)
     return abs(here[0] - there[0]) + abs(here[1] - there[1])
 
 
