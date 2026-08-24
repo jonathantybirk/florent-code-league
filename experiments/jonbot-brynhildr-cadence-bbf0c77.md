@@ -24,6 +24,24 @@ preserves the gain without the regression.
 - Sensitive-map audit, Helheim/Holmgang/Longhouse, both seats, seeds 1-10:
   40-20 versus 30-30.
 - Exact v104 direct mirror, 15 maps, both seats, seeds 1-3: 48-42.
+- Off-pool regression gate on Quarry, String, and Yulerune, both seats and
+  seeds 1-5: 19-11 versus the exact parent's 10-20. Every map improved and no
+  map-level regression appeared, so no topology-specific exclusions were added.
+
+## Online verdict
+
+The first nearby-opponent round (submission v132) finished **16-9**:
+
+- Besvikomat 1-4
+- I Stone 4-1
+- 0033 4-1
+- Banminary 3-2
+- TRRR 4-1
+
+This is encouraging but not promotion evidence yet: the build has faced only
+five of the ten closest opponents, below ladderfarm's 7/10 qualification gate.
+It is now a normal coverage bot, not a forced-front entry, so future rounds fill
+the missing nearby-opponent coverage when the regular selector chooses it.
 
 The bot is vendored under `bots/jon/` so later shared Brynhildr changes cannot
 silently alter this exact experimental base. Promotion remains ladderfarm's

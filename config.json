@@ -39,7 +39,8 @@
   "_coverage_k": "How many of the nearest teams a coverage round tries to fill, default 10. Only affects opponent choice once a round has already decided to fill coverage -- the promotion bar still uses the closest 10 and QUALIFY_MIN, so widening this changes who the flagship plays, not who we trust enough to promote.",
   "coverage_bots": [
     "hildr@7a6d86c",
-    "hildr@846139b"
+    "hildr@846139b",
+    "jonbot_brynhildr_cadence@bbf0c77"
   ],
   "_coverage_bots": "Bot ids whose rounds pick opponents by coverage instead of by information: the teams closest to us in rating that this build has not played yet, topped up from the pool if there are fewer than five. Same selection the flagship falls back to when it drops below the qualification bar.",
   "test_next": [
