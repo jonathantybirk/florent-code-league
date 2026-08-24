@@ -21,3 +21,10 @@ parent's exact win/loss sets. A 30-game direct mirror scores 17-13.
 
 The candidate is a refinement of the active Jonbot family, not Sigrun. Online
 promotion remains ladderfarm's qualified expected-Elo decision.
+
+## Online verdict (v131)
+
+The one nearby-only round scored 11-14: Besvikomat 1-4, I Stone 5-0, 0033 1-4,
+Banminary 2-3, and TRRR 2-3. The result does not justify promotion or additional
+priority rounds. The separately queued `jonbot_brynhildr_cadence@bbf0c77`
+targets the repeatedly selected v104 flagship instead of extending this line.
