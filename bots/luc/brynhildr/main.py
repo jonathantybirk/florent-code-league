@@ -486,6 +486,16 @@ class Player:
         self.prev_built = built
         alive = self._sentinels_alive(ct)
         their_dps, their_near, loiterers, shooters = self._scan_home(ct)
+        # A ring Builder has one tile more reach toward a max-range Sentinel than the Core.
+        # Its report is written after the Core's turn and consumed here on the next one; the
+        # Core clears SLOT_SHOOTER again at the end of this turn, so a dead/moved spotter
+        # expires naturally unless a Builder refreshes it.  Feed the sighting into the normal
+        # defence arithmetic rather than letting Builders bypass the Core's race budget.
+        reported = self._read(ct, SLOT_SHOOTER)
+        if _extra(reported) == 1 and _unpack(reported) is not None:
+            self.sentinels_on_us = max(1, self.sentinels_on_us)
+            their_dps = max(9, their_dps)
+            shooters = max(1, shooters)
         menders = self._menders_home(ct)
         enemy_ring_walls = self._enemy_ring_walls(ct)
         # A single ring barrier is common incidental harassment.  Live v116 converted a
@@ -1692,6 +1702,11 @@ class Player:
         # Only lanes that shoot Builders count -- a ring Sentinel's ray through our Core is
         # where the menders have to stand.
         self._dist, self._came = self._flood(here, self.home_danger)
+        # Do not perturb a live finishable race.  Once the Core is genuinely in danger, pass
+        # it any fixed shooter this closer Builder can see; next round the Core can reserve
+        # the turret and ammunition through its existing ORD_TURRET machinery.
+        if not (flags & ORD_RACE) and self._core_hp(ct) < 300:
+            self._report_seen_sentinel(ct)
         # 0. a 3 Ti barrier in a live Gunner lane, when it is a step away: it absorbs that
         #    Gunner's whole output for less than a round of mending costs (steward: "the 3 Ti
         #    answer before the 30 Ti one").  Four Gunners on fimbulwinter got four barriers
@@ -2040,6 +2055,19 @@ class Player:
             sentinel_ok = False
         kind = EntityType.SENTINEL if sentinel_ok else EntityType.GUNNER
         return self._seat_turret(ct, here, targets, kind)
+
+    def _report_seen_sentinel(self, ct):
+        """Give the Core a one-round sighting of a fixed shooter outside Core vision."""
+        own = set(self.mine_tiles)
+        best = None
+        for known in self.turrets.values():
+            if known[3] != EntityType.SENTINEL or not (known[2] & own):
+                continue
+            gap = min(_cheb(known[0], tile) for tile in own)
+            if best is None or gap < best[0]:
+                best = (gap, known[0])
+        if best is not None:
+            self._write(ct, SLOT_SHOOTER, _pack(Position(best[1][0], best[1][1]), 1))
 
     def _anti_builder_gunner(self, ct, here):
         """A rotatable Gunner against Builders working at our Core: it shoots the first thing on
