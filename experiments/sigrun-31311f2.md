@@ -1,7 +1,9 @@
 # sigrun@31311f2
 
-Normal-queue successor to `sigrun@5b3fba2`; three rounds at the tail of
-`test_next`, never `queue_front`.
+Successor to `sigrun@5b3fba2`. It was initially queued normally, then moved to
+the front for two rounds after explicit approval to resume limited priority
+testing. Both rounds are pinned to the ten teams currently nearest our #27,
+1762-rated ladder position; no top-five sampling is used.
 
 ## Change
 
