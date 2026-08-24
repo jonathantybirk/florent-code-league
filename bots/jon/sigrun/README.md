@@ -112,7 +112,11 @@ Panel: fifteen pool maps, both seats, seeds 1-3, 450 games a build.
 | v109 (the flagship) | 332-118 | 45-45 | 78-12 | 78-12 | 56-34 | 75-15 |
 | **sigrun** | **344-106** | **51-39** | 78-12 | 78-12 | **59-31** | **78-12** |
 
-Head to head on the pool, one seed: **17-13**, from 15-15.
+Head to head on the pool the fork is **0.567 against v109 in three independent seed
+blocks**: 17-13 on seed 1, 51-39 across seeds 1-3 (the panel row above), and **85-65 on
+held-out seeds 4-8**, which chose nothing. The flagship against a copy of itself is
+exactly 75-75 over the same 150 games, so the held-out block is +20 games on a
+measurement with no noise in it. Nothing here is fitted to a seed.
 
 ## What was measured and thrown away
 
