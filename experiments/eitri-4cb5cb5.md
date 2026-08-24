@@ -1,5 +1,8 @@
 # eitri@4cb5cb5
 
+Superseded before online testing by the reverse-interleave successor
+`eitri@e06a0c5`.
+
 Planner-search successor to `eitri@7bb92f2`. Executor lifecycle and contention
 handling are unchanged.
 
