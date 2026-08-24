@@ -1,5 +1,8 @@
 # eitri@a3dd609
 
+Superseded before online testing by `eitri@7f9c590`, which keeps this executor
+and adds offline-searched, seat-specific plans.
+
 Confirmed-transit-jam successor to `eitri@e06a0c5`.
 
 The executor now reserves each Builder's planned paths to and between lanes.
