@@ -1,5 +1,8 @@
 # jonbot_income_v103@2344f91
 
+Superseded before online testing by `jonbot_income_v113@166dbac`, which applies
+the same timing-preserving movement to the newer expected-Elo flagship.
+
 Timing-preserving mining-movement fork of the actual live flagship,
 `brynhildr@84d92d3` (submission v103).
 
