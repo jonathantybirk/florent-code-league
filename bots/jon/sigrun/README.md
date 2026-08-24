@@ -106,6 +106,11 @@ skald A against spar_wall goes from a loss on round 150 to a win on round 564. A
 the panel it is **+4, all of it in the spar_wall column** (59-31 to 63-27); the other
 four columns do not move at all.
 
+Re-measured on the merged file after `bots/jon/sigrun` picked up another agent's miner
+and forage work, the same hunk is worth the same **+4**: spar_wall 62-28 without it,
+**66-24** with, over fifteen pool maps in both seats at seeds 1-3. It is not made
+redundant by their economy changes and they do not subsume it.
+
 ### 3. paths B opens with a miner
 
 `openingstrat/` (vendored from `brynhildr_econ_opening`) spawns one precomputed mining
@@ -127,6 +132,15 @@ The catalog is cut from 3,539 lines to the one map the gate can reach, and
 and Core, so a foreign map sharing a start cannot get paths' plan laid on terrain that
 does not describe it.
 
+## A note on ownership
+
+`bots/jon/sigrun` is no longer a single agent's directory: it has commits from more
+than one, and a `git rebase` will merge a local hunk onto someone else's newer file
+silently and cleanly. A clean rebase is **not** evidence that a benchmark still
+describes the build. Every number below was re-measured on the file as it stands after
+merging; keep the exact benchmarked directory around (`bots/jon/sig_<change>`) so the
+diff is always available.
+
 ## Where it stands
 
 Panel: fifteen pool maps, both seats, seeds 1-3, 450 games a build.
@@ -142,6 +156,31 @@ blocks**: 17-13 on seed 1, 51-39 across seeds 1-3 (the panel row above), and **8
 held-out seeds 4-8**, which chose nothing. The flagship against a copy of itself is
 exactly 75-75 over the same 150 games, so the held-out block is +20 games on a
 measurement with no noise in it. Nothing here is fitted to a seed.
+
+## Against the current frontier, not just the flagship
+
+v109 is the build ladderfarm holds, but luc's lineage has moved several generations past
+it, and those are what a promoted bot will actually be compared against. Fifteen pool
+maps, both seats, seeds 1-3:
+
+| opponent | sigrun |
+|---|---|
+| `brynhildr@2c7d15e` (luc's tip) | **57-33 (0.633)** |
+| `brynhildr@2f83111` (v109, the flagship) | 51-39 (0.567) |
+
+## What each change is worth, ablated on the merged file
+
+Removing one hunk at a time from the build as it stands:
+
+| change | with | without | worth |
+|---|---|---|---|
+| the anti-grinder exemption (vs spar_wall, 90 games) | 66-24 | 56-34 | **+10** |
+| the lane-first barrier (vs spar_wall, 90 games) | 66-24 | 62-28 | **+4** |
+| the paths B gate (paths, four opponents, 24 games) | 21-3 | 18-6 | **+3** |
+
+None is dead weight and none is subsumed by the other agent's miner and forage work.
+Note that removing the anti-grinder exemption returns the siege column to *exactly*
+v109's 56-34: on this fixture the whole improvement over the flagship is these two.
 
 ## What was measured and thrown away
 
