@@ -451,7 +451,7 @@
       "HTTP 418",
       "kladde chatte tville (och oss)"
     ],
-    "brynhildr@bcb5d77": [
+    "brynhildr@99b4477": [
       "Banminary",
       "Torsko",
       "Big O",
@@ -461,7 +461,7 @@
       "TRRR",
       "Viktor5776",
       "OpenSverige",
-      "I Stone"
+      "gsxWins"
     ]
   },
   "_opponents_for": "bot_id -> ordered team names, five played per round, the rest carried in state.opponents_pending. Overrides the policy entirely. v70 has already faced all 20 of its nearest teams, so this is the nine unfaced teams rated above us (1810-2036) plus not adgato, the team it has seen least (one game).",
@@ -556,7 +556,7 @@
     "brynhildr@1e69d09:3",
     "brynhildr@c011c9f:3",
     "brynhildr@8c65517:2",
-    "brynhildr@bcb5d77:3"
+    "brynhildr@99b4477:3"
   ],
   "_queue_front": "Like test_next, but the entry is moved to the front of the queue so it plays on the next round. Each entry is honoured once."
 }
