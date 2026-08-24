@@ -95,6 +95,7 @@ BELT_MARGIN = 10           # titanium kept over a conveyor's cost before it is l
 SILENT_TURRET_ROUNDS = 10  # a turret that has not landed damage for this long is a loaded gun, not a siege
 MINERS_MAX = 3             # home Builders mining at once (hildr's MINERS_STALL)
 HARVESTERS_MAX = 5         # Harvesters the miners keep laying while the Core pays
+FORAGE_HARVESTERS_MAX = 7  # maximum carried by the existing three-bit order field
 LONG_GAME_ROUND = 120      # past this, a second miner: the tiebreak is titanium collected
 JOIN_BELTS = True          # a new chain may end on an existing belt of ours instead of the Core
 REPAIR_BELTS = True        # relay a conveyor shot out of our own line (3 Ti restores the whole line)
@@ -845,7 +846,8 @@ class Player:
             # The income war: every miner the cap allows, now -- the verdict already said the
             # held titanium buys no kill.
             want_miners = MINERS_MAX if harvesters >= 1 else 2
-        if harvesters >= HARVESTERS_MAX:
+        harvester_cap = FORAGE_HARVESTERS_MAX if self.forage else HARVESTERS_MAX
+        if harvesters >= harvester_cap:
             want_miners = min(want_miners, 1)   # one body keeps the belts mended
         # A miner is a HOLD purchase.  While the ring is shooting (GO) every point of titanium
         # is a shot: 36 Ti held back for a miner on holmgang was the four shots that left
@@ -929,7 +931,7 @@ class Player:
 
         # ---- orders to the home squad
         econ_ok = (safe and need_menders == 0 and self.miners_hwm > 0
-                   and (harvesters < HARVESTERS_MAX or REPAIR_BELTS))
+                   and (harvesters < harvester_cap or REPAIR_BELTS))
         flags = 0
         if threatened:
             flags |= ORD_THREAT
@@ -1681,7 +1683,7 @@ class Player:
             if REPAIR_BELTS and self._repair_belt(ct, here):
                 self.mining_now = True
                 return
-            if self._mine(ct, here):
+            if self._mine(ct, here, bool(flags & ORD_FORAGE)):
                 self.mining_now = True
                 return
             if REPAIR_BELTS and self._patrol_belt(ct, here):
@@ -2150,15 +2152,16 @@ class Player:
         self._walk_beside(ct, here, stale)
         return True
 
-    def _mine(self, ct, here):
+    def _mine(self, ct, here, forage=False):
         """One Harvester and a belt home -- to the Core, or into a belt of ours that already
         reaches it.  Returns True while there is a job in hand."""
         if self.chain is None or (not self.chain and self.round >= self.replan_at):
-            if self.team_harvesters >= HARVESTERS_MAX:
+            cap = FORAGE_HARVESTERS_MAX if forage else HARVESTERS_MAX
+            if self.team_harvesters >= cap:
                 self.chain = []
                 self.replan_at = self.round + 10
                 return False
-            planned = self._plan_chain(ct)
+            planned = self._plan_chain(ct, join=not forage)
             if planned is None:
                 self.chain = []
                 self.replan_at = self.round + 20
@@ -2243,7 +2246,7 @@ class Player:
         self.chain = []
         return False
 
-    def _plan_chain(self, ct):
+    def _plan_chain(self, ct, join=True):
         """Pick an ore tile and the belt that carries it home.  Returns ([ore, c1, ..., ck], end)
         with ck beside `end`, which is a Core tile or a conveyor of ours; or None."""
         dist = {}
@@ -2263,7 +2266,7 @@ class Player:
                 came[step] = None
                 end_of[step] = key
                 frontier.append(step)
-        if JOIN_BELTS:
+        if JOIN_BELTS and join:
             for belt, facing in self.belts.items():
                 if belt not in self.occupied:
                     continue                       # shot out: a repair job, not a seed
