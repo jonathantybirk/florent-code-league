@@ -12,3 +12,10 @@ maps/gen/
 # produce them are tracked; their multi-hundred-megabyte output is not.
 scratch/**
 !scratch/*.py
+
+# Sparring copies of other people's bots, extracted from their branches by hand,
+# and the throwaway forks a constant sweep writes.
+bots/rivals/bryn109/
+bots/rivals/spar_wall/
+bots/rivals/spar_sentinel/
+bots/sweep/
