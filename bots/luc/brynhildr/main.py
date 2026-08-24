@@ -128,6 +128,9 @@ CHEW_IDLE = 6              # bites without a new low on the tile: a mender out-h
 TEND_CAP = 10              # rounds the harasser heals one barrier under chew before leaving it: 2 a bite against 4 a heal is a stalemate
 LOOK_STALE = 80            # rounds after which a tile this Builder looked at counts as unknown again: their belts grow
 LOAD_STEPS = 6             # steps of walking each Harvester feeding through a belt tile is worth to the harasser
+RELAY_LOOP_ROUNDS = 40     # two relays of one tile inside this window: a turret owns the tile, stop feeding it
+WALL_THEIR_RING = True     # forage: barrier THEIR Core's ring tiles -- a mender that cannot stand,
+                           # a spawn that cannot land, a Core the burst meets unhealable
 BREAK_OUT = True           # a walled-in home Builder shoots the enemy barrier in its way
 WALL_WATCH = True          # menders bought the round they start walling our ring: hold the tiles that are left
 WALL_SQUAD = 3             # menders the wall watch buys: 12 HP a round out-heals the two Sentinels that follow the walls
@@ -424,6 +427,7 @@ class Player:
         self.turrets = {}           # enemy turret id -> (pos, facing, covered tiles)
         self.covered = set()        # tiles to keep out of when walking: lanes, Launchers, Builders
         self.lanes = set()          # tiles a known enemy turret can shoot, refreshed each turn
+        self.shot_lanes = set()     # ...the ones that shoot the first thing on the ray: a conveyor there is dead
         self.home_danger = set()    # lanes that shoot a Builder: Gunners, and Sentinels not aimed at our Core
         self.grabs = set()          # tiles beside an enemy Launcher: it picks a Builder up from there
         self.goal = None
@@ -449,6 +453,7 @@ class Player:
         self.relay_low = None
         self.relay_idle = 0
         self.evicted = None         # the tile just chewed clear beside a Harvester of ours: a barrier keeps it clear
+        self.relaid = {}            # belt tile -> last two rounds it was relaid: the loop detector
         self.belt_seen = {}         # conveyor tile -> round last in sight
         self.my_barriers = set()    # lane barriers this Builder laid
         self.deny_target = None
@@ -1536,7 +1541,12 @@ class Player:
                        and abs(self.cut_target[0] - here.x) + abs(self.cut_target[1] - here.y) == 1)
             if self.round - self.last_look >= PEEK_EVERY and not chewing and self._peek(ct, here):
                 return
+            second = getattr(self, 'second', False)
+            if second and WALL_THEIR_RING and self._wall_ring(ct, here):
+                return
             if self._harass(ct, here):
+                return
+            if WALL_THEIR_RING and self._wall_ring(ct, here):
                 return
             if self._tend(ct, here):
                 return
@@ -2379,6 +2389,13 @@ class Player:
                 continue
             if key in self.walls:
                 continue
+            hist = self.relaid.get(key)
+            if hist is not None and len(hist) >= 2 and self.round - hist[0] <= RELAY_LOOP_ROUNDS:
+                # Relaid twice and shot out again inside the window: a Sentinel owns this tile.
+                # On bifrost the miner rebuilt (14,9) twenty-six times and (15,9) eighteen --
+                # 132 Ti into Torsko's ray; against I Stone, (10,12) fifty-three times.
+                self.no_relay[key] = self.round + 150
+                continue
             foreign = False
             try:
                 spot = Position(key[0], key[1])
@@ -2445,6 +2462,9 @@ class Player:
                     self.occupied.add(broken)
                     self.belts[broken] = facing
                     self.lost_belts.pop(broken, None)
+                    hist = self.relaid.setdefault(broken, [])
+                    hist.append(self.round)
+                    del hist[:-2]
                     return True
                 self.repair_fail[broken] = self.repair_fail.get(broken, 0) + 1
                 return False
@@ -2618,6 +2638,8 @@ class Player:
                         continue
                     if step in self.occupied and step not in self.ore:
                         continue
+                    if step in self.shot_lanes or self.round < self.no_relay.get(step, -1):
+                        continue                   # a Gunner's ray, or a tile a turret owns
                     if not (0 <= step[0] < self.width and 0 <= step[1] < self.height):
                         continue
                     dist[step] = dist[key] + 1
@@ -3028,6 +3050,7 @@ class Player:
         for uid in stale:
             del self.turrets[uid]
         self.lanes = lanes
+        self.shot_lanes = danger    # lanes that shoot the first thing on them: no belt goes here
         self.home_danger = danger | soft
         self.grabs = grabs
         return soft | lanes
@@ -3139,6 +3162,20 @@ class Player:
         for direction, dx, dy in CARDINALS:
             key = (here.x + dx, here.y + dy)
             if key in self.walls or key not in self.blocked:
+                continue
+            if key in self.mine_tiles:
+                continue                           # NEVER our own Core: builder 376 spawned
+                                                   # boxed at (4,5) on bifrost and bit our own
+                                                   # Core for 140 rounds (2 Ti a bite) while
+                                                   # Torsko farmed -- and no attacker existed
+            try:
+                bid = ct.get_tile_building_id(Position(key[0], key[1]))
+                if bid is not None and ct.get_team(bid) == ct.get_team():
+                    if ct.get_entity_type(bid) not in (EntityType.CONVEYOR, EntityType.SPLITTER,
+                                                       EntityType.BARRIER):
+                        continue                   # chew through our own belt if we must --
+                                                   # never our own turret or Harvester
+            except Exception:
                 continue
             gap = abs(key[0] - goal[0]) + abs(key[1] - goal[1])
             if best is None or gap < toward:
@@ -3321,6 +3358,8 @@ class Player:
                                 near = cost
                         if near is None:
                             continue
+                        if self._friend_beside(ct, key):
+                            continue               # the other harasser is already chewing here
                         if pool is self.enemy_belts:
                             load = loads.get(key, 0)
                             if load == 0:
@@ -3500,6 +3539,71 @@ class Player:
                 return True
             self.explore_goal = None
             return False
+        except Exception:
+            return False
+
+    def _friend_beside(self, ct, key):
+        """A Builder of ours (not this one) on a tile beside `key`: the other harasser's chew."""
+        try:
+            mine = ct.get_team()
+            me = ct.get_id()
+            for _d, dx, dy in CARDINALS:
+                spot = Position(key[0] + dx, key[1] + dy)
+                uid = ct.get_tile_builder_bot_id(spot)
+                if uid is not None and uid != me and ct.get_team(uid) == mine:
+                    return True
+        except Exception:
+            return False
+        return False
+
+    def _wall_ring(self, ct, here):
+        """Barrier THEIR Core's ring tiles during the income war: 3 Ti a tile, and the mender
+        that healed 4 a round against our burst has nowhere to stand -- nor does the newborn
+        their Core would spawn onto it.  Only from an uncovered stand, never into a Launcher's
+        grab zone, and never below the chew float."""
+        try:
+            ti = ct.get_global_resources()
+            if ti < ct.get_barrier_cost() + CUT_FLOOR:
+                return False
+            best = None
+            goal = None
+            for key in _ring(self.enemy_tiles):
+                if key in self.occupied or key in self.walls or key in self.grabs:
+                    continue
+                if not (0 <= key[0] < self.width and 0 <= key[1] < self.height):
+                    continue
+                try:
+                    spot = Position(key[0], key[1])
+                    if ct.is_in_vision(spot) and ct.get_tile_builder_bot_id(spot) is not None:
+                        continue                   # a mender stands there; the cut war is elsewhere
+                except Exception:
+                    pass
+                near = None
+                for _d, dx, dy in CARDINALS:
+                    step = (key[0] + dx, key[1] + dy)
+                    if step in self.enemy_tiles or step in self.grabs or step in self.covered:
+                        continue
+                    cost = self._dist.get(step)
+                    if cost is not None and (near is None or cost < near):
+                        near = cost
+                if near is None:
+                    continue
+                if best is None or near < best:
+                    best, goal = near, key
+            if goal is None or best > 30:
+                return False
+            if abs(goal[0] - here.x) + abs(goal[1] - here.y) == 1 and (here.x, here.y) not in self.covered:
+                spot = Position(goal[0], goal[1])
+                if ct.can_build_barrier(spot):
+                    ct.build_barrier(spot)
+                    self.occupied.add(goal)
+                    self.blocked.add(goal)
+                    return True
+                return False
+            if (here.x, here.y) == goal:
+                return self._step_any(ct, here)
+            self._walk_beside(ct, here, goal)
+            return True
         except Exception:
             return False
 
