@@ -54,7 +54,6 @@ def assign(board, lanes, count=OPENING):
         where[who] = lane.stand
     return work, _spawns(board, lanes, work, count), done
 
-
 def value(lanes, done, rounds=ROUNDS):
     """Titanium this plan lands in the Core by round `rounds`.
 
