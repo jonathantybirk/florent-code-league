@@ -33,3 +33,13 @@ improves 24-6 to 25-5, Spar Econ improves 26-4 to 29-1, and Spar Wall improves
 This local panel is an admission gate, not a promotion verdict. Ladderfarm
 should evaluate it against current online opponents and choose by its normal
 qualified expected-Elo policy.
+
+## Online context inherited from the parents
+
+The older pure cadence carrier, `jonbot_econ@19793f0` (v120), scored 20-5 and
+then 12-13 in its two scheduled rounds (32-18 total). Its gated successor v121
+scored 8-17, but 24/25 starts did not exercise a changed gate. Sigrun v127
+scored 14-11 in its first round against Atlas, Viktor5776, Torsko, TRRR, and
+0033. This is evidence that opponent/version slice dominates a single round
+and that the stronger combat base matters; `ca5008a` deliberately combines
+Sigrun's base with the cadence while leaving economy timing unchanged.
