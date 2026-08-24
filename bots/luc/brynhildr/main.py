@@ -88,6 +88,11 @@ BELT_MARGIN = 10           # titanium kept over a conveyor's cost before it is l
 SILENT_TURRET_ROUNDS = 10  # a turret that has not landed damage for this long is a loaded gun, not a siege
 MINERS_MAX = 3             # home Builders mining at once (hildr's MINERS_STALL)
 HARVESTERS_MAX = 5         # Harvesters the miners keep laying while the Core pays
+SURGE = True               # a bank with nothing to buy is a tiebreak being lost: more miners, a higher Harvester cap
+SURGE_BANK = 400           # titanium held, with no kill funded, before the surge is called
+SURGE_ROUND = 150          # never in the opening: the bank is the burst until the rush has been tried
+MINERS_SURGE = 5           # home Builders mining under the surge
+HARVESTERS_SURGE = 7       # Harvesters under the surge (the orders word carries the count in three bits)
 LONG_GAME_ROUND = 120      # past this, a second miner: the tiebreak is titanium collected
 JOIN_BELTS = True          # a new chain may end on an existing belt of ours instead of the Core
 REPAIR_BELTS = True        # relay a conveyor shot out of our own line (3 Ti restores the whole line)
@@ -139,7 +144,7 @@ HOLD_REBUILD = 4           # bit in the extra word: do not replace a lost Sentin
 RING_HOLD = 8              # bit in the extra word: stop placing Sentinels, the titanium is the mend squad's
 MEND_SQUAD_MAX = 4         # menders bought under the mend plan: 16 HP a round outlasts a ring's 29 shots
 RING_RESUME_QUIET = 25     # rounds without damage, at 400+ HP, before a held ring is released
-SLOT_ORDERS = 3            # Core -> home squad: (round + 1) + 65536 * flags (see ORD_*)
+SLOT_ORDERS = 3            # Core -> home squad: (round + 1) + 1024 * surge + 65536 * flags (see ORD_*; the beat is the low 10 bits)
 SLOT_BEAT0 = 4             # Sentinel heartbeats, one slot each: round + 1
 SLOT_BEATS = 5             # slots 4..8
 SLOT_SHOOTER = 9           # Core -> home: a turret hitting our Core, packed, + 65536 * (1 Sentinel | 2 + facing*4 Gunner)
@@ -431,6 +436,7 @@ class Player:
         self.ring_target = SENTINEL_TARGET
         self.stand_rounds = 0       # rounds at the anchor without placing
         self.home_slot = None
+        self.harvest_cap = HARVESTERS_MAX  # raised by the Core's surge bit
         self.laid = {}              # conveyor tile -> facing, laid by this miner
         self.my_harvesters = set()
         self.repair_fail = {}
@@ -906,7 +912,19 @@ class Player:
             # The income war: every miner the cap allows, now -- the verdict already said the
             # held titanium buys no kill.
             want_miners = MINERS_MAX if harvesters >= 1 else 2
-        if harvesters >= HARVESTERS_MAX:
+        # The surge.  On stavkirke against I Stone the bank went 1,300 to 4,350 between rounds
+        # 250 and 450 with nothing bought -- the ring could not stand against six Gunners and
+        # twenty diggers, and the caps pinned us at six Harvesters against their ten, so the
+        # round-1000 tiebreak (titanium collected) was lost with 3,500 Ti unspent.  A bank
+        # this size with no kill funded buys miners: five, at seven Harvesters, and every
+        # non-holder mines.  Never in the opening, never while a burst is funded.
+        surge = (SURGE and self.round >= SURGE_ROUND and ti >= SURGE_BANK
+                 and not can_finish and go != 1 and not finishing
+                 and (stuck or self.forage or alive == 0 or self.hold_total > STALL_ROUNDS))
+        harvest_cap = HARVESTERS_SURGE if surge else HARVESTERS_MAX
+        if surge:
+            want_miners = max(want_miners, MINERS_SURGE)
+        if harvesters >= harvest_cap:
             want_miners = min(want_miners, 1)   # one body keeps the belts mended
         # A miner is a HOLD purchase.  While the ring is shooting (GO) every point of titanium
         # is a shot: 36 Ti held back for a miner on holmgang was the four shots that left
@@ -1007,7 +1025,7 @@ class Player:
 
         # ---- orders to the home squad
         econ_ok = (safe and need_menders == 0 and self.miners_hwm > 0
-                   and (harvesters < HARVESTERS_MAX or REPAIR_BELTS))
+                   and (harvesters < harvest_cap or REPAIR_BELTS))
         flags = 0
         if threatened:
             flags |= ORD_THREAT
@@ -1037,7 +1055,7 @@ class Player:
             miners_allowed = 3                 # every non-holder may mine, whatever its slot
         flags |= miners_allowed << ORD_MINERS_SHIFT
         flags |= min(7, harvesters) << ORD_HARVEST_SHIFT
-        self._write(ct, SLOT_ORDERS, (self.round + 1) + 65536 * flags)
+        self._write(ct, SLOT_ORDERS, (self.round + 1) + 1024 * (1 if surge else 0) + 65536 * flags)
         self._publish_shooter(ct)
         econ_first = econ_ok and harvesters == 0 and home_builders > 0 and (go != 1 or (kill_ammo - bank) > 100)
 
@@ -1745,8 +1763,9 @@ class Player:
     def _home(self, ct, here):
         self._observe(ct, here)
         orders = self._read(ct, SLOT_ORDERS)
-        if not _fresh(_beat(orders), self.round, 1):
+        if not _fresh(orders % 1024, self.round, 1):
             orders = 0
+        self.harvest_cap = HARVESTERS_SURGE if (orders // 1024) % 64 & 1 else HARVESTERS_MAX
         flags = _flags(orders)
         threatened = bool(flags & ORD_THREAT)
         self._home_heartbeat(ct)
@@ -2426,7 +2445,7 @@ class Player:
         """One Harvester and a belt home -- to the Core, or into a belt of ours that already
         reaches it.  Returns True while there is a job in hand."""
         if self.chain is None or (not self.chain and self.round >= self.replan_at):
-            if self.team_harvesters >= HARVESTERS_MAX:
+            if self.team_harvesters >= self.harvest_cap:
                 self.chain = []
                 self.replan_at = self.round + 10
                 return False
