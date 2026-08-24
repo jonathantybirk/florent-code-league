@@ -69,6 +69,8 @@ HOME_BUILDER_AT_START = False  # a Builder at home on round 0 costs 60 Ti effect
 MENDERS_MAX = 5            # never more than this many Builders minding the Core
 WALL_RING_TRIGGER = 1      # the first enemy barrier taking a healing seat is a siege telegraph
 WALL_GUARD_TARGET = 3      # 12 HP/round early; damage arithmetic may still buy two more
+GATE_HOLD_BONUS = 1000     # a live belt mouth is the one ring seat the wall squad never yields
+GATE_TENDER_BONUS = 500    # the next guard tends/rebuilds it from the neighbouring ring seat
 RACE_MARGIN = 0            # rounds our ring must lead theirs by to go all-in (a dead heat races)
 MEND_RESERVE = 30          # titanium kept for mending while anything is shooting us
 AMMO_PER_SENTINEL = 20     # ammunition kept banked per living Sentinel (two shots each)
@@ -157,6 +159,7 @@ ORD_SAVE = 1 << 10         # a counter-turret is wanted and not yet affordable: 
 ORD_RACE = 1 << 11         # the ring is shooting and the kill is funded: menders mend, nothing else
 ORD_FORAGE = 1 << 12       # the income war: the attacker cuts their belts, the home half out-mines them
 ORD_WALL_GUARD = 1 << 13   # this newly spawned home Builder owns a Core healing seat
+ORD_WALL_COUNT_SHIFT = 14  # bits 14-15: exact persistent guard count wanted, avoiding broadcasts
 
 
 def _pack(pos, extra=0):
@@ -874,12 +877,23 @@ class Player:
         safe = (not threatened) or (hp >= 400 and menders >= 2)
         if self.forage and hp >= 400 and menders >= 1:
             safe = True                    # an income war with no income is a slower loss
+        # Guards are not miners.  A broadcast promotion used to turn two early home Builders
+        # into permanent guards for one wall, after which `home_builders == want_home` hid the
+        # fact that no Builder remained able to repair a severed belt.  Count the two jobs
+        # independently; a guard in excess of the current target still cannot satisfy mining.
+        non_guard_homes = max(0, len(homes) - wall_guards)
+        need_miner_body = (max(0, want_miners - non_guard_homes) if safe else 0)
         want_home = want_menders + (want_miners if safe else 0)
         need_home = max(0, want_home - home_builders)
+        # Preserve the proven dynamic home-squad accounting in ordinary games.  Only add a
+        # body when persistent wall guards have consumed every Builder that could mine.
+        if wall_pressure:
+            need_home = max(need_home, need_miner_body)
         need_home = max(need_home, need_wall_body)
         if self.home_deaths >= 2 and threatened:
             need_home = need_menders
-        need_miner = need_home > need_menders
+        need_miner = ((need_home > need_menders)
+                      or (wall_pressure and need_menders == 0 and need_miner_body > 0))
 
         # ---- the guard (steward): what the home squad may buy this round
         gunner_cost = self._gunner_cost(ct)
@@ -972,6 +986,7 @@ class Player:
             flags |= ORD_FORAGE
         if need_wall_guard > 0:
             flags |= ORD_WALL_GUARD
+        flags |= min(3, wall_guard_target) << ORD_WALL_COUNT_SHIFT
         flags |= min(3, self.miners_hwm if econ_ok else 0) << ORD_MINERS_SHIFT
         flags |= min(7, harvesters) << ORD_HARVEST_SHIFT
         self._write(ct, SLOT_ORDERS, (self.round + 1) + 65536 * flags)
@@ -1637,11 +1652,20 @@ class Player:
         threatened = bool(flags & ORD_THREAT)
         if not hasattr(self, 'wall_guard'):
             self.wall_guard = False
-        if flags & ORD_WALL_GUARD:
-            # Existing miners can be promoted as well as newly spawned bodies: occupying the
-            # seat now is what prevents the next wall from taking it.
-            self.wall_guard = True
+        # Assign a stable home slot before deciding who receives a broadcast promotion.  Only
+        # the first N live slots become guards, where N is the Core's requested wall count;
+        # everyone hearing the same order no longer abandons the economy together.
         self._home_heartbeat(ct)
+        wall_target = (flags >> ORD_WALL_COUNT_SHIFT) & 3
+        if flags & ORD_WALL_GUARD and wall_target and not self.wall_guard:
+            live_slots = []
+            for i in range(SLOT_HOMES):
+                word = self._read(ct, SLOT_HOME0 + i)
+                if _fresh(_beat(word), self.round, 2):
+                    live_slots.append(i)
+            if self.home_slot in sorted(live_slots)[:wall_target]:
+                self.wall_guard = True
+                self._home_heartbeat(ct)          # report the promotion in the same round
         miners_allowed = (flags >> ORD_MINERS_SHIFT) & 3
         self.team_harvesters = (flags >> ORD_HARVEST_SHIFT) & 7
         core_tiles = self.mine_tiles
@@ -1716,6 +1740,14 @@ class Player:
                 return
         except Exception:
             pass
+        # 1b. Wall denial must preserve logistics as well as a healing seat.  One guard sits
+        #     on an inbound Core conveyor so it cannot be replaced by an enemy barrier; the
+        #     next guard tends that conveyor from the neighbouring ring seat.  If the belt
+        #     mouth is shot out, the tender rebuilds it before the resource stream reaches
+        #     the gap.  In gsxWins/holmgang the old bot let all eight seats be sealed and
+        #     collected its last titanium on round 63 despite a live Harvester outside.
+        if self.wall_guard and self._defend_delivery_gate(ct, here):
+            return
         # 2. the guard: a barrier in a Gunner lane, a turret on the shooter, a Gunner on the
         #    loiterer -- each only when the Core says the bank allows it
         if threatened and LANE_BARRIERS and self._lane_barrier(ct, here):
@@ -1757,6 +1789,70 @@ class Player:
             return ct.get_hp(bid) if bid is not None else 500
         except Exception:
             return 500
+
+    def _delivery_gate(self):
+        """A remembered Core-adjacent conveyor whose output enters the Core.
+
+        `self.belts` deliberately retains a destroyed conveyor, so every guard keeps the
+        same mouth after it is shot out instead of choosing a new opening in the wall ring.
+        Prefer a live mouth, then a deterministic remembered one.
+        """
+        core = set(self.mine_tiles)
+        ring = set(_ring(self.mine_tiles))
+        live = []
+        stale = []
+        for key, facing in self.belts.items():
+            if key not in ring:
+                continue
+            dx, dy = facing.delta()
+            if (key[0] + dx, key[1] + dy) not in core:
+                continue
+            (live if key in self.occupied else stale).append(key)
+        pool = live or stale
+        return min(pool) if pool else None
+
+    def _defend_delivery_gate(self, ct, here):
+        """Hold, heal, or rebuild the last conveyor mouth through a hostile wall ring."""
+        gate = self._delivery_gate()
+        if gate is None:
+            return False
+        here_key = (here.x, here.y)
+        adjacent = abs(gate[0] - here.x) + abs(gate[1] - here.y) == 1
+        try:
+            pos = Position(gate[0], gate[1])
+            bid = ct.get_tile_building_id(pos)
+            mine = ct.get_team()
+            if bid is not None and ct.get_team(bid) == mine:
+                kind = ct.get_entity_type(bid)
+                if (kind == EntityType.CONVEYOR
+                        and adjacent and ct.get_hp(bid) < ct.get_max_hp(bid)
+                        and ct.can_heal(pos)):
+                    ct.heal(pos)
+                    return True
+            elif bid is not None:
+                # The gate was lost before a guard reached it.  Open that exact mouth rather
+                # than digging an arbitrary wall which the surviving belt does not feed.
+                if adjacent and ct.get_entity_type(bid) == EntityType.BARRIER and ct.can_fire(pos):
+                    ct.fire(pos)
+                    return True
+            elif adjacent:
+                # A stale remembered mouth: restore its original inward facing.  A guard on
+                # the mouth cannot build under itself, which is why the neighbouring guard
+                # receives a large post bonus below.
+                facing = self.belts.get(gate)
+                if (facing is not None
+                        and ct.get_global_resources() >= ct.get_conveyor_cost() + 2
+                        and ct.can_build_conveyor(pos, facing)):
+                    ct.build_conveyor(pos, facing)
+                    self.occupied.add(gate)
+                    self.belts[gate] = facing
+                    self.belt_seen[gate] = self.round
+                    return True
+            if here_key == gate:
+                self.post = gate
+        except Exception:
+            pass
+        return False
 
     def _dig_near_core(self, ct, here):
         """Walk to an enemy turret touching our Core and stand beside it, out of every lane."""
@@ -2050,6 +2146,7 @@ class Player:
         covered = self.home_danger
         if self.post is not None and (here.x, here.y) == self.post and self.post not in covered:
             return
+        gate = self._delivery_gate() if getattr(self, 'wall_guard', False) else None
         best = None
         chosen = None
         for key in _ring(self.mine_tiles):
@@ -2061,6 +2158,13 @@ class Player:
             if self._tile_has_builder(ct, key) and key != (here.x, here.y):
                 continue
             score = cost + (20 if key in covered else 0)
+            if gate is not None:
+                if key == gate:
+                    score -= GATE_HOLD_BONUS
+                elif abs(key[0] - gate[0]) + abs(key[1] - gate[1]) == 1:
+                    # A second guard beside the mouth can heal or rebuild the conveyor while
+                    # still occupying another Core-healing seat.
+                    score -= GATE_TENDER_BONUS
             for _d, dx, dy in CARDINALS:
                 if (key[0] + dx, key[1] + dy) in self.my_barriers:
                     score -= 5                     # beside our barrier: their Gunner holds its fire
