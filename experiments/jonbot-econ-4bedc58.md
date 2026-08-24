@@ -1,8 +1,8 @@
 # jonbot_econ@4bedc58
 
 Side-gated refinement of `jonbot_econ@19793f0` (submission v120), whose first
-online ladderfarm round scored 13-2: 5-0 versus OpenSverige, 5-0 versus I Stone,
-and 3-2 versus gsxWins.
+online ladderfarm round scored 20-5: 5-0 versus OpenSverige, I Stone, and 0033,
+3-2 versus gsxWins, and 2-3 versus Torsko.
 
 The generic conveyor-chain staging remains unchanged. Only a single
 terrain/start predicate falls back to the `brynhildr@2f83111` parent movement

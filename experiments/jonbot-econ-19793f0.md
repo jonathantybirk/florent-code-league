@@ -27,3 +27,8 @@ restored both losses while Crossfire, Duel, and Helheim retained all three
 gains. Rejected alternatives remain documented under `529ab2d`: static or
 dynamic deposit separation, fixed relay chunks, ore-first expansion, and lower
 Harvester reserves all regressed.
+
+First online round (submission v120): 20-5. It scored 5-0 versus OpenSverige,
+5-0 versus I Stone, 5-0 versus 0033, 3-2 versus gsxWins, and 2-3 versus Torsko.
+It remains unqualified after five distinct opponents; ladderfarm requires 7 of
+the current closest 10 before comparing expected Elo for promotion.
