@@ -7,11 +7,13 @@ actually showed.
 
 ## Where it stands
 
-The mass-economy counter at `8973318` additionally carries the attacker's
-observed economy density to the Core.  Four Builders or four belt/Harvester
-assets suppress the speculative opening miner and the phantom 12-HP/round heal
-ring: this preserves all recorded panel wins and changes the Brokkr result from
-49/60 to 50/60.  The rule comes from Bean counters' v92 replays and the strategy
+The mass-economy counter additionally carries the attacker's observed economy
+density to the Core.  Four Builders or three belt/Harvester assets suppress the
+speculative opening miner and the phantom 12-HP/round heal ring.  It scores
+294/360 on the named panel (v109: 293/360), and 56/60 against `spar_econ`
+(v109: 54/60).  A threshold sweep found three and four assets level; two assets
+regressed the seed-1 panel from 147/180 to 146/180 and `spar_econ` to 52/60, so three is the measured
+edge.  The rule comes from Bean counters' v92 replays and the strategy
 that beat it: `not adgato` kept one Builder and one Harvester, then placed four
 Sentinels at rounds 62--84, winning three of five while Bean's scaled economy
 was still converting into field defence.
