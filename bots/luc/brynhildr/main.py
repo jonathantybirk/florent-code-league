@@ -73,6 +73,7 @@ GATE_HOLD_BONUS = 1000     # a live belt mouth is the one ring seat the wall squ
 GATE_TENDER_BONUS = 500    # the next guard tends/rebuilds it from the neighbouring ring seat
 LAUNCH_STUCK_ROUNDS = 8    # failed advances at a hostile wall before buying the 20 Ti escape
 LAUNCH_WAIT_ROUNDS = 4     # give the new pad time to run after its Builder, then resume digging
+LAUNCH_ATTEMPTS_MAX = 2    # never turn an impossible throw into an unbounded rebuild sink
 RACE_MARGIN = 0            # rounds our ring must lead theirs by to go all-in (a dead heat races)
 MEND_RESERVE = 30          # titanium kept for mending while anything is shooting us
 AMMO_PER_SENTINEL = 20     # ammunition kept banked per living Sentinel (two shots each)
@@ -425,6 +426,7 @@ class Player:
         self.launch_goal = None     # committed goal for the no-progress escape hatch
         self.launch_stuck = 0       # consecutive rounds unable to advance toward that goal
         self.launch_wait = 0        # rounds spent beside the pad waiting to be thrown
+        self.launch_attempts = 0    # escape pads this Builder has paid for
         self.launch_used = False    # a wall-escape pad throws one friendly; no ping-pong loop
         # sentinel
         self.slot = None
@@ -3057,9 +3059,19 @@ class Player:
                         self.launch_wait += 1
                         if self.launch_wait <= LAUNCH_WAIT_ROUNDS:
                             return True
+                        # A one-use pad cannot advertise that it has already thrown
+                        # somebody.  Four turns without a throw are the observable
+                        # equivalent: dismantle it so this Builder can replace the
+                        # spent/stranded pad instead of waiting beside it forever.
+                        if ct.can_destroy(p):
+                            ct.destroy(p)
+                            key = (p.x, p.y)
+                            self.occupied.discard(key)
+                            self.blocked.discard(key)
                         self.launch_wait = 0
-                        self.launch_stuck = 0
-                        return False
+                        break
+            if self.launch_attempts >= LAUNCH_ATTEMPTS_MAX:
+                return False
             if ct.get_global_resources() < ct.get_launcher_cost() + TIE_FLOOR + 10:
                 return False
             choices = []
@@ -3076,6 +3088,7 @@ class Player:
                 return False
             _gap, key, pos = min(choices)
             ct.build_launcher(pos)
+            self.launch_attempts += 1
             self.occupied.add(key)
             self.blocked.add(key)
             self.launch_wait = 1
@@ -3085,6 +3098,7 @@ class Player:
 
     def _wait_for_launcher(self, ct, here):
         """Hold beside a freshly built pad until its later unit turn throws this Builder."""
+        timed_out = False
         try:
             mine = ct.get_team()
             for bid in ct.get_nearby_buildings(2):
@@ -3095,11 +3109,21 @@ class Player:
                         self.launch_wait += 1
                         if self.launch_wait <= LAUNCH_WAIT_ROUNDS:
                             return True
+                        timed_out = True
+                        if ct.can_destroy(p):
+                            ct.destroy(p)
+                            key = (p.x, p.y)
+                            self.occupied.discard(key)
+                            self.blocked.discard(key)
                         break
         except Exception:
             pass
         self.launch_wait = 0
-        self.launch_stuck = 0
+        # Preserve the failed-advance count after clearing a spent pad, allowing
+        # _launcher_escape to replace it this turn.  A vanished or merely distant
+        # pad is a normal abort and restarts the counter.
+        if not timed_out:
+            self.launch_stuck = 0
         return False
 
     def _tend(self, ct, here):
