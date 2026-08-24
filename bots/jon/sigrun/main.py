@@ -86,6 +86,8 @@ HOME_BUILDER_AT_START = False  # a Builder at home on round 0 costs 60 Ti effect
 MENDERS_MAX = 5            # never more than this many Builders minding the Core
 RACE_MARGIN = 0            # rounds our ring must lead theirs by to go all-in (a dead heat races)
 MEND_RESERVE = 30          # titanium kept for mending while anything is shooting us
+SIEGE_SETTLED = 30         # rounds of sustained fire after which the siege is the game
+SIEGE_HP = 300             # ...and below this the Core outranks the rule that spares bodies
 AMMO_PER_SENTINEL = 20     # ammunition kept banked per living Sentinel (two shots each)
 BURST_SLACK = 0.85         # GO when the bank covers this fraction of the finish
 ECON_ROUND = 40            # no Harvester before this unless the ring is already up
@@ -765,7 +767,8 @@ class Player:
         if not threatened:
             if self.round - self.last_hit > 25:
                 self.home_deaths = 0
-        if self.home_deaths >= 2 and threatened:
+        if (self.home_deaths >= 2 and threatened
+                and not (siege_len >= SIEGE_SETTLED and hp < SIEGE_HP)):
             need_menders = 0
 
         # ---- the stall (hildr): the rush is banked behind their menders -- an income race
