@@ -22,6 +22,10 @@ A focused controller test verifies that the home-spawn marker overrides a
 missing attack heartbeat. The Core writes `SLOT_GO` once per round, and
 Sentinels mask the low two command bits.
 
+An instrumented local-engine replay verifies the buffered-store timing itself:
+Core home spawns on rounds 28, 61, and 90 were consumed by the corresponding
+new Builders on rounds 29, 62, and 91 as `marked=1 role=home`.
+
 Full local gate over 15 maps, both seats, seeds 1-5, and six older category
 leaders (900 games total):
 
