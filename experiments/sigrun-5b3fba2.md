@@ -22,9 +22,11 @@ uv run fcode watch /tmp/sigrun-online/2949fc91-240d-4844-a7ff-91f768062886_game_
 Normal play is unchanged and remains capped at five Harvesters. Only after the
 existing `ORD_FORAGE` income-war verdict, the Core funds up to seven—the exact
 maximum already representable in its three-bit Harvester-count field. New
-forage chains route independently rather than joining a potentially saturated
-four-Harvester trunk. Opening timing, rush spending, defense, and the cadence
-from `ca5008a` are unchanged.
+At this revision, forage chains route independently rather than joining a
+potentially saturated four-Harvester trunk. This was later refined by
+`sigrun@31311f2`, with a paired terrain-side guard for the one layout where
+sharing regressed. Opening timing, rush spending, defense, and the cadence from
+`ca5008a` are unchanged.
 
 ## Local verdict
 
