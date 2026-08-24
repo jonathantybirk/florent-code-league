@@ -32,7 +32,7 @@ from board import STEPS, flood
 # Harvesters one conveyor tile can carry: 10 Ti a round through the tile
 # against 10 Ti every four rounds out of each Harvester.
 CAPACITY = 4
-ORDER_GAIN_MIN = 100       # do not churn the executor for a modelled rounding win
+ORDER_GAIN_MIN = 300       # do not churn the executor for a modelled rounding win
 
 # A lane never crosses a deposit: a conveyor there would cost us the deposit,
 # and a Harvester there would cut the lane.
@@ -91,6 +91,7 @@ def insertion_orders(picks):
         picks,
         picks[::-1],
         picks[::2] + picks[1::2],
+        picks[1::2] + picks[::2],
         sorted(picks),
         sorted(picks, reverse=True),
     )
