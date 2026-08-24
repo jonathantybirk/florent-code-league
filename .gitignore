@@ -1,51 +1,14 @@
-# Replays (regenerated with fcode run)
-*.replay26
-
-# Python
+.venv/
 __pycache__/
 *.py[cod]
 .DS_Store
-replay.replay26
-temp-prompts
-match-replays
+*.replay26
+.vscode/
+bots/bench/
 
-# Virtual environments
-.venv/
-venv/
+maps/gen/
 
-# Tournament run directories. The durable artefacts -- what was planned and what happened --
-# are manifest.json, matches.csv, ratings.csv and the compliance CSVs; everything else is
-# reproducible from them plus the registry, and the bulk (staged bots, per-match JSONs, LSF logs)
-# is large.
-tournament/runs/*/stage/
-tournament/runs/*/compliance-stage/
-tournament/runs/*/maps/
-tournament/runs/*/results/
-tournament/runs/*/logs/
-tournament/runs/*/replays/
-tournament/runs/*/schedule.jsonl
-tournament/runs/*/job.sh
-tournament/runs/*/job_*.sh
-tournament/runs/*/work_*.txt
-tournament/automation-state.json
-tournament/automation.lock
-
-# Held-out evaluation maps. The README is tracked so the directory's purpose is documented;
-# the maps themselves must never reach the repository -- see tournament/custom_maps/README.md.
-tournament/custom_maps/*
-!tournament/custom_maps/README.md
-
-# Benchmark scratch: raw per-match JSON and staged bot copies.
-# Staged copies contain main.py and must never land under bots/,
-# where tournament discovery would register a duplicate bot name.
-benchmarks/runs/
-benchmarks/ablations/
-
-# Discord archive. The exports and the database hold other people's messages,
-# verbatim and attributed -- they are working data, not repository content, and
-# they must not travel with the repo. The READMEs are tracked so the directory's
-# purpose is documented; nothing else here is.
-discord/exports/*
-!discord/exports/README.md
-discord/archive.sqlite3
-discord/archive.sqlite3-*
+# Analysis datasets: replay dumps and their derived JSON. The tools that
+# produce them are tracked; their multi-hundred-megabyte output is not.
+scratch/**
+!scratch/*.py

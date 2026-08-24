@@ -1,0 +1,4 @@
+source_commit = "00f97c16677b8199f77598cd36c88ad5c7579b3e"
+source_path = "bots/jon/legacy/nemesis"
+engine = "2.2.0"
+status = "legacy"

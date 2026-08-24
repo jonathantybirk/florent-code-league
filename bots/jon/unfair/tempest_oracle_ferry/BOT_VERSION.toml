@@ -1,0 +1,4 @@
+source_commit = "7ef544f6a14803fac02a3c04bd16ad29d136aae9"
+source_path = "bots/jon/unfair/tempest_oracle_ferry"
+engine = "2.3.3"
+status = "unfair"
