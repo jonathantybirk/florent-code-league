@@ -52,9 +52,11 @@ except Exception:          # unknown deployment -- fall back to observation
 
 from openingstrat import OpeningRunner
 
-ECON_OPENING_MAPS = frozenset(("paths",))
+ECON_OPENING_MAPS = frozenset(("paths", "glacierkeep"))
 
-# paths B, and only paths B.
+# The starts the opening is enabled on, each priced across a six-opponent field that
+# includes luc's current tip -- not against v109 alone, which is how the four-start
+# version went wrong.
 #
 # Four starts turn a seat against v109 -- bifrost B, glacierkeep A, helheim B,
 # paths B -- and gating all four is 56-34 against v109 but 328-122 against the
@@ -62,8 +64,15 @@ ECON_OPENING_MAPS = frozenset(("paths",))
 # whole panel the four are -4, +0, -3 and +3: the opening's tempo is worth its
 # titanium against v109's own rush and against nothing else. paths B is the one
 # start that pays whoever is on the other side.
+#
+# Re-priced later against the six-opponent field (the five above plus brynhildr@2c7d15e):
+# paths B is 27-9 against 24-12 without it, and glacierkeep A -- rejected on the old
+# five-bot panel -- is 33-3 against 30-6. Note paths B is *negative* against the tip on
+# its own (5-5 with, 10-0 without, five seeds) and positive against the other five; the
+# field is what decides, not any single opponent.
 ECON_OPENING_STARTS = {
     ((24, 24), (21, 11)),  # paths B
+    ((30, 30), (14, 2)),   # glacierkeep A
 }
 OPENING_BUILDERS = 1
 

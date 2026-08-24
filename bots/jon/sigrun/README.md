@@ -166,6 +166,13 @@ maps, both seats, seeds 1-3:
 | opponent | sigrun |
 |---|---|
 | `brynhildr@2c7d15e` (luc's tip) | **57-33 (0.633)** |
+
+Re-pricing the opening gate against that six-opponent field (the five-bot panel plus the
+tip) rather than against v109 alone changed the answer: **glacierkeep A**, rejected on the
+old panel, is **33-3 against 30-6** and is now enabled. paths B stays at 27-9 against
+24-12 -- though it is *negative* against the tip alone (5-5 with, 10-0 without) and
+positive against the other five. The field decides, not any single opponent; that is the
+same lesson the four-start version taught, applied one level up.
 | `brynhildr@2f83111` (v109, the flagship) | 51-39 (0.567) |
 
 ## What each change is worth, ablated on the merged file
