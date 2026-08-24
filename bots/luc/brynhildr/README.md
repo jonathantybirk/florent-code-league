@@ -11,14 +11,15 @@ actually showed.
 
 | opponent | brynhildr | hildr@7a6d86c | steward@366cd1b |
 |---|---|---|---|
-| hildr@168b1a4 (v78, the flagship) | **75/90 (83%)** | 16/30 | 10/30 |
-| steward_hardened_reinforced@366cd1b | **72/90 (80%)** | 23/30 | — |
-| gefn@60ae5f1 | **72/90 (80%)** | 25/30 | 9/30 |
+| hildr@168b1a4 (v78, the flagship) | **80/90 (89%)** | 16/30 | 10/30 |
+| steward_hardened_reinforced@366cd1b | **76/90 (84%)** | 23/30 | — |
+| gefn@60ae5f1 | **75/90 (83%)** | 25/30 | 9/30 |
 | hildr@7a6d86c | 69/90 (77%) | — | 7/30 |
 | brokkr@05bf388 (Jon's economy bot) | 72/90 (80%) | 7/30 | 11/30 |
 | v70 sentinel_rush_cluster | 75/90 (83%) | 25/30 | 11/30 |
 
-Maps won in both seats: 10/15 against hildr78, 9/15 against steward, 10/15 against gefn.
+Maps won in both seats: 11/15 against hildr78, 9/15 against steward, 10/15 against gefn.
+(Goal rows re-measured on the income-war build; spar_wall 56/90, spar_sentinel 70/90.)
 Off the pool (sweden, bridge, quarry, duel, showdown, vault) it runs without the bundled
 terrain and without crashing; 7/12 against steward and brokkr. Worst unit-turn on a 30x30
 map: 2.7 ms against the 10 ms limit (about 4.3 ms at the ladder's 1.6x).
@@ -125,6 +126,38 @@ unconditionally (brokkr 28/30 and every rush matchup lost); a mend plan against 
 hold never releases and they out-mine us); threat-aware routing that feared Sentinel rays
 (the menders walked instead of healing and the mirror went 25 to 18).
 
+## The income war (the verdict)
+
+Our store against their heal ring prices the kill exactly: `kill_ammo = 10*ehp/18 *
+full/(full-eheal)`, eheal measured as four a mender seen beside their Core, cross-checked
+against the HP ledger. When a sixty-round window of holding closes none of the funding gap
+and takes nothing off their Core -- the snipe volleys spending income exactly as fast as it
+arrives (paths: 27 Ti short for seven hundred rounds), or the ring dead in a rebuild
+grinder -- the verdict is that this rush will never land, and the game is declared an income
+war (`ORD_FORAGE`):
+
+* the attacker stops feeding the ring and cuts the conveyors feeding their base -- 2 Ti a
+  bite, ten bites a belt tile, from a tile no known turret covers -- and lays a 3 Ti barrier
+  on the stump so the line stays cut; Harvesters when no belt is known; long-leash ore
+  denial as the scout. The walk to a cut is planned once and followed: the danger field
+  breathes with vision (a Launcher halo seen from one tile, unseen from the next), and
+  replanning every round shuffled two tiles forever. A target that never gets nearer is
+  barred for 120 rounds and the next tried.
+* the home half buys every miner the cap allows at once -- the verdict already said held
+  titanium buys no kill.
+* nothing is converted to ammunition while the home is unthreatened: banking is the point.
+  The volley treadmill (convert 20, snipe, repeat) is what burned seven hundred rounds of
+  income on paths.
+* ehp and the mender count freeze at the last look; the war ends when the bank covers a
+  re-armed FULL ring's kill at the frozen numbers -- burst, Sentinel rebuilds, and 30 Ti of
+  slack -- or their Core is seen low. Then `hold_total` resets and the ordinary race
+  machinery takes it from there.
+
+Measured (seed 1): spar_wall on paths, seat A -- verdict at round 100, bank 33 to 342 while
+six Harvesters went down, re-entry near round 530, Core kill at 564 in a game the treadmill
+had drawn out to a lost timeout. spar_wall overall 15/30 before, 56/90 across
+seeds 1-3 after; the goal trio rose to 80/76/75 of 90.
+
 ## Comms (16 slots)
 
 | slot | writer | content |
@@ -132,7 +165,7 @@ hold never releases and they out-mine us); threat-aware routing that feared Sent
 | 0 | attacker | Sentinels placed; the Core writes 0 to restart the ring |
 | 1 | attacker | heartbeat `(round+1) + 65536*(eta+1 \| scouting bits)` |
 | 2 | Core | enemy Core packed, `+ 65536*(ring_extra \| HOLD_REBUILD \| RING_HOLD)` |
-| 3 | Core | orders `(round+1) + 65536*flags`: threat, econ, turret, gunner, quiet, miners allowed, Harvesters |
+| 3 | Core | orders `(round+1) + 65536*flags`: threat, econ, turret, gunner, quiet, miners allowed, Harvesters, save, race, forage |
 | 4-8 | ring Sentinels | heartbeats |
 | 9 | Core | the turret hitting us: packed position, `+65536*(1 Sentinel \| 2+4*facing Gunner)` |
 | 10-12 | ring | enemy menders, GO/HOLD/volley, enemy Core HP |

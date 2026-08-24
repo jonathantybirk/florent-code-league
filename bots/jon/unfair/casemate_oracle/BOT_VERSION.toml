@@ -1,0 +1,4 @@
+source_commit = "e6f0072b7695f67d1106d96b5eeedd49627d4450"
+source_path = "bots/jon/unfair/casemate_oracle"
+engine = "2.3.3"
+status = "development"

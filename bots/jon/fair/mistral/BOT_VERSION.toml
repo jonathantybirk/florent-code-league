@@ -1,0 +1,4 @@
+source_commit = "2953f762b18fc1b88a046855e38e5738da15c486"
+source_path = "bots/jon/fair/mistral"
+engine = "2.3.3"
+status = "experimental"
