@@ -2300,7 +2300,14 @@ class Player:
     # ------------------------------------------------------------------ economy
     def _repair_belt(self, ct, here):
         """A hole in the line outranks laying more of it: every Harvester upstream of a gap is
-        mining into a dead end, and one 3 Ti tile restores the whole line's income."""
+        mining into a dead end, and one 3 Ti tile restores the whole line's income.
+
+        A hostile building on a remembered conveyor is the same break, only deliberate.
+        Besvikomat and Atlas both shot out the Core-adjacent mouth and put a Barrier on the
+        stump in the following round.  Treating every occupied tile as intact left five live
+        Harvesters feeding a line that collected nothing for the remaining 700+ rounds.
+        Dig the plug first, then the normal empty-tile branch restores the original facing.
+        """
         gone = []
         for key in list(self.my_harvesters):
             try:
@@ -2312,28 +2319,61 @@ class Player:
         for key in gone:
             self.my_harvesters.discard(key)
         broken = None
+        plugged = False
         bbest = None
+        mine = None
+        try:
+            mine = ct.get_team()
+        except Exception:
+            pass
+        core = set(self.mine_tiles)
         for key, facing in self.belts.items():
-            if self.repair_fail.get(key, 0) >= REPAIR_ATTEMPT_LIMIT:
-                continue
             try:
                 spot = Position(key[0], key[1])
-                if not ct.is_in_vision(spot) or ct.get_tile_building_id(spot) is not None:
+                if not ct.is_in_vision(spot):
                     continue
+                bid = ct.get_tile_building_id(spot)
             except Exception:
+                continue
+            hostile = False
+            if bid is not None and mine is not None:
+                try:
+                    hostile = ct.get_team(bid) != mine
+                except Exception:
+                    hostile = False
+            if bid is not None and not hostile:
+                continue
+            if not hostile and self.repair_fail.get(key, 0) >= REPAIR_ATTEMPT_LIMIT:
                 continue
             if key in self.walls:
                 continue
-            cost = self._dist.get(key, 99)
-            if bbest is None or cost < bbest:
-                bbest, broken = cost, key
+            # An occupied plug is absent from the walking flood.  Rank by a reachable
+            # neighbouring firing/building tile, with a Core mouth ahead of every upstream
+            # break: restoring it reconnects every surviving branch at once.
+            cost = min((self._dist.get((key[0] + dx, key[1] + dy), 99)
+                        for _d, dx, dy in CARDINALS), default=99)
+            dx, dy = facing.delta()
+            gate = (key[0] + dx, key[1] + dy) in core
+            rank = (0 if gate else 1, 0 if hostile else 1, cost)
+            if bbest is None or rank < bbest:
+                bbest, broken, plugged = rank, key, hostile
         if broken is None:
             return False
         try:
+            spot = Position(broken[0], broken[1])
+            adjacent = abs(broken[0] - here.x) + abs(broken[1] - here.y) == 1
+            if plugged:
+                if adjacent:
+                    if ct.can_fire(spot):
+                        ct.fire(spot)
+                    # Hold this job while passive income pays for the next shot.  Extending a
+                    # disconnected branch only gives the opponent more stumps to occupy.
+                    return True
+                self._walk_beside(ct, here, broken, safe=True)
+                return True
             if ct.get_global_resources() < ct.get_conveyor_cost() + 5:
                 return True
-            if abs(broken[0] - here.x) + abs(broken[1] - here.y) == 1:
-                spot = Position(broken[0], broken[1])
+            if adjacent:
                 facing = self.belts[broken]
                 if ct.can_build_conveyor(spot, facing):
                     ct.build_conveyor(spot, facing)
