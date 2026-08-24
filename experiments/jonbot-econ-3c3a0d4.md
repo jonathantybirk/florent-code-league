@@ -29,3 +29,10 @@ strategy's deliberate late authorization versus Torsko's round-1 economy.
 
 Both ablations were rejected. `tools/evaluate_mining.py` on `x/jon@7aa09bc`
 now reports adaptive mining timelines without assuming a fixed opening plan.
+
+## Online verdict
+
+The first round scored 3-22: OpenSverige 5-0, Torsko 5-0, gsxWins 5-0,
+I Stone 3-2, and 0033 4-1. This candidate was based on unpromoted challenger
+v116 rather than ladderfarm's actual flagship v109, so it is superseded by
+`jonbot_econ@529ab2d` and removed from the pending queue.
