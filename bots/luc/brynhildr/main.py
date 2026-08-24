@@ -67,10 +67,12 @@ CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
 
 HOME_BUILDER_AT_START = False  # a Builder at home on round 0 costs 60 Ti effective: six shots, the kill
 MENDERS_MAX = 5            # never more than this many Builders minding the Core
-WALL_RING_TRIGGER = 1      # the first enemy barrier taking a healing seat is a siege telegraph
+WALL_RING_TRIGGER = 3      # three occupied seats are commitment; one cheap decoy must not retire a miner
 WALL_GUARD_TARGET = 3      # 12 HP/round early; damage arithmetic may still buy two more
 GATE_HOLD_BONUS = 1000     # a live belt mouth is the one ring seat the wall squad never yields
 GATE_TENDER_BONUS = 500    # the next guard tends/rebuilds it from the neighbouring ring seat
+LAUNCH_STUCK_ROUNDS = 8    # failed advances at a hostile wall before buying the 20 Ti escape
+LAUNCH_WAIT_ROUNDS = 4     # give the new pad time to run after its Builder, then resume digging
 RACE_MARGIN = 0            # rounds our ring must lead theirs by to go all-in (a dead heat races)
 MEND_RESERVE = 30          # titanium kept for mending while anything is shooting us
 AMMO_PER_SENTINEL = 20     # ammunition kept banked per living Sentinel (two shots each)
@@ -420,6 +422,9 @@ class Player:
         self.cut_best = 99          # closest we have come to the target, for the give-up rule
         self.cut_stuck = 0
         self.no_cut = {}            # target -> round it may be tried again
+        self.launch_goal = None     # committed goal for the no-progress escape hatch
+        self.launch_stuck = 0       # consecutive rounds unable to advance toward that goal
+        self.launch_wait = 0        # rounds spent beside the pad waiting to be thrown
         # sentinel
         self.slot = None
         self.guard = None           # True for a home-guard Sentinel (cannot reach the enemy Core)
@@ -483,6 +488,11 @@ class Player:
         their_dps, their_near, loiterers, shooters = self._scan_home(ct)
         menders = self._menders_home(ct)
         enemy_ring_walls = self._enemy_ring_walls(ct)
+        # A single ring barrier is common incidental harassment.  Live v116 converted a
+        # working miner into a permanent guard for one such wall, then waited 98 rounds for
+        # the second while losing the titanium race.  Three seats is the earliest unambiguous
+        # enclosure: the original Holmgang seal reached it on r49 with five open seats left,
+        # enough time for all three guards to spawn before walls four and five arrived on r61.
         wall_pressure = enemy_ring_walls >= WALL_RING_TRIGGER
         homes = self._home_reports(ct)
         self.home_turrets = self._own_turrets_home(ct)
@@ -1342,6 +1352,8 @@ class Player:
         here = ct.get_position()
         if self.home is None:
             self._orient(ct, here)
+        if self.launch_wait and self._wait_for_launcher(ct, here):
+            return
         if self.role is None:
             ring_done = (self._read(ct, SLOT_BUILT) & 0xFF) >= SENTINEL_TARGET + (_extra(self._read(ct, SLOT_ENEMY)) & 3)
             attacker_alive = _fresh(_beat(self._read(ct, SLOT_BUILDER)), self.round, 2)
@@ -1435,8 +1447,12 @@ class Player:
             self.last_eta = min(98, walk) + 1
             self._write(ct, SLOT_BUILDER, (self.round + 1) + 65536 * (self.last_eta | self._scout_word()))
             if build_now and self._place(ct, here):
+                self.launch_stuck = 0
                 return
             if self._advance(ct, here):
+                self.launch_stuck = 0
+                return
+            if self._launcher_escape(ct, here):
                 return
             self._break_through(ct, here)
             return
@@ -2173,6 +2189,13 @@ class Player:
                 best, chosen = score, key
         self.post = chosen
         if chosen is None:
+            # A fully sealed ring has no flood-reachable post.  Dig immediately, but after
+            # several rounds with no route let this Builder buy a pad and hop into a healing
+            # seat instead of spending the rest of the game outside the wall.
+            target = min(_ring(self.mine_tiles),
+                         key=lambda key: abs(key[0] - here.x) + abs(key[1] - here.y))
+            if self._launcher_escape(ct, here, target):
+                return
             if BREAK_OUT:
                 self._break_out(ct, here)
             return
@@ -2490,11 +2513,17 @@ class Player:
             cost = self._dist.get(step)
             if cost is not None and (best is None or cost < best):
                 best, chosen = cost, step
-        if chosen is None or chosen == (here.x, here.y):
+        if chosen is None:
+            self._launcher_escape(ct, here, key)
+            return
+        if chosen == (here.x, here.y):
+            self.launch_goal = None
+            self.launch_stuck = 0
             return
         path = self._trace(self._came, here, chosen)
-        if path:
-            self._step_to(ct, here, path[0])
+        if path and self._step_to(ct, here, path[0]):
+            return
+        self._launcher_escape(ct, here, key)
 
     def _orient(self, ct, here):
         self.home = here
@@ -2922,6 +2951,8 @@ class Player:
             try:
                 if ct.can_move(direction):
                     ct.move(direction)
+                    self.launch_goal = None
+                    self.launch_stuck = 0
                     return True
             except Exception:
                 return False
@@ -2949,6 +2980,95 @@ class Player:
                 ct.fire(best)
         except Exception:
             return
+
+    def _launcher_escape(self, ct, here, goal=None):
+        """Build a one-use jump pad after a Builder repeatedly fails at a hostile wall.
+
+        The ordinary flood is better whenever it can make a step: it preserves titanium and
+        avoids throwing through a turret lane.  Callers therefore invoke this only when a
+        committed walk has no next step, and every successful move clears the counter.  A
+        Launcher runs after its older Builder on the following round, so the Builder waits
+        beside it long enough to be picked up.
+        """
+        goal = self.goal if goal is None else goal
+        if goal is None:
+            self.launch_goal = None
+            self.launch_stuck = 0
+            self.launch_wait = 0
+            return False
+        here_key = (here.x, here.y)
+        if self.launch_goal != goal:
+            self.launch_goal = goal
+            self.launch_stuck = 0
+            self.launch_wait = 0
+        close_wall = any(abs(x - here.x) + abs(y - here.y) <= 5
+                         for x, y in self.enemy_barriers)
+        if not close_wall:
+            self.launch_stuck = 0
+            self.launch_wait = 0
+            return False
+        # At a useful anchor, a failed placement usually means "save for the Sentinel", not
+        # "the route is blocked".  Launch only from an unusable stand or before arrival.
+        if here_key == goal and self._anchor_value(here_key):
+            self.launch_stuck = 0
+            return False
+        self.launch_stuck += 1
+        if self.launch_stuck <= LAUNCH_STUCK_ROUNDS:
+            return False
+        try:
+            mine = ct.get_team()
+            for bid in ct.get_nearby_buildings(2):
+                if (ct.get_team(bid) == mine
+                        and ct.get_entity_type(bid) == EntityType.LAUNCHER):
+                    p = ct.get_position(bid)
+                    if max(abs(p.x - here.x), abs(p.y - here.y)) <= 1:
+                        self.launch_wait += 1
+                        if self.launch_wait <= LAUNCH_WAIT_ROUNDS:
+                            return True
+                        self.launch_wait = 0
+                        self.launch_stuck = 0
+                        return False
+            if ct.get_global_resources() < ct.get_launcher_cost() + TIE_FLOOR + 10:
+                return False
+            choices = []
+            for direction, dx, dy in CARDINALS:
+                key = (here.x + dx, here.y + dy)
+                if key in self.covered:
+                    continue
+                pos = Position(key[0], key[1])
+                if not ct.can_build_launcher(pos):
+                    continue
+                gap = abs(key[0] - goal[0]) + abs(key[1] - goal[1])
+                choices.append((gap, key, pos))
+            if not choices:
+                return False
+            _gap, key, pos = min(choices)
+            ct.build_launcher(pos)
+            self.occupied.add(key)
+            self.blocked.add(key)
+            self.launch_wait = 1
+            return True
+        except Exception:
+            return False
+
+    def _wait_for_launcher(self, ct, here):
+        """Hold beside a freshly built pad until its later unit turn throws this Builder."""
+        try:
+            mine = ct.get_team()
+            for bid in ct.get_nearby_buildings(2):
+                if (ct.get_team(bid) == mine
+                        and ct.get_entity_type(bid) == EntityType.LAUNCHER):
+                    p = ct.get_position(bid)
+                    if max(abs(p.x - here.x), abs(p.y - here.y)) <= 1:
+                        self.launch_wait += 1
+                        if self.launch_wait <= LAUNCH_WAIT_ROUNDS:
+                            return True
+                        break
+        except Exception:
+            pass
+        self.launch_wait = 0
+        self.launch_stuck = 0
+        return False
 
     def _tend(self, ct, here):
         """Ring is up.  Mend it -- from a tile nothing is shooting at.  Returns True when the
@@ -3445,10 +3565,42 @@ class Player:
 
     # --------------------------------------------------------------- launcher
     def _launcher(self, ct):
-        """We never build one, but if a Launcher of ours exists it flings an adjacent enemy
-        Builder to the legal tile farthest from our Core."""
+        """Throw a stalled friendly over its wall first; otherwise eject an enemy from home."""
         try:
             mine = ct.get_team()
+            told = _unpack(self._read(ct, SLOT_ENEMY))
+            enemy = Position(told[0], told[1]) if told is not None else None
+            own = None
+            for bid in ct.get_nearby_buildings():
+                if ct.get_team(bid) == mine and ct.get_entity_type(bid) == EntityType.CORE:
+                    own = ct.get_position(bid)
+                    self.mine_tiles = _footprint(own)
+                    break
+            if enemy is not None or own is not None:
+                enemy_tiles = _footprint(enemy) if enemy is not None else ()
+                own_tiles = _footprint(own) if own is not None else ()
+                best = None
+                for uid in ct.get_nearby_units(2):
+                    if ct.get_team(uid) != mine or ct.get_entity_type(uid) != EntityType.BUILDER_BOT:
+                        continue
+                    origin = ct.get_position(uid)
+                    # A pad that can see our Core is a home-wall escape and throws inward;
+                    # a pad at the far siege cannot see it and throws toward their Core.
+                    target_tiles = own_tiles or enemy_tiles
+                    before = min(_cheb((origin.x, origin.y), tile) for tile in target_tiles)
+                    for tile in ct.get_nearby_tiles(26):
+                        if not ct.can_launch(origin, tile):
+                            continue
+                        after = min(_cheb((tile.x, tile.y), target) for target in target_tiles)
+                        if after >= before:
+                            continue
+                        leap = tile.distance_squared(origin)
+                        rank = (after, -leap, tile.x, tile.y)
+                        if best is None or rank < best[0]:
+                            best = (rank, origin, tile)
+                if best is not None:
+                    ct.launch(best[1], best[2])
+                    return
             home = Position(self.mine_tiles[0][0], self.mine_tiles[0][1]) if self.mine_tiles else None
             if home is None:
                 for bid in ct.get_nearby_buildings():
