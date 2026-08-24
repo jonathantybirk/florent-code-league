@@ -68,6 +68,7 @@ def _advance(ct, plan, crew, lane, me) -> bool:
         if me == stand:
             ok = _try(ct, ct.build_conveyor, walk.at(tile), _direction(facing))
             _trace(ct, crew, me, f"conveyor {tile} {'ok' if ok else 'FAILED'}")
+            _resolve_build(ct, crew, ok, me, tile)
         else:
             _trace(ct, crew, me, f"-> {stand} to lay {tile}")
             _approach(ct, plan, crew, me, stand)
@@ -77,6 +78,7 @@ def _advance(ct, plan, crew, lane, me) -> bool:
             ok = _try(ct, ct.build_harvester, walk.at(lane.deposit))
             _trace(ct, crew, me, f"harvester {lane.deposit} "
                                  f"{'ok' if ok else 'FAILED'}")
+            _resolve_build(ct, crew, ok, me, lane.deposit)
         else:
             _trace(ct, crew, me, f"-> {lane.stand} to dig {lane.deposit}")
             _approach(ct, plan, crew, me, lane.stand)
@@ -158,6 +160,22 @@ def _trace(ct, crew, me, what) -> None:
 
 def _direction(facing):
     return walk.STEP_DIR[facing]
+
+
+def _resolve_build(ct, crew, succeeded, here, target) -> None:
+    """Yield a blocked build stand instead of retrying there forever."""
+    if succeeded:
+        crew.stalled = 0
+        return
+    direction = walk.STEP_DIR.get((target[0] - here[0], target[1] - here[1]))
+    if direction is None or ct.can_move(direction):  # empty target: wait for resources
+        crew.stalled = 0
+        return
+    crew.stalled += 1
+    if crew.stalled >= PATIENCE:
+        crew.stalled = 0
+        crew.path = None
+        walk.sidestep(ct, ct.get_current_round() + crew.index)
 
 
 def _try(ct, action, *args) -> bool:

@@ -13,10 +13,11 @@ obstacles, preventing repeated routes through buildings.
 
 Against `bots/common/donothingbot`, across all 53 atlas maps at 1,000 rounds:
 
-- total collected titanium: 1,502,210, up from 1,469,620;
-- execution: 93% of the planner's perfect schedule, up from 91%;
-- eight maps improve and none regress;
+- total collected titanium: 1,506,850, up from 1,469,620;
+- execution: 94% of the planner's perfect schedule, up from 91%;
+- nine maps improve and none regress;
 - Sweden improves from 2,240 to 15,200 Ti (14% to 94% execution).
+- Bridge improves from 9,500 to 14,140 Ti (66% to 98% execution).
 
 The benchmark separates executor quality from planner quality:
 
