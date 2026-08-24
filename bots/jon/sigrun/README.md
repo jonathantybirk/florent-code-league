@@ -18,9 +18,12 @@ is the whole head-to-head, and a change is worth precisely the seats it turns.
 
 ## What this fork changes
 
-Two things. Both are small; the second is the one that matters.
+Three things, all small, all in the same pathology: the flagship loses to a
+mid-game siege it has every mechanism to survive, and each mechanism is disabled
+by a rule written for a different situation.
 
 ### 1. The anti-grinder rule must not outlive the Core it protects
+
 
 `spar_wall` beats v109 0-3 on eleven pool starts, always by a Core kill between
 rounds 98 and 221, always with titanium still in the bank -- 516 Ti on valkyrie A,
@@ -82,7 +85,28 @@ it opens; they simply do not add up to a game.
 The arithmetic on those starts says menders cannot win and the turret does not arrive in
 time, so the answer is probably neither -- not to be found by opening one more gate.
 
-### 2. paths B opens with a miner
+### 2. Close the lane rather than pay for what it does
+
+Step 1 of `_home_builder` heals the Core whenever it is hurt and we are beside it;
+step 2 lays a 3 Ti barrier in a live Gunner lane. Under sustained fire the Core is hurt
+every round, so step 1 always fires and step 2 is never reached: every home Builder
+stands there mending, and nobody ever walks off to close the lane.
+
+The prices are not close. Healing is 1 Ti for 4 HP, so absorbing three lane Gunners at
+21 HP a round costs 5.25 Ti a round for as long as they live. A barrier is 3 Ti, blocks
+line of sight outright rather than absorbing the shot, and has 30 HP -- a 7-damage
+Gunner needs five rounds to break one, so the same lane costs about 0.6 Ti a round to
+keep shut. Shut beats paid for by an order of magnitude.
+
+Only the lowest live home slot is diverted; the rest go on healing, so a Core that is
+genuinely racing something down does not stop being mended. Diverting *every* Builder
+is 98-22 on the screen -- then nothing gets healed -- against 99-21 for the one.
+
+skald A against spar_wall goes from a loss on round 150 to a win on round 564. Across
+the panel it is **+4, all of it in the spar_wall column** (59-31 to 63-27); the other
+four columns do not move at all.
+
+### 3. paths B opens with a miner
 
 `openingstrat/` (vendored from `brynhildr_econ_opening`) spawns one precomputed mining
 Builder on round 0 and starts brynhildr's attacker on round 1, on exactly one start.
@@ -110,7 +134,8 @@ Panel: fifteen pool maps, both seats, seeds 1-3, 450 games a build.
 | build | total | v109 | brokkr | steward | spar_wall | spar_sentinel |
 |---|---|---|---|---|---|---|
 | v109 (the flagship) | 332-118 | 45-45 | 78-12 | 78-12 | 56-34 | 75-15 |
-| **sigrun** | **344-106** | **51-39** | 78-12 | 78-12 | **59-31** | **78-12** |
+| + the anti-grinder exemption, + paths B | 344-106 | 51-39 | 78-12 | 78-12 | 59-31 | 78-12 |
+| **sigrun** | **348-102** | **51-39** | 78-12 | 78-12 | **63-27** | **78-12** |
 
 Head to head on the pool the fork is **0.567 against v109 in three independent seed
 blocks**: 17-13 on seed 1, 51-39 across seeds 1-3 (the panel row above), and **85-65 on
