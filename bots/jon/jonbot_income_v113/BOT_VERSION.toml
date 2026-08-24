@@ -1,0 +1,3 @@
+source_commit = "1e69d09"
+source_path = "bots/luc/brynhildr"
+variant = "timing-preserving mining movement"
