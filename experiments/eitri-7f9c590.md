@@ -1,5 +1,8 @@
 # eitri@7f9c590
 
+Superseded before online testing by `eitri@cc2fa28`, which prevents finished
+crew from occupying unfinished planned deposits.
+
 Seat-specific offline-plan successor to `eitri@a3dd609`.
 
 It keeps the confirmed transit-jam executor, then moves expensive order search
