@@ -1,0 +1,5 @@
+source_commit = "114977b57e026682a1d342887c6596860372ee5b"
+source_path = "bots/jon/skadi"
+engine = "2.3.6"
+status = "fair"
+variant = "vidar + builder budget 16 + BLITZ mines + builder-chase ring 16"

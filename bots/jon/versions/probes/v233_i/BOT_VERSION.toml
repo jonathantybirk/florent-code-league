@@ -1,0 +1,4 @@
+source_commit = "bb03f14823e74b78907a1bb2056b339b2e0307b6"
+source_path = "bots/jon/fair/vanguard"
+engine = "2.3.3"
+status = "current"
