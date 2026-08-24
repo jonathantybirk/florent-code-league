@@ -1,4 +1,4 @@
-"""jonbot_econ -- terrain-gated optimal economy on Brynhildr's latest doctrine.
+"""jonbot_econ -- coordinated mining on Brynhildr's latest doctrine.
 
 Lineage: hildr@7a6d86c (the rush, the race arithmetic, the walk) + the measured half of
 steward_hardened_reinforced@366cd1b (the economy that wins timeouts, the home guard that
@@ -44,31 +44,6 @@ WHAT IS DIFFERENT
 """
 
 from fcode import Controller, Direction, Environment, EntityType, Position
-
-from openingstrat import OpeningRunner
-
-ECON_OPENING_MAPS = {
-    "archipelago", "atoll", "auroraveil", "bifrost", "bridge", "crossfire",
-    "drumlin", "duel", "fimbulwinter", "fjord", "glacierkeep", "hive",
-    "icefloe", "jotunheim", "lighthouse", "longship", "meander", "paths",
-    "pinch", "runestone", "showdown", "snowflake", "strait", "string",
-    "sweden", "vase", "vault", "yggdrasil",
-}
-ECON_OPENING_STARTS = {
-    ((26, 26), (19, 19)), ((18, 18), (2, 14)), ((18, 18), (14, 2)),
-    ((26, 12), (2, 5)),
-    ((21, 8), (0, 6)), ((21, 8), (19, 6)), ((16, 16), (2, 11)),
-    ((25, 25), (18, 18)), ((12, 12), (9, 2)), ((20, 20), (2, 15)),
-    ((30, 30), (14, 26)), ((25, 25), (2, 20)),
-    ((24, 24), (4, 4)), ((16, 16), (11, 11)), ((28, 20), (2, 8)),
-    ((24, 24), (21, 11)), ((14, 18), (2, 2)),
-    ((14, 18), (2, 14)), ((24, 24), (2, 11)), ((24, 24), (20, 11)),
-    ((16, 12), (4, 5)),
-    ((20, 26), (2, 22)), ((12, 8), (0, 6)), ((12, 8), (10, 0)),
-    ((25, 15), (0, 13)), ((11, 16), (0, 0)),
-    ((30, 30), (3, 3)),
-}
-OPENING_BUILDERS = 1
 
 try:
     from terrain import INDEX as _MAP_INDEX, WALLS as _MAP_WALLS
@@ -325,9 +300,6 @@ def _facing_to(frm, to):
 
 class Player:
     def __init__(self):
-        self.opening = OpeningRunner(
-            OPENING_BUILDERS, use_store=False, enabled_maps=ECON_OPENING_MAPS
-        )
         self.kind = None
         self.round = 0
         # core
@@ -466,13 +438,8 @@ class Player:
             self.kind = ct.get_entity_type()
         self.round = ct.get_current_round()
         if self.kind == EntityType.CORE:
-            if (self.round < OPENING_BUILDERS and self._opening_enabled(ct)
-                    and self.opening.run_core(ct)):
-                return
             self._core(ct)
         elif self.kind == EntityType.BUILDER_BOT:
-            if self._opening_enabled(ct) and self.opening.run_builder(ct):
-                return
             self._builder(ct)
         elif self.kind == EntityType.SENTINEL:
             self._sentinel(ct)
@@ -480,14 +447,6 @@ class Player:
             self._gunner(ct)
         elif self.kind == EntityType.LAUNCHER:
             self._launcher(ct)
-
-    def _opening_enabled(self, ct):
-        if self.kind == EntityType.CORE:
-            pos = ct.get_position()
-            key = ((ct.get_map_width(), ct.get_map_height()), (pos.x, pos.y))
-        else:
-            key = self.opening._core_key(ct)
-        return key in ECON_OPENING_STARTS
 
     def _read(self, ct, slot, default=0):
         try:
@@ -2398,7 +2357,7 @@ class Player:
                     self.replan_at = self.round + 2
                     return True
             if (here.x, here.y) == key:
-                return self._step_any(ct, here)
+                return self._step_inward(ct, here, onward)
             self._walk_beside(ct, here, key)
             return True
         ore = self.chain[0]
@@ -2426,7 +2385,8 @@ class Player:
                     self.replan_at = self.round + 2
                     return True
             if (here.x, here.y) == ore:
-                return self._step_any(ct, here)
+                inward = self.chain[1] if len(self.chain) > 1 else self.chain_end
+                return self._step_inward(ct, here, inward)
             self._walk_beside(ct, here, ore)
             return True
         self.chain = []
@@ -2504,6 +2464,12 @@ class Player:
             seed = walk
             walk = came[walk]
         return chain, end_of[seed]
+
+    def _step_inward(self, ct, here, inward):
+        """Vacate a build tile through the finished network, not a random side-step."""
+        if inward not in self.mine_tiles and self._step_to(ct, here, inward):
+            return True
+        return self._step_any(ct, here)
 
     def _enemy_beside(self, ct, key):
         """A Harvester outputs to ANY adjacent building: an ore beside their belt feeds them."""
