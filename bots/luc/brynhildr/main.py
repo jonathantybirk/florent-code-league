@@ -437,6 +437,12 @@ class Player:
         self.mining_now = False
         self.team_harvesters = 0
         self.belts = {}             # conveyor tile -> facing, every belt of ours we have seen
+        self.lost_belts = {}        # ...and the ones last seen holding THEIR conveyor, facing elsewhere: a diversion
+        self.no_relay = {}          # diversion tile -> round it may be chewed again (a mender was out-healing the bite)
+        self.relay_key = None       # the diversion being chewed, its lowest HP seen, rounds without a new low
+        self.relay_low = None
+        self.relay_idle = 0
+        self.evicted = None         # the tile just chewed clear beside a Harvester of ours: a barrier keeps it clear
         self.belt_seen = {}         # conveyor tile -> round last in sight
         self.my_barriers = set()    # lane barriers this Builder laid
         self.deny_target = None
@@ -2265,7 +2271,14 @@ class Player:
     # ------------------------------------------------------------------ economy
     def _repair_belt(self, ct, here):
         """A hole in the line outranks laying more of it: every Harvester upstream of a gap is
-        mining into a dead end, and one 3 Ti tile restores the whole line's income."""
+        mining into a dead end, and one 3 Ti tile restores the whole line's income.
+        A hole I Stone fills with ITS conveyor is still a hole -- worse, a diversion.  On
+        stavkirke (match f05df8b3 game 4) their Builders chewed our lines out from round 343
+        and re-laid them facing their Core; our six Harvesters fed them 16 Ti a round for the
+        last 400 rounds while this repair saw no empty tile.  A foreign conveyor on our line
+        facing the way ours did carries our stacks as well as ours would and is left alone; one
+        facing elsewhere, or one parked beside a Harvester of ours, is chewed out (ten bites) --
+        the line tile is then relaid, the parked one's tile barriered so it is not laid again."""
         gone = []
         for key in list(self.my_harvesters):
             try:
@@ -2276,33 +2289,106 @@ class Player:
                 continue
         for key in gone:
             self.my_harvesters.discard(key)
-        broken = None
-        bbest = None
-        for key, facing in self.belts.items():
-            if self.repair_fail.get(key, 0) >= REPAIR_ATTEMPT_LIMIT:
-                continue
+        try:
+            mine = ct.get_team()
+        except Exception:
+            return False
+        if self.evicted is not None:
+            key = self.evicted
+            self.evicted = None
             try:
                 spot = Position(key[0], key[1])
-                if not ct.is_in_vision(spot) or ct.get_tile_building_id(spot) is not None:
-                    continue
+                if (key not in self.belts and key not in self.lost_belts
+                        and abs(key[0] - here.x) + abs(key[1] - here.y) == 1
+                        and ct.get_tile_building_id(spot) is None and ct.can_build_barrier(spot)):
+                    ct.build_barrier(spot)
+                    self.occupied.add(key)
+                    self.blocked.add(key)
+                    return True
             except Exception:
+                pass
+        broken = None
+        bbest = None
+        taken = False
+        jobs = list(self.belts.items()) + list(self.lost_belts.items())
+        for harv in self.my_harvesters:
+            for _d, dx, dy in CARDINALS:
+                step = (harv[0] + dx, harv[1] + dy)
+                if step not in self.belts and step not in self.lost_belts:
+                    jobs.append((step, None))       # a tile beside a Harvester of ours: theirs to steal from
+        for key, facing in jobs:
+            if self.repair_fail.get(key, 0) >= REPAIR_ATTEMPT_LIMIT:
+                continue
+            if self.round < self.no_relay.get(key, -1):
                 continue
             if key in self.walls:
                 continue
-            cost = self._dist.get(key, 99)
+            foreign = False
+            try:
+                spot = Position(key[0], key[1])
+                if not ct.is_in_vision(spot):
+                    continue
+                bid = ct.get_tile_building_id(spot)
+                if bid is None:
+                    if facing is None:
+                        continue                   # an empty tile beside a Harvester: nothing to do
+                else:
+                    if ct.get_team(bid) == mine:
+                        continue
+                    kind = ct.get_entity_type(bid)
+                    if kind not in (EntityType.CONVEYOR, EntityType.SPLITTER):
+                        continue
+                    if facing is not None and kind == EntityType.CONVEYOR and ct.get_direction(bid) == facing:
+                        continue                   # carries our stacks the way ours did
+                    foreign = True
+            except Exception:
+                continue
+            cost = self._dist.get(key, 99) + (8 if foreign else 0)   # ten bites: the plain hole first
             if bbest is None or cost < bbest:
-                bbest, broken = cost, key
+                bbest, broken, taken = cost, key, foreign
         if broken is None:
             return False
         try:
+            if taken:
+                if ct.get_global_resources() < CUT_FLOOR:
+                    return True
+                if abs(broken[0] - here.x) + abs(broken[1] - here.y) == 1:
+                    spot = Position(broken[0], broken[1])
+                    bit = False
+                    if ct.can_fire(spot):
+                        ct.fire(spot)
+                        bit = True
+                    if self.relay_key != broken:
+                        self.relay_key, self.relay_low, self.relay_idle = broken, None, 0
+                    bid = ct.get_tile_building_id(spot)
+                    hp = ct.get_hp(bid) if bid is not None else None
+                    if hp is None:
+                        self.evicted = broken      # chewed clear: a line tile is relaid, a side tile barriered
+                        self.relay_key = None
+                        return True
+                    if self.relay_low is None or hp < self.relay_low:
+                        self.relay_low = hp
+                        self.relay_idle = 0
+                    else:
+                        self.relay_idle += 1
+                    if self.relay_idle >= (CHEW_IDLE if bit else 2 * CHEW_IDLE):
+                        self.no_relay[broken] = self.round + 60   # a mender out-heals the bite
+                        self.relay_key = None
+                    return True
+                if (here.x, here.y) == broken:
+                    return self._step_any(ct, here)
+                self._walk_beside(ct, here, broken)
+                return True
             if ct.get_global_resources() < ct.get_conveyor_cost() + 5:
                 return True
             if abs(broken[0] - here.x) + abs(broken[1] - here.y) == 1:
                 spot = Position(broken[0], broken[1])
-                facing = self.belts[broken]
-                if ct.can_build_conveyor(spot, facing):
+                facing = self.belts.get(broken) or self.lost_belts.get(broken)
+                if facing is not None and ct.can_build_conveyor(spot, facing):
                     ct.build_conveyor(spot, facing)
                     self.occupied.add(broken)
+                    self.belts[broken] = facing
+                    self.lost_belts.pop(broken, None)
                     return True
                 self.repair_fail[broken] = self.repair_fail.get(broken, 0) + 1
                 return False
@@ -2637,6 +2723,8 @@ class Player:
                 self.blocked.discard(key)
                 self.occupied.discard(key)
                 self.enemy_barriers.discard(key)
+                if key in self.lost_belts:
+                    self.belts[key] = self.lost_belts.pop(key)   # their conveyor is gone: a hole of ours again
                 if key in self.belts:
                     self.belt_seen[key] = self.round   # seen, and seen gone: a repair job
                 if key in self.enemy_belts or key in self.enemy_harv:
@@ -2659,9 +2747,16 @@ class Player:
                     if kind == EntityType.CONVEYOR and mine is not None and ct.get_team(bid) == mine:
                         self.belts[key] = ct.get_direction(bid)
                         self.belt_seen[key] = self.round
+                        self.lost_belts.pop(key, None)
                     if (kind in (EntityType.HARVESTER, EntityType.CONVEYOR, EntityType.SPLITTER)
                             and mine is not None and ct.get_team(bid) != mine):
                         self.econ_seen = True
+                        if key in self.belts and (kind != EntityType.CONVEYOR
+                                                  or ct.get_direction(bid) != self.belts[key]):
+                            # THEIR conveyor on our line, facing elsewhere: a diversion, and no
+                            # longer a belt a new chain of ours may join
+                            self.lost_belts[key] = self.belts.pop(key)
+                            self.belt_seen[key] = self.round
                         if kind == EntityType.HARVESTER:
                             self.enemy_harv.add(key)
                         else:
