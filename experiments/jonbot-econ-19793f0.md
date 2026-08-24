@@ -16,7 +16,7 @@ constraint, not an opponent gate.
 
 Local 10 ms evidence over 21 maps and both seats:
 
-- direct mirror against `529ab2d`: 21-21;
+- full 53-map direct mirror against `529ab2d`: 53-53;
 - economy/defense panel: 93-33 versus 90-36;
 - Spar Econ: 33-9 versus 30-12;
 - Brokkr and Steward unchanged at 30-12 each.
