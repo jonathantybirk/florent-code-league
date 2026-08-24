@@ -84,6 +84,10 @@ ATTACKER_DIG_REACH = 0     # steps the attack Builder walks to dig out a turret 
 # ---------------------------------------------------------------------------- tuning (new)
 ECON_AFTER_RING = True     # the first miner is bought once the ring is up, not once the rush stalls
 ECON_OPENING = True        # ...or right behind the attacker, at 1.2x scale instead of the 2.2x the ring leaves
+# Seed-1 six-opponent sweep, relative to the lean opening: +1/+1/+1/+1/+2
+# games on these five maps, while the other pool maps were flat or worse.
+ATTACKER_PREMINE_MAPS = frozenset(("fimbulwinter", "icefloe", "jotunheim",
+                                   "paths", "valkyrie"))
 BELT_MARGIN = 10           # titanium kept over a conveyor's cost before it is laid
 SILENT_TURRET_ROUNDS = 10  # a turret that has not landed damage for this long is a loaded gun, not a siege
 MINERS_MAX = 3             # home Builders mining at once (hildr's MINERS_STALL)
@@ -377,6 +381,7 @@ class Player:
         self.enemy_ids = set()      # distinct enemy Builders seen
         self.econ_seen = False      # a Harvester or belt of theirs
         self.rush_seen = False      # a Builder of theirs on our side of the map
+        self.attack_premine_done = False
         self.width = 0
         self.height = 0
         self.spots = {}             # tile -> facing that puts the Core on its ray
@@ -1309,6 +1314,22 @@ class Player:
         self._observe(ct, here)
         self.covered = self._threats(ct)
         self._dist, self._came = self._flood(here, self.covered)
+        # The #2 ladder opening uses the same Builder for both jobs: one
+        # Harvester first, then a four-Sentinel ring.  That income pays for the
+        # sustained duel without levying the +20% lifetime cost scale of a
+        # second Builder.  Give up by round 30 so an awkward ore layout cannot
+        # turn the opening into permanent mining.
+        if self.map_name in ATTACKER_PREMINE_MAPS and not self.attack_premine_done:
+            if self.my_harvesters or self.round >= 30:
+                self.attack_premine_done = True
+                self.chain = None
+            elif self._mine(ct, here):
+                self.last_eta = 98
+                self._write(ct, SLOT_BUILDER,
+                            (self.round + 1) + 65536 * (self.last_eta | self._scout_word()))
+                return
+            else:
+                self.attack_premine_done = True
         extra = _extra(self._read(ct, SLOT_ENEMY))
         self.ring_target = SENTINEL_TARGET + (extra & 3)
         hold_rebuild = bool(extra & HOLD_REBUILD)
@@ -2367,6 +2388,8 @@ class Player:
         except Exception:
             core = here
         self.sym, self.enemy = _enemy_core(ct, core)
+        found = _MAP_INDEX.get((self.width, self.height, core.x, core.y))
+        self.map_name = found[1] if found is not None else None
         told = _unpack(self._read(ct, SLOT_ENEMY))
         if told is not None:
             self.enemy = Position(told[0], told[1])
