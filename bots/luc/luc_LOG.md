@@ -1,0 +1,727 @@
+# luc loop log
+
+Self-paced improvement loop, started 2026-08-08. Goal: rank 1 on the live ladder.
+Bots live in `bots/luc/`, branch `x/luc`.
+
+## Iteration 1 — 2026-08-08 ~05:30
+
+**State at start**: live rank 14 of 109 at 1756 (fcode status; live.json says 15 at 1748).
+Flagship `steward_hardened_reinforced` (shr), active build `@c04e46e` (v28). Last 10: 4W 6L.
+
+**Findings from the live feed**:
+
+- `steward@e55aab5` (the older, simpler steward) carries the highest live Elo estimate we own:
+  1876 [1814–1956] over 261 matches — vs 1731–1804 for every shr build. Its games ended
+  2026-08-05, so the estimate is against an older opponent population. Someone already queued
+  `steward@e55aab5:3` in the ladderfarm `test_next` (x/ladderfarm @6b8787e0e) — leaving that
+  alone, will read the fresh results when they land.
+- We lost 0–5 twice to **Besvikomat** (~1756, same rating as us) within minutes — rated with
+  shr@f1f2bda, unrated with shr@366cd1b. Decoded three of the five games (match
+  `3eab9d19-f399-4a53-8b7e-14b50edc0937`): Besvikomat plays economic attrition (12–16 Builders,
+  7–10 Harvesters, few/no Launchers, first Gunner as late as round 147) and wins long games
+  (191–1000 turns). Our side: Harvesters die and are **never rebuilt** (antler: zero Harvesters
+  from round 150 of 320), Builders decay 3→1, and the Core grinds down once their mass arrives.
+  The jackpot game went to the round-1000 titanium tiebreak — also lost on economy.
+
+**Root cause (in code)**: shr's Core replaces Builders only when bank ≥ `REPLACEMENT_BANK_THRESHOLD`
+(260). With all Harvesters dead there is no income, so the bank can never reach 260, and one
+parked attacker keeps the Builder heartbeat warm — deadlock: no miners → no income → no trigger
+→ no miners. The vidar lineage's income watchdog was lost in the steward line.
+
+**Built**: `bots/luc/freyr` = shr + income watchdog in `core.py`:
+
+- Core tracks bank growth; if no round in the last 30 saw the bank increase (from round 60 on),
+  income is declared dead.
+- Then: spawn a miner (post-opening spawns are forced miners via `LATE_BUILDERS_MINE`),
+  bypassing heartbeat and bank threshold, cooldown 30 rounds, max 6 revives/game, requires known
+  ore targets.
+- While income is dead, ammo conversion holds back builder+harvester cost (the emergency
+  `COMBAT_AMMO_FLOOR` override still wins).
+
+**Local**: compiles, smoke game vs shr on a random 20×20: freyr won by Core kill at 116 (n=1,
+noise). Full suite vs shr/vidar/odin on all maps running in background
+(`freyr_run1`). Expect ~neutral locally — the watchdog only fires in long games against
+economy-killers, which the internal panel mostly isn't. Gate is "no regression"; the real test
+is the ladder vs Besvikomat-likes.
+
+**Local numbers** (126 games, 21 official maps, both seats): freyr vs shr **21–21 (0.500)** —
+exactly neutral against its parent, as predicted (the watchdog only fires when the economy
+dies, which the internal panel rarely causes); vs vidar 27–15 (0.643); vs odin 28–14 (0.667).
+Net-loss maps: vault 1–5, fjord 2–4 (parent's numbers there unknown — check before blaming the
+watchdog). CPU: worst turn 3.5 ms, 0 turns over 10 ms across sweden/jackpot/vault; Core p99
+57 µs. No clock reads. Gate passed → pushing.
+
+**Next**: push freyr to x/luc → queue `freyr@<sha>:2` on x/ladderfarm. Also: check fresh
+steward@e55aab5 ladder results — if it really measures ~70 Elo above shr live, understanding
+*why* is the next hypothesis. Untouched idea bank: ferry economy Builders to distant ore
+(Pantheon does it, flagged twice in notes); the lighthouse-style early-rush loss (core damage
+from round 4) is a separate unaddressed failure mode.
+
+## Iteration 2 — 2026-08-08 ~05:50
+
+- Pushed freyr to x/luc as `c2c0d3d8b`; queued `freyr@c2c0d3d:2` (10 live matches) on
+  x/ladderfarm (`801f7b5f9`), appended after the steward re-test entry.
+- steward@e55aab5 re-test, first fresh round: 3–2, estimate 1876 → **1827 [1756–1907]** —
+  regressing toward the shr range (1731–1804) as the stale-field theory predicts. Two rounds
+  left; hold judgment.
+- vault/fjord: freyr split 1–1 with shr on both, losses are to vidar/odin in games that end
+  before round 150 — too short for the watchdog to arm. Inherited variance, not a watchdog
+  regression.
+- Watchdog false-positive check: 789-round jackpot win vs vidar, zero WATCHDOG fires — the
+  bank kept growing, so a healthy economy never triggers it. True-positive test is the live
+  field (needs an opponent that actually kills our economy).
+- Waiting on: internal run with freyr; freyr's 10 unrated matches (~25 min).
+
+## Iteration 3 — 2026-08-08 ~06:15
+
+- **steward@e55aab5 verdict: stale-field artifact confirmed.** Fresh rounds went ~4–11;
+  estimate 1876 → 1827 → **1715 [1650–1782]**. The flagship line stands. Lesson: a live Elo
+  estimate built on matches older than ~2 days runs high; re-test before believing any old
+  build's number.
+- freyr live after round 1: 3–2, estimate 1748 on 5 games — meaningless until ≥25. Second
+  round queued.
+- **Internal ladder pipeline looks stuck**: index.json run_id `auto-b10e94bd7fe6` unchanged
+  since 2026-08-06 16:36. Not mine to fix (harness owner's). Relying on the live ladder.
+- **New failure mode dissected** (Besvikomat lighthouse loss, game 5): their opener throws a
+  Builder by round-1 Launcher and plants a Gunner at (6,6) — three tiles from our Core — on
+  round 3. That 25 HP turret chipped our Core for 186 rounds and ended the game **untouched at
+  25/25 HP**. Why: `_defend_core` requires a *visible* target, the guard's own vision never
+  covered (6,6) from its post, and the barrier/counter-turret/aligned-gunner answers all fell
+  through to healing, 4 HP/round against 10. The docstring even documents the hole ("no
+  inferred firing position").
+- **Built `bots/luc/vali`** = freyr + shooter beacon: the Core (vision r²=36 — it always sees
+  a Core-range shooter) packs the nearest visible enemy turret's position into the upper bits
+  of SLOT_CORE_DAMAGED (alarm keeps the low 2 bits; all readers masked). When the guard has no
+  visible enemy turret, it walks toward the beacon (standoff 2) until its own vision picks the
+  target up, then the existing answers engage.
+- Smoke: compiles, HUNT fires on showdown/sprint/duel vs vidar (3 of 4 wins). 168-game panel
+  vs shr/freyr/vidar/odin running (`vali_run1`).
+- **Panel results**: 20–22 shr, 20–22 freyr, 27–15 vidar, 28–14 odin — neutral at home like
+  freyr, which is the expected profile for a live-only failure-mode fix. CPU 0 over 10 ms.
+- Pushed vali as `d123262c6`; queued `vali@d123262:2` on x/ladderfarm (`bb0f348e9`), behind
+  another agent's `steward_relent@7ed1acc:2`. freyr's second live round still pending (feed
+  timestamps are UTC).
+- Queue depth note: 4 test entries are now stacked on the farm (~11 min per round), so vali's
+  first live round is ~30–45 min out.
+
+## Iteration 4 — 2026-08-08 ~07:00
+
+- Live so far: freyr 6–4 over 10 (est 1731 [1624–1834]); vali round 1 went 2–3 (est 1645, one
+  round left); other agent's steward_relent 3–7. All below the 25-game bar — no conclusions.
+- **Studied sporks (ladder #1, 2030 — above Pantheon).** Six games decoded (5–0 over Erebus,
+  3–2 over Pantheon). Consistent shape: 9–21 Harvesters and 44–95 conveyors a game (nobody
+  else breaks 6 Harvesters); Sentinels up by round 5–10 and Gunners nearly absent until a
+  round-200+ kill wave (`first_gunner` 210/230/243 with `first_core_hit` one round later);
+  eats 1000+ Core damage early and heals through it on economy. It is the 2.3.4 patch
+  (Sentinel buff, Gunner nerf) played to its conclusion.
+- Our own code already knows Sentinel siege is right (`SENTINEL_SIEGE_FIRST`), and its own
+  measurement says the cap of one is a **delivery** ceiling: one attacker can't survive/stay
+  solvent long enough to seat a second. sporks fixes delivery with bodies.
+- **Built `bots/luc/ullr`** = vali + late attack wave: from round 170, with bank ≥ builder cost
+  + 120, the Core buys up to 3 extra attacker Builders (announce-then-spawn through spare bits
+  of SLOT_OWN_CORE — a window [start, start+count) so post-wave miners aren't misrouted; other
+  spawn paths stand down during the one-round handshake). Each wave attacker seats its own
+  siege Sentinel on its own line.
+- Smoke: WAVE fires 3/3 on jackpot vs vidar and the Core kill lands at 621 vs freyr's 789 in
+  the same matchup. 168-game panel vs shr/vali/vidar/odin running (`ullr_run1`).
+
+## Iteration 5 — 2026-08-08 ~07:30
+
+- **ullr verdict: neutral, not shipped to the farm.** 19–23 shr, 20–22 vali, long games 31–28,
+  and a median of *zero* siege Sentinels seated in 64 long games (freyr/vali medians identical
+  — the whole lineage almost never converts long games into siege). sporks' wave lands because
+  4:1 mining has starved the defense it walks into; the wave without the economy is bodies
+  into a working defense. Committed as a parts bin (`ullr`), no farm slot.
+- Also learned: 27–45 builder spawns in some 1000-round games pre-exist across the lineage
+  (replacement path has no total cap) — not a new bug, but a cost-scale anomaly worth a look
+  someday.
+- **Built `bots/luc/njord`** = vali + economy ceilings raised toward sporks' scale:
+  NETWORK_CAP 4/8 → 6/12, ECON_EXPAND_ROUND 120 → 80, ECON_BUILDER_ROUND 200 → 120,
+  ECON_MAX_TOTAL_BUILDERS 6 → 9. Smoke: beats vali on the jackpot tiebreak but only +40
+  mined of ~4900 — the caps may not be the binding constraint. Panel running (`njord_run1`);
+  the analysis to do on it is *harvesters built / titanium collected* vs vali, not just wins.
+- Inherited, confirmed not-njord: the lineage mines 0 and loses deterministically as seat A on
+  sweden vs shr (known symmetry-guess failure map).
+- Live: freyr 6–4 (est 1732), vali still 5 games (2nd round pending), flagship shr@f1f2bda
+  active, team 1751 rank 14.
+- **njord panel: best of the day — positive against everything.** 23–19 shr, 24–18 vali,
+  29–13 vidar, 29–13 odin, total 0.625 (vali was 0.565 on the same panel). First build today
+  to beat its parent locally. Long-game harvester medians unchanged (2) — the gain likely
+  comes from ECON_BUILDER_ROUND 120 buying income in mid-length games, not from the raised
+  caps; worth decomposing later if njord's live numbers disappoint. CPU clean.
+- Pushed njord as `0c51bc1dd`; queued `njord@0c51bc1:2` on the farm.
+- Farm queue observation: vali's 2nd round still pending behind other entries; queue is now 5
+  deep. Live results are the bottleneck — next builds should keep coming while they trickle.
+
+## Iteration 6 — 2026-08-08 ~08:00
+
+- Live: **rank 12 at 1771** — flagship on a 6-game rated win streak. Test builds at 10 games
+  each: freyr 6–4 (1733), njord 4–6 (1668), vali 3–7 (1608). Samples too small to act on;
+  note the farm's test panel is deliberately harder than rated draws, so these read low.
+- **Dissected the sweden seat-A deterministic 0-mined loss.** Chain of three findings:
+  1. My first theory (no ore knowledge) was wrong — builders know 16 ore tiles by round 25.
+     Built a midpoint-ore-prior anyway (likely inert; kept, it's harmless and correct).
+  2. **The real killer: the Core-damage alarm pins the sole miner as a mender.** Chip damage
+     holds alarm=1 permanently; the miner healed 4 HP/round for 240 rounds with its Harvester
+     finished but unbelted. Fix in `mimir`: alarm 1 no longer pins a miner with
+     `network_load == 0` (zero connected Harvesters); alarm 2 (critical) still does.
+     Result: sweden goes 317 → 653 rounds… 
+  3. …but still 0 mined: the miner cycles claim → prelay → abandon → re-claim; route
+     planning fails repeatedly on sweden's terrain. Deeper pathing project, deferred.
+- `mimir` = njord + mend-pin exemption + midpoint prior. Panel vs shr/njord/vidar/odin
+  running (`mimir_run1`).
+- **mimir panel: 23–19 njord (beats its parent), 23–19 shr, 29–13 vidar/odin, total 0.619.**
+  CPU clean. Pushed as `62df0ec39`, queued `mimir@62df0ec:2` (after another agent's
+  `gefjon@f66a427:3` — the farm queue is now 7 entries).
+- Lineage so far: shr → freyr (income watchdog) → vali (shooter beacon) → njord (economy
+  ceilings) → mimir (mend-pin exemption). Each step locally ≥ its parent; njord and mimir
+  are the two with real local edges.
+
+## Iteration 8 — 2026-08-08 ~08:35
+
+- Live: **mimir's first round 4–1** — best debut of my builds (5 games, no estimate yet).
+  gefjon (other agent) 9–9 over 18. Team rank 12 at 1772.
+- **Vault autopsy** (the map every build loses ~2–6): we out-mine vidar there but lose the
+  turret war — vidar seats 4 Sentinels (range, fire through walls, never take a hit, 3960
+  Core damage) vs our 0 (five Gunners, all dead by round ~70, 1449 damage).
+  `SENTINEL_SIEGE_FIRST = True` turned out to be a label, not a behavior: the code only
+  tries a Sentinel after the Gunner search fails, which on vault it never does.
+- **Built `bots/luc/hodr`** = mimir + Sentinel genuinely first from round 60 (unconditional
+  reorder died to vidar's rush at turn 89 — Gunner tempo still owns the opening), target
+  1 → 2.
+- **Bug caught the hard way**: forgot to import `SENTINEL_SIEGE_FIRST` into builder.py; the
+  attacker crashed every round from round 3 and the engine swallowed it (`BUILDER_CRASH` in
+  stderr). Two "identical deterministic losses" were the crash, not the strategy. The NOTES
+  warning to grep fresh replays for crashes before trusting a run exists for a reason —
+  re-learned. Post-fix: hodr kills mimir at turn 59 on duel; vault seats 1 Sentinel
+  (damage 1449 → 1593), still lost there. Panel running (`hodr_run1`).
+
+## Iteration 9 — 2026-08-08 ~09:00
+
+- **hodr panel: best of the lineage.** 23–19 shr, 25–17 mimir (beats parent), 32–10 vidar
+  (0.762 — the Sentinel bot beaten at its own game), 31–11 odin, total **0.661**. Net-loss
+  maps down to vault alone (3–5). Avg 0.61 Sentinels/game seated — delivery is still shy of
+  target 2, so there's headroom in the seat search if this direction keeps paying.
+- Pushed hodr as `d540e5baf`, queued `hodr@d540e5b:2` (farm queue now 8 entries).
+- **mimir live: 7–3 over 10, estimate 1840** — highest live estimate of anything we field
+  (flagship ~1780–1800). Needs ≥25 games to qualify for auto-promotion; the farm's UCB
+  should feed it more rounds on its own.
+- Team rank 12 at 1772.
+
+## Iteration 10 — 2026-08-08 ~09:15
+
+- **mimir promoted to live flagship by the farm** (8–4, est 1844). hodr's test rounds: 6–4
+  (est 1743, 10 games).
+- Dissected the rated 0–5 to I Stone (1637): played by the *old* flagship shr@f1f2bda just
+  before promotion. I Stone builds zero Gunners and one Sentinel at round ~37 — we
+  out-damaged them in both decoded games and still lost, because one 2.3.4 Sentinel deals
+  9/round and two menders heal 8. Healing through a Sentinel is losing arithmetic; it must
+  be killed. shr couldn't see it (out of guard vision) — the beacon+hunt in vali+ closes
+  exactly this, so mimir on the ladder should already answer it. Watch item, not a build.
+- **Sentinel delivery autopsy** (hodr seats 0.61/game vs target 2): two blockers found —
+  the ammo check ran *after* the throttle update, so a low pool burned the 10-round search
+  slot; and between attempts the attacker built 25-ammo Gunners that kept the pool under
+  the Sentinel's 40 forever. **Built `bots/luc/forseti`** = hodr + ammo-before-throttle +
+  hold-Gunner-spend-while-saving (falls back to harass, which spends nothing).
+- Panel running (`forseti_run1`).
+- **forseti verdict: correct but inert.** Avg Sentinels seated unchanged (0.61/game), vault
+  byte-identical, 23–19 vs hodr (noise), 0.649 total. The two unblocks weren't the binding
+  constraint — ammo rarely sits under 40 in practice. Real limiter likely attacker lifetime
+  vs the round-60 gate or the seen-terrain precondition. Committed for the record, no farm
+  slot.
+- mimir as flagship: beat team lazy (1864) 3–2, lost 2–3 to Erebus (1870) — competitive at
+  top-6 level. Rated scheduler seems quiet since 07:04 UTC; watching.
+- Pacing note: farm queue is long and mimir needs rated volume — shifting to longer
+  observation windows, building only on live-evidence targets.
+
+## Iteration 12 — 2026-08-08 ~10:00
+
+- Live: rank 13 at 1752 (noise-level move). mimir 8–5, est 1824, still active. Old shr
+  builds still catch many rated slots between farm test swaps.
+- **Dissected mimir's 1–4 rated loss to kladde chatte tville (1729)**: another
+  Sentinel-mass bot — 7–10 Sentinels on 12–17 Harvesters per game, vs our 0 Sentinels (the
+  v44 mimir predates hodr's Sentinel-first). Same blueprint as sporks (#1) and I Stone
+  (1637). **The live meta at every rating level is economy → Sentinel battery.** Our
+  Sentinel-first line seats ≤2 per attacker; the gap is bodies.
+- **Built `bots/luc/magni`** = hodr + ullr's late attack wave (clean 4-file patch port).
+  ullr's wave failed because its attackers built nothing; hodr changed what attackers
+  build, so wave bodies now each seat up to 2 Sentinels. Smoke: wave fires (round 317/557
+  on jackpot — later than in ullr, the njord economy expansion competes for the same
+  bank), tiebreak win vs vidar. Panel running (`magni_run1`).
+- **magni verdict: flat** — 23–19 hodr (noise), 0.643 total, avg Sentinels still 0.60 (max
+  11 in one long game — the wave *can* mass them, rarely does; bodies still build Gunners
+  en route). Committed as record, no farm slot. The live sentinel-meta test rides on hodr.
+- **Built `bots/luc/sif`** = 4-Builder economy-first opening (2 miners), the pre-2.3.4
+  "never add a fourth" measurement re-run on today's chassis. Smoke: dies to rushes at
+  turns 83/96 — the old result reproducing. Full panel running for the definitive number
+  (`sif_run1`).
+
+## Iteration 13 — 2026-08-08 ~10:40
+
+- **sif panel: the old law is dead but the trade is real.** 21–21 vs hodr (the smokes lied),
+  **36–6 over odin** (best ever vs it), but 24–18 vs vidar where hodr holds 32–10 — the
+  second miner is paid out of the Sentinel-matchup defence. Net 0.613 < hodr's 0.661; hodr
+  keeps the tip. Committed as record.
+- **Live sobering check**: the farm swapped the flagship *back* to shr@04300bf — 1824 on a
+  105-match sample beats mimir, whose estimate slid 1844 → 1770 as games came in (same
+  regression pattern as the stale-steward episode, milder). hodr 1774 on 10. Local edges
+  have not shown up live; volume is the bottleneck. Queued `hodr@d540e5b:3` and
+  `mimir@62df0ec:3` for more rounds toward the 25-game bar.
+- Team rank 12 at 1773 (start of day: rank 14 at 1756).
+- Plan: long observation window; next build only on live evidence. Candidate on the shelf:
+  vidar-matchup repair for sif's economy opening (defensive Sentinel earlier?), pending
+  hodr/mimir live verdicts.
+
+## Iteration 14 — 2026-08-08 ~11:00
+
+- Rank 14 at 1745 (window slipped). The rated bleed traces to old shr builds losing to
+  Sentinel-meta teams (I Stone 0–5 again, kladde 2–3) while they hold the flagship on
+  sample size.
+- **I Stone shipped a new build today**: their old versions lose 0–5/1–4 to everything of
+  ours; their new one swept hodr 0–5 and shr@04300bf 0–5 — but the last hour of farm
+  series against it runs 3–2/2–3 both ways. hodr's 0–5 is one series; per the prompt's own
+  rule, not a conclusion. hodr and mimir volume rounds are queued and grinding.
+- No build this iteration — deliberate. Wrote two memory notes: the Sentinel-economy meta
+  (internal panels under-represent it) and the small-sample estimate regression pattern
+  (three sightings today).
+- Standing hypothesis for the next build (pending hodr's ≥25-game estimate): if
+  Sentinel-first transfers live, the delivery bottleneck (attacker lifetime, seat search
+  preconditions) is next; if it doesn't, the sif economy-opening trade plus a defensive
+  Sentinel answer is the pivot.
+
+## Iteration 15 — 2026-08-08 ~11:55 — the honest mid-day verdict
+
+- **hodr got auto-promoted and is bleeding rated**: 0–5 to Besvikomat (1664!) and 1–4 to
+  kladde as flagship; team 1745 → 1720, rank 14. The farm should demote it as the estimate
+  slides — not intervening (promotion is the farm's job).
+- **Day-scale result: the local panel ordering inverts live.** Local: hodr 0.661 > mimir
+  0.619 ≈ njord 0.625 > vali/freyr ~0.55. Live (10–16 games each): freyr 1754 > hodr 1734 ≈
+  mimir 1731 > njord 1688 > vali 1601 — and *every one* is below the incumbent
+  shr@b61aaac's 1806 (385-match sample). The simplest change (freyr, income watchdog only)
+  is the best live performer of the day; each added layer measured worse.
+- Decision: **no more farm submissions from this lineage** until something shows
+  live-relevant promise. The two confirmed code-level bugs (mend-pin economy shutdown,
+  Sentinel-first-as-a-label) are real and stay in the parts bin; their measured value just
+  doesn't exceed the incumbent's on the live field.
+- What would actually move rank: the meta intel says economy-Sentinel bots dominate at
+  every level, but porting fragments of that shape onto the steward chassis has now failed
+  four ways (ullr, magni, sif, hodr-live). If a next big push happens, it should be a
+  ground-up economy-Sentinel bot measured *against live opponents from day one* — not
+  another chassis patch.
+- Note for whoever reads this: samples are 10–16 games; the ordering above could still
+  shuffle ±50 Elo. hodr and mimir volume rounds remain queued and will firm this up.
+
+## Iteration 16 — 2026-08-08 ~12:45
+
+- Farm churn continues: hodr demoted, **freyr now flagship** (1777 on 11 games). Team 1721,
+  rank 15 — the day is net negative on rating from these small-sample flagship stints; the
+  queued volume rounds are the fix (estimates regress to truth, churn ends).
+- **Built `bots/luc/audhumla`** = sif minus the opening attacker (RUSH/FORTIFY roles
+  (2,0)): two miners + ring guard, all opening titanium into economy — re-testing the last
+  standing pre-2.3.4 doctrine law ("no-attacker lost 2–12"), which is exactly the shape
+  every team above us plays. Smoke: loses to hodr's rush (turn 100), beats vidar on
+  jackpot (turn 666). Panel vs shr/hodr/sif/vidar running (`audhumla_run1`).
+- **audhumla panel: the second doctrine law dies.** 21–21 shr, 22–20 hodr, 20–22 sif,
+  18–24 vidar, 0.482 total — the no-attacker economy opening is a mild trade, not the old
+  2–12 catastrophe. Both pre-patch laws that shaped this chassis are now measured dead.
+  The gap to the meta teams is not the opening; it's the mid-game conversion
+  (their 7–20 Harvesters and Sentinel batteries vs our 2–5 and 0.6). Committed as record.
+- Session state: 11 builds, 5 live-tested, 2 hard bug fixes, 2 dead laws, extensive meta
+  intel in memory. Farm churn ongoing (freyr flagship at 11 games); volume rounds queued
+  will settle the day's live ordering. Monitoring cadence from here.
+
+## Iteration 18 — 2026-08-08 ~13:40
+
+- Live: churn ended — farm restored shr@f1f2bda (1799 on 359m) as flagship. Day cost ~50
+  rating (1756 → 1703, rank 17). Painful; mechanism understood and memorized.
+- **The economy ceiling found in code.** audhumla (two miners!) still builds a median of
+  ONE Harvester in long games. Instrumented the pipeline live: both trunks connect by
+  round 9, then each miner re-claims the *other's* finished deposit (per-unit staleness),
+  abandons with "no alternate conveyor route", and the pipeline is silent for 600 rounds.
+  Root causes in `_route`: (1) `joinable` is per-Builder — every other miner's belt (and
+  every dead Builder's belt) is treated as a WALL; (2) routes may only cross
+  personally-seen tiles, and `_pick` abandons instead of scouting toward unseen deposits.
+- **Another agent is on the same trail**: their `snotra` (34b0ce8d1, on mimir) fixes
+  deposit *selection* — price by belt-length×3 + travel instead of nearest-routable-first
+  — measuring 0.607 vs mimir with no losing matchup. Complementary layer. They also
+  matched the farm-submission pause and pruned ullr in the working tree (left alone).
+- **Built `bots/luc/gefn`** = snotra + my route-reachability fixes: any friendly conveyor
+  is joinable (head-on check still guards direction), and an unroutable-but-wanted deposit
+  becomes a scout target instead of an idle round. Panel vs shr/snotra/mimir/vidar running
+  (`gefn_run1`).
+
+## Iteration 19 — 2026-08-08 ~14:10
+
+- **gefn panel: 24–18 shr (day's best vs flagship), 21–21 snotra, 25–17 mimir, 34–8 vidar
+  (0.810, day's best), total 0.619.** The two agents' fixes stack cleanly. Committed
+  (`gefn`), submission pause holds.
+- The harvester mystery narrows again: even in *won* long games gefn holds median 2
+  Harvesters (max 3) against a cap of 6 and an open map. Not survivorship, not the fence,
+  not the caps, not miner count — the serial task pipeline itself stops after ~2 trunks
+  per miner. Next dig: what a miner does after its second `_done` (suspects: the
+  harass-phase switch at `network_load >= cap` with per-builder load counting joined
+  trunks wrongly, `_has_unclaimed_ore` vs the 2-slot claim system, or the patrol loop
+  eating rounds).
+- Farm: flagship is shr@f1f2bda again; churn over. Team ~1703, rank 17. My builds' volume
+  rounds still queued.
+
+## Iteration 20 — 2026-08-08 ~14:20
+
+- Live recovered: rank 13 at 1735; **mimir re-promoted (1847 on 17 games) and won its
+  latest rated 5–0.** hodr 1766/15, freyr 1778/11.
+- **Traced the post-second-trunk stall.** Two mechanisms caught live on jackpot:
+  (1) a miner wedged in `prelay` for 160 rounds holding one of the two claim slots —
+  `_build_failure` waits *forever* on `resources`/`cooldown`, and under sustained fire the
+  ammo emergency pins the bank at 10 Ti, so construction is permanently unaffordable
+  (priority inversion: ammo starves the economy that pays for ammo);
+  (2) the second miner in `scout` for 200 rounds pricing only unroutable candidates.
+- **Built `bots/luc/fulla`** = gefn + resource-wait timeout (40 rounds, then release the
+  claim — safe now that belts are joinable, the half-built line becomes a shortcut) + the
+  post-120 ammo emergency leaves two conveyors' money in the bank.
+- Sobering check: same seed still ends with 2 Harvesters — the timeout releases claims but
+  the 47-Ti Harvester stays unaffordable under the ammo drain. The open design question is
+  the ammo-vs-growth budget under fire; sporks avoids it by growing before fighting. Panel
+  running (`fulla_run1`) to price the hygiene fixes alone.
+
+## Iteration 21 — 2026-08-08 ~14:50
+
+- **fulla panel: beats its parent gefn 24–18 (0.571), 24–18 shr, 21–21 snotra, 33–9
+  vidar, total 0.607.** The unwedged claims pay even without more Harvesters. CPU clean.
+  Committed as `7ac9bb7ae` — the lineage tip.
+- **Resumed live submissions with resolvable samples**: queued `fulla@7ac9bb7:5` (25
+  games — enough to reach the qualification bar in one test, unlike the morning's 10-game
+  reads that churned the flagship). Found the other agent independently queued
+  `snotra@34b0ce8:4` — same policy conclusion, both economy-line tips now get decisive
+  live tests.
+- mimir remains flagship (1847 on 17), team rank 13 at 1735 and recovering.
+- Open thread for the next build (needs design, not a quick patch): the ammo-vs-growth
+  budget arbitration under sustained fire — the one structural difference left between our
+  economy and the meta teams'.
+
+## Iteration 22 — 2026-08-08 ~15:10
+
+- **fulla's first 10 live games: 6–4, est 1870 (team's highest), games 33–18.** Beat
+  Besvikomat 4–1 and Clankers (1806) 5–0 — the economy-attrition matchups the day
+  targeted; all four losses close (three 2–3s and a 1–4); kladde narrowed 1–4 → 2–3.
+  15 more games queued reach the qualification bar. Treating 1870 as an upper bound per
+  the regression pattern — but the matchup profile is the right shape, which the morning
+  builds never showed.
+- snotra live: 12–8 over 20, est 1758. mimir slid to 1785 on 20 (three close rated
+  losses). freyr re-promoted (1867 on 12) and beat I Stone 4–1 rated. Team 1726, rank 15.
+- No build this iteration: fulla's 25-game verdict shapes whether the next work is
+  scaling this line (ammo-vs-growth arbitration) or something else.
+
+## Iteration 23 — 2026-08-08 ~15:50
+
+- **fulla's qualified verdict: 15–10 over 25 games, est 1806 [1731–1870]** — regressed
+  from 1870 as expected but landed high: the only build of the day statistically at the
+  incumbent shr@f1f2bda's level (1838 on 362), with the economy-attrition matchup wins
+  the whole day chased. Queued `fulla@7ac9bb7:4` (20 more games) to firm the estimate.
+- The other agent is iterating too: `snotra_h@6951e03` testing (2–3 at 5 games).
+- **For Lucas / the farm owner — the day's single most valuable fix is in the farm, not
+  the bots**: promotion on sub-25-game estimates churned the flagship five times today
+  (mimir → shr → hodr → freyr → shr...), and each small-sample stint bled rated points —
+  team 1756 → 1693 over the day, roughly −60 rating attributable to churn. A ≥25-game
+  qualification bar on promotion (or a hysteresis margin over the incumbent) would have
+  kept shr@b61aaac/f1f2bda active all day. The promotion logic is farm code, which I
+  don't touch by agreement — flagging with data instead.
+- Team rank 18 at 1693; incumbent restored as active.
+
+## Iteration 24 — 2026-08-08 ~16:20 (analysis while fulla's volume queues)
+
+- Decoded fulla's top-team losses (Jython 1–4, Flotte 1–4). Two conclusions:
+  1. **The economy fixes landed**: fulla matches Jython's Harvester count every game
+     (8v7, 3v4, 7v5) with 22–33 conveyors — the day's belt work turned the economy gap
+     into parity against a rank-4 team.
+  2. **We lose on weapons conversion now**: Jython spends everything on Gunners (8–15,
+     zero Launchers); our Launcher retire→rebuild cycle eats the weapons budget — game 3:
+     6 Launchers built, 1 Gunner, 90 total damage. Each rebuild is +10% scale for a pad
+     that mostly idles at Jython's tempo.
+- Probe running: `fulla_lq` (scratch, not committed) = fulla with Launcher retirement
+  off — retirement is what triggers rebuilds, so never-retire should end the cycle
+  cheaply. 126-game panel vs fulla/shr/vidar (`fulla_lq_run`).
+- fulla's 20 extra live games still queued behind snotra_h.
+
+## Iteration 25 — 2026-08-08 ~16:45
+
+- **Probe confirmed and shipped: `vor` (59941c6e8) = fulla with Launcher retirement off.**
+  24–18 over fulla, 24–18 shr, 34–8 vidar (0.810), total 0.651; Launcher builds 2.56/game
+  from 4–6. The Jython-loss diagnosis (retire→rebuild cycle eating the weapons budget)
+  held up in one constant. Queued `vor@59941c6:5` for a 25-game live test.
+- Note the cadence that worked here: decode a specific top-team loss → name the leak →
+  one-variable probe in scratch → panel → promote only on a parent-beating number. The
+  morning's misses came from skipping the first step.
+- The other agent bumped snotra_h to a bigger sample too (`snotra_h@a494b78:6`).
+- Team 1698, rank 17, incumbent shr@f1f2bda active. Test queue: fulla:4, snotra_h:6,
+  vor:5.
+
+## Iteration 26 — 2026-08-08 ~17:15 — Lucas's sabotage doctrine
+
+- **Direction from Lucas**: the meta is fast econ + maximal enemy-econ sabotage — break
+  conveyors and wall the cuts, ring the enemy base with barriers minus one door, and cover
+  the door with a Sentinel that never touches their Core, so Core-damage-keyed defences
+  (ours included) never flag it while it snipes Builders crossing the one tile their
+  economy must use. Also: benchmark against the top three (sporks/Pantheon/Erebus), not
+  our own bracket. Notable: nobody in the top three plays encirclement — sporks builds
+  zero barriers, Pantheon only lane-soaks — so this is a novel angle, not a copy.
+- **Built `bots/luc/loki`** = vor + the doctrine: (1) belt-cut walling — a tile seen as
+  enemy conveyor that turns empty is remembered and walled for the same 3 Ti they'd
+  re-lay it for; (2) `_wall_in_enemy` — barrier ring at radius 3 around their Core minus
+  one door (door = ring tile nearest known ore), mirroring our own seal walker;
+  (3) `_gap_sentinel` — seat search that requires the ray to cover the door and *never*
+  reach their Core within Sentinel range.
+- First instrumented run: encouraging and instructive — on jackpot the ring is only ~7
+  tiles (terrain seals the rest free), bank is fine, but **progress stalls at ~1 barrier:
+  builders can't reach contested ring tiles**, and each builder walks its own copy of the
+  ring. Delivery into defended ground is the recurring boss fight of this codebase.
+  Panel running (`loki_run1`) to price v1 as-is.
+
+## Iteration 27 — 2026-08-08 ~17:00
+
+- **loki v1 verdict: 24–18 vor, 24–18 shr, 31–11 vidar, total 0.627 — but 0 barriers
+  built in 126 games.** Both sabotage mechanisms are inert: `_move_cardinal_adjacent`
+  cannot path into contested ground, the walker consumes the round anyway, and the
+  attacker paces outside the enemy base from round 90 on. The 24–18 vs vor is noise or an
+  accidental repositioning effect — not the doctrine. Even the instrumented "done" tiles
+  were their buildings on the ring, not our barriers.
+- **v2 plan (next iteration)**: threat-aware approach with a give-up timeout per ring
+  tile (~25 rounds, mark done and move on), tiles ordered by reachability from our side
+  (far arc first), arm the door Sentinel on any partial wall when the ring is mostly
+  natural terrain, and let the *harasser* (already deep in enemy ground with safe-seat
+  logic) own the near-arc tiles instead of the attacker.
+- Live: fulla drifted 1806 → 1775 [1709,1841] at 25m (extra 20 games still queued);
+  snotra_h 9–11/1706 (underperforms snotra); vor's test still queued. Team 1685, rank 18,
+  incumbent shr@b61aaac active at 1818.
+
+## Iteration 28 — 2026-08-08 ~17:15 — loki v2: the door Sentinel works
+
+- v2 changes: door Sentinel arms FIRST (its seat is the reachable piece; v1 gated it on
+  a 60% wall that never existed), per-tile approach budgets (20 rounds then written off),
+  nearest-tile-first ordering, real pathfinding for the approach.
+- **Smoke result on jackpot vs vidar: the door Sentinel killed 11 of vidar's 12 Builders**
+  — several at the gap tile itself — each a 30+ Ti loss with compounding scale, and it
+  re-seats itself when lost (DOOR at rounds 101 and 781). Still lost the round-1000
+  tiebreak: their Harvesters were untouched and our own economy sat at 2. The sniper
+  works; converting the slaughter into wins needs their standing economy tapped too
+  (harass already tries) or ours to out-collect. Wall itself still 0 barriers — but the
+  wall was scaffolding for the door concept, and the door works without it.
+- fulla live estimate decayed further without new games (1775 → 1745): estimates rot with
+  staleness, another calibration point.
+- Panel running (`loki_run2`).
+
+## Iteration 29 — 2026-08-08 ~17:45
+
+- **loki v2 panel: 24–18 vor (beats the tip head-to-head), 23–19 shr, 29–13 vidar, total
+  0.603, 0.87 Sentinels/game.** The trade is visible: vidar dropped 0.810 → 0.690 — door
+  work costs the siege tempo that was beating vidar. vor and loki are co-tips with
+  different profiles: vor the generalist, loki the anti-Builder specialist.
+- Synthesis candidate for later: door Sentinel gated on observed Builder traffic (arm it
+  when enemy Builder sightings near their base exceed a threshold) instead of
+  unconditionally at round 90 — keeps vor's siege tempo on maps where the door is dead
+  weight.
+- Still waiting on vor's live test (queue) and fulla's extra games.
+
+## Iteration 30 — 2026-08-08 ~18:00
+
+- vor's first 10 live games: **4–6, est 1690 [1626,1767]** — mediocre start, 15 games
+  queued. fulla decayed further without games (1717). Every build of the day lands in the
+  1690–1810 live band regardless of local panel edge — the panel's resolution on the live
+  field is now formally suspect (self-play correlation).
+- A third agent is active: the current live submission is v52 "aegis@8ef5814 (modulah)",
+  not in the feed's bot index yet. Left alone.
+- Team rank 18 at 1700. No build this iteration; vor's full 25-game verdict picks the
+  next move (vor vs loki vs traffic-gated synthesis).
+
+## Iteration 31 — 2026-08-08 ~18:50 — the hyper-rush wave
+
+- vor's full verdict: **13–13 over 26, est 1717** — the local vor>fulla edge didn't
+  transfer either. fulla decayed to 1687. Team in free-fall: rank 21 at 1670, five
+  straight rated losses to mid-table.
+- **Decoded Banminary's 0–5 sweep of shr: games end at rounds 35 and 43.** Their new
+  build is a Sentinel hyper-rush — Launcher-throw on round 1–2, two Sentinels shooting
+  our Core from rounds 4–13, 18 damage/round vs our menders' 8, Core dead before any
+  reactive machinery matters. The ladder upgraded into this over the evening (I Stone,
+  kladde, now Banminary): the meta is cycling rush → econ → hyper-rush within a single
+  day.
+- Counter-design sketch for the next build: the throw lands a lone Builder near our Core
+  — kill the *Builder* in the landing window (rounds 2–5, before its first Sentinel
+  stands), via an opening Gunner covering the likely landing arc (our own throw-range
+  geometry r²≤26 names the arc) or the guard intercepting on sight. Healing is not a
+  counter at 18/round; interception is.
+- Meta-lesson for the log: with the field shipping new builds hourly, any fixed build's
+  live estimate decays within hours. Rank 1 here is a red-queen race — the loop's real
+  product is diagnosis speed, and the farm's promotion logic (small-sample churn) is
+  still the team's biggest self-inflicted cost.
+
+## Iteration 32 — 2026-08-08 ~19:30 — THE find: we tested on the wrong maps all day
+
+- First: vor vs the ferry-rush proxies (tempest_jon, tempest_fast): **41–1 and 41–1** —
+  the beacon line already handles the rush archetype; no interceptor needed for that
+  mechanism as such.
+- **Then the big one: `maps/` is the OLD pool.** The ladder's v3 pool (replaced
+  2026-08-06; it's in the memory notes, and I missed applying it) shares only FOUR maps
+  with what every local panel today ran on. Every "0.6x local edge" was measured mostly
+  on maps the ladder does not play. This is the likeliest single explanation for the
+  day's local→live transfer failure.
+- **Fixed with infrastructure**: `tools/extract_maps.py` rebuilds .map26 files from
+  replay opening snapshots (same protobuf fields as the map format — extraction is
+  re-serialization). 15 live maps recovered from today's replay downloads
+  (antler, archipelago, atoll, drumlin, eider, fjordgate, heart, hive, jackpot,
+  lighthouse, meander, moonrise, nordkap, saga, snowflake), validated exactly against a
+  decoded match. Committed as `maps/live/`; staged as `maps/lv_*` for the suite.
+- **First live-pool panel running** (`livepool_run1`): vor vs shr/fulla/loki/mimir on
+  the 15 real maps. Tomorrow's protocol: every panel runs on `lv_*` maps.
+
+## Iteration 33 — 2026-08-08 ~20:00 — cross-agent synthesis
+
+- **Live-pool panel (the first honest one): vor 16–14 shr, 16–14 fulla, 15–15 mimir —
+  everything compresses to 0.50–0.53 on the real maps**, exactly matching the live
+  ordering. The old-pool local edges were map artifacts. Instrument fixed, conclusions
+  recalibrated. vor's real net-loss live maps: antler 1–5, atoll 1–5, saga 1–5 —
+  concrete targets now measurable locally.
+- The 30 "errors" were loki games: the other agent pruned `bots/luc/loki` (and ullr,
+  and forseti) from the working tree mid-panel — their call per my own logged verdicts;
+  left alone. Their loop (`LUC_LOOP_LOG.md`, iteration 64!) converged on the
+  complementary finding: **Pivot (rank 7) plays economy-funded GUNNERS** — 10 Builders,
+  7.6 Harvesters, 39.8 conveyors, *zero* Launchers, and the *same* 11.6 Gunners we
+  field. My Sentinel-mass memory note was a partially wrong fixture (they built
+  spar_sentinel from it — it reproduced our loss rate for the wrong reason; I've
+  amended the memory).
+- **Joint picture for the next build**: the gap to the top is a 3× economy behind equal
+  turrets. Not a tweak — a different architecture (10 Builders vs our
+  MAX_OPENING_BUILDERS=3; sif only tested 4). Next build spec (`byggvir`): vor chassis,
+  ~6-Builder opening weighted to miners, Launchers off, Gunners bought from income —
+  measured on `lv_*` maps against shr/vor and the other agent's spar fixtures.
+
+## Iteration 34 — 2026-08-08 ~20:15
+
+- **Built `bots/luc/byggvir`** = vor with the Pivot architecture: `_ROLES` (3,1) — three
+  opening miners — `LAUNCHER_BUILDERS` 0 in both constants and the doctrine table (the
+  doctrine table was separate; missing it crashed the ring code with a zero-step slice,
+  now also guarded), `RELAY_STOP_DISTANCE` 999 to kill the whole ferry apparatus, njord's
+  economy ceilings carried forward.
+- Smokes on live maps: dies to vor's rush at 47/67 on eider/antler, kills at 107 on
+  saga — the boom is rush-naked as expected; the question is whether the live mix
+  punishes that (Pivot booms and survives, so a defensive complement may be needed:
+  early home Gunners from income). Panel on the 15 live maps vs shr/vor/mimir running
+  (`byggvir_run1`).
+
+## Iteration 35 — 2026-08-08 ~20:45
+
+- **byggvir panel: 0.311 (9–21, 10–20, 9–21) — the naked boom is slaughtered, 0–6 on
+  eight live maps. But the economy doubled: 4.1 Harvesters/game vs the lineage's ~2.**
+  The Pivot boom works on our chassis; the defence half is simply absent.
+- Scoped the mend-pin exemption to sole-miner architectures (with three miners, builder
+  0 guarding is affordable) — inert against a 47-turn rush kill, committed anyway as
+  correct.
+- **The precisely-specified next build**: proactive home defence, Jython-style — their
+  first Gunners stand at rounds 14–19 *before any damage*; reactive-on-alarm can never
+  answer a 47-turn kill. Spec: once the second Harvester connects (or round ≥ 12),
+  miner 0 places one Gunner on the enemy-facing approach to our Core, returns to
+  mining, escalates via the existing HOME_TURRET machinery on alarm. That plus
+  byggvir's boom is the full Pivot profile.
+
+## Iteration 36 — 2026-08-08 ~21:15
+
+- **Proactive guard v1: measured harmful.** 0.211 total vs the naked boom's 0.311; the
+  Gunner eats opening titanium and a miner's rounds without stopping the rush, and the
+  boom shrinks (4.1 → 3.28 Harvesters). Flag off, code and result kept.
+- Standing question for the byggvir line (open, needs real study not another knob):
+  **how does Pivot actually survive rushes?** Candidates: body count as soak (10
+  Builders), belt/wall geometry, or the rushes at their rating simply being weaker than
+  our lineage's. The answer is in Pivot-vs-rusher replays — downloadable; that study is
+  the right next step before any further byggvir tuning.
+- Day-end state of the line: vor and fulla remain the practical tips (live 1717/1687 on
+  small samples, incumbent shr ~1820); byggvir is the honest architecture experiment in
+  progress; the live-map instrument (`maps/lv_*`, `tools/extract_maps.py`) is the day's
+  most durable artifact, alongside eleven diagnosed-and-fixed mechanisms and both
+  agents' converged meta picture.
+
+## Iteration 37 — 2026-08-08 ~21:45 — the Pivot study reframes byggvir
+
+- **Pivot loses 0–5 to Pantheon and 1–4 to sporks yet holds rank 7** — they farm the
+  mid-mass and eat the top-3 losses. Decoded the Pantheon sweep: no hyper-rush — first
+  Core hit at rounds 89–481, victory by sustained grind (2555–4626 damage through
+  Pivot's menders) while blanking Pivot's offense (35–371). The top plays
+  attrition-with-teeth. (Also: Pivot spawned 38 Builders in one game — the
+  replacement-churn pathology is universal, not ours.)
+- **Second instrument bias named**: our internal panel is all rushers, which the live
+  field mostly is not. byggvir's 0.311 vs our own line may coexist with a fine live
+  rating. Queued `byggvir@bf22593:5` — the ladder is the only honest price. (Other
+  agent's hlin/nanna tests ahead in the queue.)
+- Team recovering: rank 16 at 1705.
+
+## Iterations 38–39 — 2026-08-08 ~22:15–23:20 — overnight cadence
+
+- The farm's test queue is **29 entries** — the other agent queued ~10 builds (spork,
+  ostara, vidarr, bifrost, hoenir, vili, freyja, lofn, hlin, nanna) at 5–8 rounds each
+  ahead of byggvir. Their v56 is testing now (4–1, 4–1, 3–2 — going well for them).
+  byggvir's verdict is ~4–8 hours out; queue-jumping the shared budget isn't my call.
+- Team ~1676–1679, rank 21; the farm rotates old-line flagships (steward@e55aab5,
+  shr@366cd1b) whose rated games bleed to kladde/I Stone/Coreflood — the churn cost
+  continues into the night. All diagnostics for it are already logged; the fix is the
+  farm's promotion bar, owner's call.
+- Loop settles to hourly checks overnight; byggvir's verdict is tomorrow's first
+  decision point.
+
+## Iteration ~45 — 2026-08-09 ~09:20 — byggvir's verdict and the sigyn attempt
+
+- **byggvir live (first 10 series): 5W–5L, est 1730 [1637,1830] — level with vor and
+  fulla — including 5–0 over I Stone.** A bot our own line crushes 0.21–0.31 locally
+  performs identically live. The self-play panel inversion is now beyond doubt; the
+  other agent's iterations 166–168 reached the same conclusion independently (the local
+  instrument cannot produce the 300+-round grinding regime; balance ≠ length; a
+  survivable sparring partner cannot be built from weaker parts).
+- **Built and held `sigyn`** = byggvir + loki's door Sentinel. The mechanism doesn't arm:
+  the door needs a live attacker past round 90 and the boom's lone attacker dies first —
+  loki's version rode vor's rush pressure. The synthesis needs a door seated by a body
+  that survives on a boom chassis (miner-seated, or a home-staying attacker). Design
+  question, deliberately not smashed through with another knob; committed as held.
+- Overnight ledger: the other agent ran to iteration 168, tested ~12 builds (all
+  1651–1762, none beating the incumbent's sample-size 1800), pruned dead bots
+  (incl. vor, loki), and queued more incumbent volume. Team ~1721, rank 19.
+- The honest cross-agent picture after ~36 hours: every architecture lands 1690–1810
+  live; the separator at the top is something neither agent has built yet, and the
+  local instrument cannot see it. The next lever is likely the door-on-boom synthesis
+  done properly, or the farm's promotion bar (still the cheapest +Elo available).
+
+## Morning summary — 2026-08-09 ~10:00 (for Lucas)
+
+**Where we are**: rank 18 at 1733 (loop started rank 14/1756; low point 21/1668 during
+the flagship-churn afternoon). Incumbent shr@f1f2bda active at 1787 on a big sample.
+
+**byggvir final: 1719 [1657,1770] over 25 series** — the Pivot-style boom (3 miners, no
+Launchers, 2× Harvesters) plays level with every tip we own despite losing 0.21–0.31 to
+our own rushers locally. Six of my builds live-priced this session: freyr 1754, vor
+1717, byggvir 1719, mimir ~1730, fulla ~1720, vali 1601. Nothing beats the incumbent's
+sample-size 1800.
+
+**What would actually move rank, in order of expected value**:
+1. **The farm's promotion bar** (≥25-game qualification or hysteresis) — the churn cost
+   ~60–85 rating twice; this is config-level and owner's call.
+2. **The door Sentinel on a chassis with an economy** — loki's door killed 11 of 12
+   enemy Builders in-game; the blocker is delivering construction into contested ground
+   (three failed attempts). Pantheon demonstrably solves escorted forward barriers —
+   their replays are the study.
+3. **Your sabotage doctrine** — mechanically implemented (belt-cut walling, wall-in,
+   door sniper with the never-touch-Core constraint) and one delivery problem away from
+   live.
+
+**Durable artifacts**: `tools/extract_maps.py` + `maps/live/` (the live pool rebuilt
+from replays — local testing was on the wrong maps for two days), the mend-pin and
+Sentinel-first bug fixes in every current build, and the joint finding with the other
+loop that self-play panels do not price this ladder.
+
+Loop continues in monitoring mode (hourly); builds resume on new evidence or your say.
+
+## Monitoring tick — 2026-08-09 ~11:00
+
+- Team 21/1690; incumbent shr@f1f2bda active (1772, decaying), losing rated to Coreflood
+  0–5, kladde, Askar City. Field keeps shipping; our seat stands still. No new lever in
+  my lane — the ranked list in the morning summary stands.
+- Note for the other loop (re: iteration 175's "no opponent cuts belts"): the
+  belt-cutting behaviour you need in a fixture exists in our own attack machinery
+  (`_contest_enemy_logistics`, `_harass`) — the external zoo doesn't do it, but any of
+  our line's bots as the *opponent* side of a paired cell does. loki@8981210 also
+  carries the door-Sentinel + belt-cut-walling sabotage kit (walling never fired
+  vs our own bots; the firing harass does).

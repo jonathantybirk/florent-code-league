@@ -1,0 +1,209 @@
+---
+import PageLayout from "@layouts/PageLayout.astro"
+import Container from "@components/Container.astro"
+---
+
+<PageLayout
+  title="League feed"
+  description="Game-relevant discussion from the Florent Code League Discord, grouped into threads."
+  noindex
+>
+  <div class="pt-28 pb-16">
+    <Container size="2xl">
+      <div class="animate">
+        <h1 class="text-3xl font-semibold text-black dark:text-white">League feed</h1>
+        <p class="mt-2 text-sm opacity-75">
+          Discussion from the Florent Code League Discord that bears on actually
+          competing &mdash; rule changes, results, strategy, opponent behaviour &mdash;
+          grouped into threads. Off-topic chat is filtered out.
+        </p>
+        <p class="mt-1 text-xs opacity-50" id="feed-meta">Loading&hellip;</p>
+      </div>
+
+      <div class="mt-6 flex flex-wrap gap-2 animate" id="feed-filters"></div>
+
+      <div class="mt-6 space-y-4 animate" id="feed-threads">
+        <p class="py-16 text-center text-sm opacity-60">Loading feed&hellip;</p>
+      </div>
+    </Container>
+  </div>
+</PageLayout>
+
+<script>
+  interface FeedMessage {
+    id: string
+    author: string
+    is_bot: boolean
+    timestamp: string | null
+    content: string
+    attachments: number
+    url: string
+  }
+
+  interface FeedThread {
+    id: string
+    title: string
+    summary: string
+    topic: string
+    relevance: string
+    started_at: string | null
+    last_activity_at: string | null
+    channel: { id: string; name: string }
+    message_count: number
+    truncated: boolean
+    messages: FeedMessage[]
+  }
+
+  interface Feed {
+    version: number
+    generated_at: string
+    guild: { id: string | null; name: string | null }
+    counts: { threads: number; by_topic: Record<string, number> }
+    threads: FeedThread[]
+  }
+
+  const FEED = "/discord/data/feed.json"
+  const REFRESH_MS = 60_000
+
+  const TOPIC_LABELS: Record<string, string> = {
+    "rules-and-patches": "Rules & patches",
+    "results-and-ladder": "Results & ladder",
+    "strategy-and-meta": "Strategy & meta",
+    "tooling-and-api": "Tooling & API",
+    "opponent-intel": "Opponent intel",
+    "logistics-and-deadlines": "Deadlines",
+  }
+
+  const metaEl = document.getElementById("feed-meta") as HTMLElement
+  const filtersEl = document.getElementById("feed-filters") as HTMLElement
+  const threadsEl = document.getElementById("feed-threads") as HTMLElement
+
+  let bundle: Feed | null = null
+  let active = "all"
+  let signature = ""
+
+  const ESCAPES: Record<string, string> = {
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }
+
+  const esc = (s: unknown): string =>
+    String(s ?? "").replace(/[&<>"']/g, (c) => ESCAPES[c] ?? c)
+
+  function when(iso: string | null): string {
+    if (!iso) return ""
+    const then = new Date(iso)
+    const mins = Math.round((Date.now() - then.getTime()) / 60000)
+    if (mins < 1) return "just now"
+    if (mins < 60) return `${mins}m ago`
+    if (mins < 1440) return `${Math.round(mins / 60)}h ago`
+    if (mins < 10080) return `${Math.round(mins / 1440)}d ago`
+    return then.toLocaleDateString(undefined, { day: "numeric", month: "short" })
+  }
+
+  function renderFilters(): void {
+    const counts = bundle?.counts?.by_topic ?? {}
+    const topics = Object.keys(counts).sort()
+    const chip = (key: string, label: string, n: number): string => {
+      const on = active === key
+      const cls = on
+        ? "bg-black text-white dark:bg-white dark:text-black"
+        : "bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20"
+      return `<button data-topic="${esc(key)}" class="rounded-full px-3 py-1 text-xs transition-colors ${cls}">${esc(label)} <span class="opacity-60">${n}</span></button>`
+    }
+    filtersEl.innerHTML =
+      chip("all", "All", bundle?.counts?.threads ?? 0) +
+      topics.map((t) => chip(t, TOPIC_LABELS[t] ?? t, counts[t])).join("")
+    filtersEl.querySelectorAll("button").forEach((b) =>
+      b.addEventListener("click", () => {
+        active = b.dataset.topic ?? "all"
+        renderFilters()
+        renderThreads()
+      })
+    )
+  }
+
+  function renderMessage(m: FeedMessage): string {
+    const stamp = m.timestamp
+      ? new Date(m.timestamp).toLocaleString(undefined, {
+          day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+        })
+      : ""
+    const extra = m.attachments
+      ? `<span class="ml-1 opacity-50">[${m.attachments} attachment${m.attachments > 1 ? "s" : ""}]</span>`
+      : ""
+    const body = m.content
+      ? `${esc(m.content)}${extra}`
+      : `<span class="opacity-50">(no text)${extra}</span>`
+    return `
+      <li class="border-l-2 border-black/10 dark:border-white/15 pl-3">
+        <div class="flex items-baseline gap-2 text-xs opacity-60">
+          <span class="font-medium">${esc(m.author)}</span>
+          <span>${esc(stamp)}</span>
+          <a href="${esc(m.url)}" target="_blank" rel="noopener noreferrer"
+             class="underline decoration-dotted hover:opacity-100">open in Discord</a>
+        </div>
+        <div class="mt-0.5 whitespace-pre-wrap break-words text-sm">${body}</div>
+      </li>`
+  }
+
+  function renderThread(t: FeedThread): string {
+    const label = TOPIC_LABELS[t.topic] ?? t.topic
+    const truncated = t.truncated
+      ? `<li class="pl-3 text-xs opacity-50">&hellip; earlier messages omitted (${t.message_count} in total)</li>`
+      : ""
+    return `
+      <details class="group rounded-lg border border-black/10 dark:border-white/15 p-4 open:bg-black/[0.02] dark:open:bg-white/[0.03]">
+        <summary class="cursor-pointer list-none">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-full bg-black/5 dark:bg-white/10 px-2 py-0.5 text-[11px]">${esc(label)}</span>
+            <span class="text-xs opacity-50">#${esc(t.channel?.name ?? "")}</span>
+            <span class="text-xs opacity-50">${esc(when(t.last_activity_at))}</span>
+            <span class="text-xs opacity-50">${t.message_count} msg${t.message_count === 1 ? "" : "s"}</span>
+          </div>
+          <h2 class="mt-1.5 font-medium text-black dark:text-white">${esc(t.title)}</h2>
+          <p class="mt-1 text-sm opacity-75">${esc(t.summary)}</p>
+          ${t.relevance ? `<p class="mt-1.5 text-sm"><span class="opacity-50">So what:</span> ${esc(t.relevance)}</p>` : ""}
+          <span class="mt-2 inline-block text-xs underline decoration-dotted opacity-60 group-open:hidden">Show messages</span>
+        </summary>
+        <ul class="mt-4 space-y-3">${truncated}${(t.messages ?? []).map(renderMessage).join("")}</ul>
+      </details>`
+  }
+
+  function renderThreads(): void {
+    const all = bundle?.threads ?? []
+    const shown = active === "all" ? all : all.filter((t) => t.topic === active)
+    threadsEl.innerHTML = shown.length
+      ? shown.map(renderThread).join("")
+      : `<p class="py-16 text-center text-sm opacity-60">Nothing here yet.</p>`
+  }
+
+  async function load(): Promise<void> {
+    try {
+      const res = await fetch(`${FEED}?t=${Date.now()}`, { cache: "no-store" })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const next: Feed = await res.json()
+      const nextSignature = JSON.stringify(next.threads ?? [])
+      if (nextSignature === signature) {
+        metaEl.textContent = `${next.counts?.threads ?? 0} threads · updated ${when(next.generated_at)}`
+        return
+      }
+      signature = nextSignature
+      bundle = next
+      metaEl.textContent = `${next.counts?.threads ?? 0} threads · updated ${when(next.generated_at)}`
+      renderFilters()
+      renderThreads()
+    } catch (err) {
+      if (!bundle) {
+        metaEl.textContent = ""
+        const reason = err instanceof Error ? err.message : String(err)
+        threadsEl.innerHTML = `<p class="py-16 text-center text-sm opacity-60">Feed unavailable (${esc(reason)}).</p>`
+      }
+    }
+  }
+
+  load()
+  setInterval(load, REFRESH_MS)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") load()
+  })
+</script>

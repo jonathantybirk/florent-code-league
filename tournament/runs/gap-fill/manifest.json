@@ -1,0 +1,107 @@
+{
+  "tournament_id": "gap-fill",
+  "map_set": "official",
+  "maps": [
+    "atoll",
+    "aurora",
+    "bridge",
+    "crossfire",
+    "duel",
+    "fjord",
+    "hive",
+    "jackpot",
+    "longship",
+    "pinch",
+    "quarry",
+    "runestone",
+    "showdown",
+    "skerry",
+    "sprint",
+    "strait",
+    "string",
+    "sweden",
+    "twins",
+    "vase",
+    "vault"
+  ],
+  "seeds": [
+    1
+  ],
+  "tle": 0,
+  "matches": 435,
+  "rating_matches": 420,
+  "mode": "round-robin",
+  "challengers": [],
+  "bots": [
+    {
+      "bot_id": "undertow_oracle@75591b7",
+      "name": "undertow_oracle",
+      "commit": "75591b72a86ea02f57e4e5d02c04b1dda988d710",
+      "path": "bots/jon/unfair/undertow_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    },
+    {
+      "bot_id": "vanguard@c407e79",
+      "name": "vanguard",
+      "commit": "c407e79202ec2a4d7beb3c75b57e61b8f40e8b56",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard@818f3b4",
+      "name": "vanguard",
+      "commit": "818f3b4a45aac4f468feab1937085f6fa37b752c",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard@da3fd8a",
+      "name": "vanguard",
+      "commit": "da3fd8a0ef76d67a597feebbb523172965c472e5",
+      "path": "bots/jon/fair/vanguard",
+      "tags": [
+        "jon",
+        "fair"
+      ]
+    },
+    {
+      "bot_id": "vanguard_oracle@75591b7",
+      "name": "vanguard_oracle",
+      "commit": "75591b72a86ea02f57e4e5d02c04b1dda988d710",
+      "path": "bots/jon/unfair/vanguard_oracle",
+      "tags": [
+        "jon",
+        "unfair"
+      ]
+    }
+  ],
+  "compliance": {
+    "version": 4,
+    "targets": [
+      "undertow_oracle@75591b7",
+      "vanguard@c407e79",
+      "vanguard@818f3b4",
+      "vanguard@da3fd8a",
+      "vanguard_oracle@75591b7"
+    ],
+    "maps": [
+      "atoll",
+      "duel",
+      "quarry"
+    ],
+    "matches_per_bot": 3,
+    "sample_rounds": 25,
+    "close_threshold_us": 9000,
+    "limit_us": 10000,
+    "guard_tle_ms": 12
+  }
+}

@@ -1,0 +1,5 @@
+source_commit = "dff3a6e95"
+source_path = "bots/luc/{heimdall,odin,vigil}"
+engine = "2.3.3"
+status = "experiment"
+variant = "per-map-dispatcher-heimdall-default"

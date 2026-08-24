@@ -1,0 +1,5 @@
+source_commit = "6b39ebbe3"
+source_path = "bots/luc/steward_hardened_reinforced"
+engine = "2.3.6"
+status = "development"
+variant = "steward_hardened_reinforced plus an income watchdog: the Core revives a dead economy instead of waiting on a bank that can no longer grow"

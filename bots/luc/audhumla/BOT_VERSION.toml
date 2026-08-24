@@ -1,0 +1,5 @@
+source_commit = "d540e5baf"
+source_path = "bots/luc/sif"
+engine = "2.3.6"
+status = "development"
+variant = "sif without the opening attacker: two miners and a guard, all opening titanium into economy — the last pre-2.3.4 doctrine law re-tested"

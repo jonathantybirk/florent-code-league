@@ -1,0 +1,5 @@
+source_commit = "59941c6e8"
+source_path = "bots/luc/vor"
+engine = "2.3.6"
+status = "development"
+variant = "vor rebuilt to the Pivot profile: three opening miners, zero Launchers, the same Gunners bought from three times the economy"

@@ -1,0 +1,5 @@
+source_commit = "34b0ce8d1"
+source_path = "bots/luc/gefn"
+engine = "2.3.6"
+status = "development"
+variant = "gefn with the treasury unwedged: resource-starved builds time out after 40 rounds instead of holding a claim forever, and the mid-game ammo emergency leaves conveyor money alone"
