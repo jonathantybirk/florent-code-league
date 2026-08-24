@@ -1686,6 +1686,9 @@ class Player:
         #    And never with the last titanium while their Core is in its final 120 HP: both
         #    Cores dying in one round is settled on titanium stored, a heal is 1 Ti for 4 HP
         #    that cannot matter then, and the mirror on icefloe was lost 2 Ti to 2 on a coin.
+        # ...and before any of it, close a lane rather than pay for it (see _lane_barrier).
+        if threatened and LANE_BARRIERS and self.home_slot in (None, 0) and self._lane_barrier(ct, here):
+            return
         try:
             ehp = self._read(ct, SLOT_EHP) or 500
             if ct.get_global_resources() <= TIE_FLOOR and ehp <= GO_LOW_HP:
