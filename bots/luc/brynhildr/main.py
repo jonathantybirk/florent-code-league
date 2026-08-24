@@ -696,9 +696,13 @@ class Player:
             if self.ring_hold:
                 want_menders = min(MEND_SQUAD_MAX, max(want_menders, (9 * self.sentinels_on_us + 3) // 4))
             want_menders = max(1, want_menders)
-            if self.sentinels_on_us == 0 and self.hold_total <= STALL_ROUNDS:
+            if (self.sentinels_on_us == 0 and self.gunners_close < 2
+                    and self.hold_total <= STALL_ROUNDS):
                 # Gunners: one mender and the barriers.  Two bought at the first Gunner on
                 # helheim, before the race was even called, were the ring's ammunition.
+                # Point-blank Launcher squads are different: two adjacent Gunners bypass
+                # the lane-barrier premise and deal 14 damage a round, so retain the squad
+                # size calculated from gunners_close instead of forcing it back to one.
                 want_menders = 1
             if hp < 300 and landing >= 18:
                 want_menders += 1
