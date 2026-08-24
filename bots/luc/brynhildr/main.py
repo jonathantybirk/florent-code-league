@@ -1702,10 +1702,13 @@ class Player:
         # Only lanes that shoot Builders count -- a ring Sentinel's ray through our Core is
         # where the menders have to stand.
         self._dist, self._came = self._flood(here, self.home_danger)
-        # Do not perturb a live finishable race.  Once the Core is genuinely in danger, pass
-        # it any fixed shooter this closer Builder can see; next round the Core can reserve
-        # the turret and ammunition through its existing ORD_TURRET machinery.
-        if not (flags & ORD_RACE) and self._core_hp(ct) < 300:
+        # Do not perturb a live finishable race.  Once the Core is genuinely in danger, or a
+        # late ring is still making no dent in their observed 400+ HP Core, pass it any fixed
+        # shooter this closer Builder can see.  Banminary's four-Sentinel late wave killed us
+        # in 20--28 rounds from full health, so waiting for our own 300 HP was already too late.
+        enemy_hp = self._read(ct, SLOT_EHP)
+        stalled_race = self.round >= 60 and enemy_hp >= 400
+        if not (flags & ORD_RACE) and (self._core_hp(ct) < 300 or stalled_race):
             self._report_seen_sentinel(ct)
         # 0. a 3 Ti barrier in a live Gunner lane, when it is a step away: it absorbs that
         #    Gunner's whole output for less than a round of mending costs (steward: "the 3 Ti
