@@ -1,5 +1,12 @@
 # brynhildr
 
+# jonbot_income_v113
+
+Timing-preserving mining-movement fork of ladderfarm's selected expected-Elo
+leader, `brynhildr@1e69d09` (submission v113). Core economy authorization,
+spawning, combat, defence, and every decision about *when* to build are
+unchanged. Only an authorized miner's chain movement differs.
+
 hildr's Sentinel rush in steward's armour: `hildr@7a6d86c` (the walk, the ring, the race
 arithmetic) plus the measured half of `steward_hardened_reinforced@366cd1b` (an economy that
 wins timeouts, a home guard that survives sieges), rebuilt on what the ladder replays of both

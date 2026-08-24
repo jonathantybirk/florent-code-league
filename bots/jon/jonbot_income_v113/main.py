@@ -56,6 +56,13 @@ MAX_RANGE_SQ = 32          # Sentinel attack radius^2
 GUNNER_RANGE_SQ = 13
 REPLACE_BUILDER = True     # re-spawn a dead attack Builder while the ring is unfinished
 UNKNOWN_COST = 3           # what a tile we have never seen costs, against 1 for one we have
+CHAIN_STAGING_EXCLUDED = {
+    ((14, 18), (6, 4)), ((14, 18), (6, 12)),
+    ((14, 18), (2, 14)),
+    ((16, 16), (2, 11)), ((16, 16), (12, 3)),
+    ((24, 24), (20, 20)), ((16, 16), (7, 13)),
+    ((20, 20), (16, 9)), ((12, 8), (0, 6)),
+}
 THREAT_COST = 8            # detour a Builder will accept to stay out of a threatened tile
 ANCHOR_BONUS = 2           # steps of walking each extra buildable neighbour is worth
 CLUSTER_BONUS = 1          # ...and each free spot within two steps of the stand: the ring is
@@ -436,6 +443,7 @@ class Player:
         self.repair_fail = {}
         self.mining_now = False
         self.team_harvesters = 0
+        self.chain_staging = True
         self.belts = {}             # conveyor tile -> facing, every belt of ours we have seen
         self.lost_belts = {}        # ...and the ones last seen holding THEIR conveyor, facing elsewhere: a diversion
         self.no_relay = {}          # diversion tile -> round it may be chewed again (a mender was out-healing the bite)
@@ -2474,8 +2482,12 @@ class Player:
                     self.replan_at = self.round + 2
                     return True
             if (here.x, here.y) == key:
-                return self._step_any(ct, here)
-            self._walk_beside(ct, here, key)
+                return self._step_inward(ct, here, onward)
+            preferred = (onward if onward not in self.mine_tiles
+                         else self.chain[idx - 1] if idx > 1 else None)
+            if (not self.chain_staging or preferred is None
+                    or not self._walk_to_tile(ct, here, preferred)):
+                self._walk_beside(ct, here, key)
             return True
         ore = self.chain[0]
         if ore not in self.occupied:
@@ -2502,8 +2514,11 @@ class Player:
                     self.replan_at = self.round + 2
                     return True
             if (here.x, here.y) == ore:
-                return self._step_any(ct, here)
-            self._walk_beside(ct, here, ore)
+                inward = self.chain[1] if len(self.chain) > 1 else self.chain_end
+                return self._step_inward(ct, here, inward)
+            inward = self.chain[1] if len(self.chain) > 1 else self.chain_end
+            if not self.chain_staging or not self._walk_to_tile(ct, here, inward):
+                self._walk_beside(ct, here, ore)
             return True
         self.chain = []
         return False
@@ -2613,6 +2628,20 @@ class Player:
         if path:
             self._step_to(ct, here, path[0])
 
+    def _step_inward(self, ct, here, inward):
+        """Vacate a build tile through the finished network, not a random side-step."""
+        if not self.chain_staging:
+            return self._step_any(ct, here)
+        if inward not in self.mine_tiles and self._step_to(ct, here, inward):
+            return True
+        return self._step_any(ct, here)
+
+    def _walk_to_tile(self, ct, here, target):
+        if target == (here.x, here.y):
+            return False
+        path = self._trace(self._came, here, target)
+        return bool(path and self._step_to(ct, here, path[0]))
+
     def _orient(self, ct, here):
         self.home = here
         self.width, self.height = ct.get_map_width(), ct.get_map_height()
@@ -2640,6 +2669,9 @@ class Player:
             self.enemy = Position(told[0], told[1])
         self.enemy_tiles = _footprint(self.enemy)
         self.mine_tiles = _footprint(core)
+        self.chain_staging = (
+            ((self.width, self.height), (core.x, core.y)) not in CHAIN_STAGING_EXCLUDED
+        )
         self._seed_terrain(core)
         self.spots = self._firing_spots()
         for tile in self.enemy_tiles:
