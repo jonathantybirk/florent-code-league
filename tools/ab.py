@@ -34,6 +34,8 @@ def main() -> int:
     ap.add_argument("bot"); ap.add_argument("opp", help="comma list of opponents")
     ap.add_argument("--maps", default="")
     ap.add_argument("--seeds", type=int, default=1)
+    ap.add_argument("--seed-from", type=int, default=1,
+                    help="first seed, so a held-out block can be played on its own")
     ap.add_argument("--jobs", type=int, default=10)
     ap.add_argument("--tle", type=int, default=0)
     ap.add_argument("--csv", default="")
@@ -42,7 +44,7 @@ def main() -> int:
     maps = args.maps.split(",") if args.maps else maps_available()
     opps = args.opp.split(",")
     jobs = [(o, m, s, seat) for o in opps for m in maps
-            for s in range(1, args.seeds + 1) for seat in "AB"]
+            for s in range(args.seed_from, args.seed_from + args.seeds) for seat in "AB"]
 
     def run_one(j):
         o, m, s, seat = j
