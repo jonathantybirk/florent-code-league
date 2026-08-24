@@ -89,6 +89,7 @@ SILENT_TURRET_ROUNDS = 10  # a turret that has not landed damage for this long i
 MINERS_MAX = 3             # home Builders mining at once (hildr's MINERS_STALL)
 HARVESTERS_MAX = 5         # Harvesters the miners keep laying while the Core pays
 SURGE = True               # a bank with nothing to buy is a tiebreak being lost: more miners, a higher Harvester cap
+SECOND_HARASSER = True     # the income war fields a second harasser: two belts cut at once, one Gunner cannot cover both
 SURGE_BANK = 400           # titanium held, with no kill funded, before the surge is called
 SURGE_ROUND = 150          # never in the opening: the bank is the burst until the rush has been tried
 MINERS_SURGE = 5           # home Builders mining under the surge
@@ -128,9 +129,6 @@ CHEW_IDLE = 6              # bites without a new low on the tile: a mender out-h
 TEND_CAP = 10              # rounds the harasser heals one barrier under chew before leaving it: 2 a bite against 4 a heal is a stalemate
 LOOK_STALE = 80            # rounds after which a tile this Builder looked at counts as unknown again: their belts grow
 LOAD_STEPS = 6             # steps of walking each Harvester feeding through a belt tile is worth to the harasser
-RELAY_LOOP_ROUNDS = 40     # two relays of one tile inside this window: a turret owns the tile, stop feeding it
-WALL_THEIR_RING = True     # forage: barrier THEIR Core's ring tiles -- a mender that cannot stand,
-                           # a spawn that cannot land, a Core the burst meets unhealable
 BREAK_OUT = True           # a walled-in home Builder shoots the enemy barrier in its way
 WALL_WATCH = True          # menders bought the round they start walling our ring: hold the tiles that are left
 WALL_SQUAD = 3             # menders the wall watch buys: 12 HP a round out-heals the two Sentinels that follow the walls
@@ -386,6 +384,10 @@ class Player:
         self.turret_ids = set()     # every home turret of ours the Core has ever seen
         self.turret_lost = -1000    # round a home turret was last seen gone
         self.forage = False         # the verdict said the rush cannot land: an income war is on
+        self.ring_restarts = 0      # full rings lost and restarted: two is a grinder, not a race
+        self.second_at = -9         # round the second harasser was spawned (bit 11 pulses for two rounds)
+        self.second_bought = False  # one per game: the third is a mender's worth of walking food
+        self.atk_lost = 0           # attack Builders that died and were replaced
         self.gaps = []              # per-round shortfall against the burst, for the no-progress verdict
         self.ehps = []              # enemy Core HP alongside, the other face of progress
         self.forage_ehp = 500       # the enemy Core as last priced when the verdict was called
@@ -397,6 +399,7 @@ class Player:
         self.enemy_tiles = ()
         self.mine_tiles = ()
         self.role = None
+        self.second = False         # the income war's second harasser
         self.chain = None           # [ore, c1 .. ck] with ck beside the chain end
         self.chain_end = None       # the tile the last conveyor of the chain points into
         self.replan_at = 0
@@ -427,7 +430,6 @@ class Player:
         self.turrets = {}           # enemy turret id -> (pos, facing, covered tiles)
         self.covered = set()        # tiles to keep out of when walking: lanes, Launchers, Builders
         self.lanes = set()          # tiles a known enemy turret can shoot, refreshed each turn
-        self.shot_lanes = set()     # ...the ones that shoot the first thing on the ray: a conveyor there is dead
         self.home_danger = set()    # lanes that shoot a Builder: Gunners, and Sentinels not aimed at our Core
         self.grabs = set()          # tiles beside an enemy Launcher: it picks a Builder up from there
         self.goal = None
@@ -453,7 +455,6 @@ class Player:
         self.relay_low = None
         self.relay_idle = 0
         self.evicted = None         # the tile just chewed clear beside a Harvester of ours: a barrier keeps it clear
-        self.relaid = {}            # belt tile -> last two rounds it was relaid: the loop detector
         self.belt_seen = {}         # conveyor tile -> round last in sight
         self.my_barriers = set()    # lane barriers this Builder laid
         self.deny_target = None
@@ -775,6 +776,20 @@ class Player:
             want_menders = max(want_menders, wall_squad)
             # ...and never more menders than there are tiles to mend from, plus one to dig
             want_menders = min(want_menders, max(wall_squad, self.ring_held + self.ring_free + 1))
+        # The wave watch.  Banminary turtles five Builders on its Core with no economy -- the
+        # burst can never land (20 HP a round of mending) -- and at round 96-192 spends the
+        # bank on a three-Sentinel wave into our empty home: v114 died in 20-24 rounds four
+        # times, the mend squad bought only after the first shot.  While the hold is hopeless
+        # (the burst more than 300 short), two menders stand at home BEFORE the wave; the
+        # counter-turret money is in the held bank by definition.
+        # ...but never while the opening burst is still ramping: on icefloe the two menders
+        # bought at round 60 delayed the ammunition float, the burst that had brokkr's Core
+        # at 28 HP in the twin game never fired, and the round-1000 tiebreak was lost.  The
+        # income war's verdict, or a hold past 45 rounds, says the burst is not coming.
+        if (self.round >= 60 and (self.forage or self.hold_total > 45) and self.go != 1
+                and not (can_finish or near_kill or finishing)
+                and BURST_SLACK * kill_ammo - bank > 300):
+            want_menders = max(want_menders, 2)
         # The finish line.  Two rushes meeting is a sum: when their ring will kill us no later
         # than ours kills them, one mender (4 HP a round for 1 Ti) moves our death back
         # further than its price moves theirs -- provided the kill is still funded after it.
@@ -792,7 +807,10 @@ class Player:
         miners_now = sum(1 for _slot, flags in homes if flags & 1)
         harvesters = sum((flags >> 1) & 7 for _slot, flags in homes)
         home_builders = max(menders, len(homes))
-        need_menders = max(0, want_menders - home_builders)
+        # Under fire, a miner six tiles away is not a mender.  On paths the turtle's wave
+        # landed with 173-261 Ti banked and the finish-line rule wanting a mender; two miners
+        # counted as the squad, nothing spawned, and the Core lost the race healing nothing.
+        need_menders = max(0, want_menders - (menders if threatened else home_builders))
 
         if menders < self.prev_menders and threatened:
             self.home_deaths += self.prev_menders - menders
@@ -836,7 +854,15 @@ class Player:
                         and ehp >= self.ehps[0] - 10)
             if not self.forage:
                 dead_ring = ring_paused and alive == 0 and gap > 50
-                if self.round >= FORAGE_MIN_ROUND and gap > 0 and (stagnant or dead_ring):
+                # Torsko dug 16 of our 17 Sentinels out of the same spots (Atlas 15 of 15,
+                # 900+ Ti of rebuilds); Besvikomat's Gunners executed the walking attacker at
+                # rounds 24-100 five games running and every replacement walked into the same
+                # nest.  A ring lost twice, or an attacker replaced twice before two Sentinels
+                # stand, is not a race being lost slowly -- it is the income war already.
+                grinder = (self.ring_restarts >= 2
+                           or (self.atk_lost >= 2 and built < 2))
+                if gap > 0 and ((self.round >= FORAGE_MIN_ROUND and (stagnant or dead_ring))
+                                or (self.round >= 30 and grinder)):
                     self.forage = True
                     self.forage_ehp = ehp
                     self.forage_eheal = eheal
@@ -907,9 +933,11 @@ class Player:
             # The second miner follows the first Harvester, the third the third: on paths the
             # second Builder was bought at round 92 with the first miner still saving for its
             # Harvester, and the game ended with two Builders and no Harvester at all.
-            if harvesters >= 1 and (stuck or self.round >= LONG_GAME_ROUND):
+            patient = self.scout_econ and not self.scout_rush
+            if harvesters >= 1 and (stuck or self.round >= LONG_GAME_ROUND
+                                    or (patient and self.round >= 60)):
                 want_miners = 2
-            if stuck and harvesters >= 3:
+            if harvesters >= 3 and (stuck or (patient and self.round >= 120)):
                 want_miners = MINERS_MAX
         elif not ECON_AFTER_RING and stuck:
             want_miners = MINERS_MAX
@@ -989,6 +1017,15 @@ class Player:
 
         # ---- the attack Builder, then menders, then the miner, then ammunition
         spawned_now = self._keep_attacker(ct, built)
+        if (SECOND_HARASSER and not spawned_now and self.forage and not self.second_bought
+                and self.scout_econ and not self.scout_rush
+                and self.round >= 40 and _fresh(_beat(self._read(ct, SLOT_BUILDER)), self.round, 2)
+                and ti >= self._builder_cost(ct) + 30):
+            self.spawn_role = 0
+            if self._spawn_one(ct, toward_enemy=True):
+                spawned_now = True
+                self.second_bought = True
+                self.second_at = self.round
         if not spawned_now and need_home:
             cost = self._builder_cost(ct)
             if need_menders:
@@ -1060,7 +1097,9 @@ class Player:
             miners_allowed = 3                 # every non-holder may mine, whatever its slot
         flags |= miners_allowed << ORD_MINERS_SHIFT
         flags |= min(7, harvesters) << ORD_HARVEST_SHIFT
-        self._write(ct, SLOT_ORDERS, (self.round + 1) + 1024 * (1 if surge else 0) + 65536 * flags)
+        second_pulse = 1 if 0 <= self.round - self.second_at <= 1 else 0
+        self._write(ct, SLOT_ORDERS, (self.round + 1) + 1024 * (1 if surge else 0)
+                    + 2048 * second_pulse + 65536 * flags)
         self._publish_shooter(ct)
         econ_first = econ_ok and harvesters == 0 and home_builders > 0 and (go != 1 or (kill_ammo - bank) > 100)
 
@@ -1382,6 +1421,7 @@ class Player:
             if self.round - self.ring_seen < RING_LOST_ROUNDS or self.round - self.plan_round < 30:
                 return False
             self._write(ct, SLOT_BUILT, 0)
+            self.ring_restarts += 1
             self.ring_seen = self.round
             if _fresh(_beat(self._read(ct, SLOT_BUILDER)), self.round, 2):
                 return False                       # the live attacker rebuilds
@@ -1396,7 +1436,10 @@ class Player:
             if self.round < 4:
                 return False
         self.spawn_role = 0
-        return self._spawn_one(ct, toward_enemy=True)
+        spawned_now = self._spawn_one(ct, toward_enemy=True)
+        if spawned_now and self.spawned > 1:
+            self.atk_lost += 1                     # a replacement means the last one died out there
+        return spawned_now
 
     def _spawn_home(self, ct):
         self.spawn_role = 1
@@ -1502,7 +1545,15 @@ class Player:
         if self.role is None:
             ring_done = (self._read(ct, SLOT_BUILT) & 0xFF) >= SENTINEL_TARGET + (_extra(self._read(ct, SLOT_ENEMY)) & 3)
             attacker_alive = _fresh(_beat(self._read(ct, SLOT_BUILDER)), self.round, 2)
-            self.role = 'home' if (ring_done or attacker_alive) else 'attack'
+            orders0 = self._read(ct, SLOT_ORDERS)
+            if (orders0 // 2048) % 2 == 1 and _flags(orders0) & ORD_FORAGE:
+                self.role = 'attack'               # the second harasser, named by the pulse
+                self.second = True
+            else:
+                self.role = 'home' if (ring_done or attacker_alive) else 'attack'
+
+        if self.second and self.role == 'attack' and not (_flags(self._read(ct, SLOT_ORDERS)) & ORD_FORAGE):
+            self.role = 'home'                     # the strike is called: the second becomes a mender
 
         if self.role == 'home':
             self._home(ct, here)
@@ -1541,12 +1592,7 @@ class Player:
                        and abs(self.cut_target[0] - here.x) + abs(self.cut_target[1] - here.y) == 1)
             if self.round - self.last_look >= PEEK_EVERY and not chewing and self._peek(ct, here):
                 return
-            second = getattr(self, 'second', False)
-            if second and WALL_THEIR_RING and self._wall_ring(ct, here):
-                return
             if self._harass(ct, here):
-                return
-            if WALL_THEIR_RING and self._wall_ring(ct, here):
                 return
             if self._tend(ct, here):
                 return
@@ -2389,13 +2435,6 @@ class Player:
                 continue
             if key in self.walls:
                 continue
-            hist = self.relaid.get(key)
-            if hist is not None and len(hist) >= 2 and self.round - hist[0] <= RELAY_LOOP_ROUNDS:
-                # Relaid twice and shot out again inside the window: a Sentinel owns this tile.
-                # On bifrost the miner rebuilt (14,9) twenty-six times and (15,9) eighteen --
-                # 132 Ti into Torsko's ray; against I Stone, (10,12) fifty-three times.
-                self.no_relay[key] = self.round + 150
-                continue
             foreign = False
             try:
                 spot = Position(key[0], key[1])
@@ -2462,9 +2501,6 @@ class Player:
                     self.occupied.add(broken)
                     self.belts[broken] = facing
                     self.lost_belts.pop(broken, None)
-                    hist = self.relaid.setdefault(broken, [])
-                    hist.append(self.round)
-                    del hist[:-2]
                     return True
                 self.repair_fail[broken] = self.repair_fail.get(broken, 0) + 1
                 return False
@@ -2638,8 +2674,6 @@ class Player:
                         continue
                     if step in self.occupied and step not in self.ore:
                         continue
-                    if step in self.shot_lanes or self.round < self.no_relay.get(step, -1):
-                        continue                   # a Gunner's ray, or a tile a turret owns
                     if not (0 <= step[0] < self.width and 0 <= step[1] < self.height):
                         continue
                     dist[step] = dist[key] + 1
@@ -3050,7 +3084,6 @@ class Player:
         for uid in stale:
             del self.turrets[uid]
         self.lanes = lanes
-        self.shot_lanes = danger    # lanes that shoot the first thing on them: no belt goes here
         self.home_danger = danger | soft
         self.grabs = grabs
         return soft | lanes
@@ -3162,20 +3195,6 @@ class Player:
         for direction, dx, dy in CARDINALS:
             key = (here.x + dx, here.y + dy)
             if key in self.walls or key not in self.blocked:
-                continue
-            if key in self.mine_tiles:
-                continue                           # NEVER our own Core: builder 376 spawned
-                                                   # boxed at (4,5) on bifrost and bit our own
-                                                   # Core for 140 rounds (2 Ti a bite) while
-                                                   # Torsko farmed -- and no attacker existed
-            try:
-                bid = ct.get_tile_building_id(Position(key[0], key[1]))
-                if bid is not None and ct.get_team(bid) == ct.get_team():
-                    if ct.get_entity_type(bid) not in (EntityType.CONVEYOR, EntityType.SPLITTER,
-                                                       EntityType.BARRIER):
-                        continue                   # chew through our own belt if we must --
-                                                   # never our own turret or Harvester
-            except Exception:
                 continue
             gap = abs(key[0] - goal[0]) + abs(key[1] - goal[1])
             if best is None or gap < toward:
@@ -3358,8 +3377,6 @@ class Player:
                                 near = cost
                         if near is None:
                             continue
-                        if self._friend_beside(ct, key):
-                            continue               # the other harasser is already chewing here
                         if pool is self.enemy_belts:
                             load = loads.get(key, 0)
                             if load == 0:
@@ -3539,71 +3556,6 @@ class Player:
                 return True
             self.explore_goal = None
             return False
-        except Exception:
-            return False
-
-    def _friend_beside(self, ct, key):
-        """A Builder of ours (not this one) on a tile beside `key`: the other harasser's chew."""
-        try:
-            mine = ct.get_team()
-            me = ct.get_id()
-            for _d, dx, dy in CARDINALS:
-                spot = Position(key[0] + dx, key[1] + dy)
-                uid = ct.get_tile_builder_bot_id(spot)
-                if uid is not None and uid != me and ct.get_team(uid) == mine:
-                    return True
-        except Exception:
-            return False
-        return False
-
-    def _wall_ring(self, ct, here):
-        """Barrier THEIR Core's ring tiles during the income war: 3 Ti a tile, and the mender
-        that healed 4 a round against our burst has nowhere to stand -- nor does the newborn
-        their Core would spawn onto it.  Only from an uncovered stand, never into a Launcher's
-        grab zone, and never below the chew float."""
-        try:
-            ti = ct.get_global_resources()
-            if ti < ct.get_barrier_cost() + CUT_FLOOR:
-                return False
-            best = None
-            goal = None
-            for key in _ring(self.enemy_tiles):
-                if key in self.occupied or key in self.walls or key in self.grabs:
-                    continue
-                if not (0 <= key[0] < self.width and 0 <= key[1] < self.height):
-                    continue
-                try:
-                    spot = Position(key[0], key[1])
-                    if ct.is_in_vision(spot) and ct.get_tile_builder_bot_id(spot) is not None:
-                        continue                   # a mender stands there; the cut war is elsewhere
-                except Exception:
-                    pass
-                near = None
-                for _d, dx, dy in CARDINALS:
-                    step = (key[0] + dx, key[1] + dy)
-                    if step in self.enemy_tiles or step in self.grabs or step in self.covered:
-                        continue
-                    cost = self._dist.get(step)
-                    if cost is not None and (near is None or cost < near):
-                        near = cost
-                if near is None:
-                    continue
-                if best is None or near < best:
-                    best, goal = near, key
-            if goal is None or best > 30:
-                return False
-            if abs(goal[0] - here.x) + abs(goal[1] - here.y) == 1 and (here.x, here.y) not in self.covered:
-                spot = Position(goal[0], goal[1])
-                if ct.can_build_barrier(spot):
-                    ct.build_barrier(spot)
-                    self.occupied.add(goal)
-                    self.blocked.add(goal)
-                    return True
-                return False
-            if (here.x, here.y) == goal:
-                return self._step_any(ct, here)
-            self._walk_beside(ct, here, goal)
-            return True
         except Exception:
             return False
 

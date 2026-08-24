@@ -367,6 +367,35 @@ the count in three bits).  The cap reaches the miners as a bit in the orders wor
 bits (bit 10; the beat is `round+1`, ten bits), so `_mine` lays to `harvest_cap` instead of the
 constant.  Never in the opening: the bank is the burst until the rush has been tried.
 
+## The econ+anti-rush metas (the counters of 2026-08-24 morning)
+
+Eighteen series against the teams beating this line (Atlas, Banminary, TRRR, Viktor5776,
+Torsko, Big O, 0033, Besvikomat) show one family: an economy opened by round 10, no rush at
+us, and the rush answered in kind -- hunter Builders shadowing our attacker 17-25 rounds of
+every 50 (Atlas, TRRR, 0033, Big O), home Gunners that execute it while it walks (Besvikomat:
+dead at rounds 24-100 in all five games, every replacement into the same nest), Sentinel nets
+it cannot stand under (Banminary), and guards that dig the ring out as fast as it is rebuilt
+(Torsko 16 of 17, Atlas 15 of 15).  Then either a banked Sentinel wave kills our empty home
+(Banminary at rounds 96-192, four games), or the round-1000 tiebreak goes to the bigger
+economy.  Three counters, all in the Core:
+
+- **The grinder brake**: a full ring lost twice (`ring_restarts`), or the attacker replaced
+  twice before two Sentinels stand (`atk_lost`), calls the forage verdict from round 30 --
+  that is not a race being lost slowly, it is the income war already, and the bank stops
+  feeding Sentinels and Builders into a guard that eats them.
+- **The wave watch**: while the hold is hopeless (the burst more than 300 short of funded),
+  two menders stand at home from round 60 BEFORE the wave lands; the counter-turret money is
+  in the held bank by definition.  v114 died in 20-24 rounds to Banminary's wave four times
+  with the mend squad bought after the first shot.
+- **Bodies, not heartbeats**: under fire, `need_menders` counts the Builders actually near
+  the Core -- a miner six tiles away is not a mender.  Against the turtle stub's wave the
+  finish-line rule wanted a mender with 173-261 Ti banked, two distant miners counted as the
+  squad, nothing spawned, and the Core lost the race healing nothing.
+- **Patient economy**: against a side that has never sent a Builder at us, the second miner
+  comes at round 60 (was: round 120 or stuck) and the full miner crew at round 120 -- the
+  timeout tiebreak is titanium collected, and Banminary collects nothing (one Harvester or
+  none): surviving the wave IS the win there.
+
 
 ## The last hours (Bean-counter meta): friendly fire, the relay loop, and walling THEIR ring
 
