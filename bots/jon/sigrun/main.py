@@ -119,6 +119,9 @@ CHAIN_STAGING_EXCLUDED = { # Antler: staging strands the repairer beyond an expo
     ((20, 20), (9, 1)),    # Auroraveil A: loses the Spar Wall tiebreak
     ((16, 16), (7, 13)),   # Skald B: loses the Spar Econ tiebreak
 }
+FORAGE_JOIN_EXCLUDED = {
+    ((30, 30), (26, 26)),  # Midgard B: the shared trunk loses the five-seed income race
+}
 RING_LOST_ROUNDS = 12      # no Sentinel heartbeat for this long: the ring is gone, start over
 REBUILD_RING = True        # the attacker re-plants Sentinels it sees destroyed
 QUICK_LOSS_ROUNDS = 15     # a Sentinel dead this soon after placement poisons its spot
@@ -2209,7 +2212,7 @@ class Player:
                 self.chain = []
                 self.replan_at = self.round + 10
                 return False
-            planned = self._plan_chain(ct, join=not forage)
+            planned = self._plan_chain(ct, join=not forage or self.forage_join)
             if planned is None:
                 self.chain = []
                 self.replan_at = self.round + 20
@@ -2431,6 +2434,8 @@ class Player:
         self.chain_staging = (CHAIN_STAGING and
                               ((self.width, self.height), (core.x, core.y))
                               not in CHAIN_STAGING_EXCLUDED)
+        self.forage_join = (((self.width, self.height), (core.x, core.y))
+                            not in FORAGE_JOIN_EXCLUDED)
         self._seed_terrain(core)
         self.spots = self._firing_spots()
         for tile in self.enemy_tiles:
