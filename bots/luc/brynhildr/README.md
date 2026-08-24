@@ -328,8 +328,19 @@ Local (seed 1, both seats, 15 maps): hildr78 27/30, steward 25/30, gefn 26/30, s
 harasser now cuts the two fed tiles, kills the Harvester and stops; the old build went on to chew
 sixty bites of severed belt.
 
-Not fixed here, and worth its own look: on stavkirke I Stone's Builders chewed our belts out
-from round 343 and **rebuilt them as their own, routed to their Core** -- our six Harvesters fed
-them 16 Ti a round for the last 400 rounds while our three home Builders held ring tiles with no
-turret in sight and 3,500 Ti in the bank.  That is the Core's mining orders (`econ_ok`) and the
-miners' repair reach, not the harasser.
+- **The diversion repair** (`_repair_belt`, `lost_belts`).  I Stone did not leave holes on
+  stavkirke: from round 343 its Builders chewed our conveyors out and **re-laid their own on the
+  same tiles, facing their Core**, so a repair that only looks for empty tiles saw nothing while
+  our six Harvesters fed them 16 Ti a round for the last 400 rounds.  Now a foreign conveyor on a
+  belt tile of ours facing the way ours did is left alone -- it carries our stacks the same way;
+  one facing elsewhere, or one parked beside a Harvester of ours, is chewed out (ten bites, with
+  the harasser's no-new-low check against a mender) and the line tile relaid, the side tile
+  barriered so it is not laid again.  A tile in that state is no longer a belt a new chain may
+  join -- `_plan_chain` could have ended a chain into their line.  Against a hijacker stub
+  (eight menders on its ring so the ring cannot finish, three Builders chewing every conveyor of
+  ours they see and re-laying theirs facing home): titanium collected stavkirke 30 -> 790,
+  helheim 260 -> 1,010, jotunheim 50 -> 370, every game shorter.
+
+Still open, Core side: in that game our three home Builders held ring tiles r330-430 with no
+turret in sight and 3,500 Ti in the bank -- `HARVESTERS_MAX`/`MINERS_MAX` pinned us at six
+Harvesters against their ten, so the tiebreak was lost with the bank unspent.
