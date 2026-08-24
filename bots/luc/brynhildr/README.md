@@ -229,8 +229,20 @@ so they are standing there, able to heal, when the attack comes.  That is the wa
   whose three wallers never leave, v109 mined six Harvesters and killed at round 183, the ban
   bought nothing and timed out.
 - **The pad Gunner** (`PAD_GUNNER`): once the squad stands, one 10 Ti Gunner is seated on a ray
-  to their Launcher pad -- 30 HP that cannot step off the line, five shots -- and the raider
-  that walled us is next on it.  Slot 0 alone answers the order, so the tiles stay held.
+  to their Launcher pad -- 30 HP that cannot step off the line, five shots -- or, when no seat
+  on the pad's line fits, on the raider's line; and the Gunner unit turns after the raider (a
+  rotation is 10 Ti).  That looked like a titanium sink -- seven turns in fifteen rounds on
+  auroraveil -- and a build that would not turn was tried: against the OpenSverige mimic it
+  killed no raiders where the turning one killed one to five a game, and lost five more of
+  thirty.  A dead raider is the siege ended: no more Sentinels, the waller gone, the holders
+  released to mine.  It stays.
+- **Holders that yield.**  A holder steps off its ring tile when the raider stands beside it
+  (`_to_post` counts Builder-adjacency as danger) and the raider walls the tile.  That looked
+  wrong too -- a Builder cannot hurt a Builder -- and a build whose holders yield only to
+  turret lanes and the pad's grab zone was measured: 28 of 60 against 40 of 60 for the one
+  that steps off, on identical seeds.  Why the yielding holder does better is not settled
+  (the tile it gives up costs the raider a barrier and a walk, and the mender it frees finds
+  another tile or a dig); the measured behaviour stays.
 
 It is dormant against everyone who does not wall: the trio and spar_wall panels are identical
 to the build before it, game for game (hildr78 27/30, steward 26/30, gefn 25/30, spar_wall
@@ -242,6 +254,11 @@ killed in all eight, the squad standing from round 10-21, min Core HP 152-336.  
 added to the stub (`wallstub3`, its wallers shoot our Sentinels out -- 0033's habit), v109 took
 both auroraveil seats to round 1000 and lost one on titanium stored; this build killed in all
 six games (skald 250/303, paths 167/43, auroraveil 400/303).
+
+Against the OpenSverige mimic itself (`spar_open`: Launcher leapfrog, pad at two tiles, the
+ring walled by round ~35, Sentinels from round 35-75, four home healers; all fifteen maps,
+both seats), v109 won 6 of 30 -- its first mender bought at round 31-96, after the walls,
+and usually after the first shot -- and the wall-watch build 19 of 30 before the holder fix.
 
 ## Comms (16 slots)
 
