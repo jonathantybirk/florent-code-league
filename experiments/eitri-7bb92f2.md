@@ -1,5 +1,8 @@
 # eitri@7bb92f2
 
+Superseded before online testing by the planner-search successor
+`eitri@4cb5cb5`.
+
 Successor to the corrected lifecycle build `eitri@557b395`. It keeps the
 shared completed-lane state and adds one generic contention rule: when a build
 target has no building but cannot be entered, another bot occupies it. After
