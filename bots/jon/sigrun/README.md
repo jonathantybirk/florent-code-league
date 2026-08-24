@@ -59,14 +59,28 @@ downstream of a gate that had already zeroed `need_menders`. Stacked on top of t
 one-line fix afterwards they measured 97-23 against its 98-22, so none is carried.
 The instrumenting is what found this; the guessing found nothing.
 
-Ten of the eleven starts still lose, and the layer below is visible in them: on
-valkyrie A the Core now *asks* for a second mender from round 120 and still buys
-nothing, because `kill_hold` reserves the whole burst whenever the kill is priced as
-affordable -- and against a wall it is always priced as affordable and never fired, so
-the Core dies on 384 Ti. Freeing that reservation on the same terms is 98-22, exactly
-level; sizing the squad to the lane Gunners on top of it is 97-23. Neither is carried:
-the remaining ten starts are a different loss than the one this fixed, and guessing at
-them costs more than it returns.
+Ten of the eleven starts still lose, and four more fixes down that seam were measured
+and none of them is carried. The layers are real and each is visible once the one above
+it opens; they simply do not add up to a game.
+
+* **The purse.** On valkyrie A the Core now *asks* for a second mender from round 120
+  and buys nothing: `kill_hold` reserves the whole burst whenever the kill is priced as
+  affordable, which against a wall it always is and never fired, so the Core dies on
+  384 Ti. Freeing that reservation on the same terms as the squad: **98-22**, level.
+* **The trigger.** `siege_len >= 30` arrives after valkyrie A is decided -- that Core
+  falls from 493 to dead in 75 rounds. Keying "dire" on HP lost rather than rounds
+  elapsed, or halving the qualifier: **98-22** both, level.
+* **The sizing.** `min(landing, 7)` assumes a barrier takes the rest off a lane Gunner.
+  Counting the lane Gunners once the siege is settled: **97-23**.
+* **The counter-turret.** It is refused against Gunners because they re-seat, and
+  spar_wall's do not -- three hold the same lanes for sixty rounds at 21 HP a round,
+  which no squad out-heals, since MENDERS_MAX menders restore 20. Allowing it against a
+  settled lane, breaking the `need_menders == 0` deadlock that held both purchases at
+  once, and teaching `_counter_turret` to target a Gunner at all (it only ever collected
+  Sentinels, so authorising the purchase bought nothing): **97-23**.
+
+The arithmetic on those starts says menders cannot win and the turret does not arrive in
+time, so the answer is probably neither -- not to be found by opening one more gate.
 
 ### 2. paths B opens with a miner
 
