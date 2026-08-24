@@ -539,7 +539,8 @@ class Player:
         net_us = our_dps - eheal
         scout = _flags(self._read(ct, SLOT_BUILDER))
         self.eta = scout & 0xFF
-        if scout & ATK_ECON or (scout >> ATK_BUILDERS_SHIFT) & 7 >= 3:
+        enemy_builders_seen = (scout >> ATK_BUILDERS_SHIFT) & 7
+        if scout & ATK_ECON or enemy_builders_seen >= 3:
             self.scout_econ = True
         if scout & ATK_RUSH:
             self.scout_rush = True
@@ -611,7 +612,15 @@ class Player:
         priced = eheal
         if (their_dps == 0 and self.sentinels_on_us == 0 and self.scout_econ
                 and not self.scout_rush and self.go != 1):
-            priced = max(eheal, HEAL_ASSUMED)
+            # Four opening Builders is the mass-economy signature in the
+            # current ladder leaders.  Their advantage comes from keeping all
+            # four in the field, not recalling three into an instant heal
+            # ring.  Pricing phantom menders against that opening postpones a
+            # clean four-Sentinel kill until their economy has already won.
+            # Keep the conservative assumption for ordinary 1--3 Builder
+            # openings, but trust what the ring can actually see after four.
+            if enemy_builders_seen < 4:
+                priced = max(eheal, HEAL_ASSUMED)
         kill_ammo = (10.0 * ehp / 18.0) * (full / max(1, full - priced)) if net_us > 0 or alive == 0 else 0
         # Finish a Core this low -- when the finish can be paid for, or ours is not the one
         # in danger.  On holmgang the Core waited thirty rounds on an unfunded finish, mending
