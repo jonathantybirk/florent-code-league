@@ -367,3 +367,25 @@ the count in three bits).  The cap reaches the miners as a bit in the orders wor
 bits (bit 10; the beat is `round+1`, ten bits), so `_mine` lays to `harvest_cap` instead of the
 constant.  Never in the opening: the bank is the burst until the rush has been tried.
 
+
+## The last hours (Bean-counter meta): friendly fire, the relay loop, and walling THEIR ring
+
+- **`_break_through` bit our own Core.**  The boxed attacker's escape fired at the blocked
+  neighbour nearest its goal with no team check -- and our Core is in `blocked`.  On bifrost
+  (match 970e68f2 g2) the replacement attacker spawned boxed at (4,5) and attacked our own Core
+  for 140 rounds while Torsko farmed; other games bit our own Sentinel and Harvester.  Now:
+  never `mine_tiles`, never an own building that is not belt or barrier.
+- **The relay loop** (`relaid`, `RELAY_LOOP_ROUNDS`): the miner rebuilt (10,12) fifty-three
+  times into I Stone's Sentinel ray, and (14,9)/(15,9) twenty-six and eighteen times into
+  Torsko's -- 3 Ti a time, forever.  Two relays of one tile inside 40 rounds now bans it for
+  150, and `_plan_chain` routes new chains around banned tiles and live Gunner lanes
+  (`shot_lanes`).
+- **Walling THEIR ring** (`_wall_ring`): Lucas's ask -- during the income war the harasser
+  barriers the enemy Core's free ring tiles from uncovered stands (3 Ti a tile): a mender that
+  cannot stand, a spawn that cannot land, a Core the burst meets unhealable.  With the Core's
+  second harasser (bit 11), the second walls first and cuts second; both harassers skip a cut
+  target the other is already beside.  Verified vs the hijack stub: four ring tiles walled by
+  round 116, 30/30 games.
+
+Panel (seed 1, both seats, 15 maps): hildr78 26/30, steward 25/30, gefn 25/30, spar_open 20/30,
+spar_wall 18/30, hijack 30/30; no exceptions in 210 games.
