@@ -38,3 +38,15 @@ Evidence at the server's 10 ms TLE:
 
 The helpers remain local to the generic mining executor. There are no opening
 overrides or changes to when the flagship chooses economy.
+
+## Conditional forage expansion
+
+The active v120 timing is unchanged: normal play still stops at five
+Harvesters. Only after its existing income-war verdict does the Core authorize
+up to seven, and those two late routes stay independent so a cut trunk cannot
+erase the entire expansion.
+
+Against Spar Econ over all 15 pool maps, both seats, and seeds 1-5, this version
+scores 150-0 versus the parent's 145-5. Midgard B flips from loss to win at all
+five seeds, with no loss flips. Discovery results against Gefn and Spork retain
+the parent's exact win/loss sets; a direct 30-game mirror scores 17-13.
