@@ -198,6 +198,18 @@
       "TRRR",
       "DinooniD",
       "Ouroboros"
+    ],
+    "brynhildr@c011c9f": [
+      "I Stone",
+      "OpenSverige",
+      "0033",
+      "gsxWins",
+      "Torsko",
+      "Big O",
+      "Banminary",
+      "TRRR",
+      "DinooniD",
+      "Ouroboros"
     ]
   },
   "_opponents_for": "bot_id -> ordered team names, five played per round, the rest carried in state.opponents_pending. Overrides the policy entirely. v70 has already faced all 20 of its nearest teams, so this is the nine unfaced teams rated above us (1810-2036) plus not adgato, the team it has seen least (one game).",
@@ -267,7 +279,8 @@
     "brynhildr@501e6e8:3",
     "brynhildr@24cd4e2:3",
     "brynhildr@0304b0d:3",
-    "brynhildr@1e69d09:3"
+    "brynhildr@1e69d09:3",
+    "brynhildr@c011c9f:3"
   ],
   "_queue_front": "Like test_next, but the entry is moved to the front of the queue so it plays on the next round. Each entry is honoured once."
 }
