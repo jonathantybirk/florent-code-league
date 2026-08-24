@@ -379,6 +379,18 @@
       "Big O",
       "Coreflood"
     ],
+    "brynhildr@d439598": [
+      "Bean counters",
+      "not adgato",
+      "Pantheon",
+      "Leviathan",
+      "sporks",
+      "O(1)",
+      "Focalground",
+      "Pivot",
+      "HTTP 418",
+      "kladde chatte tville (och oss)"
+    ],
     "jonbot_econ@4bedc58": [
       "OpenSverige",
       "I Stone",
@@ -548,6 +560,7 @@
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally.",
   "queue_front": [
     "brynhildr@d8cd18d:3",
+    "brynhildr@d439598:3",
     "brynhildr@029276d:3",
     "brynhildr@0f727c7:3",
     "brynhildr@6b0b1c1:3",
