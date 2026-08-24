@@ -25,3 +25,16 @@ opponent) exactly matches v118's established regression baseline:
 A focused launcher controller test calls the same pad twice and records exactly
 one friendly launch. This candidate is queued after `74ee6d7`, so the minimal
 blind-Sentinel relay receives an attributable online sample first.
+
+An additional control run used seeds 3-5 against the three most relevant older
+categories. `9375a4a` and v118 were identical in every aggregate:
+
+- hildr78 81/90;
+- spar_wall 56/90;
+- spar_sentinel 75/90;
+- 212/270 overall, zero errors for both builds.
+
+Together with the original panel this is 630 candidate games without an
+observed regression. Five original-panel games built 14 escape Launchers; the
+one-launch invariant itself is covered by the focused controller test because
+the replay metrics count construction but not individual launch actions.
