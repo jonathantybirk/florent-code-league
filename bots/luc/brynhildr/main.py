@@ -857,7 +857,14 @@ class Player:
         # cannot be funded now is what the miner's income pays for -- once the Core has said
         # so by holding.
         all_in = (go == 1 and alive > 0) or finishing
-        if all_in:
+        # The lean mass-economy punish wins before round 60 when it lands.  If
+        # a full ring is still shooting a healthy Core at round 80, the cheap
+        # window has closed: keeping every Builder purchase suppressed leaves
+        # us with zero Harvesters against an economy that is already scaling.
+        # Buy one recovery miner without taxing successful fast kills.
+        mass_recovery = (mass_economy and ring_up and self.round >= 80
+                         and ehp >= 250 and not threatened)
+        if all_in and not mass_recovery:
             want_miners = 0
         self.miners_hwm = max(self.miners_hwm, want_miners)
         safe = (not threatened) or (hp >= 400 and menders >= 2)
