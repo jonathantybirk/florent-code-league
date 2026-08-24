@@ -14,9 +14,9 @@ def maps_available() -> list[str]:
     return sorted(p.stem for p in (ROOT / "maps").glob("*.map26"))
 
 
-def play(a: str, b: str, m: str, seed: int, tle: int):
+def play(a: str, b: str, m: str, seed: int, seat: str, tle: int):
     cmd = [str(ROOT / ".venv/bin/fcode"), "run", a, b, f"maps/{m}.map26", "--seed", str(seed),
-           "--replay", f"/tmp/ab-{a.rsplit('/',1)[-1]}-{b.rsplit('/',1)[-1]}-{m}-{seed}.replay26"]
+           "--replay", f"/tmp/ab-{a.rsplit('/',1)[-1]}-{b.rsplit('/',1)[-1]}-{m}-{seed}-{seat}.replay26"]
     if tle:
         cmd += ["--tle", str(tle)]
     try:
@@ -49,7 +49,7 @@ def main() -> int:
     def run_one(j):
         o, m, s, seat = j
         a, b = (args.bot, o) if seat == "A" else (o, args.bot)
-        return (o, m, s, seat, play(a, b, m, s, args.tle))
+        return (o, m, s, seat, play(a, b, m, s, seat, args.tle))
 
     w = l = u = 0
     per_map: dict[str, list[int]] = {}
