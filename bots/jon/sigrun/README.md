@@ -59,6 +59,15 @@ downstream of a gate that had already zeroed `need_menders`. Stacked on top of t
 one-line fix afterwards they measured 97-23 against its 98-22, so none is carried.
 The instrumenting is what found this; the guessing found nothing.
 
+Ten of the eleven starts still lose, and the layer below is visible in them: on
+valkyrie A the Core now *asks* for a second mender from round 120 and still buys
+nothing, because `kill_hold` reserves the whole burst whenever the kill is priced as
+affordable -- and against a wall it is always priced as affordable and never fired, so
+the Core dies on 384 Ti. Freeing that reservation on the same terms is 98-22, exactly
+level; sizing the squad to the lane Gunners on top of it is 97-23. Neither is carried:
+the remaining ten starts are a different loss than the one this fixed, and guessing at
+them costs more than it returns.
+
 ### 2. paths B opens with a miner
 
 `openingstrat/` (vendored from `brynhildr_econ_opening`) spawns one precomputed mining
