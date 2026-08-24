@@ -1,4 +1,24 @@
-# brynhildr
+# jonbot_income
+
+Mining-movement refinement of ladderfarm's selected income-war lineage,
+`brynhildr@229b821` (submission v107). The Core's economy authorization,
+builder count, spawning, combat, and defensive decisions are unchanged.
+
+Miners vacate planned build tiles through completed inward conveyors and stage
+on the chain so long routes maintain build/move cadence. A single terrain/start
+gate restores the exact parent movement on starts where paired opponent tests
+regressed; there are no scripted openings.
+
+At 10 ms over all 53 maps and both seats, paired with the parent:
+
+- Spar Econ: 23-83 versus 22-84 (Fjord A gained, no losses);
+- Brokkr: 24-82 for both;
+- Steward: 17-89 for both;
+- direct parent matchup: one Sprint A gain, no losses.
+
+The implementation is deliberately a separate challenger from `jonbot_econ`:
+ladderfarm can compare the currently selected v107 lineage with the locally
+stronger and initially 20-5-online v109 lineage using actual expected Elo.
 
 hildr's Sentinel rush in steward's armour: `hildr@7a6d86c` (the walk, the ring, the race
 arithmetic) plus the measured half of `steward_hardened_reinforced@366cd1b` (an economy that
