@@ -38,6 +38,7 @@ import atlas_data                                          # noqa: E402
 import board as board_mod                                  # noqa: E402
 import crew as crew_mod                                    # noqa: E402
 import network                                             # noqa: E402
+import orders                                              # noqa: E402
 import walk                                                # noqa: E402
 
 IDLE = "bots/common/donothingbot"
@@ -47,8 +48,11 @@ EVERY = 4
 
 
 def _best(board):
-    """The lanes eitri would actually pick: the better of the two lay orders."""
+    """The exact stored or runtime-searched plan Eitri will execute."""
     picks, field = network.survey(board)
+    preferred = orders.get(board.name, board.home)
+    if preferred is not None and frozenset(preferred) == frozenset(picks):
+        return network.lay(board, preferred, field)
     best = None
     baseline = None
     for index, order in enumerate(network.insertion_orders(picks)):
@@ -186,9 +190,10 @@ def _chain(lanes, index):
     return len(lanes[index].tiles)
 
 
-def measure(bot, name, seed=1):
+def measure(bot, name, seat=0, seed=1):
+    players = [bot, IDLE] if seat == 0 else [IDLE, bot]
     proc = subprocess.run(
-        ["uv", "run", "--active", "fcode", "run", bot, IDLE, name,
+        ["uv", "run", "--active", "fcode", "run", *players, name,
          "--seed", str(seed), "--json", "--mark", "0", "--tle", "0"],
         cwd=ROOT, capture_output=True, text=True, timeout=900)
     try:
@@ -201,6 +206,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bot", default="bots/jon/eitri")
     parser.add_argument("--maps", default="")
+    parser.add_argument("--seat", type=int, choices=(0, 1), default=0)
     args = parser.parse_args()
     names = ([m.strip() for m in args.maps.split(",") if m.strip()]
              or sorted(atlas_data.MAPS))
@@ -209,16 +215,16 @@ def main():
           f"{'ceiling':>9}{'plan':>6}{'ore':>5}{'lanes':>6}{'flow':>6}")
     rows = []
     for name in names:
-        board = make(name)
+        board = make(name, args.seat)
         lanes = _best(board)
         work, spawns, _ = crew_mod.assign(board, lanes)
         want = perfect(board, lanes, work, spawns)
         top = ceiling(board)
-        result = measure(args.bot, name)
+        result = measure(args.bot, name, args.seat)
         if result is None:
             print(f"{name:<14} failed")
             continue
-        mined = result["a_titanium_collected"]
+        mined = result[f"{'a' if args.seat == 0 else 'b'}_titanium_collected"]
         ex = mined / want if want else 0.0
         pl = want / top if top else 0.0
         rows.append((ex, pl))
