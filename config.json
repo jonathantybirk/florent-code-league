@@ -319,6 +319,18 @@
       "HTTP 418",
       "kladde chatte tville (och oss)"
     ],
+    "brynhildr@45daadd": [
+      "Bean counters",
+      "not adgato",
+      "Pantheon",
+      "Leviathan",
+      "sporks",
+      "O(1)",
+      "Focalground",
+      "Pivot",
+      "HTTP 418",
+      "kladde chatte tville (och oss)"
+    ],
     "jonbot_econ@4bedc58": [
       "OpenSverige",
       "I Stone",
@@ -450,6 +462,7 @@
   ],
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally.",
   "queue_front": [
+    "brynhildr@45daadd:3",
     "brynhildr@e9eccd8:3",
     "brynhildr@be4f2e2:3",
     "eitri@e06a0c5:3",
