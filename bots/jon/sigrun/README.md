@@ -388,3 +388,19 @@ Econ, and Spar Wall: **127-23**, versus **122-28** for `sigrun@338a1ad`.
 The game-level matrix has five loss-to-win flips and no win-to-loss flips.
 Antler and the two reproduced negative starts (Auroraveil A, Skald B) retain
 the parent movement.
+
+## The income-war cap
+
+Sigrun v127's six online losses to Torsko and 0033 ended at connected-Harvester
+counts 0-3, 4-11, 5-13, 2-7, 4-8, and 4-7. The opening was not the failure:
+after Sigrun had explicitly abandoned the rush for `FORAGE`, the hard cap of
+five still stopped its economy.
+
+Normal play remains capped at five. Only while `ORD_FORAGE` is active, the Core
+pays for up to seven Harvesters (the exact capacity of the existing order
+field), and new forage chains route independently instead of adding load to a
+possibly saturated trunk. All pre-verdict build timing is unchanged.
+
+Discovery panel: **128-22** versus `ca5008a`'s **127-23**, one gain and no
+losses. Held-out Spar Econ seeds 2-5: **120-0** versus **116-4**; Midgard B is a
+loss-to-win flip at every seed.
