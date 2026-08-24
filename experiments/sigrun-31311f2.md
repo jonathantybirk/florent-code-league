@@ -39,3 +39,20 @@ zero flips in a 90-game exact panel.
 
 Promotion remains the farm's expected-Elo decision against current online
 opponents.
+
+## Online round 1 (v130)
+
+The first nearby-only priority round scored 10-15: DinooniD 3-2, OpenSverige
+0-5, I Stone 4-1, 0033 2-3, and Besvikomat 1-4. This is below the local panel
+and is not promotion evidence.
+
+Replay inspection separates two regimes. Against OpenSverige, four losses end
+in 108-255 rounds with no Harvester ever built; the 1000-round Valkyrie loss
+builds only two and finishes with none connected. Those are combat/pressure
+losses, not shared-trunk execution failures. Against Besvikomat, the two long
+losses build eleven Harvesters each but lose 12 and 11 economy buildings,
+respectively; exposed-network survival is the economy bottleneck there.
+
+At collection time ladderfarm had promoted `jonbot_econ@19793f0` (v120) as the
+active expected-Elo winner. Sigrun v130 remains a challenger pending its second
+nearby-only round; it must not replace v120 from this first result.
