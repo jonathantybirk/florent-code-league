@@ -463,7 +463,7 @@
       "HTTP 418",
       "kladde chatte tville (och oss)"
     ],
-    "brynhildr@99b4477": [
+    "brynhildr@2c7d15e": [
       "Banminary",
       "Torsko",
       "Big O",
@@ -569,7 +569,7 @@
     "brynhildr@1e69d09:3",
     "brynhildr@c011c9f:3",
     "brynhildr@8c65517:2",
-    "brynhildr@99b4477:3"
+    "brynhildr@2c7d15e:3"
   ],
   "_queue_front": "Like test_next, but the entry is moved to the front of the queue so it plays on the next round. Each entry is honoured once."
 }
