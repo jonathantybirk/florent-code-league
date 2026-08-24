@@ -157,6 +157,31 @@ held-out seeds 4-8**, which chose nothing. The flagship against a copy of itself
 exactly 75-75 over the same 150 games, so the held-out block is +20 games on a
 measurement with no noise in it. Nothing here is fitted to a seed.
 
+## Against the current frontier, not just the flagship
+
+v109 is the build ladderfarm holds, but luc's lineage has moved several generations past
+it, and those are what a promoted bot will actually be compared against. Fifteen pool
+maps, both seats, seeds 1-3:
+
+| opponent | sigrun |
+|---|---|
+| `brynhildr@2c7d15e` (luc's tip) | **57-33 (0.633)** |
+| `brynhildr@2f83111` (v109, the flagship) | 51-39 (0.567) |
+
+## What each change is worth, ablated on the merged file
+
+Removing one hunk at a time from the build as it stands:
+
+| change | with | without | worth |
+|---|---|---|---|
+| the anti-grinder exemption (vs spar_wall, 90 games) | 66-24 | 56-34 | **+10** |
+| the lane-first barrier (vs spar_wall, 90 games) | 66-24 | 62-28 | **+4** |
+| the paths B gate (paths, four opponents, 24 games) | 21-3 | 18-6 | **+3** |
+
+None is dead weight and none is subsumed by the other agent's miner and forage work.
+Note that removing the anti-grinder exemption returns the siege column to *exactly*
+v109's 56-34: on this fixture the whole improvement over the flagship is these two.
+
 ## What was measured and thrown away
 
 | build | total |
