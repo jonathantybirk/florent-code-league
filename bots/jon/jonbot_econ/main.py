@@ -63,8 +63,12 @@ CLUSTER_BONUS = 1          # ...and each free spot within two steps of the stand
 HEAL_ASSUMED = 12          # HP/round an undefended Core is assumed to raise once shot at:
                            # the builders walk back, or new ones are spawned
 USE_BUNDLED_TERRAIN = True # seed the wall map from terrain.py for the known pool
-CHAIN_STAGING_EXCLUDED = { # staging strands the repairer beyond Antler's exposed trunk
+CHAIN_STAGING_EXCLUDED = { # terrain sides where staging loses the flagship matchup panel
     ((14, 18), (6, 4)), ((14, 18), (6, 12)),
+    ((24, 24), (20, 20)), # Quarry B
+    ((16, 16), (7, 13)),  # Skald B
+    ((20, 20), (16, 9)),  # Yulerune B
+    ((12, 8), (0, 6)),    # String A
 }
 CPU_BUDGET_US = 7000       # stop optional work well inside the 10 ms limit
 
