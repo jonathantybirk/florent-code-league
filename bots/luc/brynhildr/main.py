@@ -119,6 +119,10 @@ FORAGE_PROGRESS = 25       # titanium of gap that must close across the window t
 CUT_FLOOR = 30             # titanium the harasser leaves in the bank while chewing (2 Ti a bite)
 PEEK_EVERY = 12            # rounds between the harasser's looks at their Core ring
 BARE_LOOKS = 3             # fresh looks showing an unattended Core before the strike is called
+CHEW_IDLE = 6              # bites without a new low on the tile: a mender out-heals the bite (4 a round to 2), try another
+TEND_CAP = 10              # rounds the harasser heals one barrier under chew before leaving it: 2 a bite against 4 a heal is a stalemate
+LOOK_STALE = 80            # rounds after which a tile this Builder looked at counts as unknown again: their belts grow
+LOAD_STEPS = 6             # steps of walking each Harvester feeding through a belt tile is worth to the harasser
 BREAK_OUT = True           # a walled-in home Builder shoots the enemy barrier in its way
 WALL_WATCH = True          # menders bought the round they start walling our ring: hold the tiles that are left
 WALL_SQUAD = 3             # menders the wall watch buys: 12 HP a round out-heals the two Sentinels that follow the walls
@@ -238,6 +242,25 @@ def _enemy_core(ct, own):
     if kind == 'V':
         return kind, Position(own.x, h - 2 - own.y)
     return kind, Position(w - 2 - own.x, h - 2 - own.y)
+
+
+def _mirror_core(ct, enemy):
+    """Our Core's north-west corner from the enemy's, for a Builder that cannot see home.
+    The pool's symmetries are tabulated; an unknown map takes the mirror its own guess agrees with."""
+    w, h = ct.get_map_width(), ct.get_map_height()
+    options = (('H', Position(w - 2 - enemy.x, enemy.y)),
+               ('V', Position(enemy.x, h - 2 - enemy.y)),
+               ('R', Position(w - 2 - enemy.x, h - 2 - enemy.y)))
+    for kind, own in options:
+        if _SYM.get((w, h, own.x, own.y)) == kind:
+            return own
+    for kind, own in options:
+        if (w, h, own.x, own.y) in _MAP_INDEX:
+            return own
+    for kind, own in options:
+        if _guess_symmetry(w, h, own.x, own.y) == kind:
+            return own
+    return options[2][1]
 
 
 def _mirror(kind, w, h, key):
@@ -428,6 +451,15 @@ class Player:
         self.cut_best = 99          # closest we have come to the target, for the give-up rule
         self.cut_stuck = 0
         self.no_cut = {}            # target -> round it may be tried again
+        self.enemy_belt_dir = {}    # their conveyor -> facing (None for a splitter), as seen
+        self.looked = {}            # tile -> round it was last in this Builder's own vision (no mirror twins)
+        self.cut_low = None         # lowest HP seen on the cut target: no new low means a mender is winning
+        self.cut_idle = 0
+        self.no_tend = {}           # barrier -> round the harasser may heal it again
+        self.tend_key = None
+        self.tend_rounds = 0
+        self.explore_goal = None    # the stand at the edge of what we know of their belts, when nothing known is cuttable
+        self.explore_until = 0
         # sentinel
         self.slot = None
         self.guard = None           # True for a home-guard Sentinel (cannot reach the enemy Core)
@@ -1439,7 +1471,9 @@ class Player:
             self.last_eta = 1
             self._write(ct, SLOT_BUILDER, (self.round + 1) + 65536 * (1 | self._scout_word()))
             self._report_enemy(ct)
-            if self.round - self.last_look >= PEEK_EVERY and self._peek(ct, here):
+            chewing = (self.cut_target is not None
+                       and abs(self.cut_target[0] - here.x) + abs(self.cut_target[1] - here.y) == 1)
+            if self.round - self.last_look >= PEEK_EVERY and not chewing and self._peek(ct, here):
                 return
             if self._harass(ct, here):
                 return
@@ -2496,16 +2530,26 @@ class Player:
     def _orient(self, ct, here):
         self.home = here
         self.width, self.height = ct.get_map_width(), ct.get_map_height()
-        core = here
+        core = None
         try:
             for uid in ct.get_nearby_buildings():
                 if ct.get_entity_type(uid) == EntityType.CORE and ct.get_team(uid) == ct.get_team():
                     core = ct.get_position(uid)
                     break
         except Exception:
+            core = None
+        told = _unpack(self._read(ct, SLOT_ENEMY))
+        if core is None and told is not None:
+            # A newborn that cannot see the Core was flung.  I Stone parks a Launcher on the
+            # spawn tiles (fimbulwinter, match f05df8b3 game 1: spawned at (4,2), first turn
+            # at (9,4)), and this Builder oriented on its own tile -- six Harvesters and
+            # seventy conveyors were laid toward a home that was not there, and not one stack
+            # reached the Core all game.  The Core reports the enemy Core every round; ours is
+            # its mirror.
+            core = _mirror_core(ct, Position(told[0], told[1]))
+        if core is None:
             core = here
         self.sym, self.enemy = _enemy_core(ct, core)
-        told = _unpack(self._read(ct, SLOT_ENEMY))
         if told is not None:
             self.enemy = Position(told[0], told[1])
         self.enemy_tiles = _footprint(self.enemy)
@@ -2571,6 +2615,7 @@ class Player:
             self.seen.add(key)
             twin = _mirror(self.sym, self.width, self.height, key)
             self.seen.add(twin)
+            self.looked[key] = self.round
             try:
                 env = ct.get_tile_env(pos)
                 if env == Environment.WALL:
@@ -2597,6 +2642,7 @@ class Player:
                 if key in self.enemy_belts or key in self.enemy_harv:
                     self.enemy_belts.discard(key)
                     self.enemy_harv.discard(key)
+                    self.enemy_belt_dir.pop(key, None)
                     if key == self.cut_target:
                         self.stumps.add(key)           # chewed through: a 3 Ti barrier keeps it cut
                         self.cut_target = None
@@ -2620,6 +2666,13 @@ class Player:
                             self.enemy_harv.add(key)
                         else:
                             self.enemy_belts.add(key)
+                            facing = None
+                            if kind == EntityType.CONVEYOR:
+                                try:
+                                    facing = ct.get_direction(bid)
+                                except Exception:
+                                    facing = None
+                            self.enemy_belt_dir[key] = facing
                         self.stumps.discard(key)
                 except Exception:
                     blocks = True
@@ -2975,8 +3028,24 @@ class Player:
                     continue
                 if ct.get_hp(bid) >= ct.get_max_hp(bid):
                     continue
+                key = (spot.x, spot.y)
+                if ct.get_entity_type(bid) == EntityType.BARRIER:
+                    # A barrier under chew is a stalemate: their Builder bites 2, we heal 4, and
+                    # on stavkirke (match f05df8b3 game 4) our only harasser healed a 3 Ti
+                    # ore-denial barrier for 210 rounds while their belts grew to 126 tiles.
+                    if self.round < self.no_tend.get(key, -1):
+                        continue
+                    if self.tend_key == key and self.tend_rounds >= TEND_CAP:
+                        self.no_tend[key] = self.round + 150
+                        self.tend_key = None
+                        self.tend_rounds = 0
+                        continue
                 if ct.can_heal(spot):
                     ct.heal(spot)
+                    if self.tend_key == key:
+                        self.tend_rounds += 1
+                    else:
+                        self.tend_key, self.tend_rounds = key, 1
                     return True
             # anything of ours hurt within sight: walk to it
             mine = ct.get_team()
@@ -3079,6 +3148,15 @@ class Player:
                 self.cut_target = None
                 self.cut_path = []
             if self.cut_target is None:
+                # The tile that carries their income, not the nearest one: on stavkirke (match
+                # f05df8b3 game 4) the harasser chewed three dead-end conveyors at (6,18),
+                # (7,18), (8,18) -- thirty bites, nothing flowed through them -- while the
+                # trunk on row 17 carried four Harvesters' stacks a tile away.  Each Harvester
+                # feeding through a tile is worth LOAD_STEPS of walking; a tile nothing feeds
+                # through is never bitten; a tile their Builder stands beside is taken last --
+                # 2 a bite never beats 4 a heal.
+                loads = self._belt_loads()
+                mine = ct.get_team()
                 best = None
                 for pool, tax in ((self.enemy_belts, 0), (self.enemy_harv, 8)):
                     for key in pool:
@@ -3092,22 +3170,57 @@ class Player:
                                 near = cost
                         if near is None:
                             continue
-                        if best is None or near + tax < best[0]:
-                            best = (near + tax, key)
+                        if pool is self.enemy_belts:
+                            load = loads.get(key, 0)
+                            if load == 0:
+                                # Nothing feeds through it: a dead end, a severed stretch beyond
+                                # our own stump, or gefn's harvester-less conveyors -- ninety
+                                # bites went into those on glacierkeep.  Harvesters, stumps and
+                                # the frontier walk are what is left when nothing is fed.
+                                continue
+                        else:
+                            load = 1
+                        tended = 1 if self._tended(ct, Position(key[0], key[1]), mine) else 0
+                        rank = (tended, near + tax - LOAD_STEPS * load)
+                        if best is None or rank < best[0]:
+                            best = (rank, key)
                 if best is None:
                     for key in list(self.stumps):      # a stump further off still wants its barrier
                         self._walk_beside(ct, here, key)
                         return True
-                    return False
+                    return self._explore_belts(ct, here)
                 self.cut_target = best[1]
                 self.cut_path = []
                 self.cut_best = 99
                 self.cut_stuck = 0
+                self.cut_low = None
+                self.cut_idle = 0
             key = self.cut_target
             if abs(key[0] - here.x) + abs(key[1] - here.y) == 1 and (here.x, here.y) not in self.covered:
                 spot = Position(key[0], key[1])
+                bit = False
                 if ct.get_global_resources() >= CUT_FLOOR and ct.can_fire(spot):
                     ct.fire(spot)
+                    bit = True
+                # Progress, or a mender.  On fimbulwinter (match f05df8b3 game 1) every trunk
+                # tile bitten was healed back the same round -- (17,15) seven times, (17,14),
+                # (18,15), (17,13), (18,10): 180 rounds, nothing cut.  No new low on the tile in
+                # CHEW_IDLE bites: leave it for sixty rounds and take the untended tile instead.
+                hp = None
+                try:
+                    bid = ct.get_tile_building_id(spot)
+                    hp = ct.get_hp(bid) if bid is not None else None
+                except Exception:
+                    hp = None
+                if hp is not None and (self.cut_low is None or hp < self.cut_low):
+                    self.cut_low = hp
+                    self.cut_idle = 0
+                else:
+                    self.cut_idle += 1
+                if self.cut_idle >= (CHEW_IDLE if bit else 2 * CHEW_IDLE):
+                    self.no_cut[key] = self.round + 60
+                    self.cut_target = None
+                    self.cut_path = []
                 return True                            # chewing, or holding the stand for it
             if (here.x, here.y) == key:
                 return self._step_any(ct, here)
@@ -3147,6 +3260,94 @@ class Player:
                 else:
                     self.cut_path = []                 # blocked: replan next round
                 return True
+            return False
+        except Exception:
+            return False
+
+    def _belt_loads(self):
+        """Their Harvesters feeding through each belt tile on the way to their Core, by the
+        facings we have seen.  A tile nothing feeds through is a dead end."""
+        loads = {}
+        if not self.enemy_belt_dir or not self.enemy_harv:
+            return loads
+        core = set(self.enemy_tiles)
+        for harv in self.enemy_harv:
+            for _d, dx, dy in CARDINALS:
+                start = (harv[0] + dx, harv[1] + dy)
+                if start not in self.enemy_belt_dir:
+                    continue
+                trail = self._belt_trail(start, core, set(), 0)
+                if trail is None:
+                    continue
+                for key in trail:
+                    loads[key] = loads.get(key, 0) + 1
+        return loads
+
+    def _belt_trail(self, key, core, seen, depth):
+        """Belt tiles from `key` to their Core -- or to a tile we have not looked at lately,
+        which may well continue.  None for a dead end we have seen with our own eyes."""
+        trail = []
+        while True:
+            if key in core:
+                return trail
+            if key not in self.enemy_belt_dir:
+                stale = self.round - self.looked.get(key, -1000) > LOOK_STALE
+                return trail if stale else None
+            if key in seen or len(trail) + depth > 120:
+                return None
+            seen.add(key)
+            trail.append(key)
+            facing = self.enemy_belt_dir[key]
+            if facing is None:
+                # a splitter feeds any side but its back, and we do not know which is which:
+                # the first side that reaches counts
+                for _d, dx, dy in CARDINALS:
+                    rest = self._belt_trail((key[0] + dx, key[1] + dy), core, seen, depth + len(trail))
+                    if rest is not None:
+                        return trail + rest
+                return None
+            delta = facing.delta()
+            key = (key[0] + delta[0], key[1] + delta[1])
+
+    def _explore_belts(self, ct, here):
+        """Nothing known is cuttable -- every belt we know of is covered, tended or banned.
+        Their network is bigger than what we have seen (I Stone: 126 tiles on stavkirke, our
+        harasser idle beside four Gunners' worth of trunk): walk to the edge of what we have
+        looked at along their belts, where the next stretch and its uncovered stand are."""
+        try:
+            if self.explore_goal is not None and (self.round > self.explore_until
+                                                  or (here.x, here.y) == self.explore_goal
+                                                  or self._dist.get(self.explore_goal) is None):
+                self.explore_goal = None
+            if self.explore_goal is None:
+                best = None
+                for key in list(self.enemy_belts) + list(self.enemy_harv):
+                    frontier = False
+                    for _d, dx, dy in CARDINALS:
+                        step = (key[0] + dx, key[1] + dy)
+                        if step not in self.walls and self.round - self.looked.get(step, -1000) > LOOK_STALE:
+                            frontier = True
+                            break
+                    if not frontier:
+                        continue
+                    for _d, dx, dy in CARDINALS:
+                        step = (key[0] + dx, key[1] + dy)
+                        cost = self._dist.get(step)
+                        if cost is None or step in self.covered or not self._passable(step):
+                            continue
+                        if best is None or cost < best[0]:
+                            best = (cost, step)
+                if best is None or best[0] > 40:
+                    return False
+                self.explore_goal = best[1]
+                self.explore_until = self.round + 40
+            if (here.x, here.y) == self.explore_goal:
+                return False
+            path = self._trace(self._came, here, self.explore_goal)
+            if path:
+                self._step_to(ct, here, path[0])
+                return True
+            self.explore_goal = None
             return False
         except Exception:
             return False

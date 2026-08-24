@@ -259,3 +259,60 @@ six games (skald 250/303, paths 167/43, auroraveil 400/303).
 Guard Sentinels (a line that cannot reach the enemy Core) take no heartbeat slot and shoot
 turrets, then Builders, then the enemy economy, then untended barriers. Gunners are never
 built by this bot but run steward's module if one exists.
+
+## The income war, second look (I Stone, match `f05df8b3`)
+
+I Stone took v109 3-2, and the two 1000-round losses (fimbulwinter game 1, stavkirke game 4)
+were both lost on titanium collected.  The replays' `distributeResources` events say where every
+stack went, and they showed four things, none of them the arithmetic:
+
+- **The harasser cut the wrong tiles.**  On stavkirke their trunk was row 17, five conveyors
+  carrying four Harvesters' stacks into the Core; ours bit the trunk six times, walked off to
+  peek, came back and killed (6,18), (7,18), (8,18) -- thirty bites, three tiles nothing ever
+  flowed through -- and never chewed again after round 200.  Targets were chosen by walking
+  distance alone.
+- **It chewed tiles a mender stood beside.**  On fimbulwinter every trunk tile it bit was healed
+  back the same round -- (17,15) seven times over, (17,14), (18,15), (17,13), (18,10): 180
+  rounds, nothing cut.  2 a bite never beats 4 a heal.
+- **It healed a 3 Ti barrier for 210 rounds.**  Round 215 on stavkirke it denied the ore at
+  (17,17); one of their Builders started chewing the barrier; ours stood there mending it every
+  round until 424 while their network grew to 126 tiles.
+- **A flung newborn built a home that was not there.**  I Stone parks a Launcher on our spawn
+  tiles.  The miner spawned at (4,2) and had its first turn at (9,4) with the Core out of sight;
+  `_orient` fell back to "the Core is where I am", and it laid six Harvesters and seventy
+  conveyors toward (9,5).  Not one stack reached the Core all game.
+
+What changed:
+
+- **Loads, not distance** (`_belt_loads`, `_belt_trail`): the attacker remembers every enemy
+  conveyor's facing (`enemy_belt_dir`) and traces each known enemy Harvester's output along the
+  facings to their Core.  Every tile on a trail that arrives -- or leaves what this Builder has
+  looked at in the last `LOOK_STALE` rounds, which may well continue -- carries that Harvester's
+  load.  A tile with load 0 is never bitten (a dead end, the far side of our own stump, gefn's
+  harvester-less conveyors); each Harvester feeding through a tile is worth `LOAD_STEPS` of
+  walking; a tile their Builder stands beside ranks last.  Harvesters stay in the pool at their
+  8-step tax.
+- **The mender check**: the lowest HP seen on the target is tracked; `CHEW_IDLE` bites without a
+  new low bans the tile for sixty rounds and the next one is taken.
+- **The tend cap**: a barrier under chew is healed `TEND_CAP` rounds and then left for 150.
+  Ring Sentinels are not capped.
+- **The peek waits** while a chew is in progress (target adjacent): a conveyor at 8 HP is back to
+  20 in three rounds of its mender's attention.
+- **The frontier walk** (`_explore_belts`): when nothing known is cuttable -- covered, tended,
+  banned, or all severed -- walk to the nearest uncovered stand beside a known belt or Harvester
+  whose neighbour has not been looked at lately, where the next stretch is.
+- **Home by mirror** (`_mirror_core`): a Builder that cannot see the Core on its first turn takes
+  the enemy Core the Core reports in slot 2 and mirrors it -- the pool's symmetries are
+  tabulated, an unknown map takes the mirror its own guess agrees with.  Checked against all
+  thirty tabulated cores.
+
+Local (seed 1, both seats, 15 maps): hildr78 27/30, steward 25/30, gefn 26/30, spar_sentinel
+25/30, spar_wall 18/30 -- v108's numbers or a game better.  Against steward on bifrost the
+harasser now cuts the two fed tiles, kills the Harvester and stops; the old build went on to chew
+sixty bites of severed belt.
+
+Not fixed here, and worth its own look: on stavkirke I Stone's Builders chewed our belts out
+from round 343 and **rebuilt them as their own, routed to their Core** -- our six Harvesters fed
+them 16 Ti a round for the last 400 rounds while our three home Builders held ring tiles with no
+turret in sight and 3,500 Ti in the bank.  That is the Core's mining orders (`econ_ok`) and the
+miners' repair reach, not the harasser.
