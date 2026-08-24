@@ -120,6 +120,11 @@ CUT_FLOOR = 30             # titanium the harasser leaves in the bank while chew
 PEEK_EVERY = 12            # rounds between the harasser's looks at their Core ring
 BARE_LOOKS = 3             # fresh looks showing an unattended Core before the strike is called
 BREAK_OUT = True           # a walled-in home Builder shoots the enemy barrier in its way
+WALL_WATCH = True          # menders bought the round they start walling our ring: hold the tiles that are left
+WALL_SQUAD = 3             # menders the wall watch buys: 12 HP a round out-heals the two Sentinels that follow the walls
+WALL_MEMORY = 40           # rounds the watch stays on after walling was last seen at our ring
+WALL_REACH = 2             # Chebyshev distance from the footprint within which an enemy barrier counts as walling
+PAD_GUNNER = True          # once the wall squad stands, a Gunner on a ray to the Launcher pad (30 HP: five shots)
 REPLACEMENT_DAMP_AFTER = 8 # hildr/steward: past this many spawns, each further Builder needs 150 Ti behind it
 
 # communication store
@@ -154,6 +159,8 @@ ORD_HARVEST_SHIFT = 7      # bits 7-9: Harvesters standing, 0-7, as tallied by t
 ORD_SAVE = 1 << 10         # a counter-turret is wanted and not yet affordable: no 1 Ti heals while the Core can take it
 ORD_RACE = 1 << 11         # the ring is shooting and the kill is funded: menders mend, nothing else
 ORD_FORAGE = 1 << 12       # the income war: the attacker cuts their belts, the home half out-mines them
+ORD_WALL = 1 << 13         # the wall watch is on: the squad holds its ring tiles; slot 0 alone answers ORD_GUNNER
+ORD_HOLD_SHIFT = 14        # bits 14-15: ring tiles to be held (the first N of our Builders on the ring, by position, do not mine)
 
 
 def _pack(pos, extra=0):
@@ -325,6 +332,13 @@ class Player:
         self.plan_round = 0
         self.ring_seen = 0
         self.loiter = 0
+        self.wall_seen = -1000      # round the wall watch last saw walling at our ring
+        self.waller_here = False    # an enemy Builder or Launcher is at our ring right now
+        self.pad_near = False       # an enemy Launcher within 3 of the footprint: the pad that flings our menders
+        self.grab_zone = set()      # tiles beside an enemy Launcher near our Core: a mender there is flung
+        self.ring_free = 0          # usable, unoccupied ring tiles (not walled, not beside a Launcher)
+        self.ring_held = 0          # ring tiles our Builders stand on
+        self.ring_walled = 0        # ring tiles under an enemy barrier
         self.home_turrets = 0
         self.shooter = None
         self.miners_hwm = 0         # miners ever wanted: a working miner keeps working through a burst
@@ -475,6 +489,8 @@ class Player:
         self.prev_built = built
         alive = self._sentinels_alive(ct)
         their_dps, their_near, loiterers, shooters = self._scan_home(ct)
+        walling = self._wall_watch(ct, loiterers) if WALL_WATCH else False
+        wall_mode = WALL_WATCH and self.round - self.wall_seen <= WALL_MEMORY
         menders = self._menders_home(ct)
         homes = self._home_reports(ct)
         self.home_turrets = self._own_turrets_home(ct)
@@ -695,6 +711,21 @@ class Player:
                 want_menders = min(want_menders, 1 if hp >= 300 else 2)
         if HOME_BUILDER_AT_START:
             want_menders = max(want_menders, 1)
+        # ---- the wall watch: hold the ring tiles before they are gone
+        # A barrier on a ring tile is a Sentinel that has not arrived yet.  OpenSverige parked a
+        # Builder and a Launcher at our Core on round 8, barriered seven of the eight ring tiles
+        # by round 33 while we held 450 Ti, and brought two Sentinels at round 45: the one
+        # mender that fit on the last free tile healed 4 a round against 9, and the Core died
+        # on round 112 with the second mender 2 Ti short.  While they are walling, every usable
+        # free ring tile gets a mender standing on it, up to a squad that out-heals the two
+        # Sentinels that follow -- bought from the bank now, while it still holds the opening
+        # titanium.  Tiles beside their Launcher are not usable: it flings whoever steps there.
+        wall_squad = 0
+        if wall_mode:
+            wall_squad = min(WALL_SQUAD, self.ring_held + self.ring_free)
+            want_menders = max(want_menders, wall_squad)
+            # ...and never more menders than there are tiles to mend from, plus one to dig
+            want_menders = min(want_menders, max(wall_squad, self.ring_held + self.ring_free + 1))
         # The finish line.  Two rushes meeting is a sum: when their ring will kill us no later
         # than ours kills them, one mender (4 HP a round for 1 Ti) moves our death back
         # further than its price moves theirs -- provided the kill is still funded after it.
@@ -871,7 +902,12 @@ class Player:
                      and (siege_len >= DEFEND_AFTER_ROUNDS or hp < 300 or self.plan == 'mend')
                      and self.round - self.last_damage <= SILENT_TURRET_ROUNDS
                      and ti >= sentinel_cost + mend_reserve + 10)
-        gunner_ok = (ANTI_BUILDER_GUNNER and self.loiter >= LOITER_ROUNDS
+        # The pad Gunner.  Their Launcher beside our ring is 30 HP that cannot move: five shots
+        # from a 10 Ti Gunner, and the tiles beside it are ours to mend from again; the raider
+        # that walled us is next on the line (six shots).  Only once the wall squad stands.
+        pad_gunner = (PAD_GUNNER and wall_mode and self.waller_here and self.home_turrets == 0
+                      and (self.pad_near or (loiterers == 1 and self.ring_walled >= 1)))
+        gunner_ok = (((ANTI_BUILDER_GUNNER and self.loiter >= LOITER_ROUNDS) or pad_gunner)
                      and turret_budget
                      and need_menders == 0
                      and ti >= gunner_cost + mend_reserve + 10)
@@ -895,7 +931,13 @@ class Player:
         if not spawned_now and need_home:
             cost = self._builder_cost(ct)
             if need_menders:
-                if (self.plan == 'mend' or mend_first) and not racing:
+                if wall_mode and not racing:
+                    # The wall watch buys from the bank.  The ring's own reserve is kept (the
+                    # rush still goes); the burst's is not -- a burst that has to be fired
+                    # while their Sentinels shoot a Core no mender can reach was never going
+                    # to be paid for.
+                    spare = ti - ring_reserve - mend_reserve
+                elif (self.plan == 'mend' or mend_first) and not racing:
                     spare = ti - (ring_reserve if alive == 0 and built == 0 else 0)
                 elif stuck:
                     spare = ti - SNIPE_BANK
@@ -939,7 +981,17 @@ class Player:
             flags |= ORD_RACE
         if self.forage:
             flags |= ORD_FORAGE
-        flags |= min(3, self.miners_hwm if econ_ok else 0) << ORD_MINERS_SHIFT
+        # The squad holds while the waller is there to re-wall a vacated tile; the Builders
+        # beyond it mine.  On skald the stub's three wallers loitered for ever and a mining
+        # ban starved the income race that v109 won at round 183 -- so it is holders, not a ban.
+        hold_count = wall_squad if (wall_mode and self.waller_here) else 0
+        if wall_mode:
+            flags |= ORD_WALL
+            flags |= min(3, hold_count) << ORD_HOLD_SHIFT
+        miners_allowed = min(3, self.miners_hwm if econ_ok else 0)
+        if econ_ok and hold_count:
+            miners_allowed = 3                 # every non-holder may mine, whatever its slot
+        flags |= miners_allowed << ORD_MINERS_SHIFT
         flags |= min(7, harvesters) << ORD_HARVEST_SHIFT
         self._write(ct, SLOT_ORDERS, (self.round + 1) + 65536 * flags)
         self._publish_shooter(ct)
@@ -1150,6 +1202,70 @@ class Player:
             pass
         return dps, near, loiterers, shooters
 
+    def _wall_watch(self, ct, loiterers):
+        """Enemy barriers going up beside our Core, and the ring tiles a mender could still hold.
+        Sets ring_free / ring_held / ring_walled, grab_zone (tiles beside an enemy Launcher)
+        and waller_here; returns True while walling is in progress and stamps wall_seen."""
+        self.grab_zone = set()
+        self.waller_here = False
+        if not self.own_tiles:
+            return False
+        ring = _ring(self.own_tiles)
+        ring_set = set(ring)
+        walled = 0
+        barriers_near = 0
+        launcher_near = False
+        try:
+            mine = ct.get_team()
+            own = self.own_tiles
+            for bid in ct.get_nearby_buildings():
+                if ct.get_team(bid) == mine:
+                    continue
+                kind = ct.get_entity_type(bid)
+                if kind not in (EntityType.BARRIER, EntityType.LAUNCHER):
+                    continue
+                p = ct.get_position(bid)
+                key = (p.x, p.y)
+                gap = min(_cheb(key, t) for t in own)
+                if kind == EntityType.BARRIER:
+                    if key in ring_set:
+                        walled += 1
+                    if gap <= WALL_REACH:
+                        barriers_near += 1
+                else:
+                    if gap <= 3:
+                        launcher_near = True
+                    for dx in (-1, 0, 1):
+                        for dy in (-1, 0, 1):
+                            self.grab_zone.add((p.x + dx, p.y + dy))
+            free = 0
+            held = 0
+            for key in ring:
+                if key in self.grab_zone:
+                    continue
+                pos = Position(key[0], key[1])
+                if ct.get_tile_env(pos) == Environment.WALL:
+                    continue
+                if ct.get_tile_building_id(pos) is not None:
+                    continue
+                uid = ct.get_tile_builder_bot_id(pos)
+                if uid is not None:
+                    if ct.get_team(uid) == mine:
+                        held += 1
+                    continue
+                free += 1
+            self.ring_free = free
+            self.ring_held = held
+            self.ring_walled = walled
+        except Exception:
+            return False
+        self.waller_here = loiterers > 0 or launcher_near
+        self.pad_near = launcher_near
+        walling = walled >= 1 or barriers_near >= 2 or (launcher_near and loiterers > 0)
+        if walling:
+            self.wall_seen = self.round
+        return walling
+
     def _keep_attacker(self, ct, built):
         if built >= SENTINEL_TARGET + self.ring_extra:
             # The ring is up -- or was.  No heartbeat from any Sentinel for a while means the
@@ -1196,6 +1312,8 @@ class Player:
                     continue
                 key = (tile.x, tile.y)
                 gap = abs(tile.x - self.enemy.x) + abs(tile.y - self.enemy.y)
+                if key in self.grab_zone:
+                    continue                   # their Launcher flings whoever spawns there
                 if toward_enemy:
                     score = gap
                 else:
@@ -1588,6 +1706,7 @@ class Player:
         self._home_heartbeat(ct)
         miners_allowed = (flags >> ORD_MINERS_SHIFT) & 3
         self.team_harvesters = (flags >> ORD_HARVEST_SHIFT) & 7
+        holding = self._holding(ct, here, (flags >> ORD_HOLD_SHIFT) & 3 if flags & ORD_WALL else 0)
         core_tiles = self.mine_tiles
         self.mining_now = False
         self.covered = self._threats(ct)
@@ -1666,10 +1785,12 @@ class Player:
             return
         if flags & ORD_TURRET and self._counter_turret(ct, here):
             return
-        if flags & ORD_GUNNER and self._anti_builder_gunner(ct, here):
+        if (flags & ORD_GUNNER and (self.home_slot == 0 or not (flags & ORD_WALL))
+                and self._anti_builder_gunner(ct, here)):
             return
         # 3. mining, if the Core is paying and this Builder is one of the miners it pays for
-        if flags & ORD_ECON and self.home_slot is not None and self.home_slot < miners_allowed:
+        if (flags & ORD_ECON and self.home_slot is not None and self.home_slot < miners_allowed
+                and not holding):
             if REPAIR_BELTS and self._repair_belt(ct, here):
                 self.mining_now = True
                 return
@@ -1693,6 +1814,27 @@ class Player:
             pass
         # 5. stand on the ring -- shooting our way there if they have walled it
         self._to_post(ct, here)
+
+    def _holding(self, ct, here, hold_count):
+        """Am I one of the hold_count Builders of ours that keep a ring tile under the wall
+        watch?  The holders are the first hold_count of ours standing on ring tiles, in tile
+        order -- every Builder on the ring sees the whole ring, so they all rank alike."""
+        if not hold_count:
+            return False
+        key = (here.x, here.y)
+        ring_tiles = _ring(self.mine_tiles)
+        if key not in ring_tiles:
+            return False
+        holders = []
+        try:
+            mine = ct.get_team()
+            for tile in sorted(ring_tiles):
+                uid = ct.get_tile_builder_bot_id(Position(tile[0], tile[1]))
+                if uid is not None and ct.get_team(uid) == mine:
+                    holders.append(tile)
+        except Exception:
+            return True
+        return key in holders[:hold_count]
 
     def _core_hp(self, ct):
         try:
@@ -1882,6 +2024,14 @@ class Player:
                 p = ct.get_position(uid)
                 if min(_cheb((p.x, p.y), t) for t in self.mine_tiles) <= LOITER_REACH + 1:
                     targets.append((p.x, p.y))
+            pads = []
+            for bid in ct.get_nearby_buildings():
+                if ct.get_team(bid) == mine or ct.get_entity_type(bid) != EntityType.LAUNCHER:
+                    continue
+                p = ct.get_position(bid)
+                if min(_cheb((p.x, p.y), t) for t in self.mine_tiles) <= 3:
+                    pads.append((p.x, p.y))
+            targets = pads + targets               # the pad cannot step off the line
         except Exception:
             return False
         if not targets:
@@ -1925,6 +2075,8 @@ class Player:
                         continue
                     if spot in self.lanes:
                         continue                   # never seat a turret where it gets shot
+                    if spot in self.grabs:
+                        continue                   # beside their Launcher: the Builder seating it is flung
                     if _cheb(spot, self.mine_tiles[0]) > 6:
                         continue                   # the guard stays at home
                     if spot in ring_tiles:
@@ -1934,15 +2086,17 @@ class Player:
                     near = None
                     for _d, ax, ay in CARDINALS:
                         step = (spot[0] + ax, spot[1] + ay)
+                        if step in self.grabs:
+                            continue
                         cost = self._dist.get(step)
                         if cost is not None and (near is None or cost < near):
                             near = cost
                     if near is None:
                         continue
-                    seats.append((near, 0, spot, facing, tpos))
+                    seats.append((near, targets.index(tpos), spot, facing, tpos))
         if not seats:
             return False
-        seats.sort(key=lambda s: (s[0], s[1], s[2]))
+        seats.sort(key=lambda s: (s[1], s[0], s[2]))
         for near, _r, spot, facing, tpos in seats[:6]:
             pos = Position(spot[0], spot[1])
             try:
@@ -1994,7 +2148,7 @@ class Player:
         best = None
         chosen = None
         for key in _ring(self.mine_tiles):
-            if key in self.walls or key in self.blocked:
+            if key in self.walls or key in self.blocked or key in self.grabs:
                 continue
             cost = self._dist.get(key)
             if cost is None:
@@ -3254,13 +3408,19 @@ class Player:
                 if ct.get_team(uid) == mine:
                     continue
                 kind = ct.get_entity_type(uid)
-                order = {EntityType.BUILDER_BOT: 0, EntityType.GUNNER: 1, EntityType.SENTINEL: 1}.get(kind, 3)
+                order = {EntityType.BUILDER_BOT: 0, EntityType.LAUNCHER: 0,
+                         EntityType.GUNNER: 1, EntityType.SENTINEL: 1}.get(kind, 3)
                 p = ct.get_position(uid)
                 enemies.append((order, p.distance_squared(here), uid, p))
             for bid in ct.get_nearby_buildings():
                 if ct.get_team(bid) == mine:
                     continue
-                if ct.get_entity_type(bid) != EntityType.BARRIER:
+                kind = ct.get_entity_type(bid)
+                if kind == EntityType.LAUNCHER:
+                    p = ct.get_position(bid)
+                    enemies.append((0, p.distance_squared(here), bid, p))
+                    continue
+                if kind != EntityType.BARRIER:
                     continue
                 p = ct.get_position(bid)
                 if self._tended(ct, p, mine):
