@@ -217,12 +217,24 @@ so they are standing there, able to heal, when the attack comes.  That is the wa
   the mend float, but not the burst reserve (`kill_hold`) that otherwise blocks a mender
   while the bank is short of a kill -- a kill that has to be fired while their Sentinels shoot
   a Core no mender can reach was never going to be paid for.
-- **Mining is suspended** while the waller (a loitering Builder or a Launcher) stands at our
-  ring: the tiles are the point, and a miner that walks off one hands it over.
+- **The squad holds, the rest mine.**  While the waller (a loitering Builder or a Launcher)
+  stands at our ring, the Core names how many ring tiles are to be held (`ORD_HOLD_SHIFT`,
+  bits 14-15 of the orders word) and the first that many of our Builders on the ring, in tile
+  order, do not leave to mine; every other home Builder mines as before.  The first cut was a
+  mining ban while the waller was present, and it starved the income race: against a stub
+  whose three wallers never leave, v109 mined six Harvesters and killed at round 183, the ban
+  bought nothing and timed out.
+- **The pad Gunner** (`PAD_GUNNER`): once the squad stands, one 10 Ti Gunner is seated on a ray
+  to their Launcher pad -- 30 HP that cannot step off the line, five shots -- and the raider
+  that walled us is next on it.  Slot 0 alone answers the order, so the tiles stay held.
 
 It is dormant against everyone who does not wall: the trio and spar_wall panels are identical
 to the build before it, game for game (hildr78 27/30, steward 26/30, gefn 25/30, spar_wall
-19/30 -- spar_wall is a Gunner-mass siege, not a walling).
+19/30 -- spar_wall is a Gunner-mass siege, not a walling).  Against a stub that walls the ring
+and then seats two Sentinels (`wallstub2`: midgard, skald, paths, auroraveil, both seats),
+v109 survived every game but stalled -- three of eight went to round 1000, its first mender
+bought at round 42-84 after the first shot had landed, min Core HP 76-160 -- while this build
+killed in all eight, the squad standing from round 10-21, min Core HP 152-336.
 
 ## Comms (16 slots)
 
