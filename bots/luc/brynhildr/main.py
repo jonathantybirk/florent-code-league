@@ -542,7 +542,7 @@ class Player:
         self.eta = scout & 0xFF
         enemy_builders_seen = (scout >> ATK_BUILDERS_SHIFT) & 7
         enemy_econ_assets_seen = (scout >> ATK_ECON_ASSETS_SHIFT) & 7
-        mass_economy = enemy_builders_seen >= 4 or enemy_econ_assets_seen >= 4
+        mass_economy = enemy_builders_seen >= 4 or enemy_econ_assets_seen >= 3
         if scout & ATK_ECON or enemy_builders_seen >= 3:
             self.scout_econ = True
         if scout & ATK_RUSH:
