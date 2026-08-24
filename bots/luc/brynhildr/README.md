@@ -23,6 +23,12 @@ v123 and rejected at 2/30: it lost 0--5 to each of Bean counters, not adgato,
 Pantheon, Leviathan, and sporks.  Dense economy is the opponent signature to
 punish, not an opening for Brynhildr to copy.
 
+The selective same-Builder premine shipped as v126.  Its first live round was
+3--2 against Bean counters, not adgato, and Pantheon, 2--3 against Leviathan,
+and 0--5 against sporks: 11/20 against ladder ranks 1--4.  The remaining work
+is the Launcher/Gunner ferry matchup and promotion coverage near our own rank;
+the broad extra-mender response was measured locally and rejected.
+
 15 pool maps, both seats, seeds 1-3 (90 games an opponent), fcode 2.3.9:
 
 | opponent | brynhildr | hildr@7a6d86c | steward@366cd1b |
