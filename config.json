@@ -354,6 +354,18 @@
       "Pivot",
       "HTTP 418",
       "kladde chatte tville (och oss)"
+    ],
+    "eitri@7bb92f2": [
+      "Bean counters",
+      "not adgato",
+      "Pantheon",
+      "Leviathan",
+      "sporks",
+      "O(1)",
+      "Focalground",
+      "Pivot",
+      "HTTP 418",
+      "kladde chatte tville (och oss)"
     ]
   },
   "_opponents_for": "bot_id -> ordered team names, five played per round, the rest carried in state.opponents_pending. Overrides the policy entirely. v70 has already faced all 20 of its nearest teams, so this is the nine unfaced teams rated above us (1810-2036) plus not adgato, the team it has seen least (one game).",
@@ -415,7 +427,7 @@
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally.",
   "queue_front": [
     "brynhildr@be4f2e2:3",
-    "eitri@557b395:3",
+    "eitri@7bb92f2:3",
     "brynhildr@3c77244:3",
     "jonbot_income@5f35893:3",
     "brynhildr@12a8c52:3",
