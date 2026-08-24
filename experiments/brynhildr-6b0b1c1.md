@@ -42,4 +42,8 @@ leaders (900 games total):
 
 Sixty-nine games changed internal trajectories. All 20 affected spar_wall wins
 finished sooner; the largest relevant gain was Jotunheim from round 762 to
-503. No category lost a game.
+503. Retained parent/candidate replays on that exact cell show why: `e9eccd8`
+collected 0 titanium, while `6b0b1c1` collected 1,140 against spar_wall's 430.
+The local plug was a hostile Launcher occupying a remembered conveyor tile,
+which also verifies that repairing any hostile route occupant is more robust
+than a Barrier-only exception. No category lost a game.
