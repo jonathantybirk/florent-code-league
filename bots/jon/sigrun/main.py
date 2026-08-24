@@ -50,6 +50,23 @@ try:
 except Exception:          # unknown deployment -- fall back to observation
     _MAP_INDEX, _MAP_WALLS = {}, {}
 
+from openingstrat import OpeningRunner
+
+ECON_OPENING_MAPS = frozenset(("paths",))
+
+# paths B, and only paths B.
+#
+# Four starts turn a seat against v109 -- bifrost B, glacierkeep A, helheim B,
+# paths B -- and gating all four is 56-34 against v109 but 328-122 against the
+# five-bot panel, down from the flagship's 332-118. Priced per start across the
+# whole panel the four are -4, +0, -3 and +3: the opening's tempo is worth its
+# titanium against v109's own rush and against nothing else. paths B is the one
+# start that pays whoever is on the other side.
+ECON_OPENING_STARTS = {
+    ((24, 24), (21, 11)),  # paths B
+}
+OPENING_BUILDERS = 1
+
 # ---------------------------------------------------------------------------- tuning (hildr)
 SENTINEL_TARGET = 4        # smallest ring that kills through a full heal ring (36 > 32 HP/round)
 MAX_RANGE_SQ = 32          # Sentinel attack radius^2
@@ -294,6 +311,11 @@ def _facing_to(frm, to):
 
 class Player:
     def __init__(self):
+        # One independent opening miner; Brynhildr's attacker starts on round 1.
+        # Store-free mode leaves all sixteen of Brynhildr's GCS slots untouched.
+        self.opening = OpeningRunner(
+            OPENING_BUILDERS, use_store=False, enabled_maps=ECON_OPENING_MAPS
+        )
         self.kind = None
         self.round = 0
         # core
@@ -432,8 +454,13 @@ class Player:
             self.kind = ct.get_entity_type()
         self.round = ct.get_current_round()
         if self.kind == EntityType.CORE:
+            if (self.round < OPENING_BUILDERS and self._opening_enabled(ct)
+                    and self.opening.run_core(ct)):
+                return
             self._core(ct)
         elif self.kind == EntityType.BUILDER_BOT:
+            if self._opening_enabled(ct) and self.opening.run_builder(ct):
+                return
             self._builder(ct)
         elif self.kind == EntityType.SENTINEL:
             self._sentinel(ct)
@@ -441,6 +468,24 @@ class Player:
             self._gunner(ct)
         elif self.kind == EntityType.LAUNCHER:
             self._launcher(ct)
+
+    def _opening_enabled(self, ct):
+        """A start is only one of the four if the bundled terrain says so.
+
+        The catalog is cut to those four maps, so a foreign map that happens to share a
+        size and a Core corner would no longer be ranked against anything and would get
+        one of their plans laid on terrain it does not describe. terrain.py already names
+        the pool by (size, Core); requiring the name as well as the key costs a dict
+        lookup and closes that off."""
+        if self.kind == EntityType.CORE:
+            pos = ct.get_position()
+            key = ((ct.get_map_width(), ct.get_map_height()), (pos.x, pos.y))
+        else:
+            key = self.opening._core_key(ct)
+        if key not in ECON_OPENING_STARTS:
+            return False
+        named = _MAP_INDEX.get((key[0][0], key[0][1], key[1][0], key[1][1]))
+        return named is not None and named[1] in ECON_OPENING_MAPS
 
     def _read(self, ct, slot, default=0):
         try:

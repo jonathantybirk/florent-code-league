@@ -1,44 +1,109 @@
 # sigrun
 
-A fork of `brynhildr@2f83111`, which is submission **v109** and the bot ladderfarm
-currently holds as flagship -- the strongest build the farm has ranked. The fork
-starts byte-identical to it; everything below the line is brynhildr's own README,
-kept for lineage. What follows here is only what this fork changes, and the
-evidence for it.
+A fork of `brynhildr@2f83111` -- submission **v109**, the build ladderfarm holds as
+flagship. Everything below the line is brynhildr's own README, kept for lineage.
+This part is only what the fork changes and the evidence for it.
 
-## The measurement
+## The pool is fifteen maps, and it is an exact instrument
 
-The ladder plays a **fifteen-map pool** (`fcode maps list`), not the 53 maps in
-`maps/`. That distinction turned out to matter more than anything else measured
-here, so every number below is pool maps, both seats, head to head against an
-unmodified copy of v109. The harness is deterministic and the mirror is even by
-construction: v109 against itself over all 53 maps, both seats, is exactly 53-53.
+`fcode maps list` is the competition pool and it is fifteen maps. `maps/` holds 53;
+the other 38 are never drawn. That was the first thing the harness said and it
+turned out to matter more than anything else measured here.
 
-| build | vs v109 on the pool | note |
-|---|---|---|
-| `+ wall siege guard` (`brynhildr@533601b`, x/codex-wallguard) | 42-48, seeds 1-3 | rejected: bifrost 0-6 |
-| `+ terrain-gated econ opening` (`brynhildr_econ_opening@3453e4a`) | 14-16, seed 1 | rejected |
-| both together | 15-15, seed 1 | rejected |
+The pool also measures without noise. All fifteen maps are mirror- or rotationally
+symmetric, so a build against a copy of itself, both seats, scores **exactly**
+75-75 over 150 games -- measured, not assumed. Better, every start is decided by
+(map, seat) alone: a five-seed run returns 5-0 or 0-5 in all thirty cells. One seed
+is the whole head-to-head, and a change is worth precisely the seats it turns.
 
-Neither is carried. The wall guard is ahead over the other 38 maps -- 54-52 across
-all 53 -- and behind on the fifteen that count. The econ opening was measured 68-38
-against `brynhildr@e9f94e7` (v110), the build it was forked from; against v109 it is
-behind off the pool as well (51-55 over 53 maps), so its own evidence never
-transferred to this parent.
+## What this fork changes: paths B opens with a miner
+
+`openingstrat/` (vendored from `brynhildr_econ_opening`) spawns one precomputed
+mining Builder on round 0 and starts brynhildr's attacker on round 1. It is enabled
+on exactly one start.
+
+**16-14 against v109** on the pool, from 15-15 -- one seat turned. Across the
+five-bot panel on paths alone: **+3 on seeds 1-3, and +7 on the held-out seeds
+4-10 (49/70 against the flagship's 42/70)**.
+
+The catalog is cut from 3,539 lines to the one map the gate can reach, and
+`_opening_enabled` requires `terrain.py` to *name* the map as well as match its size
+and Core, so a foreign map sharing a start cannot get paths' plan laid on terrain
+that does not describe it.
+
+## Why only one start, and the mistake that found it
+
+Run on all thirty pool starts, the opening turns four seats against v109: bifrost B,
+glacierkeep A, helheim B, paths B. Gating all four is **56-34 against v109** -- and
+**328-122 against the panel, down from the flagship's 332-118.**
+
+Priced per start across the whole panel, the four are **-4, +0, -3 and +3**. The
+opening's tempo is worth its titanium against v109's own rush and against almost
+nothing else; three of the four seats it turns in the mirror it loses everywhere
+else. Selecting starts against a single opponent -- even the flagship, even with a
+noiseless instrument -- is fitting to that opponent. Only paths B survives being
+priced against a field, and only paths B is enabled.
+
+## Everything else that was measured, and thrown away
+
+Panel: fifteen pool maps, both seats, seeds 1-3, 450 games a build.
+
+| build | total | v109 | brokkr | steward | spar_wall | spar_sentinel |
+|---|---|---|---|---|---|---|
+| v109 (control) | 332-118 | 45-45 | 78-12 | 78-12 | 56-34 | 75-15 |
+| + the four-start opening gate | 328-122 | 56-34 | 81-9 | 69-21 | 50-40 | 72-18 |
+| + `HARVESTERS_MAX` 7, `ECON_ROUND` 30 | 331-119 | 45-45 | 74-16 | 78-12 | 59-31 | 75-15 |
+| + the harvester cap raised only in the income war | 331-119 | 48-42 | 74-16 | 78-12 | 56-34 | 75-15 |
+| + a home Launcher against loitering Builders | 321-129 | 37-53 | 78-12 | 78-12 | 56-34 | 72-18 |
+| + that Launcher and the economy pair | 316-134 | 37-53 | 73-17 | 78-12 | 56-34 | 72-18 |
+
+**The home Launcher is a negative result and the most instructive one.** The bot
+already has the flinging half -- `_launcher` throws any adjacent enemy Builder to
+the far side of the map -- and its own comment says "we never build one". A Gunner
+is measured off against harassers because a squad digs 25 HP out faster than 7
+damage a round kills one, and a Launcher never has to kill anything: 20 Ti, no
+ammunition, cannot miss, and one throw puts a digger five tiles from the wall it was
+laying. It still lost. Against brokkr, the harassment bot it was built for, the
+column did not move at all (78-12 either way) -- the trigger never fired, because a
+harasser steps in and out and `loiter` peaked at five of the six consecutive rounds
+the Gunner rule wants. Rebuilt on cumulative visits it did fire, and cost eight
+games of the mirror. Titanium spent at home while the rush needs every point is the
+same disease the Gunner had; not having to kill anything does not cure it.
+
+**The tuning is at a local optimum.** Twenty-one single-constant perturbations, 150
+games each against v109: most scored exactly 75-75 -- the constant never binds in
+games this short -- and the two that moved, `BURST_SLACK` and `SNIPE_BANK`, were
+worse in both directions. A seventeen-point flip search over structural switches
+(`SENTINEL_TARGET`, `JOIN_BELTS`, `REBUILD_RING`, `DENY_ORE`, `SHIELD_RING`,
+`AVOID_COVERED_SPOTS`, `HOME_BUILDER_AT_START`, ...) found nothing worth more than
++2 starts in the mirror, and the four-start result above is the reason a mirror
+flip is not by itself evidence.
+
+**Two changes believed on 53-map evidence do not survive the pool.** The
+x/codex-wallguard siege guard (`brynhildr@533601b`) is 54-52 across all 53 maps and
+**42-48** on the pool, with bifrost 0-6. The terrain-gated econ opening as shipped
+(`brynhildr_econ_opening@3453e4a`, whose gate was fitted against v110) is **14-16**.
+Together, 15-15.
 
 ## Reproducing
 
 ```sh
-git show 2f83111:bots/luc/brynhildr/main.py > bots/rivals/bryn109/main.py
+mkdir -p bots/rivals/bryn109
+git show 2f83111:bots/luc/brynhildr/main.py    > bots/rivals/bryn109/main.py
 git show 2f83111:bots/luc/brynhildr/terrain.py > bots/rivals/bryn109/terrain.py
-uv run python tools/ab.py bots/jon/sigrun bots/rivals/bryn109 \
-    --maps auroraveil,bifrost,fimbulwinter,glacierkeep,helheim,holmgang,icefloe,\
-jotunheim,longhouse,midgard,paths,skald,stavkirke,valkyrie,yggdrasil --seeds 5
+uv run python tools/ab.py bots/jon/sigrun bots/rivals/bryn109 --seeds 1 --maps \
+  auroraveil,bifrost,fimbulwinter,glacierkeep,helheim,holmgang,icefloe,jotunheim,\
+longhouse,midgard,paths,skald,stavkirke,valkyrie,yggdrasil
 ```
+
+`tools/flips.py` names the starts a change turns against a reference pattern from the
+same rival; `tools/map_cores.py` reads the two Core positions out of a `.map26` so a
+start can be named.
 
 ---
 
 # brynhildr (the fork's parent, verbatim)
+
 
 hildr's Sentinel rush in steward's armour: `hildr@7a6d86c` (the walk, the ring, the race
 arithmetic) plus the measured half of `steward_hardened_reinforced@366cd1b` (an economy that
