@@ -147,6 +147,7 @@ def _idle(ct, plan, crew, me) -> None:
         *(tiles for index, tiles in enumerate(plan.construction)
           if index not in plan.finished)
     )
+    construction.update(plan.deposits - plan.completed)
     jam = me in transit and _traffic(ct, crew, me)
     if me not in construction and not jam:
         _trace(ct, crew, me, "parked")
