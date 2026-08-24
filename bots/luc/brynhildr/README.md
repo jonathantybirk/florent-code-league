@@ -418,3 +418,12 @@ economy.  Three counters, all in the Core:
 
 Panel (seed 1, both seats, 15 maps): hildr78 26/30, steward 25/30, gefn 25/30, spar_open 20/30,
 spar_wall 18/30, hijack 30/30; no exceptions in 210 games.
+
+## The miner's cadence (jonbot_econ@19793f0, ported)
+
+Jonathan's timing-preserving fork measured one thing worth keeping: miners vacate a planned build
+tile through the finished network (`_step_inward`) and stage on the inward belt tile while walking
+(`_walk_to_tile`), so cornered chains alternate build and move instead of stepping away and back.
+93-33 on his panel against 90-36 without it; Antler is excluded by terrain key (staging strands
+the repairer beyond an exposed trunk there).  Combined-build panel here: trio 26/25/26, spar_open
+22/30, hijack 30/30, no exceptions.

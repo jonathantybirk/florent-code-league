@@ -132,6 +132,12 @@ LOAD_STEPS = 6             # steps of walking each Harvester feeding through a b
 RELAY_LOOP_ROUNDS = 40     # two relays of one tile inside this window: a turret owns the tile, stop feeding it
 WALL_THEIR_RING = True     # forage: barrier THEIR Core's ring tiles -- a mender that cannot stand,
                            # a spawn that cannot land, a Core the burst meets unhealable
+CHAIN_STAGING = True       # jonbot_econ@19793f0: miners stage on the inward belt tile, so cornered
+                           # chains alternate build and move instead of stepping away and back
+CHAIN_STAGING_EXCLUDED = { # ...except Antler, where staging strands the repairer beyond an exposed
+    ((14, 18), (6, 4)),    # trunk (jonbot's replay: collection fell 3,860 -> 450)
+    ((14, 18), (6, 12)),
+}
 BREAK_OUT = True           # a walled-in home Builder shoots the enemy barrier in its way
 WALL_WATCH = True          # menders bought the round they start walling our ring: hold the tiles that are left
 WALL_SQUAD = 3             # menders the wall watch buys: 12 HP a round out-heals the two Sentinels that follow the walls
@@ -460,6 +466,7 @@ class Player:
         self.relay_idle = 0
         self.evicted = None         # the tile just chewed clear beside a Harvester of ours: a barrier keeps it clear
         self.relaid = {}            # belt tile -> last two rounds it was relaid: the loop detector
+        self.chain_staging = CHAIN_STAGING
         self.belt_seen = {}         # conveyor tile -> round last in sight
         self.my_barriers = set()    # lane barriers this Builder laid
         self.deny_target = None
@@ -2606,8 +2613,12 @@ class Player:
                     self.replan_at = self.round + 2
                     return True
             if (here.x, here.y) == key:
-                return self._step_any(ct, here)
-            self._walk_beside(ct, here, key)
+                return self._step_inward(ct, here, onward)
+            preferred = (onward if onward not in self.mine_tiles
+                         else self.chain[idx - 1] if idx > 1 else None)
+            if (not self.chain_staging or preferred is None
+                    or not self._walk_to_tile(ct, here, preferred)):
+                self._walk_beside(ct, here, key)
             return True
         ore = self.chain[0]
         if ore not in self.occupied:
@@ -2634,11 +2645,27 @@ class Player:
                     self.replan_at = self.round + 2
                     return True
             if (here.x, here.y) == ore:
-                return self._step_any(ct, here)
-            self._walk_beside(ct, here, ore)
+                inward = self.chain[1] if len(self.chain) > 1 else self.chain_end
+                return self._step_inward(ct, here, inward)
+            inward = self.chain[1] if len(self.chain) > 1 else self.chain_end
+            if not self.chain_staging or not self._walk_to_tile(ct, here, inward):
+                self._walk_beside(ct, here, ore)
             return True
         self.chain = []
         return False
+
+    def _step_inward(self, ct, here, inward):
+        """Vacate a build tile through the finished network, not a random side-step
+        (jonbot_econ@19793f0: build-move cadence, measured 93-33 against 90-36)."""
+        if inward not in self.mine_tiles and self._step_to(ct, here, inward):
+            return True
+        return self._step_any(ct, here)
+
+    def _walk_to_tile(self, ct, here, target):
+        if target == (here.x, here.y):
+            return False
+        path = self._trace(self._came, here, target)
+        return bool(path and self._step_to(ct, here, path[0]))
 
     def _plan_chain(self, ct):
         """Pick an ore tile and the belt that carries it home.  Returns ([ore, c1, ..., ck], end)
@@ -2774,6 +2801,8 @@ class Player:
             self.enemy = Position(told[0], told[1])
         self.enemy_tiles = _footprint(self.enemy)
         self.mine_tiles = _footprint(core)
+        self.chain_staging = (CHAIN_STAGING and
+                              ((self.width, self.height), (core.x, core.y)) not in CHAIN_STAGING_EXCLUDED)
         self._seed_terrain(core)
         self.spots = self._firing_spots()
         for tile in self.enemy_tiles:
