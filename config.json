@@ -7,6 +7,13 @@
   "flagship_pin": null,
   "_flagship_pin": "Submission version held as flagship. While set, auto-promotion is off and every round restores this version; set to null to hand the decision back to delta-Elo.",
   "opponents_for": {
+    "jonbot_econ@3d09159": [
+      "Besvikomat",
+      "I Stone",
+      "0033",
+      "Banminary",
+      "TRRR"
+    ],
     "sigrun@31311f2": [
       "DinooniD",
       "OpenSverige",
@@ -75,10 +82,12 @@
     "brokkr@420273c:2",
     "brokkr@924f2ae:2",
     "brokkr@ecc064a:2",
-    "sigrun@31311f2:2"
+    "sigrun@31311f2:2",
+    "jonbot_econ@3d09159:1"
   ],
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally.",
   "queue_front": [
+    "jonbot_econ@3d09159:1",
     "sigrun@31311f2:2",
     "brynhildr@d8cd18d:3",
     "brynhildr@d439598:3",
