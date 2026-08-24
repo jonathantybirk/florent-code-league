@@ -27,12 +27,15 @@ failure when its terrain admits eight lanes and the planner had found eight.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "bots" / "jon" / "eitri"))
+sys.path.insert(0, str(ROOT / "tools"))
 
 import atlas_data                                          # noqa: E402
 import board as board_mod                                  # noqa: E402
@@ -40,6 +43,7 @@ import crew as crew_mod                                    # noqa: E402
 import network                                             # noqa: E402
 import orders                                              # noqa: E402
 import walk                                                # noqa: E402
+from gcs_viz import _fields, _unwrap                       # noqa: E402
 
 IDLE = "bots/common/donothingbot"
 ROUNDS = 1000
@@ -85,14 +89,14 @@ def yield_from(built, chain, rounds=ROUNDS):
     return PER_STACK * ((rounds - first) // EVERY + 1)
 
 
-def perfect(board, lanes, work, spawns, rounds=ROUNDS):
+def perfect(board, lanes, work, spawns, rounds=ROUNDS, starts=None):
     """The plan run by Builders that never wait for anything."""
     blocked = frozenset(lane.deposit for lane in lanes)
     total = 0
     for who, jobs in enumerate(work):
         if not jobs:
             continue
-        clock, here = who, spawns[who]
+        clock, here = (starts[who] if starts and who < len(starts) else who), spawns[who]
         for index in jobs:
             lane = lanes[index]
             route = walk.route(board, here, lane.entry, blocked)
@@ -192,14 +196,34 @@ def _chain(lanes, index):
 
 def measure(bot, name, seat=0, seed=1):
     players = [bot, IDLE] if seat == 0 else [IDLE, bot]
+    handle, replay = tempfile.mkstemp(suffix=".replay26")
+    os.close(handle)
+    Path(replay).unlink(missing_ok=True)
     proc = subprocess.run(
         ["uv", "run", "--active", "fcode", "run", *players, name,
-         "--seed", str(seed), "--json", "--mark", "0", "--tle", "0"],
-        cwd=ROOT, capture_output=True, text=True, timeout=900)
+         "--seed", str(seed), "--json", "--mark", "0", "--tle", "0",
+         "--replay", replay], cwd=ROOT, capture_output=True, text=True,
+        timeout=900)
     try:
-        return json.loads(proc.stdout.strip().splitlines()[-1])
+        result = json.loads(proc.stdout.strip().splitlines()[-1])
+        return result, _builder_starts(Path(replay), seat)
     except Exception:
         return None
+    finally:
+        Path(replay).unlink(missing_ok=True)
+
+
+def _builder_starts(replay, team):
+    """Actual creation rounds, so the ideal does not assume a free spawn tile."""
+    starts = []
+    for round_no, round_data in enumerate(v for f, _, v in _fields(replay.read_bytes())
+                                          if f == 3):
+        for _, _, event in _fields(round_data):
+            fields = _unwrap(event)
+            data = {field: value for field, _, value in fields}
+            if {1, 3, 4}.issubset(data) and data.get(2, 0) == team and 10 in data:
+                starts.append(round_no)
+    return starts
 
 
 def main():
@@ -218,12 +242,13 @@ def main():
         board = make(name, args.seat)
         lanes = _best(board)
         work, spawns, _ = crew_mod.assign(board, lanes)
-        want = perfect(board, lanes, work, spawns)
         top = ceiling(board)
-        result = measure(args.bot, name, args.seat)
-        if result is None:
+        measured = measure(args.bot, name, args.seat)
+        if measured is None:
             print(f"{name:<14} failed")
             continue
+        result, starts = measured
+        want = perfect(board, lanes, work, spawns, starts=starts)
         mined = result[f"{'a' if args.seat == 0 else 'b'}_titanium_collected"]
         ex = mined / want if want else 0.0
         pl = want / top if top else 0.0

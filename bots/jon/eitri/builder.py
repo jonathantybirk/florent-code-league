@@ -112,6 +112,14 @@ def _approach(ct, plan, crew, me, goal) -> None:
         crew.path.pop(0)
         crew.stalled = 0
         return
+    blocker = _friendly_at(ct, crew.path[0]) if crew.path else None
+    if blocker is not None:
+        detour = _route(plan, me, goal, {crew.path[0]})
+        if (detour and len(detour) <= len(crew.path) + 1
+                and walk.step(ct, me, detour[0])):
+            crew.path = detour[1:]
+            crew.stalled = 0
+            return
     crew.stalled += 1
     if crew.stalled < PATIENCE:
         return
@@ -123,7 +131,20 @@ def _approach(ct, plan, crew, me, goal) -> None:
     walk.sidestep(ct, ct.get_current_round() + crew.index)
 
 
-def _route(plan, me, goal):
+def _friendly_at(ct, tile):
+    """Friendly Builder id occupying `tile`, if visible."""
+    try:
+        return next(
+            unit for unit in ct.get_nearby_units(2)
+            if tuple(ct.get_position(unit)) == tile
+            and ct.get_team(unit) == ct.get_team()
+            and ct.get_entity_type(unit) == EntityType.BUILDER_BOT
+        )
+    except (Exception, StopIteration):
+        return None
+
+
+def _route(plan, me, goal, extra=frozenset()):
     """A walk to `goal` that keeps off the deposits we mean to dig.
 
     A route over a deposit is fine until the Harvester goes in and then it is
@@ -132,9 +153,9 @@ def _route(plan, me, goal):
     it while it is still open.
     """
     board = plan.board
-    blocked = plan.deposits - {goal}
+    blocked = (plan.deposits - {goal}) | set(extra)
     return (walk.route(board, me, goal, blocked)
-            or walk.route(board, me, goal, plan.completed)
+            or walk.route(board, me, goal, plan.completed | set(extra))
             or [])
 
 
