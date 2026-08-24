@@ -56,3 +56,11 @@ respectively; exposed-network survival is the economy bottleneck there.
 At collection time ladderfarm had promoted `jonbot_econ@19793f0` (v120) as the
 active expected-Elo winner. Sigrun v130 remains a challenger pending its second
 nearby-only round; it must not replace v120 from this first result.
+
+## Online round 2 and final verdict
+
+The second nearby-only round scored 14-11: Banminary 1-4, TRRR 3-2, Atlas 2-3,
+Torsko 3-2, and Viktor5776 4-1. Across both priority rounds v130 is 24-26.
+That is materially better than the first slice but not promotion evidence, so
+no further priority rounds are assigned. Ladderfarm remains authoritative and
+has since moved the active expected-Elo flagship to Brynhildr v104.
