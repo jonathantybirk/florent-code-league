@@ -6,7 +6,20 @@
   "_yield_until": "ISO-8601 UTC timestamp, e.g. '2026-08-06T18:30:00Z'. Fires nothing until then, then resumes by itself. Prefer this over enabled:false -- it cannot be forgotten.",
   "flagship_pin": null,
   "_flagship_pin": "Submission version held as flagship. While set, auto-promotion is off and every round restores this version; set to null to hand the decision back to delta-Elo.",
-  "opponents_for": {},
+  "opponents_for": {
+    "sigrun@31311f2": [
+      "DinooniD",
+      "OpenSverige",
+      "Besvikomat",
+      "I Stone",
+      "0033",
+      "Banminary",
+      "TRRR",
+      "Atlas",
+      "Torsko",
+      "Viktor5776"
+    ]
+  },
   "_opponents_for": "bot_id -> ordered team names, five played per round, the rest carried in state.opponents_pending. Overrides the policy entirely. v70 has already faced all 20 of its nearest teams, so this is the nine unfaced teams rated above us (1810-2036) plus not adgato, the team it has seen least (one game).",
   "coverage_k": 15,
   "_coverage_k": "How many of the nearest teams a coverage round tries to fill, default 10. Only affects opponent choice once a round has already decided to fill coverage -- the promotion bar still uses the closest 10 and QUALIFY_MIN, so widening this changes who the flagship plays, not who we trust enough to promote.",
@@ -62,10 +75,11 @@
     "brokkr@420273c:2",
     "brokkr@924f2ae:2",
     "brokkr@ecc064a:2",
-    "sigrun@31311f2:3"
+    "sigrun@31311f2:2"
   ],
   "_test_next": "Builds to test ahead of UCB selection, as 'name@commit' or 'name@commit:rounds' (5 matches per round, default 1). e.g. ['spar_econ@aad5f44:2']. Uploaded from git history on first use. Each entry is consumed once -- re-adding the same string will not re-queue it, change the commit or use --test-next locally.",
   "queue_front": [
+    "sigrun@31311f2:2",
     "brynhildr@d8cd18d:3",
     "brynhildr@d439598:3",
     "brynhildr@029276d:3",
