@@ -267,7 +267,7 @@ and usually after the first shot -- and the wall-watch build 19 of 30 before the
 | 0 | attacker | Sentinels placed; the Core writes 0 to restart the ring |
 | 1 | attacker | heartbeat `(round+1) + 65536*(eta+1 \| scouting bits)` |
 | 2 | Core | enemy Core packed, `+ 65536*(ring_extra \| HOLD_REBUILD \| RING_HOLD)` |
-| 3 | Core | orders `(round+1) + 65536*flags`: threat, econ, turret, gunner, quiet, miners allowed, Harvesters, save, race, forage |
+| 3 | Core | orders `(round+1) + 1024*surge + 65536*flags`: threat, econ, turret, gunner, quiet, miners allowed, Harvesters, save, race, forage, wall, holders; the beat is the low 10 bits, bit 10 is the surge |
 | 4-8 | ring Sentinels | heartbeats |
 | 9 | Core | the turret hitting us: packed position, `+65536*(1 Sentinel \| 2+4*facing Gunner)` |
 | 10-12 | ring | enemy menders, GO/HOLD/volley, enemy Core HP |
@@ -344,3 +344,21 @@ sixty bites of severed belt.
 Still open, Core side: in that game our three home Builders held ring tiles r330-430 with no
 turret in sight and 3,500 Ti in the bank -- `HARVESTERS_MAX`/`MINERS_MAX` pinned us at six
 Harvesters against their ten, so the tiebreak was lost with the bank unspent.
+
+## The surge (a bank with nothing to buy)
+
+The second look at I Stone left one thing unexplained on the Core's side: between rounds 250
+and 450 of stavkirke game 4 the bank went from 1,300 to 4,350 Ti and nothing was bought.  The
+ring could not stand against six Gunners and twenty diggers, no kill was ever funded, and the
+caps that keep the rush bot's economy small (`MINERS_MAX` 3, `HARVESTERS_MAX` 5) pinned us at
+six Harvesters against their ten -- so the round-1000 tiebreak, titanium collected, was lost
+with 3,500 Ti unspent.
+
+The surge (`SURGE`) is the Core's answer: a bank of `SURGE_BANK` (400) with no kill funded
+(`not can_finish`, no GO, not finishing), after `SURGE_ROUND` (150) and in a game that has
+stalled (stuck, foraging, ring dead, or held past `STALL_ROUNDS`), raises the miner count to
+`MINERS_SURGE` (5) and the Harvester cap to `HARVESTERS_SURGE` (7 -- the orders word carries
+the count in three bits).  The cap reaches the miners as a bit in the orders word's spare beat
+bits (bit 10; the beat is `round+1`, ten bits), so `_mine` lays to `harvest_cap` instead of the
+constant.  Never in the opening: the bank is the burst until the rush has been tried.
+
